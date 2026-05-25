@@ -5,7 +5,7 @@ deep-dive curriculum for mechatronics and robotics learners — plus 3
 supplementary reference pages. Every file is offline-capable: open `index.html`
 in any modern browser, no server or build step required.
 
-**Live site:** _(GitHub Pages URL goes here once published)_
+**Live site:** <https://n0xide.github.io/mechatronics-visuals/>
 
 ## What's inside
 
@@ -27,8 +27,8 @@ a built-in cheat sheet (formulas / memorize-cold / common pitfalls).
 **Offline** — clone or download the repo and open `index.html`:
 
 ```bash
-git clone https://github.com/USER/REPO.git
-cd REPO
+git clone https://github.com/n0xide/mechatronics-visuals.git
+cd mechatronics-visuals
 open index.html        # macOS
 xdg-open index.html    # Linux
 start index.html       # Windows
@@ -117,7 +117,6 @@ artefacts; the curriculum itself is the author's personal study material.
 
 ## Source
 
-These visuals are generated from the personal study workspace at
-[`claude-workspace`](https://github.com/USER/claude-workspace) (path:
-`mechatronics/study/docs/`). The bundle here is the published-static form;
+These visuals are generated from a personal study workspace at path
+`mechatronics/study/docs/`. The bundle here is the published-static form;
 the workspace is where new visuals get added before being re-exported here.
