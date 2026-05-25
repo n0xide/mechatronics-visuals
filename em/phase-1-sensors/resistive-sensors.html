@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resistive Sensors — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .sensor-pill{display:inline-block;padding:4px 12px;margin:2px;border-radius:999px;
+    background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    cursor:pointer;font:12px ui-monospace,monospace}
+  .sensor-pill.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .vd-circuit{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:center}
+</style>
+</head>
+<body>
+<main>
+  <h1>Resistive Sensors — R(x) into V_out</h1>
+  <p class="lede">Four resistive sensors, one circuit: voltage divider. Pick the sensor, pick a series resistor, watch where the curve gets steep — that's your useful range.</p>
+
+  <p>Resistive sensors are the cheapest, easiest entry to physical measurement. They change resistance as the world changes — light, temperature, force, strain — and you read that change with a voltage divider into the ADC. The trick is that every resistive sensor is nonlinear, and most are dramatically so: an NTC thermistor can move from 100 kΩ to 100 Ω across its operating range, an LDR from megohms to kilohms, an FSR from "open" to a few hundred ohms. The series resistor in your divider determines <i>where</i> the curve is steep — pick R_series equal to the sensor's resistance at the stimulus you most care about measuring, and you maximize sensitivity there. Pick it wrong and you get a flat, useless signal across your range of interest.</p>
+
+  <section class="controls">
+    <div class="control" style="grid-column:1/-1">
+      <label>Sensor type:</label>
+      <div>
+        <span class="sensor-pill active" data-s="ldr">LDR (light)</span>
+        <span class="sensor-pill" data-s="ntc">NTC thermistor</span>
+        <span class="sensor-pill" data-s="fsr">FSR (force)</span>
+        <span class="sensor-pill" data-s="strain">Strain gauge</span>
+      </div>
+    </div>
+    <div class="control">
+      <label>Stimulus: <span class="readout" id="xRead">500 lux</span></label>
+      <input id="x" type="range" min="0" max="1000" step="1" value="500">
+    </div>
+    <div class="control">
+      <label>R_series (Ω): <span class="readout" id="rsRead">10 kΩ</span></label>
+      <input id="rs" type="range" min="100" max="100000" step="100" value="10000">
+    </div>
+    <div class="control">
+      <label>Vcc: <span class="readout" id="vccRead">3.30 V</span></label>
+      <input id="vcc" type="range" min="1.8" max="5" step="0.1" value="3.3">
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>R-vs-stimulus curve + voltage divider output</h3>
+    <svg id="curveSvg" viewBox="0 0 700 320" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <line x1="60" y1="30" x2="60" y2="280" class="axis"/>
+      <line x1="60" y1="280" x2="680" y2="280" class="axis"/>
+      <text x="50" y="155" class="axis-label" text-anchor="end" id="yAxisLbl">R (Ω)</text>
+      <text x="370" y="305" class="axis-label" text-anchor="middle" id="xAxisLbl">lux</text>
+      <line x1="60" y1="155" x2="680" y2="155" class="grid-line" stroke-dasharray="2,3"/>
+      <polyline id="rTrace" class="trace trace-1" points=""/>
+      <polyline id="vTrace" class="trace trace-2" points=""/>
+      <circle id="opDot" cx="350" cy="180" r="6" fill="var(--warn)" stroke="var(--bg)" stroke-width="2"/>
+      <text id="opLabel" x="360" y="178" class="label" fill="var(--warn)">x</text>
+      <text x="600" y="50" class="label" fill="var(--accent)">R(x)</text>
+      <text x="600" y="68" class="label" fill="var(--accent2)">V_out(x)</text>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>Sensor resistance R(x)</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>V_out = Vcc · R_sensor / (R_sensor + R_series) [normalized to plot scale]</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>Current operating point</span>
+    </div>
+  </div>
+
+  <div class="figure vd-circuit">
+    <div>
+      <h3>Divider circuit</h3>
+      <svg viewBox="0 0 320 240" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+        <line x1="160" y1="20" x2="160" y2="50" class="wire"/>
+        <text x="170" y="35" class="label">Vcc</text>
+        <rect x="145" y="50" width="30" height="60" fill="var(--bg-elev2)" stroke="var(--fg)" stroke-width="1.5"/>
+        <text x="195" y="84" class="label">R_series</text>
+        <text x="195" y="100" class="label-dim" id="rsTxt">10 kΩ</text>
+        <line x1="160" y1="110" x2="160" y2="135" class="wire"/>
+        <circle cx="160" cy="135" r="4" fill="var(--accent2)"/>
+        <text x="170" y="138" class="label" fill="var(--accent2)">V_out → ADC</text>
+        <line x1="160" y1="135" x2="160" y2="160" class="wire"/>
+        <rect x="145" y="160" width="30" height="50" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="195" y="180" class="label" fill="var(--accent)">R_sensor</text>
+        <text x="195" y="196" class="label-dim" id="rsenTxt">5 kΩ</text>
+        <line x1="160" y1="210" x2="160" y2="230" class="wire"/>
+        <line x1="140" y1="230" x2="180" y2="230" class="wire"/>
+        <text x="190" y="234" class="label-dim">GND</text>
+      </svg>
+    </div>
+    <div>
+      <h3>Live values</h3>
+      <table>
+        <tr><th>Quantity</th><th>Value</th></tr>
+        <tr><td>R_sensor</td><td><span class="readout" id="rsenRead">5.0 kΩ</span></td></tr>
+        <tr><td>V_out</td><td><span class="readout" id="voutRead">1.10 V</span></td></tr>
+        <tr><td>ADC count (12-bit, Vref=Vcc)</td><td><span class="readout" id="adcRead">1365</span></td></tr>
+        <tr><td>Sensitivity (mV per unit)</td><td><span class="readout" id="dvdxRead">2.0 mV/unit</span></td></tr>
+      </table>
+      <p style="font-size:12px;color:var(--fg-dim)">Sensitivity peaks when R_series ≈ R_sensor at the operating point. The slider is fighting nonlinearity — sweep stimulus and watch where the V_out curve gets steep.</p>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>NTC Steinhart-Hart visualizer</h3>
+    <p style="font-size:12px;color:var(--fg-dim)">For an NTC the simple β-equation works in a narrow range; Steinhart-Hart's 3-parameter fit is accurate across the whole datasheet curve. Below: a 10 kΩ @ 25 °C NTC with β = 3950 and standard SH coefficients. Slide R to see what temperature your firmware should report.</p>
+    <div class="controls" style="margin-top:4px">
+      <div class="control">
+        <label>Measured R: <span class="readout" id="shRRead">10.0 kΩ</span></label>
+        <input id="shR" type="range" min="100" max="500000" step="100" value="10000">
+      </div>
+    </div>
+    <table>
+      <tr><th>Method</th><th>T (°C)</th><th>Note</th></tr>
+      <tr><td>β-equation (β=3950)</td><td><span class="readout" id="tBeta">25.0</span></td><td>±2 °C across full range</td></tr>
+      <tr><td>Steinhart-Hart (3-param)</td><td><span class="readout" id="tSH">25.0</span></td><td>±0.1 °C with calibrated coefficients</td></tr>
+    </table>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Pick R_series at your target stimulus</b> — the divider is steepest when R_series equals R_sensor at the value you most care about measuring. Off-target, you lose resolution.</li>
+    <li><b>All four sensors are nonlinear</b> — LDR and NTC are exponential-ish, FSR is hyperbolic with hysteresis, strain is the only near-linear one (and you still need a bridge to see the change).</li>
+    <li><b>Strain gauge in a divider is hopeless</b> — ΔR/R ≈ 0.001 at full strain; you'd see microvolts. That's why strain always uses a Wheatstone bridge + instrumentation amp.</li>
+    <li><b>Self-heating skews thermistors</b> — current through the divider heats the NTC. For ≤0.1 °C accuracy use pulse excitation (sample, then disconnect).</li>
+    <li><b>FSRs are presence detectors, not scales</b> — ±15–25% repeatability. Use them for "is something there?" not "how heavy is it?".</li>
+    <li><b>ADC input impedance matters</b> — keep the divider's Thévenin impedance ≪ ADC sample impedance, or sample voltage drifts. Add a unity-gain op-amp buffer if R_series is &gt;100 kΩ.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Divider</dt><dd><span class="eq">V_out = Vcc · R_s / (R_s + R_series)</span></dd>
+        <dt>NTC β</dt><dd><span class="eq">R(T) = R₀ · exp(β·(1/T − 1/T₀))</span><span class="eq-note">T in Kelvin</span></dd>
+        <dt>Steinhart</dt><dd><span class="eq">1/T = A + B·ln(R) + C·(ln R)³</span></dd>
+        <dt>Strain</dt><dd><span class="eq">ΔR/R = GF · ε</span><span class="eq-note">GF ≈ 2 for foil</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>R_series = R_sensor</b> at your target → max sensitivity.</li>
+        <li><b>NTC drops</b> with heat; PTC rises.</li>
+        <li><b>FSR is 1 MΩ open, ~kΩ loaded</b> — wide dynamic range, lousy precision.</li>
+        <li><b>Strain ε ≈ 10⁻³</b> at full scale → ΔR ≈ 0.2 Ω on 120 Ω gauge.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Wrong R_series</b> — divider flat across your range. Pick at the operating point, not midrange.</li>
+        <li><b>Self-heating NTC</b> — pulse excitation if ≤0.1 °C matters.</li>
+        <li><b>High-impedance divider</b> — ADC sample droop. Buffer with op-amp.</li>
+        <li><b>FSR for weight</b> — wrong sensor. Use a load cell.</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>SELECTION</h3>
+      <table>
+        <tr><th>What</th><th>Sensor</th></tr>
+        <tr><td>Ambient light</td><td>LDR (cheap) or BH1750 (lin)</td></tr>
+        <tr><td>Air temp ±0.5 °C</td><td>NTC + SH coeffs</td></tr>
+        <tr><td>Touch/presence</td><td>FSR</td></tr>
+        <tr><td>Real force/weight</td><td>Load cell + HX711</td></tr>
+        <tr><td>Surface strain</td><td>Foil gauge + bridge + INA</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 1 — Sensors</a> ·
+    Topic: Resistive Sensors
+  </footer>
+</main>
+<script>
+  // sensor models — return R(x) given stimulus x (in the sensor's natural units)
+  const SENSORS = {
+    ldr: {
+      name:'LDR', xLabel:'lux', xMin:0, xMax:1000, xDefault:500, xUnit:'lux',
+      // dark ~ 1 MΩ, bright (1000 lux) ~ 1 kΩ
+      R: x => 1e6 * Math.pow(10, -3 * Math.log10(Math.max(x,1)+1)/Math.log10(1001)),
+      rMin: 1000, rMax: 1e6, rDefault: 50000
+    },
+    ntc: {
+      name:'NTC 10k', xLabel:'°C', xMin:-20, xMax:120, xDefault:25, xUnit:'°C',
+      R: T => 10000 * Math.exp(3950 * (1/(T+273.15) - 1/298.15)),
+      rMin: 200, rMax: 200000, rDefault: 10000
+    },
+    fsr: {
+      name:'FSR 402', xLabel:'N', xMin:0, xMax:50, xDefault:5, xUnit:'N',
+      R: F => F<0.01 ? 1e7 : Math.max(250, 1e6 / Math.pow(F+0.1, 1.3)),
+      rMin: 250, rMax: 1e7, rDefault: 10000
+    },
+    strain: {
+      name:'120Ω foil gauge', xLabel:'µε', xMin:-2000, xMax:2000, xDefault:0, xUnit:'µε',
+      R: e => 120 * (1 + 2 * e * 1e-6),
+      rMin: 119, rMax: 121, rDefault: 120
+    }
+  };
+
+  let curSensor = 'ldr';
+  const xEl = document.getElementById('x');
+  const rsEl = document.getElementById('rs');
+  const vccEl = document.getElementById('vcc');
+
+  function setSensor(key){
+    curSensor = key;
+    document.querySelectorAll('.sensor-pill').forEach(p=>{
+      p.classList.toggle('active', p.dataset.s === key);
+    });
+    const s = SENSORS[key];
+    xEl.min = s.xMin; xEl.max = s.xMax; xEl.step = (s.xMax-s.xMin)/1000;
+    xEl.value = s.xDefault;
+    rsEl.value = s.rDefault;
+    document.getElementById('xAxisLbl').textContent = s.xLabel;
+    update();
+  }
+
+  document.querySelectorAll('.sensor-pill').forEach(p=>{
+    p.addEventListener('click', ()=>setSensor(p.dataset.s));
+  });
+
+  function fmtR(r){
+    if(r>=1e6) return (r/1e6).toFixed(2)+' MΩ';
+    if(r>=1000) return (r/1000).toFixed(1)+' kΩ';
+    return r.toFixed(0)+' Ω';
+  }
+
+  function update(){
+    const s = SENSORS[curSensor];
+    const x = parseFloat(xEl.value);
+    const Rs = parseFloat(rsEl.value);
+    const Vcc = parseFloat(vccEl.value);
+    const Rsen = s.R(x);
+    const Vout = Vcc * Rsen / (Rsen + Rs);
+    const adc = Math.round(Vout / Vcc * 4095);
+
+    // sensitivity: dV/dx via finite diff
+    const dx = (s.xMax - s.xMin) * 0.001;
+    const Rsen2 = s.R(x + dx);
+    const Vout2 = Vcc * Rsen2 / (Rsen2 + Rs);
+    const dvdx = (Vout2 - Vout) / dx * 1000; // mV per unit
+
+    document.getElementById('xRead').textContent = x.toFixed(s.xMax<10?2:0)+' '+s.xUnit;
+    document.getElementById('rsRead').textContent = fmtR(Rs);
+    document.getElementById('vccRead').textContent = Vcc.toFixed(2)+' V';
+    document.getElementById('rsenRead').textContent = fmtR(Rsen);
+    document.getElementById('voutRead').textContent = Vout.toFixed(3)+' V';
+    document.getElementById('adcRead').textContent = adc;
+    document.getElementById('dvdxRead').textContent = dvdx.toFixed(2)+' mV/'+s.xUnit;
+    document.getElementById('rsTxt').textContent = fmtR(Rs);
+    document.getElementById('rsenTxt').textContent = fmtR(Rsen);
+
+    // Draw R(x) and V_out(x)
+    const xL=60, xR=680, yT=30, yB=280;
+    const xRange=xR-xL, yRange=yB-yT;
+    const xOf = xv => xL + ((xv - s.xMin)/(s.xMax - s.xMin)) * xRange;
+    // log scale on R for big ranges (LDR, NTC, FSR), linear for strain
+    const useLog = (s.rMax / s.rMin) > 50;
+    const yOfR = r => {
+      if(useLog){
+        const lr = Math.log10(Math.max(r, s.rMin*0.5));
+        const lo = Math.log10(s.rMin), hi = Math.log10(s.rMax);
+        return yB - ((lr - lo)/(hi - lo)) * yRange;
+      } else {
+        return yB - ((r - s.rMin)/(s.rMax - s.rMin)) * yRange;
+      }
+    };
+    const yOfV = v => yB - (v/Vcc) * yRange;
+
+    let rPts=[], vPts=[];
+    for(let i=0;i<=120;i++){
+      const xv = s.xMin + (i/120)*(s.xMax - s.xMin);
+      const rv = s.R(xv);
+      const vv = Vcc * rv / (rv + Rs);
+      rPts.push(`${xOf(xv).toFixed(1)},${Math.max(yT,Math.min(yB,yOfR(rv))).toFixed(1)}`);
+      vPts.push(`${xOf(xv).toFixed(1)},${yOfV(vv).toFixed(1)}`);
+    }
+    document.getElementById('rTrace').setAttribute('points', rPts.join(' '));
+    document.getElementById('vTrace').setAttribute('points', vPts.join(' '));
+    const opX = xOf(x), opY = yOfV(Vout);
+    document.getElementById('opDot').setAttribute('cx', opX);
+    document.getElementById('opDot').setAttribute('cy', opY);
+    document.getElementById('opLabel').setAttribute('x', opX+8);
+    document.getElementById('opLabel').setAttribute('y', opY-6);
+    document.getElementById('opLabel').textContent = `V=${Vout.toFixed(2)}V`;
+    document.getElementById('yAxisLbl').textContent = useLog ? 'R (log)' : 'R';
+  }
+  [xEl,rsEl,vccEl].forEach(e=>e.addEventListener('input',update));
+
+  // Steinhart-Hart visualizer
+  const shREl = document.getElementById('shR');
+  function updateSH(){
+    const R = parseFloat(shREl.value);
+    document.getElementById('shRRead').textContent = fmtR(R);
+    // β method, 10k @ 25C, β=3950
+    const T_beta = 1 / (Math.log(R/10000)/3950 + 1/298.15) - 273.15;
+    // SH coeffs for a typical 10k NTC
+    const A = 1.009249522e-3, B = 2.378405444e-4, C = 2.019202697e-7;
+    const lr = Math.log(R);
+    const T_sh = 1/(A + B*lr + C*lr*lr*lr) - 273.15;
+    document.getElementById('tBeta').textContent = T_beta.toFixed(1);
+    document.getElementById('tSH').textContent = T_sh.toFixed(1);
+  }
+  shREl.addEventListener('input', updateSH);
+  updateSH();
+
+  setSensor('ldr');
+</script>
+</body>
+</html>

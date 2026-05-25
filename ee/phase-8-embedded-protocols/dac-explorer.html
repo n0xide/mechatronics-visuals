@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DAC Explorer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number],.control input[type=text]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0;flex-wrap:wrap}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .bit-btn{display:inline-block;width:60px;height:60px;line-height:60px;
+    text-align:center;border:1px solid var(--line);background:var(--bg-elev2);
+    color:var(--fg-dim);cursor:pointer;font:600 18px ui-monospace,monospace;
+    border-radius:6px;margin:0 4px;user-select:none}
+  .bit-btn.on{background:var(--accent3);color:var(--bg);border-color:var(--accent3)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>DAC Explorer</h1>
+  <p class="lede">An R-2R ladder needs only two resistor values to build any N-bit DAC. Toggle each bit and watch the output sum, then compare against the cheaper PWM+RC approach.</p>
+
+  <p>R-2R is the workhorse multi-bit DAC topology: every bit drives a 2R resistor that either connects to V_ref or to ground. The ladder math means every bit contributes exactly half the next one's weight at the output, and — critically — the output impedance stays constant at R regardless of code. Compare that to the cheap-and-cheerful PWM+RC, which trades chip area for bandwidth.</p>
+
+  <h2>4-bit R-2R ladder</h2>
+  <div class="figure">
+    <div style="display:flex;justify-content:center;gap:8px;margin:10px 0">
+      <div class="bit-btn" id="bit3" data-bit="3">0</div>
+      <div class="bit-btn" id="bit2" data-bit="2">0</div>
+      <div class="bit-btn" id="bit1" data-bit="1">0</div>
+      <div class="bit-btn" id="bit0" data-bit="0">0</div>
+    </div>
+    <p style="text-align:center;color:var(--fg-dim);font-size:12px">bit 3 (MSB) ← → bit 0 (LSB) · click to toggle · or use slider below</p>
+    <section class="controls">
+      <div class="control">
+        <label>Code: <span class="readout" id="codeRead">0 / 15</span></label>
+        <input id="codeSlider" type="range" min="0" max="15" step="1" value="0">
+      </div>
+      <div class="control">
+        <label>V_ref: <span class="readout" id="vrefRead">3.3 V</span></label>
+        <select id="vrefSel">
+          <option value="3.3" selected>3.3 V</option>
+          <option value="5">5 V</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>R (ladder unit): <span class="readout" id="rRead">10 kΩ</span></label>
+        <input id="rInput" type="range" min="1000" max="100000" step="1000" value="10000">
+      </div>
+      <div class="control">
+        <label>V_out: <span class="readout" id="voutRead">0.000 V</span></label>
+      </div>
+      <div class="control">
+        <label>Z_out (constant): <span class="readout" id="zoutRead">10.0 kΩ</span></label>
+      </div>
+    </section>
+
+    <svg id="ladderSVG" viewBox="0 0 900 320" width="100%"></svg>
+  </div>
+
+  <h2>Glitch at mid-scale (0111 → 1000)</h2>
+  <p>At the half-scale transition all four bits change simultaneously. If the MSB switches a fraction of a nanosecond after the LSBs clear, the intermediate code briefly drops the output toward zero before the MSB lifts it. That spike is glitch energy; in audio it's an audible click, in signal generation it's a spectral spur.</p>
+  <section class="controls">
+    <div class="control">
+      <label>Skew (MSB late): <span class="readout" id="skewRead">0 ns</span></label>
+      <input id="skewInput" type="range" min="0" max="50" step="1" value="10">
+    </div>
+    <div class="control">
+      <button class="btn primary" id="glitchBtn">▶ animate 0111 → 1000</button>
+    </div>
+  </section>
+  <div class="figure">
+    <svg id="glitchPlot" viewBox="0 0 900 240" width="100%"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>ideal step (instant)</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>actual output (with skew)</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>glitch area = glitch energy</span>
+    </div>
+  </div>
+
+  <h2>R-2R vs PWM + RC filter</h2>
+  <p>PWM + RC is a poor person's DAC: you don't need any precision resistors, just one MCU PWM channel and a low-pass filter. The downside: ripple. The output is a clean DC plus a small AC ripple at the PWM frequency, attenuated by the filter rolloff.</p>
+  <section class="controls">
+    <div class="control">
+      <label>PWM duty: <span class="readout" id="pwmDutyRead">50.0 %</span></label>
+      <input id="pwmDuty" type="range" min="0" max="100" step="1" value="50">
+    </div>
+    <div class="control">
+      <label>f_PWM: <span class="readout" id="fpwmRead">10 kHz</span></label>
+      <input id="fpwm" type="range" min="100" max="1000000" step="100" value="10000">
+    </div>
+    <div class="control">
+      <label>RC time constant: <span class="readout" id="rcRead">100 µs (f_c = 1.6 kHz)</span></label>
+      <input id="rcInput" type="range" min="1" max="1000" step="1" value="100">
+    </div>
+    <div class="control">
+      <label>Ripple (pk-pk): <span class="readout" id="rippleRead">~30 mV</span></label>
+    </div>
+  </section>
+  <div class="figure">
+    <svg id="pwmDacPlot" viewBox="0 0 900 280" width="100%"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>raw PWM</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>after RC filter</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>ideal DC target</span>
+    </div>
+  </div>
+
+  <h2>When to pick which</h2>
+  <table>
+    <thead><tr><th>Need</th><th>R-2R / dedicated DAC chip</th><th>PWM + RC</th></tr></thead>
+    <tbody>
+      <tr><td>Update rate</td><td>fast (≥ 1 Msps)</td><td>slow (filter limits to f_PWM/10)</td></tr>
+      <tr><td>Output impedance</td><td>low and constant (R)</td><td>R of filter (load it and the V drops)</td></tr>
+      <tr><td>Audio quality</td><td>good (use Σ-Δ for great)</td><td>only if ripple is masked by load</td></tr>
+      <tr><td>Cost / parts</td><td>extra IC + I2C/SPI</td><td>MCU pin + 2 passives</td></tr>
+      <tr><td>Bias voltage</td><td>overkill</td><td>perfect</td></tr>
+      <tr><td>Arbitrary waveform</td><td>required</td><td>can't go faster than ~f_PWM/10</td></tr>
+    </tbody>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Each bit doubles the previous</b> — bit 0 contributes V_ref/16, bit 1 contributes V_ref/8, and so on. R-2R is the simplest topology that does this with only two resistor values.</li>
+    <li><b>Output impedance is constant = R</b> — looking back from the output, you always see R regardless of which bits are on. That's why R-2R drives loads cleanly without a buffer for moderate currents.</li>
+    <li><b>Mid-scale is the worst glitch</b> — going from 0111 to 1000 means all four bits change. Any timing skew between bit drivers shows up as a transient spike. In audio DACs, glitch energy is published in nV·s.</li>
+    <li><b>PWM+RC sets a ripple/bandwidth tradeoff</b> — bigger RC → smaller ripple but slower response. Output bandwidth ≪ f_PWM. Cannot synthesize audio without going to 100+ kHz PWM.</li>
+    <li><b>Resistor matching limits accuracy</b> — R-2R is only as linear as the resistor ratio precision. 1% resistors → ~1 LSB error at 6-7 bits. Monolithic DAC ICs trim resistors on-chip to 0.01%.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE — topologies</h3>
+      <ul>
+        <li><b>R-2R</b> — only two R values, R_out constant = R.</li>
+        <li><b>PWM-DAC</b> — RC filter with f_c ≪ f_PWM.</li>
+        <li><b>ΣΔ</b> — audio, 16–24-bit, 1-bit stream + decimation.</li>
+        <li><b>Mid-scale glitch</b> — worst at 0111 → 1000 (all bits flip).</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>TOPOLOGY DECISION</h3>
+      <ul>
+        <li><b>R-2R / monolithic</b> — arbitrary waveforms, fast updates.</li>
+        <li><b>PWM-DAC</b> — slow DC bias, set-point, contrast adjust.</li>
+        <li><b>ΣΔ</b> — audio out.</li>
+        <li><b>Buffer the output</b> — op-amp follower for any real load.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>PWM ripple visible</b> — pick high f_PWM, tighter RC.</li>
+        <li><b>Output impedance loads downstream</b> — voltage sags under current draw.</li>
+        <li><b>Resistor tolerance</b> — 1% resistors limit R-2R to ~6–7 effective bits.</li>
+        <li><b>Glitch energy</b> — needs deglitch S/H for audio-grade output.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 8 — Embedded Interface Protocols</a> ·
+    Topic: DAC Explorer
+  </footer>
+</main>
+<script>
+  let bits=[0,0,0,0]; // [bit3, bit2, bit1, bit0]
+  function code(){ return (bits[0]<<3)|(bits[1]<<2)|(bits[2]<<1)|bits[3]; }
+  function setCode(c){
+    bits[0]=(c>>3)&1; bits[1]=(c>>2)&1; bits[2]=(c>>1)&1; bits[3]=c&1;
+    document.getElementById('codeSlider').value=c;
+    for(let i=0;i<4;i++){
+      const el=document.getElementById('bit'+(3-i));
+      el.textContent=bits[i];
+      el.classList.toggle('on', bits[i]===1);
+    }
+    drawLadder();
+  }
+
+  function drawLadder(){
+    const Vref=parseFloat(document.getElementById('vrefSel').value);
+    const R=parseFloat(document.getElementById('rInput').value);
+    const N=4;
+    const c=code();
+    const Vout = (c/(1<<N))*Vref;
+    const Zout = R;
+
+    document.getElementById('codeRead').textContent=c+" / 15";
+    document.getElementById('vrefRead').textContent=Vref.toFixed(1)+" V";
+    document.getElementById('rRead').textContent=(R/1000).toFixed(1)+" kΩ";
+    document.getElementById('voutRead').textContent=Vout.toFixed(3)+" V";
+    document.getElementById('zoutRead').textContent=(Zout/1000).toFixed(1)+" kΩ";
+
+    // Draw R-2R schematic
+    const svg=document.getElementById('ladderSVG');
+    const W=900, H=320;
+    const yTop=80, yMid=160, yBot=240;
+    const xStart=80, xStep=160;
+    let s='';
+    // Top rail: chain of R resistors between nodes
+    // Node positions: at x = xStart + i*xStep for i = 0..N
+    for(let i=0;i<N;i++){
+      const x0 = xStart+i*xStep;
+      const x1 = xStart+(i+1)*xStep;
+      // R between nodes
+      s+=`<line x1="${x0}" y1="${yTop}" x2="${x0+30}" y2="${yTop}" class="wire"/>`;
+      s+=`<rect x="${x0+30}" y="${yTop-8}" width="${(x1-x0)-60}" height="16" fill="var(--bg-elev2)" stroke="var(--fg)"/>`;
+      s+=`<text x="${(x0+x1)/2}" y="${yTop-12}" class="label" text-anchor="middle">R</text>`;
+      s+=`<line x1="${x1-30}" y1="${yTop}" x2="${x1}" y2="${yTop}" class="wire"/>`;
+      // Node dot
+      s+=`<circle cx="${x0}" cy="${yTop}" r="3" fill="var(--fg-bright)"/>`;
+    }
+    s+=`<circle cx="${xStart+N*xStep}" cy="${yTop}" r="3" fill="var(--fg-bright)"/>`;
+
+    // Termination 2R at left end to ground
+    s+=`<line x1="${xStart}" y1="${yTop}" x2="${xStart}" y2="${yTop+20}" class="wire"/>`;
+    s+=`<rect x="${xStart-10}" y="${yTop+20}" width="20" height="60" fill="var(--bg-elev2)" stroke="var(--fg)"/>`;
+    s+=`<text x="${xStart+18}" y="${yTop+55}" class="label" text-anchor="start">2R</text>`;
+    s+=`<line x1="${xStart}" y1="${yTop+80}" x2="${xStart}" y2="${yTop+100}" class="wire"/>`;
+    s+=`<line x1="${xStart-12}" y1="${yTop+100}" x2="${xStart+12}" y2="${yTop+100}" class="wire" stroke-width="2"/>`;
+    s+=`<text x="${xStart+24}" y="${yTop+102}" class="label-dim">GND</text>`;
+
+    // Vout at right end
+    const vx = xStart+N*xStep;
+    s+=`<line x1="${vx}" y1="${yTop}" x2="${vx+40}" y2="${yTop}" class="wire"/>`;
+    s+=`<circle cx="${vx+40}" cy="${yTop}" r="4" fill="var(--accent2)"/>`;
+    s+=`<text x="${vx+48}" y="${yTop+4}" class="label" style="fill:var(--accent2)">Vout = ${Vout.toFixed(3)} V</text>`;
+
+    // 2R drops to bit switches, between each node
+    for(let i=0;i<N;i++){
+      const x0 = xStart+i*xStep;
+      const bitIdx = 3-i; // node i corresponds to bit (3-i)? Actually MSB is at high-x end
+      // R-2R convention: MSB at the far end (closest to Vout), LSB at far end from Vout
+      const realBit = i; // bit i in bits[] is MSB at idx 0
+      // The standard ladder: each node has a 2R going to a switch (V_ref or GND)
+      // Let's place MSB at rightmost node and LSB at leftmost
+      const switchBitIdx = (N-1)-i; // bit weight: rightmost = MSB
+      const bitVal = bits[N-1-switchBitIdx]; // bits[0]=MSB
+      // Actually: with bits[0] = MSB (bit 3 weight), at node i counted from right, weight = (1<< (i+1))? Let me reset
+      // Simpler: each "switch" represents one of bits[0..3], place from right to left as MSB..LSB
+      const sIdx = N-1-i; // sIdx 0 means leftmost (LSB), sIdx 3 rightmost (MSB)
+      const switchVal = bits[3-sIdx]; // bits[0] is MSB so sIdx 3 -> bits[0]
+      // Draw 2R going down
+      s+=`<line x1="${x0+xStep/2}" y1="${yTop}" x2="${x0+xStep/2}" y2="${yMid-20}" class="wire"/>`;
+      // Connect from top rail to the drop point: between nodes
+      // Actually 2R drops from junction between two R's... let me redo: put 2R drop AT each node, then SPST switch at bottom
+      const dropX = x0; // drop at the node itself
+      // erase prior line; instead redraw drops at node points (skip leftmost which is term)
+    }
+    // Redo: place 2R drops at each node from i=1..N (4 drops for 4 bits), MSB at i=N (rightmost)
+    for(let i=1;i<=N;i++){
+      const x = xStart + i*xStep;
+      const sIdx = N-i; // i=N gives sIdx 0 (MSB), i=1 gives sIdx 3 (LSB)
+      const bitVal = bits[sIdx]; // bits[0] is MSB
+      const bitNum = 3-sIdx; // bit number (0..3)
+      // 2R drop
+      s+=`<line x1="${x}" y1="${yTop}" x2="${x}" y2="${yMid-20}" class="wire"/>`;
+      s+=`<rect x="${x-10}" y="${yMid-20}" width="20" height="60" fill="var(--bg-elev2)" stroke="var(--fg)"/>`;
+      s+=`<text x="${x+18}" y="${yMid+15}" class="label" text-anchor="start">2R</text>`;
+      s+=`<line x1="${x}" y1="${yMid+40}" x2="${x}" y2="${yMid+60}" class="wire"/>`;
+      // Switch
+      const swY = yMid+60;
+      const switchColor = bitVal ? 'var(--accent3)' : 'var(--warn)';
+      s+=`<circle cx="${x}" cy="${swY}" r="4" fill="${switchColor}"/>`;
+      // Vref node above, GND below; switch tilts toward selected
+      const switchEndX = x + (bitVal? -25 : 25);
+      const switchEndY = swY + 25;
+      s+=`<line x1="${x}" y1="${swY}" x2="${switchEndX}" y2="${switchEndY}" stroke="${switchColor}" stroke-width="2"/>`;
+      // V_ref position (left)
+      const vrefX = x-25, vrefY = swY+30;
+      s+=`<circle cx="${vrefX}" cy="${vrefY}" r="3" fill="var(--accent)"/>`;
+      s+=`<text x="${vrefX-4}" y="${vrefY+12}" class="label" text-anchor="end" style="fill:var(--accent)">V_ref</text>`;
+      // GND position (right)
+      const gndX = x+25, gndY = swY+30;
+      s+=`<line x1="${gndX-10}" y1="${gndY}" x2="${gndX+10}" y2="${gndY}" class="wire" stroke-width="2"/>`;
+      s+=`<line x1="${gndX-7}" y1="${gndY+4}" x2="${gndX+7}" y2="${gndY+4}" class="wire"/>`;
+      s+=`<text x="${gndX+14}" y="${gndY+4}" class="label-dim">GND</text>`;
+      // Bit label
+      s+=`<text x="${x}" y="${yMid+8}" class="label" text-anchor="middle" style="fill:${switchColor};font-weight:600">bit ${bitNum} = ${bitVal}</text>`;
+      // weight contribution
+      const weight = bitVal * (1<<bitNum)/(1<<N) * Vref;
+      s+=`<text x="${x}" y="${swY+62}" class="label-dim" text-anchor="middle">+ ${weight.toFixed(3)} V</text>`;
+    }
+
+    svg.innerHTML=s;
+
+    drawGlitch();
+    drawPwmDac();
+  }
+
+  function drawGlitch(){
+    const skew = parseFloat(document.getElementById('skewInput').value); // ns
+    document.getElementById('skewRead').textContent=skew.toFixed(0)+" ns";
+    const Vref=parseFloat(document.getElementById('vrefSel').value);
+    const svg=document.getElementById('glitchPlot');
+    const W=900, H=240, mL=70, mR=30, mT=20, mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const tMax = 100; // ns
+    const xs=t=>mL+(t/tMax)*pw;
+    const ys=v=>mT+ph-(v/Vref)*ph;
+    // before transition: code 0111 = 7/16*Vref; after: 1000 = 8/16*Vref. The ideal step is +1 LSB.
+    const Vbefore = 7/16*Vref;
+    const Vafter = 8/16*Vref;
+    let s='';
+    // grid
+    for(let i=0;i<=10;i++){
+      const x=mL+i/10*pw;
+      s+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" class="grid-line"/>`;
+      s+=`<text x="${x}" y="${mT+ph+15}" class="axis-label" text-anchor="middle">${(i*tMax/10).toFixed(0)} ns</text>`;
+    }
+    for(let i=0;i<=8;i++){
+      const y=ys(i*Vref/8);
+      s+=`<line x1="${mL}" y1="${y}" x2="${mL+pw}" y2="${y}" class="grid-line"/>`;
+      s+=`<text x="${mL-6}" y="${y+3}" class="axis-label" text-anchor="end">${(i*Vref/8).toFixed(3)}V</text>`;
+    }
+    const tEdge = 40;
+    // Ideal: step from Vbefore to Vafter at tEdge
+    let pIdeal=`M${mL},${ys(Vbefore)} L${xs(tEdge)},${ys(Vbefore)} L${xs(tEdge)},${ys(Vafter)} L${mL+pw},${ys(Vafter)}`;
+    s+=`<path d="${pIdeal}" class="trace trace-1" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+
+    // Actual with skew: at tEdge LSBs (bits 0..2) clear → code goes to 0000 = 0V; then MSB sets at tEdge+skew → code becomes 1000 = Vafter
+    let pAct;
+    if(skew>0){
+      pAct = `M${mL},${ys(Vbefore)} L${xs(tEdge)},${ys(Vbefore)} L${xs(tEdge)},${ys(0)} L${xs(tEdge+skew)},${ys(0)} L${xs(tEdge+skew)},${ys(Vafter)} L${mL+pw},${ys(Vafter)}`;
+      // glitch area
+      const gx0=xs(tEdge), gx1=xs(tEdge+skew);
+      const gy0=ys(0), gy1=ys(Vbefore);
+      s+=`<rect x="${gx0}" y="${gy1}" width="${gx1-gx0}" height="${gy0-gy1}" fill="var(--accent3)" opacity="0.25"/>`;
+      const glitchE = Vbefore*skew; // V·ns
+      s+=`<text x="${(gx0+gx1)/2}" y="${gy1-6}" class="label" text-anchor="middle" style="fill:var(--accent3)">glitch area = ${glitchE.toFixed(1)} V·ns</text>`;
+    } else {
+      pAct = `M${mL},${ys(Vbefore)} L${xs(tEdge)},${ys(Vbefore)} L${xs(tEdge)},${ys(Vafter)} L${mL+pw},${ys(Vafter)}`;
+    }
+    s+=`<path d="${pAct}" class="trace" stroke="var(--warn)" stroke-width="2"/>`;
+
+    // labels
+    s+=`<text x="${xs(15)}" y="${ys(Vbefore)-6}" class="label-dim">code 0111</text>`;
+    s+=`<text x="${xs(60)}" y="${ys(Vafter)-6}" class="label-dim">code 1000</text>`;
+    svg.innerHTML=s;
+  }
+
+  function drawPwmDac(){
+    const D = parseFloat(document.getElementById('pwmDuty').value)/100;
+    const fPWM = parseFloat(document.getElementById('fpwm').value);
+    const tauUs = parseFloat(document.getElementById('rcInput').value);
+    const tau = tauUs*1e-6;
+    const Vref=parseFloat(document.getElementById('vrefSel').value);
+    const fc = 1/(2*Math.PI*tau);
+    document.getElementById('pwmDutyRead').textContent=(D*100).toFixed(1)+" %";
+    document.getElementById('fpwmRead').textContent= fPWM>=1000?(fPWM/1000).toFixed(1)+" kHz":fPWM.toFixed(0)+" Hz";
+    document.getElementById('rcRead').textContent=tauUs.toFixed(0)+" µs (f_c = "+(fc>=1000?(fc/1000).toFixed(2)+" kHz":fc.toFixed(0)+" Hz")+")";
+    // estimate ripple pk-pk: V_ripple ≈ Vref * D*(1-D) / (f_PWM * tau)
+    const ripple = Vref*D*(1-D)/(fPWM*tau);
+    document.getElementById('rippleRead').textContent="~"+(ripple*1000).toFixed(1)+" mV";
+
+    const svg=document.getElementById('pwmDacPlot');
+    const W=900, H=280, mL=70, mR=30, mT=20, mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    // show 5 PWM periods
+    const T=1/fPWM;
+    const tMax=5*T;
+    const xs=t=>mL+(t/tMax)*pw;
+    const ys=v=>mT+ph-(v/Vref)*ph;
+    let s='';
+    for(let i=0;i<=5;i++){
+      const x=mL+i/5*pw;
+      s+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" class="grid-line"/>`;
+    }
+    for(let i=0;i<=4;i++){
+      const y=ys(i*Vref/4);
+      s+=`<line x1="${mL}" y1="${y}" x2="${mL+pw}" y2="${y}" class="grid-line"/>`;
+      s+=`<text x="${mL-6}" y="${y+3}" class="axis-label" text-anchor="end">${(i*Vref/4).toFixed(2)}V</text>`;
+    }
+    // target DC line
+    const Vtgt = D*Vref;
+    s+=`<line x1="${mL}" y1="${ys(Vtgt)}" x2="${mL+pw}" y2="${ys(Vtgt)}" stroke="var(--accent3)" stroke-width="1.5" stroke-dasharray="5 3"/>`;
+    s+=`<text x="${mL+pw-8}" y="${ys(Vtgt)-4}" class="label" style="fill:var(--accent3)" text-anchor="end">target = ${Vtgt.toFixed(3)} V</text>`;
+
+    // raw PWM
+    let pRaw='';
+    for(let p=0;p<5;p++){
+      const x0=xs(p*T), xHi=xs(p*T + D*T), xEnd=xs((p+1)*T);
+      if(p===0) pRaw += `M${x0},${ys(0)} `;
+      pRaw += `L${xHi},${ys(0)} L${xHi},${ys(0)} L${x0},${ys(Vref)} L${xHi},${ys(Vref)} L${xHi},${ys(0)} L${xEnd},${ys(0)} `;
+    }
+    // simpler raw PWM:
+    pRaw = `M${mL},${ys(0)}`;
+    for(let p=0;p<5;p++){
+      const x0=xs(p*T);
+      const xHi=xs(p*T + D*T);
+      const xEnd=xs((p+1)*T);
+      pRaw += ` L${x0},${ys(Vref)} L${xHi},${ys(Vref)} L${xHi},${ys(0)} L${xEnd},${ys(0)}`;
+    }
+    s+=`<path d="${pRaw}" stroke="var(--accent)" fill="none" stroke-width="1" opacity="0.6"/>`;
+
+    // RC filtered (simulate step-by-step)
+    let v=0; const dt=T/200;
+    let pF='';
+    let first=true;
+    for(let t=0;t<=tMax;t+=dt){
+      const phase=(t%T)/T;
+      const vin = phase<D? Vref:0;
+      v += (vin-v)*(dt/tau);
+      pF += (first?'M':'L')+xs(t)+','+ys(v)+' ';
+      first=false;
+    }
+    s+=`<path d="${pF}" class="trace trace-2"/>`;
+
+    s+=`<text x="${W/2}" y="${H-6}" class="axis-label" text-anchor="middle">PWM at ${fPWM.toLocaleString()} Hz, filtered by τ = ${tauUs}µs (f_c = ${(fc/1000).toFixed(2)} kHz)</text>`;
+    svg.innerHTML=s;
+  }
+
+  // wire up bit buttons
+  for(let b=0;b<4;b++){
+    const el=document.getElementById('bit'+b);
+    el.addEventListener('click',()=>{
+      // b in HTML id is 0..3 with 3=MSB; bits array bits[0]=MSB.
+      // bit3 button -> bits[0]; bit0 button -> bits[3]
+      const idx=3-b;
+      bits[idx] = bits[idx]?0:1;
+      setCode(code());
+    });
+  }
+  document.getElementById('codeSlider').addEventListener('input',e=>{
+    setCode(parseInt(e.target.value));
+  });
+  document.getElementById('vrefSel').addEventListener('input',drawLadder);
+  document.getElementById('rInput').addEventListener('input',drawLadder);
+  document.getElementById('skewInput').addEventListener('input',drawGlitch);
+  ['pwmDuty','fpwm','rcInput'].forEach(id=>
+    document.getElementById(id).addEventListener('input',drawPwmDac));
+
+  document.getElementById('glitchBtn').addEventListener('click',()=>{
+    setCode(7);
+    setTimeout(()=>setCode(8),500);
+  });
+
+  setCode(10); // initial code 1010
+</script>
+</body>
+</html>

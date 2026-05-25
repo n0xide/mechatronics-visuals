@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IMU Overview — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>IMU — Accel + Gyro + Mag</h1>
+  <p class="lede">Each sensor measures something fundamentally different and fails differently. Fusion combines them so the failures don't overlap. Tilt the cube, then watch the complementary filter resist gyro drift.</p>
+
+  <p>An IMU is a fusion target, not a single answer. Accelerometers measure <i>specific force</i> — gravity plus any linear acceleration the device experiences. They give a tilt reference when stationary, but any motion contaminates that reference. Gyroscopes measure <i>angular rate</i> — they give clean short-term rotation but their integrated angle drifts at the rate of their bias (often degrees per second of unbounded error). Magnetometers measure the local magnetic field; they can give absolute heading but are corrupted by anything ferrous or current-carrying nearby. The complementary filter mixes the gyro's smooth, drift-prone integration with the accel's noisy, drift-free reference: <code>θ = α·(θ + ω·dt) + (1−α)·θ_accel</code>. α near 1 (0.98–0.99) lets the gyro dominate fast motion; the small (1−α) accel term slowly pulls the estimate back to truth.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Tilt roll (°): <span class="readout" id="rollRead">0°</span></label>
+      <input id="roll" type="range" min="-90" max="90" step="0.5" value="0">
+    </div>
+    <div class="control">
+      <label>Tilt pitch (°): <span class="readout" id="pitchRead">0°</span></label>
+      <input id="pitch" type="range" min="-90" max="90" step="0.5" value="0">
+    </div>
+    <div class="control">
+      <label>Heading (°): <span class="readout" id="yawRead">0°</span></label>
+      <input id="yaw" type="range" min="0" max="360" step="1" value="0">
+    </div>
+    <div class="control">
+      <label>Vibration (m/s²): <span class="readout" id="vibRead">0.5</span></label>
+      <input id="vib" type="range" min="0" max="10" step="0.1" value="0.5">
+    </div>
+    <div class="control">
+      <label>Gyro bias drift (°/s): <span class="readout" id="biasRead">0.05</span></label>
+      <input id="bias" type="range" min="0" max="2" step="0.01" value="0.05">
+    </div>
+    <div class="control">
+      <label>Complementary α: <span class="readout" id="alphaRead">0.980</span></label>
+      <input id="alpha" type="range" min="0.5" max="0.999" step="0.001" value="0.98">
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>3-axis cube + sensor outputs</h3>
+    <svg id="cubeSvg" viewBox="0 0 700 280" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <g id="cube" transform="translate(140,140)"></g>
+      <!-- Axes labels -->
+      <text x="20" y="20" class="label-dim">device frame</text>
+
+      <!-- Bar readouts for each sensor -->
+      <text x="300" y="30" class="label">Accelerometer (m/s²)</text>
+      <g id="accelBars" transform="translate(300,40)"></g>
+      <text x="300" y="120" class="label">Gyroscope (°/s)</text>
+      <g id="gyroBars" transform="translate(300,130)"></g>
+      <text x="300" y="210" class="label">Magnetometer (µT)</text>
+      <g id="magBars" transform="translate(300,220)"></g>
+    </svg>
+    <table>
+      <tr><th>Sensor</th><th>What it measures</th><th>Fails on</th></tr>
+      <tr><td>Accelerometer</td><td>Specific force (gravity + linear accel)</td><td>Vibration, free-fall, hard acceleration</td></tr>
+      <tr><td>Gyroscope</td><td>Angular rate ω about each axis</td><td>Bias drift → integrated angle drifts unboundedly</td></tr>
+      <tr><td>Magnetometer</td><td>Earth's magnetic field vector</td><td>Iron, motors, magnets, indoor ambiguity</td></tr>
+    </table>
+  </div>
+
+  <div class="figure">
+    <h3>Drift battle — gyro integration vs. complementary filter</h3>
+    <svg id="driftSvg" viewBox="0 0 700 260" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <line x1="50" y1="20" x2="50" y2="230" class="axis"/>
+      <line x1="50" y1="125" x2="680" y2="125" class="axis"/>
+      <text x="50" y="15" class="axis-label">angle (°)</text>
+      <text x="685" y="135" class="axis-label">time</text>
+      <text x="680" y="155" class="axis-label" text-anchor="end" id="tEnd">0 s</text>
+      <line x1="50" y1="80" x2="680" y2="80" class="grid-line" stroke-dasharray="2,3"/>
+      <line x1="50" y1="170" x2="680" y2="170" class="grid-line" stroke-dasharray="2,3"/>
+      <text x="55" y="78" class="axis-label">+30°</text>
+      <text x="55" y="173" class="axis-label">−30°</text>
+      <polyline id="truthTrace" class="trace trace-1" points=""/>
+      <polyline id="gyroTrace" class="trace trace-4" points=""/>
+      <polyline id="accelTrace" class="trace trace-2" points=""/>
+      <polyline id="compTrace" class="trace trace-3" points=""/>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>True roll</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>Gyro-only (integrated, drifts)</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>Accel-only (noisy from vibration)</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>Complementary fused</span>
+    </div>
+    <p style="font-size:12px;color:var(--fg-dim)">Click anywhere on the plot to reset simulation. Watch the red gyro line walk off due to bias, the orange accel line jitter from vibration, and the green fused line follow the blue truth.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Gravity is always pointing somewhere in your accel data</b> — at rest, |a| = 9.81. If you tilt 30°, accel splits into components on two axes. This is the tilt reference.</li>
+    <li><b>Gyro is honest in the short term, lying in the long term</b> — bias of 0.1 °/s integrates to 6° per minute. Useless after 10 minutes; perfect in the 100 ms window for fast motion.</li>
+    <li><b>Complementary α is a frequency split</b> — gyro handles high frequencies (fast motion), accel handles low frequencies (slow drift correction). α = 0.98 at 100 Hz ≈ 0.5 s time constant.</li>
+    <li><b>Magnetometer gives absolute yaw, but only the magnetometer does</b> — accel+gyro fusion cannot distinguish rotations about the gravity axis. Without a magnetometer your robot's heading walks freely.</li>
+    <li><b>Hard-iron + soft-iron calibration is mandatory</b> — every magnetometer needs you to spin the device in figure-8 patterns to capture an ellipse, then offset and scale to a sphere. Skip this and your heading is wrong by 20°+.</li>
+    <li><b>Madgwick / Mahony / EKF are upgrades, not replacements</b> — same idea as complementary filter, just more dimensions and adaptive gains. Use them for drones, fast quadrupeds; complementary is fine for slow arms.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Roll from accel</dt><dd><span class="eq">φ = atan2(a_y, a_z)</span></dd>
+        <dt>Pitch from accel</dt><dd><span class="eq">θ = atan2(−a_x, √(a_y²+a_z²))</span></dd>
+        <dt>Gyro integration</dt><dd><span class="eq">θ_k = θ_{k−1} + ω·Δt</span></dd>
+        <dt>Complementary</dt><dd><span class="eq">θ = α·(θ + ω·Δt) + (1−α)·θ_accel</span></dd>
+        <dt>Time constant</dt><dd><span class="eq">τ = α·Δt / (1−α)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>Accel @ rest = g</b> — magnitude 9.81 m/s² distributed across axes.</li>
+        <li><b>Gyro drifts, accel jitters</b> — fuse complementarily.</li>
+        <li><b>α = 0.98–0.99</b> at 100 Hz update rate is the default starting point.</li>
+        <li><b>Mag = yaw only</b> — and only after calibration.</li>
+        <li><b>9-DOF = 3+3+3</b> — accel, gyro, mag.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Mag near motors</b> — current ≈ magnetic field. Mount far, or disable mag during motor activity.</li>
+        <li><b>Accel during fast motion</b> — vibration spike → tilt estimate jumps. Trust gyro more (raise α).</li>
+        <li><b>Forgetting to calibrate mag</b> — see hard-iron/soft-iron offsets. Spin in figure-8.</li>
+        <li><b>Gyro bias not warmed up</b> — let the IMU sit 5+ seconds after power-up; average the gyro reading and subtract.</li>
+        <li><b>Wrong axis convention</b> — every chip has its own. Right-hand-rule test on the bench before trusting Madgwick output.</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>CHIP SELECTION</h3>
+      <table>
+        <tr><th>Use</th><th>Pick</th></tr>
+        <tr><td>Cheap/legacy</td><td>MPU6050 (6-DOF)</td></tr>
+        <tr><td>Modern low-noise</td><td>BMI270 / ICM-42688-P</td></tr>
+        <tr><td>9-DOF integrated</td><td>BNO086 (does fusion onboard)</td></tr>
+        <tr><td>Robotics joint</td><td>BMI270 + AK8963 mag</td></tr>
+        <tr><td>Drone</td><td>ICM-42688 + RM3100 mag</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 1 — Sensors</a> ·
+    Topic: IMU Overview (accel + gyro + mag + complementary filter)
+  </footer>
+</main>
+<script>
+  const rollEl=document.getElementById('roll');
+  const pitchEl=document.getElementById('pitch');
+  const yawEl=document.getElementById('yaw');
+  const vibEl=document.getElementById('vib');
+  const biasEl=document.getElementById('bias');
+  const alphaEl=document.getElementById('alpha');
+
+  function deg2rad(d){return d*Math.PI/180}
+  function makeBar(parent, label, value, color, max){
+    while(parent.firstChild) parent.removeChild(parent.firstChild);
+    const W=300, H=18, gap=22;
+    for(let i=0;i<3;i++){
+      const v = value[i];
+      const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('x',0); t.setAttribute('y',i*gap+12);
+      t.setAttribute('class','label-dim'); t.textContent=label[i];
+      parent.appendChild(t);
+      const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      r.setAttribute('x',30); r.setAttribute('y',i*gap+3);
+      r.setAttribute('width', W); r.setAttribute('height', H);
+      r.setAttribute('fill','var(--bg-elev2)');
+      r.setAttribute('stroke','var(--line)');
+      parent.appendChild(r);
+      const ratio = Math.max(-1, Math.min(1, v/max));
+      const bw = Math.abs(ratio) * W/2;
+      const bx = ratio >= 0 ? 30 + W/2 : 30 + W/2 - bw;
+      const br = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      br.setAttribute('x',bx); br.setAttribute('y',i*gap+4);
+      br.setAttribute('width', bw); br.setAttribute('height', H-2);
+      br.setAttribute('fill', color);
+      parent.appendChild(br);
+      const tv = document.createElementNS('http://www.w3.org/2000/svg','text');
+      tv.setAttribute('x', 30 + W + 8); tv.setAttribute('y', i*gap+15);
+      tv.setAttribute('class','label-dim');
+      tv.textContent = v.toFixed(2);
+      parent.appendChild(tv);
+    }
+  }
+
+  function renderCube(roll, pitch, yaw){
+    const g = document.getElementById('cube');
+    while(g.firstChild) g.removeChild(g.firstChild);
+    const sz = 50;
+    // Cube corners in body frame
+    const corners = [];
+    for(let z=-1; z<=1; z+=2)
+      for(let y=-1; y<=1; y+=2)
+        for(let x=-1; x<=1; x+=2)
+          corners.push([x*sz, y*sz, z*sz]);
+    // Rotate corners (intrinsic ZYX: yaw, pitch, roll)
+    const cr=Math.cos(deg2rad(roll)), sr=Math.sin(deg2rad(roll));
+    const cp=Math.cos(deg2rad(pitch)), sp=Math.sin(deg2rad(pitch));
+    const cy=Math.cos(deg2rad(yaw)), sy=Math.sin(deg2rad(yaw));
+    function rot(p){
+      let [x,y,z] = p;
+      // roll about X
+      let y1 = y*cr - z*sr, z1 = y*sr + z*cr;
+      // pitch about Y
+      let x2 = x*cp + z1*sp, z2 = -x*sp + z1*cp;
+      // yaw about Z
+      let x3 = x2*cy - y1*sy, y3 = x2*sy + y1*cy;
+      return [x3, y3, z2];
+    }
+    // simple isometric projection
+    const proj = corners.map(c => {
+      const r = rot(c);
+      return [r[0] - r[2]*0.5, -r[1] - r[2]*0.4]; // crude orthographic
+    });
+    // Cube edges by index pairs
+    const edges = [[0,1],[1,3],[3,2],[2,0],[4,5],[5,7],[7,6],[6,4],[0,4],[1,5],[2,6],[3,7]];
+    edges.forEach(([a,b]) => {
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('x1', proj[a][0]); ln.setAttribute('y1', proj[a][1]);
+      ln.setAttribute('x2', proj[b][0]); ln.setAttribute('y2', proj[b][1]);
+      ln.setAttribute('stroke','var(--accent)');
+      ln.setAttribute('stroke-width','1.5');
+      g.appendChild(ln);
+    });
+    // axes from center
+    const axes = [[[sz*1.4,0,0],'var(--warn)','X'], [[0,sz*1.4,0],'var(--accent3)','Y'], [[0,0,sz*1.4],'var(--accent2)','Z']];
+    axes.forEach(([v,col,lbl]) => {
+      const r = rot(v);
+      const p = [r[0]-r[2]*0.5, -r[1]-r[2]*0.4];
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('x1', 0); ln.setAttribute('y1', 0);
+      ln.setAttribute('x2', p[0]); ln.setAttribute('y2', p[1]);
+      ln.setAttribute('stroke', col); ln.setAttribute('stroke-width', 2);
+      g.appendChild(ln);
+      const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('x', p[0]); t.setAttribute('y', p[1]);
+      t.setAttribute('fill', col); t.setAttribute('class','label');
+      t.textContent = lbl;
+      g.appendChild(t);
+    });
+  }
+
+  function updateAll(){
+    const roll=parseFloat(rollEl.value);
+    const pitch=parseFloat(pitchEl.value);
+    const yaw=parseFloat(yawEl.value);
+    const vib=parseFloat(vibEl.value);
+    document.getElementById('rollRead').textContent = roll.toFixed(0)+'°';
+    document.getElementById('pitchRead').textContent = pitch.toFixed(0)+'°';
+    document.getElementById('yawRead').textContent = yaw.toFixed(0)+'°';
+    document.getElementById('vibRead').textContent = vib.toFixed(1);
+    document.getElementById('biasRead').textContent = parseFloat(biasEl.value).toFixed(2);
+    document.getElementById('alphaRead').textContent = parseFloat(alphaEl.value).toFixed(3);
+
+    renderCube(roll, pitch, yaw);
+
+    // Accelerometer = gravity projected into body frame + small noise
+    const rRad=deg2rad(roll), pRad=deg2rad(pitch);
+    const ax = 9.81 * (-Math.sin(pRad)) + (Math.random()-0.5)*vib;
+    const ay = 9.81 * (Math.sin(rRad)*Math.cos(pRad)) + (Math.random()-0.5)*vib;
+    const az = 9.81 * (Math.cos(rRad)*Math.cos(pRad)) + (Math.random()-0.5)*vib;
+    makeBar(document.getElementById('accelBars'), ['ax','ay','az'], [ax,ay,az], 'var(--accent)', 12);
+
+    // Gyro = 0 at rest + bias
+    const bias = parseFloat(biasEl.value);
+    const gx = (Math.random()-0.5)*0.3;
+    const gy = (Math.random()-0.5)*0.3;
+    const gz = bias + (Math.random()-0.5)*0.3;
+    makeBar(document.getElementById('gyroBars'), ['gx','gy','gz'], [gx,gy,gz], 'var(--warn)', 3);
+
+    // Magnetometer = Earth field rotated by yaw (simplified, ignoring tilt)
+    const F = 50; // µT typical
+    const dec = deg2rad(yaw);
+    const mx = F * Math.cos(dec);
+    const my = -F * Math.sin(dec);
+    const mz = -45; // typical mid-lat inclination ~ 45 µT downward
+    makeBar(document.getElementById('magBars'), ['mx','my','mz'], [mx,my,mz], 'var(--accent2)', 60);
+  }
+
+  [rollEl,pitchEl,yawEl,vibEl,biasEl,alphaEl].forEach(e => e.addEventListener('input', updateAll));
+
+  // Drift simulation
+  let simT = 0;
+  let gyroAng = 0, compAng = 0;
+  let truthSeq=[], gyroSeq=[], accelSeq=[], compSeq=[];
+  function resetSim(){ simT=0; gyroAng=0; compAng=0; truthSeq=[]; gyroSeq=[]; accelSeq=[]; compSeq=[]; }
+  document.getElementById('driftSvg').addEventListener('click', resetSim);
+
+  setInterval(() => {
+    const dt = 0.05; // 20 Hz
+    simT += dt;
+    const bias = parseFloat(biasEl.value);
+    const vib = parseFloat(vibEl.value);
+    const alpha = parseFloat(alphaEl.value);
+    // Truth: roll oscillates ±20° at 0.2 Hz
+    const truth = 20 * Math.sin(2*Math.PI*0.15*simT);
+    // True angular rate (derivative of truth)
+    const truthRate = 20 * 2*Math.PI*0.15 * Math.cos(2*Math.PI*0.15*simT);
+    // Gyro reading = truth rate + bias + noise
+    const gyroRead = truthRate + bias + (Math.random()-0.5)*1;
+    gyroAng += gyroRead * dt;
+    // Accel reading = truth with vibration noise
+    const accelAng = truth + (Math.random()-0.5)*vib*3;
+    // Complementary fuse
+    compAng = alpha * (compAng + gyroRead*dt) + (1-alpha) * accelAng;
+
+    truthSeq.push(truth); gyroSeq.push(gyroAng); accelSeq.push(accelAng); compSeq.push(compAng);
+    if(truthSeq.length > 200){ truthSeq.shift(); gyroSeq.shift(); accelSeq.shift(); compSeq.shift(); }
+
+    const W=630, X0=50, H=210, Y0=20, Ymid=125;
+    const yOf = v => Ymid - (v/45)*((H-30)/2);
+    const xOf = i => X0 + (i/200)*W;
+    const toPoints = seq => seq.map((v,i) => `${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`).join(' ');
+    document.getElementById('truthTrace').setAttribute('points', toPoints(truthSeq));
+    document.getElementById('gyroTrace').setAttribute('points', toPoints(gyroSeq));
+    document.getElementById('accelTrace').setAttribute('points', toPoints(accelSeq));
+    document.getElementById('compTrace').setAttribute('points', toPoints(compSeq));
+    document.getElementById('tEnd').textContent = simT.toFixed(1)+' s';
+  }, 50);
+
+  updateAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dependent Sources Explorer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .control{display:flex;flex-direction:column;gap:4px;margin:8px 0}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid4{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:780px){.grid4{grid-template-columns:1fr}}
+  .card{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:12px}
+  .card h4{margin:0 0 4px;color:var(--accent);font:600 13px ui-monospace,monospace}
+  .card .desc{color:var(--fg-dim);font-size:12px;margin:0 0 8px}
+  .card .eq{font:600 14px ui-monospace,monospace;color:var(--accent2);
+    background:rgba(255,184,108,0.08);padding:4px 8px;border-radius:4px;
+    margin:6px 0;display:inline-block}
+  .card svg{background:var(--bg);border-radius:4px;margin:4px 0}
+  .card .live{font:13px ui-monospace,monospace;margin-top:6px;color:var(--fg)}
+  .card .live b{color:var(--accent3)}
+  .bjt{background:var(--bg-elev2);border:1px solid var(--accent3);
+    border-radius:6px;padding:14px;margin-top:18px}
+  .bjt h4{margin:0 0 6px;color:var(--accent3);font:600 13px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Dependent Sources Explorer</h1>
+  <p class="lede">Four canonical controlled sources (VCVS, VCCS, CCVS, CCCS) plus a simple BJT small-signal model. Drive the controlling variable, watch the controlled output track.</p>
+
+  <p>A <b>dependent source</b> is a voltage or current whose value is set by another node's voltage or branch current — not by a battery, but by an algebraic rule. They model transistors and op-amps. The four types come from the 2×2 grid: {V-output, I-output} × {V-controlled, I-controlled}. Once you read the four boxes below, the BJT model collapses to "CCCS with gain β".</p>
+
+  <div class="figure">
+    <div class="grid4">
+
+      <div class="card">
+        <h4>VCVS — Voltage-Controlled Voltage Source</h4>
+        <p class="desc">Output voltage = µ · v_x, where v_x is a voltage elsewhere. Models an ideal op-amp.</p>
+        <div class="eq">v_out = µ · v_x</div>
+        <div class="control"><label>v_x (control): <span class="readout" id="vcvsVx">2.00 V</span></label><input id="vcvsVxS" type="range" min="-5" max="5" step="0.1" value="2"></div>
+        <div class="control"><label>µ (gain): <span class="readout" id="vcvsMu">10</span></label><input id="vcvsMuS" type="range" min="0.1" max="100" step="0.1" value="10"></div>
+        <svg viewBox="0 0 240 100" width="100%">
+          <!-- Diamond source -->
+          <polygon points="120,30 150,55 120,80 90,55" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="120" y="52" class="label" text-anchor="middle">+</text>
+          <text x="120" y="74" class="label" text-anchor="middle">−</text>
+          <line x1="120" y1="30" x2="120" y2="15" class="wire"/>
+          <line x1="120" y1="80" x2="120" y2="90" class="wire"/>
+          <circle cx="120" cy="15" r="3" class="node"/>
+          <circle cx="120" cy="90" r="3" class="node"/>
+          <text x="160" y="58" class="label-dim">µ·v_x</text>
+          <text x="30" y="20" class="label-dim">v_x →</text>
+        </svg>
+        <div class="live">v_out = <b id="vcvsVout">20.0 V</b></div>
+      </div>
+
+      <div class="card">
+        <h4>VCCS — Voltage-Controlled Current Source</h4>
+        <p class="desc">Output current = g_m · v_x. Models MOSFET transconductance.</p>
+        <div class="eq">i_out = g_m · v_x</div>
+        <div class="control"><label>v_x (control): <span class="readout" id="vccsVx">2.00 V</span></label><input id="vccsVxS" type="range" min="-5" max="5" step="0.1" value="2"></div>
+        <div class="control"><label>g_m (S): <span class="readout" id="vccsGm">0.010</span></label><input id="vccsGmS" type="range" min="0.001" max="0.1" step="0.001" value="0.010"></div>
+        <svg viewBox="0 0 240 100" width="100%">
+          <polygon points="120,30 150,55 120,80 90,55" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+          <polygon points="120,42 126,52 114,52" fill="var(--fg)"/>
+          <line x1="120" y1="60" x2="120" y2="74" stroke="var(--fg)" stroke-width="1.5"/>
+          <line x1="120" y1="30" x2="120" y2="15" class="wire"/>
+          <line x1="120" y1="80" x2="120" y2="90" class="wire"/>
+          <circle cx="120" cy="15" r="3" class="node"/>
+          <circle cx="120" cy="90" r="3" class="node"/>
+          <text x="160" y="58" class="label-dim">g_m·v_x</text>
+          <text x="30" y="20" class="label-dim">v_x →</text>
+        </svg>
+        <div class="live">i_out = <b id="vccsIout">20.0 mA</b></div>
+      </div>
+
+      <div class="card">
+        <h4>CCVS — Current-Controlled Voltage Source</h4>
+        <p class="desc">Output voltage = r · i_x. Less common; appears in transimpedance models.</p>
+        <div class="eq">v_out = r · i_x</div>
+        <div class="control"><label>i_x (control): <span class="readout" id="ccvsIx">5.00 mA</span></label><input id="ccvsIxS" type="range" min="-20" max="20" step="0.1" value="5"></div>
+        <div class="control"><label>r (Ω): <span class="readout" id="ccvsR">1000</span></label><input id="ccvsRS" type="range" min="10" max="10000" step="10" value="1000"></div>
+        <svg viewBox="0 0 240 100" width="100%">
+          <polygon points="120,30 150,55 120,80 90,55" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="120" y="52" class="label" text-anchor="middle">+</text>
+          <text x="120" y="74" class="label" text-anchor="middle">−</text>
+          <line x1="120" y1="30" x2="120" y2="15" class="wire"/>
+          <line x1="120" y1="80" x2="120" y2="90" class="wire"/>
+          <circle cx="120" cy="15" r="3" class="node"/>
+          <circle cx="120" cy="90" r="3" class="node"/>
+          <text x="160" y="58" class="label-dim">r·i_x</text>
+          <text x="30" y="20" class="label-dim">i_x ↓</text>
+        </svg>
+        <div class="live">v_out = <b id="ccvsVout">5.00 V</b></div>
+      </div>
+
+      <div class="card">
+        <h4>CCCS — Current-Controlled Current Source</h4>
+        <p class="desc">Output current = β · i_x. Models BJT current gain (β = I_c / I_b).</p>
+        <div class="eq">i_out = β · i_x</div>
+        <div class="control"><label>i_x (control): <span class="readout" id="cccsIx">100 µA</span></label><input id="cccsIxS" type="range" min="0" max="200" step="1" value="100"></div>
+        <div class="control"><label>β (gain): <span class="readout" id="cccsBeta">100</span></label><input id="cccsBetaS" type="range" min="10" max="500" step="1" value="100"></div>
+        <svg viewBox="0 0 240 100" width="100%">
+          <polygon points="120,30 150,55 120,80 90,55" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+          <polygon points="120,42 126,52 114,52" fill="var(--fg)"/>
+          <line x1="120" y1="60" x2="120" y2="74" stroke="var(--fg)" stroke-width="1.5"/>
+          <line x1="120" y1="30" x2="120" y2="15" class="wire"/>
+          <line x1="120" y1="80" x2="120" y2="90" class="wire"/>
+          <circle cx="120" cy="15" r="3" class="node"/>
+          <circle cx="120" cy="90" r="3" class="node"/>
+          <text x="160" y="58" class="label-dim">β·i_x</text>
+          <text x="30" y="20" class="label-dim">i_x ↓</text>
+        </svg>
+        <div class="live">i_out = <b id="cccsIout">10.0 mA</b></div>
+      </div>
+
+    </div>
+
+    <div class="bjt">
+      <h4>Applied — BJT small-signal model (CCCS, I_c = β · I_b)</h4>
+      <p style="color:var(--fg-dim);font-size:12px;margin-top:0">
+        An NPN bipolar transistor in active mode: a small base current I_b commands a collector current I_c that is β times larger.
+        This is the simplest dependent-source application — and the foundation of every linear amplifier.
+      </p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:center">
+        <div>
+          <div class="control"><label>I_b (base current): <span class="readout" id="bjtIb">50 µA</span></label><input id="bjtIbS" type="range" min="0" max="100" step="1" value="50"></div>
+          <div class="control"><label>β (current gain): <span class="readout" id="bjtBeta">150</span></label><input id="bjtBetaS" type="range" min="50" max="300" step="1" value="150"></div>
+          <p style="font:13px ui-monospace,monospace;margin:10px 0 0">
+            I_c = β · I_b = <span class="readout" id="bjtIcEq">150 · 50 µA</span><br>
+            I_c = <b style="color:var(--accent3);font-size:16px" id="bjtIc">7.50 mA</b><br>
+            I_e = I_b + I_c = <span class="readout" id="bjtIe">7.55 mA</span><br>
+            <span style="color:var(--fg-dim);font-size:11px">α = β/(β+1) = <span id="bjtAlpha">0.993</span></span>
+          </p>
+        </div>
+        <div>
+          <svg viewBox="0 0 260 220" width="100%">
+            <!-- BJT NPN symbol -->
+            <line x1="130" y1="60" x2="130" y2="100" stroke="var(--fg)" stroke-width="2"/> <!-- vertical base bar -->
+            <line x1="100" y1="80" x2="130" y2="80" stroke="var(--fg)" stroke-width="2"/> <!-- base lead -->
+            <line x1="130" y1="80" x2="170" y2="40" stroke="var(--fg)" stroke-width="2"/> <!-- collector lead -->
+            <line x1="130" y1="100" x2="170" y2="140" stroke="var(--fg)" stroke-width="2"/> <!-- emitter lead -->
+            <polygon points="155,135 170,140 158,128" fill="var(--fg)"/> <!-- emitter arrow -->
+            <line x1="170" y1="40" x2="170" y2="20" stroke="var(--fg)" stroke-width="1.5"/>
+            <line x1="170" y1="140" x2="170" y2="180" stroke="var(--fg)" stroke-width="1.5"/>
+            <line x1="100" y1="80" x2="60" y2="80" stroke="var(--fg)" stroke-width="1.5"/>
+            <text x="170" y="14" class="label" text-anchor="middle">C</text>
+            <text x="50" y="84" class="label" text-anchor="end">B</text>
+            <text x="170" y="195" class="label" text-anchor="middle">E</text>
+            <!-- I_b arrow -->
+            <polygon points="80,73 90,78 80,83" fill="var(--accent2)"/>
+            <text x="78" y="68" class="label" fill="var(--accent2)" text-anchor="end">I_b →</text>
+            <!-- I_c arrow -->
+            <polygon points="166,33 170,23 174,33" fill="var(--accent3)"/>
+            <text x="180" y="32" class="label" fill="var(--accent3)">I_c ↓</text>
+            <!-- I_e arrow -->
+            <polygon points="166,173 170,183 174,173" fill="var(--accent)"/>
+            <text x="180" y="184" class="label" fill="var(--accent)">I_e ↓</text>
+            <text x="130" y="210" class="label-dim" text-anchor="middle" id="bjtCurrentLabel">I_b=50µA, I_c=7.50mA, I_e=7.55mA</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Diamond symbol = controlled source</b> — distinct from the circle (independent source). The arrow inside indicates current or voltage type.</li>
+    <li><b>Output tracks the controller linearly</b> — slide v_x or i_x, the output moves proportionally. The slope is the gain (µ, g_m, r, β).</li>
+    <li><b>Units of the gain depend on the type</b> — VCVS µ is dimensionless, VCCS g_m is siemens (A/V), CCVS r is ohms (V/A), CCCS β is dimensionless.</li>
+    <li><b>BJT in active mode is essentially a CCCS</b> — a tiny I_b drives a β-times-larger I_c. β ≈ 100–300 typical, varies with current and temperature.</li>
+    <li><b>I_e = I_b + I_c</b> by KCL at the emitter node. With β = 150, I_e is barely larger than I_c (just 0.7% extra).</li>
+    <li><b>For Rth analysis, you can't "deactivate" a dependent source</b> — its value depends on the rest of the circuit. Instead use the test-source method: apply v_test, find i_test, R_th = v_test / i_test.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>THE FOUR TYPES</h3>
+      <dl>
+        <dt>VCVS</dt><dd>v_out = µ · v_x &nbsp; <span class="eq-note">µ dimensionless (op-amp)</span></dd>
+        <dt>VCCS</dt><dd>i_out = g_m · v_x &nbsp; <span class="eq-note">g_m in S (MOSFET)</span></dd>
+        <dt>CCVS</dt><dd>v_out = r · i_x &nbsp; <span class="eq-note">r in Ω (transresistance)</span></dd>
+        <dt>CCCS</dt><dd>i_out = β · i_x &nbsp; <span class="eq-note">β dimensionless (BJT)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card formulas">
+      <h3>BJT (CCCS MODEL)</h3>
+      <dl>
+        <dt>Collector</dt><dd><span class="eq">I_c = β · I_b</span></dd>
+        <dt>Emitter</dt><dd><span class="eq">I_e = I_b + I_c = (β+1) · I_b</span></dd>
+        <dt>β typical</dt><dd>100–300; varies with I_c and T.</dd>
+        <dt>Symbol</dt><dd>Diamond, not circle. Arrow = current type.</dd>
+      </dl>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Don't deactivate dependent sources in R_th</b> — they stay active. Apply a test source (1 V or 1 A) at the terminals; R_th = V_test / I_test.</li>
+        <li><b>Don't ignore the controller in superposition</b> — independent sources deactivate one at a time; dependent sources <i>always</i> remain on.</li>
+        <li><b>Units of the gain matter</b> — mixing up g_m (S) and µ (unitless) gives off-by-orders answers.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 1 — DC Circuit Foundations</a> ·
+    Topic: Dependent Sources
+  </footer>
+</main>
+<script>
+  function fmtV(v){return v.toFixed(2)+" V"}
+  function fmtI(a){
+    if(Math.abs(a)<1e-3) return (a*1e6).toFixed(1)+" µA";
+    if(Math.abs(a)<1) return (a*1e3).toFixed(2)+" mA";
+    return a.toFixed(3)+" A";
+  }
+
+  function bind(srcId, outId, fmt){
+    const s=document.getElementById(srcId);
+    const o=document.getElementById(outId);
+    s.addEventListener('input',()=>{o.textContent=fmt(parseFloat(s.value)); updateAll();});
+  }
+
+  function updateAll(){
+    // VCVS
+    const vcvsVx=parseFloat(document.getElementById('vcvsVxS').value);
+    const vcvsMu=parseFloat(document.getElementById('vcvsMuS').value);
+    document.getElementById('vcvsVx').textContent=vcvsVx.toFixed(2)+" V";
+    document.getElementById('vcvsMu').textContent=vcvsMu.toFixed(1);
+    document.getElementById('vcvsVout').textContent=fmtV(vcvsMu*vcvsVx);
+
+    // VCCS
+    const vccsVx=parseFloat(document.getElementById('vccsVxS').value);
+    const vccsGm=parseFloat(document.getElementById('vccsGmS').value);
+    document.getElementById('vccsVx').textContent=vccsVx.toFixed(2)+" V";
+    document.getElementById('vccsGm').textContent=vccsGm.toFixed(3)+" S";
+    document.getElementById('vccsIout').textContent=fmtI(vccsGm*vccsVx);
+
+    // CCVS
+    const ccvsIx=parseFloat(document.getElementById('ccvsIxS').value)/1000; // mA -> A
+    const ccvsR=parseFloat(document.getElementById('ccvsRS').value);
+    document.getElementById('ccvsIx').textContent=fmtI(ccvsIx);
+    document.getElementById('ccvsR').textContent=ccvsR+" Ω";
+    document.getElementById('ccvsVout').textContent=fmtV(ccvsR*ccvsIx);
+
+    // CCCS
+    const cccsIx=parseFloat(document.getElementById('cccsIxS').value)*1e-6; // µA -> A
+    const cccsBeta=parseFloat(document.getElementById('cccsBetaS').value);
+    document.getElementById('cccsIx').textContent=fmtI(cccsIx);
+    document.getElementById('cccsBeta').textContent=cccsBeta.toFixed(0);
+    document.getElementById('cccsIout').textContent=fmtI(cccsBeta*cccsIx);
+
+    // BJT
+    const Ib=parseFloat(document.getElementById('bjtIbS').value)*1e-6;
+    const beta=parseFloat(document.getElementById('bjtBetaS').value);
+    const Ic=beta*Ib;
+    const Ie=Ib+Ic;
+    document.getElementById('bjtIb').textContent=fmtI(Ib);
+    document.getElementById('bjtBeta').textContent=beta.toFixed(0);
+    document.getElementById('bjtIcEq').textContent=`${beta.toFixed(0)} · ${(Ib*1e6).toFixed(0)} µA`;
+    document.getElementById('bjtIc').textContent=fmtI(Ic);
+    document.getElementById('bjtIe').textContent=fmtI(Ie);
+    document.getElementById('bjtAlpha').textContent=(beta/(beta+1)).toFixed(3);
+    document.getElementById('bjtCurrentLabel').textContent=
+      `I_b=${(Ib*1e6).toFixed(0)}µA, I_c=${fmtI(Ic)}, I_e=${fmtI(Ie)}`;
+  }
+
+  // Wire all sliders to recompute
+  ['vcvsVxS','vcvsMuS','vccsVxS','vccsGmS','ccvsIxS','ccvsRS','cccsIxS','cccsBetaS','bjtIbS','bjtBetaS']
+    .forEach(id=>document.getElementById(id).addEventListener('input',updateAll));
+  updateAll();
+</script>
+</body>
+</html>

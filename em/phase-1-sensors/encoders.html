@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Encoders — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Encoders — Counting, Absolute, Magnetic</h1>
+  <p class="lede">Three families: incremental (count edges, fast and cheap), absolute (read position directly, survives power-off), magnetic (no contact, no wear). Pick by whether you need to know where you are at startup.</p>
+
+  <p>An encoder converts mechanical angle (or linear position) into a signal a microcontroller can count or read. Incremental encoders are deceptively simple — two square-wave channels A and B, 90° out of phase, and you count edges. Quadrature decoding lets you detect direction <i>and</i> multiply resolution by four. The catch: at power-up you don't know where the shaft is. Absolute encoders solve that by encoding every position with a unique pattern (parallel Gray code or serial readout), so the very first sample tells you exact position. Magnetic encoders (AS5048, MT6701) replace optical discs with a Hall sensor array reading a diametrically-magnetized rotor magnet — 14-bit resolution, no contact, no wear, ideal for compact robot joints.</p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="inc">Incremental (A+B)</div>
+    <div class="tab" data-tab="abs">Absolute (Gray)</div>
+    <div class="tab" data-tab="mag">Magnetic (AS5048)</div>
+  </div>
+
+  <!-- INCREMENTAL -->
+  <div class="tab-panel active" id="tab-inc">
+    <section class="controls">
+      <div class="control">
+        <label>Shaft angle θ: <span class="readout" id="incThRead">0°</span></label>
+        <input id="incTh" type="range" min="0" max="720" step="0.5" value="45">
+      </div>
+      <div class="control">
+        <label>CPR (counts/rev, optical): <span class="readout" id="incCprRead">100</span></label>
+        <input id="incCpr" type="range" min="10" max="1000" step="10" value="100">
+      </div>
+      <div class="control">
+        <label>Direction:</label>
+        <select id="incDir">
+          <option value="1">Forward (A leads B)</option>
+          <option value="-1">Reverse (B leads A)</option>
+        </select>
+      </div>
+    </section>
+    <div class="figure">
+      <h3>Quadrature A + B waveforms</h3>
+      <svg viewBox="0 0 700 240" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+        <text x="20" y="50" class="label" fill="var(--accent)">A</text>
+        <text x="20" y="120" class="label" fill="var(--accent2)">B</text>
+        <text x="20" y="190" class="label" fill="var(--accent3)">Z (index)</text>
+        <line x1="50" y1="50" x2="680" y2="50" class="grid-line"/>
+        <line x1="50" y1="120" x2="680" y2="120" class="grid-line"/>
+        <line x1="50" y1="190" x2="680" y2="190" class="grid-line"/>
+        <polyline id="aTrace" class="trace trace-1" points=""/>
+        <polyline id="bTrace" class="trace trace-2" points=""/>
+        <polyline id="zTrace" class="trace trace-3" points=""/>
+        <line id="cursor" x1="0" y1="30" x2="0" y2="210" stroke="var(--warn)" stroke-width="1" stroke-dasharray="3,3"/>
+      </svg>
+    </div>
+    <div class="figure">
+      <h3>State-machine direction decode</h3>
+      <table>
+        <tr><th>Prev AB</th><th>New AB</th><th>Action</th></tr>
+        <tr><td>00</td><td>01</td><td>+1 (fwd)</td></tr>
+        <tr><td>01</td><td>11</td><td>+1 (fwd)</td></tr>
+        <tr><td>11</td><td>10</td><td>+1 (fwd)</td></tr>
+        <tr><td>10</td><td>00</td><td>+1 (fwd)</td></tr>
+        <tr><td>00</td><td>10</td><td>−1 (rev)</td></tr>
+        <tr><td>10</td><td>11</td><td>−1 (rev)</td></tr>
+        <tr><td>11</td><td>01</td><td>−1 (rev)</td></tr>
+        <tr><td>01</td><td>00</td><td>−1 (rev)</td></tr>
+        <tr><td>any</td><td>same</td><td>0 (noise/no change)</td></tr>
+        <tr><td>00</td><td>11</td><td>±2 (skip — too fast, error)</td></tr>
+      </table>
+      <p style="font-size:12px;color:var(--fg-dim)">Every valid quadrature transition flips exactly one of A or B. A simultaneous flip of both means you sampled too slow — you missed a step. The state machine catches this as an error.</p>
+    </div>
+  </div>
+
+  <!-- ABSOLUTE -->
+  <div class="tab-panel" id="tab-abs">
+    <section class="controls">
+      <div class="control">
+        <label>Shaft angle θ: <span class="readout" id="absThRead">0°</span></label>
+        <input id="absTh" type="range" min="0" max="359" step="0.1" value="0">
+      </div>
+      <div class="control">
+        <label>Resolution bits: <span class="readout" id="absBitsRead">4 bits (16 pos)</span></label>
+        <input id="absBits" type="range" min="3" max="6" step="1" value="4">
+      </div>
+    </section>
+    <div class="figure">
+      <h3>Gray-code disk (multi-ring)</h3>
+      <svg id="absSvg" viewBox="0 0 480 360" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+        <g id="grayDisk" transform="translate(200,180)"></g>
+        <g id="grayRead" transform="translate(380,40)">
+          <text x="0" y="0" class="label">Read pattern</text>
+          <g id="bitsOut"></g>
+          <text x="0" y="120" class="label-dim">Decoded:</text>
+          <text x="0" y="140" class="label" fill="var(--accent)" id="absDecode">0</text>
+        </g>
+      </svg>
+      <p style="font-size:12px;color:var(--fg-dim)">
+        Binary code would flip multiple bits between adjacent positions (e.g., 0111 → 1000); momentary mid-transition reads could give wildly wrong values. Gray code guarantees only one bit changes per step, so any sample is either current or previous position — never garbage.
+      </p>
+    </div>
+  </div>
+
+  <!-- MAGNETIC -->
+  <div class="tab-panel" id="tab-mag">
+    <section class="controls">
+      <div class="control">
+        <label>Magnet angle θ: <span class="readout" id="magThRead">0°</span></label>
+        <input id="magTh" type="range" min="0" max="359.9" step="0.1" value="0">
+      </div>
+      <div class="control">
+        <label>Air gap (mm): <span class="readout" id="magGapRead">1.0 mm</span></label>
+        <input id="magGap" type="range" min="0.2" max="3" step="0.05" value="1">
+      </div>
+      <div class="control">
+        <label>Off-axis offset (mm): <span class="readout" id="magOffRead">0.0 mm</span></label>
+        <input id="magOff" type="range" min="0" max="2" step="0.05" value="0">
+      </div>
+    </section>
+    <div class="figure">
+      <h3>AS5048 magnetic angle readout (14-bit, SPI)</h3>
+      <svg viewBox="0 0 700 280" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+        <!-- Top-down view -->
+        <circle cx="180" cy="140" r="80" fill="var(--bg-elev2)" stroke="var(--fg)" stroke-width="2"/>
+        <text x="180" y="35" class="label-dim" text-anchor="middle">diametric magnet (top view)</text>
+        <g id="magnet" transform="translate(180 140)">
+          <circle r="55" fill="none" stroke="var(--fg-dim)" stroke-dasharray="3,3"/>
+          <path d="M -55 0 A 55 55 0 0 1 55 0 L 0 0 Z" fill="rgba(94,200,255,0.35)" stroke="var(--accent)"/>
+          <path d="M -55 0 A 55 55 0 0 0 55 0 L 0 0 Z" fill="rgba(255,123,114,0.35)" stroke="var(--warn)"/>
+          <text x="0" y="-30" class="label" fill="var(--accent)" text-anchor="middle">N</text>
+          <text x="0" y="38" class="label" fill="var(--warn)" text-anchor="middle">S</text>
+        </g>
+        <!-- IC under magnet -->
+        <rect x="155" y="225" width="50" height="14" fill="var(--bg-elev2)" stroke="var(--accent3)" stroke-width="1.5"/>
+        <text x="180" y="255" class="label-dim" text-anchor="middle">AS5048 (under)</text>
+        <!-- Side cross-section -->
+        <text x="500" y="35" class="label-dim" text-anchor="middle">side view (gap)</text>
+        <rect x="430" y="100" width="140" height="14" fill="rgba(94,200,255,0.20)" stroke="var(--accent)" id="magSide"/>
+        <rect x="430" y="180" width="140" height="14" fill="var(--bg-elev2)" stroke="var(--accent3)"/>
+        <text x="500" y="174" class="label-dim" text-anchor="middle" id="gapTxt">gap = 1.0 mm</text>
+        <text x="500" y="217" class="label-dim" text-anchor="middle">Hall die</text>
+
+        <!-- Computed angle dial -->
+        <circle cx="180" cy="140" r="90" fill="none" stroke="var(--fg-dim)" stroke-width="0.5"/>
+        <line id="needle" x1="180" y1="140" x2="180" y2="50" stroke="var(--accent3)" stroke-width="2"/>
+      </svg>
+      <table>
+        <tr><th>Output</th><th>Value</th></tr>
+        <tr><td>Raw angle (14-bit, 0–16383)</td><td><span class="readout" id="magRaw">0</span></td></tr>
+        <tr><td>Decoded angle (degrees)</td><td><span class="readout" id="magDeg">0.000°</span></td></tr>
+        <tr><td>Resolution (LSB)</td><td><span class="readout">0.0220°</span></td></tr>
+        <tr><td>Field strength (warning level)</td><td><span class="readout" id="magField">OK (green)</span></td></tr>
+        <tr><td>Off-axis error contribution</td><td><span class="readout" id="magErr">±0.0°</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Incremental quadrature gives 4× CPR</b> — a 100 CPR optical disc gives 400 counts per rev when you count both edges on both channels. Manufacturers sometimes spec PPR (pulses per rev = CPR), sometimes lines per rev. Always check.</li>
+    <li><b>Direction = which channel leads</b> — A-leads-B is forward, B-leads-A is reverse. The transition table is the decoder.</li>
+    <li><b>Index pulse Z is the home reference</b> — fires once per revolution; use it on startup to find absolute zero with an incremental encoder.</li>
+    <li><b>Absolute encoders survive power loss</b> — your robot wakes up and instantly knows the joint angle. No homing routine needed, which matters when the arm can't safely traverse its own range.</li>
+    <li><b>Gray code's only-one-bit-changes invariant</b> — eliminates the "between two codes" garbage that plain binary suffers from. Same idea as graycoding in ADCs and 7-bit address decoders.</li>
+    <li><b>Magnetic encoders need a magnet that matches</b> — diametrically magnetized, 6 mm Ø typical, mounted concentric with the shaft. Off-axis &gt;0.5 mm degrades accuracy quickly. Air gap typically 0.5–2 mm.</li>
+    <li><b>SPI burst read</b> — AS5048A returns the angle in two bytes (14 bits + parity + EF flag) over a single SPI transaction. ~1 µs read at 10 MHz.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Quadrature res</dt><dd><span class="eq">counts/rev = 4 · CPR</span></dd>
+        <dt>Step angle</dt><dd><span class="eq">Δθ = 360° / (4·CPR)</span></dd>
+        <dt>Max RPM</dt><dd><span class="eq">RPM_max = (f_in_max · 60) / (4·CPR)</span></dd>
+        <dt>Magnetic res</dt><dd><span class="eq">Δθ = 360° / 2ᴺ</span><span class="eq-note">N=14 → 0.022°</span></dd>
+        <dt>Angle from raw</dt><dd><span class="eq">θ = raw · 360 / 2ᴺ</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>×4 quadrature</b> — both edges of both channels.</li>
+        <li><b>A leads B = forward.</b></li>
+        <li><b>Gray = 1 bit per step</b> — never two.</li>
+        <li><b>AS5048 = 14-bit, 0.022°</b> — SPI/PWM/ABI selectable.</li>
+        <li><b>Diametric magnet</b> — N/S split across the diameter, not axially.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Software polling at high RPM</b> — misses edges. Use hardware quadrature decoder (PIO on RP2350, TIM-encoder on STM32).</li>
+        <li><b>CPR vs PPR confusion</b> — some specs are pulses (edges/4), some counts.</li>
+        <li><b>No index → no abs home</b> — incremental needs a home switch or Z pulse on power-up.</li>
+        <li><b>Off-axis magnet mount</b> — sin/cos demod assumes the magnet is centered; off-axis ≫ 0.5 mm injects 2nd-harmonic error.</li>
+        <li><b>Magnet too far / too weak</b> — AS5048 OCF/COF flags warn you; respect them.</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>SELECTION</h3>
+      <table>
+        <tr><th>Need</th><th>Pick</th></tr>
+        <tr><td>Cheap RPM</td><td>Optical incr + Z</td></tr>
+        <tr><td>Joint must wake at known pos</td><td>Magnetic abs (AS5048)</td></tr>
+        <tr><td>Harsh / dirty env</td><td>Magnetic (no optics)</td></tr>
+        <tr><td>Linear position</td><td>Linear magnetic / LVDT</td></tr>
+        <tr><td>BLDC commutation</td><td>3× Hall or magnetic ABI</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 1 — Sensors</a> ·
+    Topic: Encoders (incremental / absolute / magnetic)
+  </footer>
+</main>
+<script>
+  // Tabs
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('tab-'+t.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ============ INCREMENTAL ============
+  const incTh = document.getElementById('incTh');
+  const incCpr = document.getElementById('incCpr');
+  const incDir = document.getElementById('incDir');
+  function updateInc(){
+    const th = parseFloat(incTh.value);
+    const cpr = parseInt(incCpr.value);
+    const dir = parseInt(incDir.value);
+    document.getElementById('incThRead').textContent = th.toFixed(1)+'°';
+    document.getElementById('incCprRead').textContent = cpr+' ('+(cpr*4)+' counts/rev quad)';
+    const W = 630, X0 = 50;
+    // each rev = 360°. cycles in 720°: 2*cpr but we want visible cycles — clamp to 10 visible
+    const showCycles = Math.min(cpr * 2, 20);
+    const pxPerCycle = W/showCycles;
+    let aPts=[], bPts=[], zPts=[];
+    for(let i=0;i<=W;i++){
+      const phase = (i/pxPerCycle) * 2 * Math.PI * dir;
+      const a = (Math.sin(phase) > 0) ? 1 : 0;
+      const b = (Math.sin(phase - Math.PI/2 * dir) > 0) ? 1 : 0;
+      // Z fires once per rev = once per cpr cycles. We're showing 2 revs (showCycles = 2*cpr typically)
+      const z = ((i/pxPerCycle) % cpr) < 0.05 ? 1 : 0;
+      aPts.push(`${X0+i},${50 - a*25}`);
+      bPts.push(`${X0+i},${120 - b*25}`);
+      zPts.push(`${X0+i},${190 - z*25}`);
+    }
+    document.getElementById('aTrace').setAttribute('points', aPts.join(' '));
+    document.getElementById('bTrace').setAttribute('points', bPts.join(' '));
+    document.getElementById('zTrace').setAttribute('points', zPts.join(' '));
+    // cursor follows shaft angle
+    const cur = X0 + (th/720) * W;
+    const cursor = document.getElementById('cursor');
+    cursor.setAttribute('x1', cur);
+    cursor.setAttribute('x2', cur);
+  }
+  [incTh, incCpr, incDir].forEach(e => e.addEventListener('input', updateInc));
+
+  // ============ ABSOLUTE / GRAY ============
+  const absTh = document.getElementById('absTh');
+  const absBits = document.getElementById('absBits');
+  function bin2gray(n){ return n ^ (n>>1); }
+  function updateAbs(){
+    const bits = parseInt(absBits.value);
+    const N = 1<<bits;
+    const th = parseFloat(absTh.value);
+    const pos = Math.floor((th/360)*N) % N;
+    const gray = bin2gray(pos);
+    document.getElementById('absThRead').textContent = th.toFixed(1)+'°';
+    document.getElementById('absBitsRead').textContent = bits+' bits ('+N+' pos)';
+    document.getElementById('absDecode').textContent = `pos=${pos}  gray=${gray.toString(2).padStart(bits,'0')}`;
+
+    const disk = document.getElementById('grayDisk');
+    while(disk.firstChild) disk.removeChild(disk.firstChild);
+    // Draw N sectors per ring, R rings
+    const colors = ['var(--accent)', 'var(--accent2)', 'var(--accent3)', 'var(--warn)', 'var(--fg-bright)', 'var(--fg-dim)'];
+    for(let ring=0; ring<bits; ring++){
+      const rO = 50 + (bits-ring)*18;
+      const rI = 50 + (bits-1-ring)*18;
+      for(let sec=0; sec<N; sec++){
+        const g = bin2gray(sec);
+        const bit = (g >> ring) & 1;
+        const a0 = (sec/N)*2*Math.PI - Math.PI/2;
+        const a1 = ((sec+1)/N)*2*Math.PI - Math.PI/2;
+        const path = `M ${Math.cos(a0)*rI} ${Math.sin(a0)*rI} ` +
+          `L ${Math.cos(a0)*rO} ${Math.sin(a0)*rO} ` +
+          `A ${rO} ${rO} 0 0 1 ${Math.cos(a1)*rO} ${Math.sin(a1)*rO} ` +
+          `L ${Math.cos(a1)*rI} ${Math.sin(a1)*rI} ` +
+          `A ${rI} ${rI} 0 0 0 ${Math.cos(a0)*rI} ${Math.sin(a0)*rI} Z`;
+        const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+        p.setAttribute('d', path);
+        p.setAttribute('fill', bit ? colors[ring%colors.length] : 'var(--bg-elev2)');
+        p.setAttribute('stroke', 'var(--bg)');
+        p.setAttribute('stroke-width','0.5');
+        disk.appendChild(p);
+      }
+    }
+    // Sensor read line
+    const a = (th/360)*2*Math.PI - Math.PI/2;
+    const r2 = 50 + bits*18 + 6;
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1','0'); line.setAttribute('y1','0');
+    line.setAttribute('x2', Math.cos(a)*r2);
+    line.setAttribute('y2', Math.sin(a)*r2);
+    line.setAttribute('stroke','var(--fg-bright)');
+    line.setAttribute('stroke-width','2');
+    disk.appendChild(line);
+
+    // Bits readout
+    const bitsOut = document.getElementById('bitsOut');
+    while(bitsOut.firstChild) bitsOut.removeChild(bitsOut.firstChild);
+    for(let i=0;i<bits;i++){
+      const bit = (gray >> (bits-1-i)) & 1;
+      const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('x', i*16);
+      t.setAttribute('y', 28);
+      t.setAttribute('class','label');
+      t.setAttribute('fill', bit ? 'var(--accent)' : 'var(--fg-dim)');
+      t.textContent = bit;
+      bitsOut.appendChild(t);
+    }
+  }
+  [absTh, absBits].forEach(e => e.addEventListener('input', updateAbs));
+
+  // ============ MAGNETIC ============
+  const magTh = document.getElementById('magTh');
+  const magGap = document.getElementById('magGap');
+  const magOff = document.getElementById('magOff');
+  function updateMag(){
+    const th = parseFloat(magTh.value);
+    const gap = parseFloat(magGap.value);
+    const off = parseFloat(magOff.value);
+    const raw = Math.round((th/360)*16383);
+    const deg = raw * 360 / 16384;
+    document.getElementById('magThRead').textContent = th.toFixed(1)+'°';
+    document.getElementById('magGapRead').textContent = gap.toFixed(2)+' mm';
+    document.getElementById('magOffRead').textContent = off.toFixed(2)+' mm';
+    document.getElementById('magRaw').textContent = raw;
+    document.getElementById('magDeg').textContent = deg.toFixed(3)+'°';
+    document.getElementById('gapTxt').textContent = `gap = ${gap.toFixed(2)} mm`;
+    document.getElementById('magnet').setAttribute('transform', `translate(180 140) rotate(${th})`);
+    // needle
+    const a = (th-90)*Math.PI/180;
+    const nx = 180 + 90*Math.cos(a);
+    const ny = 140 + 90*Math.sin(a);
+    document.getElementById('needle').setAttribute('x2', nx);
+    document.getElementById('needle').setAttribute('y2', ny);
+    // side view gap
+    document.getElementById('magSide').setAttribute('y', 180 - gap*40 - 14);
+    // field-strength heuristic: weak if gap > 2, off > 1, etc.
+    let status = 'OK (green)';
+    if(gap > 2.0) status = 'Weak field (orange)';
+    if(gap > 2.5 || off > 1.5) status = 'CRITICAL — increase magnet or reduce gap';
+    document.getElementById('magField').textContent = status;
+    const err = (off * 0.5).toFixed(2);
+    document.getElementById('magErr').textContent = `±${err}°`;
+  }
+  [magTh, magGap, magOff].forEach(e => e.addEventListener('input', updateMag));
+
+  updateInc(); updateAbs(); updateMag();
+</script>
+</body>
+</html>

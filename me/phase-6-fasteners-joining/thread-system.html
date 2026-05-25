@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Metric thread system — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Metric thread system — anatomy &amp; engagement</h1>
+  <p class="lede">A metric thread is geometry, not magic: <code>M[D]×[P]</code> says "major diameter D, pitch P,
+  60° flank." Engagement length is what holds load — too short and the threads strip before the bolt yields.
+  Slide the nominal size to see how pitch and engagement scale, and how the substrate (steel, aluminum, plastic)
+  changes the required thread depth.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Nominal size <span class="readout" id="rNom">M5×0.8</span></label>
+      <input type="range" id="sNom" min="0" max="6" step="1" value="3">
+    </div>
+    <div class="control">
+      <label>Substrate (mating internal thread) <span class="readout" id="rSub">aluminum</span></label>
+      <select id="selSub">
+        <option value="steel">steel (1.0×D)</option>
+        <option value="aluminum" selected>aluminum (1.5×D)</option>
+        <option value="plastic">plastic, no insert (2.0×D)</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Class of fit (external/internal)</label>
+      <select id="selFit">
+        <option value="6g/6H" selected>6g/6H — standard general purpose</option>
+        <option value="4g/4H">4g/4H — tight, precision</option>
+        <option value="8g/7H">8g/7H — loose, hot-dip galvanized</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Thread profile (axial section, magnified)</h3>
+    <svg viewBox="0 0 760 320" id="svgProfile" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>major D</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>pitch P</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>minor (root) d<sub>1</sub></span>
+      <span><span class="swatch" style="background:var(--warn)"></span>60° flank</span>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Engagement length required vs. provided</h3>
+    <svg viewBox="0 0 760 160" id="svgEngage" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent3)"></span>required engagement (rule-of-thumb)</span>
+      <span><span class="swatch" style="background:var(--accent)"></span>actual engagement (provided)</span>
+    </div>
+  </div>
+
+  <h2>Coarse pitch lookup (default if no pitch specified)</h2>
+  <table>
+    <thead><tr><th>Designation</th><th>Major D (mm)</th><th>Coarse pitch P (mm)</th><th>Minor d<sub>1</sub> (mm)</th><th>Stress area (mm²)</th></tr></thead>
+    <tbody id="tblCoarse"></tbody>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Pitch shrinks faster than diameter, then plateaus.</b> M2×0.4 is 20% pitch/diameter; M10×1.5 is 15%. Smaller threads have proportionally larger root features.</li>
+    <li><b>60° flank is the universal metric profile (ISO 68).</b> The angle is fixed across all metric sizes — only D and P scale. Inch UTS is also 60°; old Whitworth was 55°.</li>
+    <li><b>Engagement rule is substrate-driven, not bolt-driven.</b> Steel-on-steel is 1×D because the threads in both halves are equally strong. Aluminum needs 1.5×D because aluminum shears at ~half steel's strength. Plastic-direct (2×D) usually still fails because the boss splits in hoop, not the threads.</li>
+    <li><b>6g/6H is the "store-shelf" tolerance.</b> 6g screw + 6H nut gives small clearance and easy assembly. 4g/4H is precision (instrument-grade) and harder to make. 8g/7H is loose, for galvanized or contaminated threads.</li>
+    <li><b>Coarse pitch is the silent default.</b> When you write <code>M4</code> with no pitch, you mean <code>M4×0.7</code>. If you need fine-pitch (<code>M4×0.5</code>), you MUST write it — the screw won't engage a coarse nut.</li>
+    <li><b>The "stress area" is &lt;d<sub>1</sub>²·π/4.</b> It's an averaged value between minor and pitch diameter — what you use in F = σ·A<sub>s</sub> for the tensile capacity of the bolt.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE — COARSE PITCH</h3>
+      <table>
+        <thead><tr><th>Size</th><th>P (mm)</th><th>Size</th><th>P (mm)</th></tr></thead>
+        <tbody>
+          <tr><td>M2</td><td>0.40</td><td>M5</td><td>0.80</td></tr>
+          <tr><td>M2.5</td><td>0.45</td><td>M6</td><td>1.00</td></tr>
+          <tr><td>M3</td><td>0.50</td><td>M8</td><td>1.25</td></tr>
+          <tr><td>M4</td><td>0.70</td><td>M10</td><td>1.50</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cheat-card">
+      <h3>DECISION — ENGAGEMENT</h3>
+      <ul>
+        <li><b>1.0×D</b> — steel into steel</li>
+        <li><b>1.5×D</b> — steel into aluminum</li>
+        <li><b>2.0×D</b> — steel into plastic (no insert)</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Callout</b> is <code>M[D]×[P]</code> — coarse is default, omit P.</li>
+        <li><b>Fine pitch must be explicit</b> (e.g. <code>M4×0.5</code>) or you'll buy the wrong nut.</li>
+        <li><b>Coarse and fine don't mate</b> — never mix in a stack.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 6 — Fasteners &amp; Joining</a> ·
+    Topic: Metric thread anatomy, coarse pitch lookup, engagement-length rule, class of fit
+  </footer>
+</main>
+<script>
+// Coarse-pitch lookup per ISO 261 (rounded; stress area per ISO 898)
+const SIZES = [
+  {n:"M2",   D:2.0,  P:0.40, d1:1.567, As:2.07},
+  {n:"M2.5", D:2.5,  P:0.45, d1:2.013, As:3.39},
+  {n:"M3",   D:3.0,  P:0.50, d1:2.459, As:5.03},
+  {n:"M4",   D:4.0,  P:0.70, d1:3.242, As:8.78},
+  {n:"M5",   D:5.0,  P:0.80, d1:4.134, As:14.2},
+  {n:"M6",   D:6.0,  P:1.00, d1:4.917, As:20.1},
+  {n:"M8",   D:8.0,  P:1.25, d1:6.647, As:36.6},
+  {n:"M10",  D:10.0, P:1.50, d1:8.376, As:58.0},
+];
+const SUB = {
+  steel:    {mult:1.0, label:"steel"},
+  aluminum: {mult:1.5, label:"aluminum"},
+  plastic:  {mult:2.0, label:"plastic, no insert"},
+};
+
+const sNom = document.getElementById("sNom");
+sNom.max = SIZES.length-1;
+const rNom = document.getElementById("rNom");
+const rSub = document.getElementById("rSub");
+const selSub = document.getElementById("selSub");
+const selFit = document.getElementById("selFit");
+
+function drawProfile(s){
+  // s = size record. Show axial-section: a horizontal bolt axis at y=160,
+  // major surface at y=70 / y=250, root at y=130 / y=190 (flipped about axis).
+  // Pitch is mapped horizontally. We draw ~5 thread turns.
+  const svg = document.getElementById("svgProfile");
+  const W=760, H=320, cy=160;
+  // Pitch scaling: bigger pitch → wider teeth in pixels.
+  const pxPerMm = 60;   // visual scale
+  const Ppx = s.P * pxPerMm;
+  const halfH = (s.D/2 - s.d1/2) * pxPerMm * 1.8; // depth of thread
+  const Dpx = (s.D/2) * pxPerMm * 1.8;
+  const x0 = 80;
+  let teethPath = "";
+  // Draw upper profile (zigzag) and lower (mirror)
+  let upper = `M ${x0} ${cy - (Dpx - halfH)}`;
+  let lower = `M ${x0} ${cy + (Dpx - halfH)}`;
+  let xc = x0;
+  for (let i=0;i<8;i++){
+    upper += ` L ${xc + Ppx*0.5} ${cy - Dpx} L ${xc + Ppx} ${cy - (Dpx - halfH)}`;
+    lower += ` L ${xc + Ppx*0.5} ${cy + Dpx} L ${xc + Ppx} ${cy + (Dpx - halfH)}`;
+    xc += Ppx;
+  }
+  // close path: extend a bit then draw axis box
+  const xEnd = xc;
+  // Bolt body shading (between root profiles)
+  const bodyPath = `M ${x0} ${cy - (Dpx-halfH)} ${upper.substring(upper.indexOf("L"))} L ${xEnd} ${cy + (Dpx - halfH)} ${lower.split("M")[1].replace(/^[^L]*/, "").split("L").reverse().filter(x=>x.trim()).map(seg=>"L " + seg.trim()).join(" ")} Z`;
+  // Simpler: fill the bolt as a polygon
+  let poly = `${x0},${cy - (Dpx - halfH)} `;
+  xc = x0;
+  for (let i=0;i<8;i++){
+    poly += `${xc + Ppx*0.5},${cy - Dpx} ${xc + Ppx},${cy - (Dpx - halfH)} `;
+    xc += Ppx;
+  }
+  // bottom edge
+  let polyBottom = "";
+  xc = xEnd;
+  for (let i=0;i<8;i++){
+    polyBottom += `${xc},${cy + (Dpx - halfH)} ${xc - Ppx*0.5},${cy + Dpx} `;
+    xc -= Ppx;
+  }
+  polyBottom += `${x0},${cy + (Dpx - halfH)}`;
+  const fullPoly = poly + polyBottom;
+
+  // major D dimension
+  const xDim = xEnd + 20;
+  const xDimMinor = xEnd + 60;
+  // pitch dimension (pick the first tooth)
+  const xPitchA = x0;
+  const xPitchB = x0 + Ppx;
+
+  svg.innerHTML = `
+    <!-- centerline / axis -->
+    <line x1="40" y1="${cy}" x2="${W-20}" y2="${cy}" stroke="var(--fg-dim)" stroke-dasharray="4 4"/>
+    <text x="44" y="${cy-4}" class="label-dim">axis of bolt</text>
+    <!-- bolt material -->
+    <polygon points="${fullPoly}" fill="#2a313c" stroke="var(--accent)" stroke-width="1.5"/>
+    <!-- flank-angle arc on first tooth -->
+    <g transform="translate(${x0 + Ppx*0.5},${cy - Dpx})">
+      <path d="M -16 18 A 16 16 0 0 0 16 18" fill="none" stroke="var(--warn)" stroke-width="1.5"/>
+      <text x="0" y="32" class="label" text-anchor="middle" fill="var(--warn)">60°</text>
+    </g>
+    <!-- major D dimension on right -->
+    <line x1="${xDim}" y1="${cy-Dpx}" x2="${xDim}" y2="${cy+Dpx}" stroke="var(--accent)" stroke-width="1.2"/>
+    <line x1="${xDim-6}" y1="${cy-Dpx}" x2="${xDim+6}" y2="${cy-Dpx}" stroke="var(--accent)" stroke-width="1.2"/>
+    <line x1="${xDim-6}" y1="${cy+Dpx}" x2="${xDim+6}" y2="${cy+Dpx}" stroke="var(--accent)" stroke-width="1.2"/>
+    <text x="${xDim+12}" y="${cy-Dpx+6}" class="label" fill="var(--accent)">D = ${s.D.toFixed(2)}</text>
+    <!-- minor d1 dimension (further right) -->
+    <line x1="${xDimMinor}" y1="${cy-(Dpx-halfH)}" x2="${xDimMinor}" y2="${cy+(Dpx-halfH)}" stroke="var(--accent3)" stroke-width="1.2"/>
+    <line x1="${xDimMinor-6}" y1="${cy-(Dpx-halfH)}" x2="${xDimMinor+6}" y2="${cy-(Dpx-halfH)}" stroke="var(--accent3)" stroke-width="1.2"/>
+    <line x1="${xDimMinor-6}" y1="${cy+(Dpx-halfH)}" x2="${xDimMinor+6}" y2="${cy+(Dpx-halfH)}" stroke="var(--accent3)" stroke-width="1.2"/>
+    <text x="${xDimMinor+12}" y="${cy-(Dpx-halfH)+6}" class="label" fill="var(--accent3)">d₁ = ${s.d1.toFixed(2)}</text>
+    <!-- pitch dimension across one tooth (above) -->
+    <line x1="${xPitchA}" y1="${cy-Dpx-22}" x2="${xPitchB}" y2="${cy-Dpx-22}" stroke="var(--accent2)" stroke-width="1.2"/>
+    <line x1="${xPitchA}" y1="${cy-Dpx-26}" x2="${xPitchA}" y2="${cy-Dpx-18}" stroke="var(--accent2)" stroke-width="1.2"/>
+    <line x1="${xPitchB}" y1="${cy-Dpx-26}" x2="${xPitchB}" y2="${cy-Dpx-18}" stroke="var(--accent2)" stroke-width="1.2"/>
+    <text x="${(xPitchA+xPitchB)/2}" y="${cy-Dpx-30}" class="label" fill="var(--accent2)" text-anchor="middle">P = ${s.P.toFixed(2)} mm</text>
+    <!-- root / crest labels -->
+    <text x="${x0 + Ppx*0.5}" y="${cy - Dpx - 4}" class="label-dim" text-anchor="middle">crest</text>
+    <text x="${x0 + Ppx*1.0}" y="${cy - (Dpx-halfH) + 12}" class="label-dim" text-anchor="middle">root</text>
+    <!-- class of fit inset -->
+    <g transform="translate(40,260)">
+      <rect x="0" y="0" width="220" height="48" fill="var(--bg-elev2)" stroke="var(--line)"/>
+      <text x="10" y="18" class="label">Class of fit: ${selFit.value}</text>
+      <text x="10" y="36" class="label-dim">${classDescription(selFit.value)}</text>
+    </g>
+  `;
+}
+
+function classDescription(c){
+  switch(c){
+    case "6g/6H": return "standard clearance, easy assembly";
+    case "4g/4H": return "precision, instrument-grade";
+    case "8g/7H": return "loose, for galvanized / contaminated";
+    default: return "";
+  }
+}
+
+function drawEngage(s, sub){
+  const svg = document.getElementById("svgEngage");
+  const W=760;
+  const required_mm = s.D * SUB[sub].mult;
+  const provided_mm = s.D * 2.5; // assume screw thread length 2.5×D as a typical "available"
+  const mmMax = Math.max(required_mm, provided_mm, s.D * 2.5) + 2;
+  const pxPerMm = (W - 240) / mmMax;
+  const xBase = 200;
+  const yReq = 50, yProv = 100;
+  const reqLen = required_mm * pxPerMm;
+  const provLen = provided_mm * pxPerMm;
+  // Status: pass if provided >= required
+  const ok = provided_mm >= required_mm;
+  svg.innerHTML = `
+    <text x="20" y="${yReq+6}" class="label">required:</text>
+    <text x="20" y="${yProv+6}" class="label">provided:</text>
+    <rect x="${xBase}" y="${yReq-12}" width="${reqLen}" height="24" fill="rgba(163,230,53,0.3)" stroke="var(--accent3)"/>
+    <text x="${xBase + reqLen + 8}" y="${yReq+4}" class="label" fill="var(--accent3)">${required_mm.toFixed(2)} mm  (${SUB[sub].mult}×D, ${SUB[sub].label})</text>
+    <rect x="${xBase}" y="${yProv-12}" width="${provLen}" height="24" fill="rgba(94,200,255,0.3)" stroke="var(--accent)"/>
+    <text x="${xBase + provLen + 8}" y="${yProv+4}" class="label" fill="var(--accent)">${provided_mm.toFixed(2)} mm  (2.5×D — typical screw thread length)</text>
+    <line x1="${xBase}" y1="20" x2="${xBase}" y2="140" stroke="var(--fg-dim)" stroke-dasharray="3 3"/>
+    <text x="${xBase}" y="14" class="label-dim" text-anchor="middle">0</text>
+    <text x="${xBase + reqLen}" y="14" class="label-dim" text-anchor="middle">↓ required end</text>
+    <text x="${W/2}" y="140" class="label" text-anchor="middle" fill="${ok?'var(--accent3)':'var(--warn)'}">
+      ${ok ? "PASS — provided ≥ required" : "FAIL — provided &lt; required, threads strip before bolt yields"}
+    </text>
+  `;
+}
+
+function fillTable(){
+  const tb = document.getElementById("tblCoarse");
+  tb.innerHTML = SIZES.map(s => `<tr><td><b>${s.n}</b></td><td>${s.D.toFixed(2)}</td><td>${s.P.toFixed(2)}</td><td>${s.d1.toFixed(3)}</td><td>${s.As.toFixed(2)}</td></tr>`).join("");
+}
+
+function render(){
+  const s = SIZES[+sNom.value];
+  rNom.textContent = `${s.n}×${s.P}`;
+  const sub = selSub.value;
+  rSub.textContent = SUB[sub].label;
+  drawProfile(s);
+  drawEngage(s, sub);
+}
+
+sNom.addEventListener("input", render);
+selSub.addEventListener("change", () => { render(); });
+selFit.addEventListener("change", () => { render(); });
+selSub.addEventListener("change", () => { rSub.textContent = SUB[selSub.value].label; });
+
+fillTable();
+render();
+</script>
+</body>
+</html>

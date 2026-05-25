@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bending: V and M Diagrams — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  /* Common SVG conventions */
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .summary{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;
+    padding:10px 14px;margin:10px 0;font:13px ui-monospace,monospace;line-height:1.7}
+  .summary b{color:var(--fg-bright)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Bending: Shear &amp; Moment Diagrams</h1>
+  <p class="lede">Pick a beam type and a load. V(x) and M(x) appear instantly. The two rules:
+  dV/dx = −w(x), dM/dx = V. So V is the slope of M; M is maximum where V crosses zero. Click any
+  cross-section to see the bending stress distribution σ = M·y/I.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Beam type</label>
+      <select id="beam">
+        <option value="ss">Simply supported</option>
+        <option value="cantL">Cantilever (fixed left)</option>
+        <option value="over">Overhanging (1 support left, 1 mid)</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Load type</label>
+      <select id="load">
+        <option value="point">Point load P</option>
+        <option value="udl">Uniform load w</option>
+        <option value="mom">Applied moment M₀</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Load magnitude = <span class="readout" id="rP">1000</span> (N or N/m or N·m)</label>
+      <input type="range" id="P" min="100" max="5000" step="50" value="1000">
+    </div>
+    <div class="control">
+      <label>Load position a/L = <span class="readout" id="rA">0.50</span></label>
+      <input type="range" id="A" min="0.05" max="0.95" step="0.01" value="0.5">
+    </div>
+    <div class="control">
+      <label>Length L = <span class="readout" id="rL">2.0</span> m</label>
+      <input type="range" id="L" min="0.5" max="5" step="0.1" value="2">
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="bvm" viewBox="0 0 880 580" width="100%" height="580"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>Beam + supports</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>V(x) shear</span>
+      <span><span class="swatch" style="background:#a3e635"></span>M(x) moment</span>
+      <span><span class="swatch" style="background:#ff7b72"></span>Click position (cross-section)</span>
+    </div>
+  </div>
+
+  <div class="summary" id="results"></div>
+
+  <h2>Cross-section bending stress σ = M·y/I</h2>
+  <p class="lede">Stress varies linearly across the depth: compression on the convex side, tension
+  on the concave side, zero at the neutral axis. Magnitude scales with distance y from the neutral
+  axis. σ_max = M·c/I at the outer fibre. Click the beam to pick a section.</p>
+  <div class="figure">
+    <svg id="section" viewBox="0 0 880 280" width="100%" height="280"></svg>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>dV/dx = −w(x).</b> No load → V constant. Point load → V jumps. UDL → V slopes linearly.</li>
+    <li><b>dM/dx = V.</b> So M is the area under V. Constant V → linear M. Linear V → parabolic M.</li>
+    <li><b>M_max occurs where V crosses zero.</b> Always. That's where dM/dx = 0. Build the V diagram first, find the zero crossing, then evaluate M there.</li>
+    <li><b>Cantilever vs simply supported, same point load at midspan:</b> M_max at fixed end of cantilever = PL = 4× the SS midspan moment of PL/4. That's the cost of having only one support.</li>
+    <li><b>UDL spreads the load.</b> A simply-supported beam with total load wL has M_max = wL²/8, vs PL/4 if it's all at the centre. Same total load, half the peak moment when distributed.</li>
+    <li><b>Applied moments cause M jumps but no V jump.</b> A concentrated couple shifts the M diagram by M₀ at its location. V is unaffected by pure couples.</li>
+    <li><b>σ_bending = M·y/I.</b> Halve I (slimmer beam) → double the stress. Halve y (closer to NA) → half the stress. To survive bending, get the material *far* from the neutral axis — that's why structural beams have flanges at top and bottom.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>bending σ</dt><dd><span class="eq">σ = M · y / I</span></dd>
+        <dt>extreme fiber</dt><dd><span class="eq">σ_max = M · c / I = M / S</span></dd>
+        <dt>transverse τ</dt><dd><span class="eq">τ = V · Q / (I · b)</span></dd>
+        <dt>relations</dt><dd><span class="eq">dV/dx = −w · dM/dx = V</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>M is max where V = 0</b> — sign change in shear.</li>
+        <li><b>Positive M = sagging</b> — compression on top, tension on bottom.</li>
+        <li><b>S = I / c</b> — section modulus; bigger S → less bending stress.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Sign convention drift</b> — pick one (sagging+ or hogging+) and hold it through both diagrams.</li>
+        <li><b>Jumps</b> — V jumps at point loads, M jumps at applied couples; don't draw them smooth.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 4 — Mechanics of Materials</a> ·
+    Topic: V and M diagrams, bending stress
+  </footer>
+</main>
+<script>
+const svg = document.getElementById('bvm');
+const ssvg = document.getElementById('section');
+function nsmk(s, tag, attrs={}){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  s.appendChild(e);
+  return e;
+}
+function clr(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+let clickX = 0.5; // fraction along beam, used by section view
+
+function setReadouts(){
+  document.getElementById('rP').textContent = document.getElementById('P').value;
+  document.getElementById('rL').textContent = parseFloat(document.getElementById('L').value).toFixed(2);
+  document.getElementById('rA').textContent = parseFloat(document.getElementById('A').value).toFixed(2);
+}
+
+function computeVM(beam, load, P, L, a){
+  // Returns: function (x) -> {V, M}, plus support reactions and key info
+  // x in metres along beam.
+  // Sign conventions: V = sum of forces to LEFT of cut, positive upward
+  //                    M = moment about cut from forces on LEFT, positive sagging (CCW)
+  const ap = a * L; // location of point load or applied moment
+
+  if(beam === 'ss'){
+    // Supports at x=0 and x=L (pin-roller)
+    if(load === 'point'){
+      const R1 = P * (L - ap) / L;  // reaction at x=0
+      const R2 = P * ap / L;
+      return {
+        R1, R2,
+        fn(x){
+          let V = R1;
+          let M = R1 * x;
+          if(x > ap){ V -= P; M -= P*(x-ap); }
+          return {V, M};
+        },
+        Mmax: { x: ap, val: R1*ap }
+      };
+    } else if(load === 'udl'){
+      const w = P; // N/m
+      const R1 = w*L/2, R2 = w*L/2;
+      return {
+        R1, R2,
+        fn(x){
+          const V = R1 - w*x;
+          const M = R1*x - w*x*x/2;
+          return {V, M};
+        },
+        Mmax: { x: L/2, val: w*L*L/8 }
+      };
+    } else if(load === 'mom'){
+      // Applied moment M0 at x=ap
+      const M0 = P;  // treat magnitude slider as N·m
+      const R1 = -M0/L, R2 = M0/L; // for static equilibrium: ΣM about left support = M0 + R2*L = 0
+      return {
+        R1, R2,
+        fn(x){
+          let V = R1;
+          let M = R1*x;
+          if(x > ap){ M += M0; }
+          return {V, M};
+        },
+        Mmax: { x: ap-0.001, val: R1*(ap) }
+      };
+    }
+  } else if(beam === 'cantL'){
+    // Fixed at x=0, free at x=L
+    if(load === 'point'){
+      // R = P at x=0, fixed-end moment = P*ap (sagging or hogging depending on sign convention)
+      const R1 = P;
+      const M0 = -P*ap; // wall moment (we'll handle by integrating from RIGHT side instead)
+      return {
+        R1, R2:0,
+        fn(x){
+          // From the right (free end): if x > ap, no load to right → V=0, M=0
+          // If x < ap, load P to the right of cut, so V on left face = -P (downward shear)
+          // We use convention: V = sum of forces to LEFT, but for cantilever it's cleaner to use right.
+          // Switch to: V(x) and M(x) found from RIGHT side
+          // Forces to right of x: if x < ap, P down at ap.
+          let V, M;
+          if(x < ap){
+            V = -P; // shear on cut face (right of cut: downward P, so on left face V is +P → use the convention where V at section = sum from left = R1 - 0 = P. Then when x > ap, V = P - P = 0.)
+          } else {
+            V = 0;
+          }
+          // Use left-side approach:
+          V = R1;
+          M = R1*x + (-P*ap); // wall has moment + R1
+          if(x > ap){ M = M - P*(x-ap); /* point load applied */ }
+          // Actually cleaner: compute V from left and M from left properly.
+          // Wall reactions: R1=P up, M_wall = -P*ap (counterclockwise reaction means + sagging? Let's use: M_wall such that net moment about wall is zero from external loads on a stable beam)
+          // Sum of moments about wall = 0: M_wall - P*ap = 0 → M_wall = +P*ap (CCW)
+          // V(x) from left = R1 - (load passed yet?)
+          V = R1 - (x > ap ? P : 0);
+          M = -P*ap + R1*x - (x > ap ? P*(x-ap) : 0);
+          return {V, M};
+        },
+        Mmax: { x: 0, val: -P*ap }  // M is most negative at the wall (hogging)
+      };
+    } else if(load === 'udl'){
+      const w = P;
+      const R1 = w*L;
+      const Mwall = w*L*L/2; // positive sagging convention? In cantilever with UDL down, wall has CCW reaction moment
+      return {
+        R1, R2:0,
+        fn(x){
+          const V = R1 - w*x;
+          const M = -Mwall + R1*x - w*x*x/2;
+          return {V, M};
+        },
+        Mmax: { x: 0, val: -w*L*L/2 }
+      };
+    } else if(load === 'mom'){
+      const M0 = P;
+      const R1 = 0;
+      return {
+        R1, R2:0,
+        fn(x){
+          const V = 0;
+          let M = 0;
+          if(x < ap){ M = -M0; }
+          else { M = 0; }
+          return {V, M};
+        },
+        Mmax: { x: 0, val: -M0 }
+      };
+    }
+  } else if(beam === 'over'){
+    // Supports at x=0 and x=L/2; overhang from L/2 to L
+    const Lsp = L/2;
+    if(load === 'point'){
+      // P at ap (anywhere). Reactions:
+      // ΣM about R1 = 0: R2*Lsp - P*ap = 0 → R2 = P*ap/Lsp
+      // R1 + R2 = P → R1 = P - R2
+      const R2 = P*ap/Lsp;
+      const R1 = P - R2;
+      return {
+        R1, R2,
+        fn(x){
+          let V = R1;
+          let M = R1*x;
+          if(x > Lsp){ V += R2; M += R2*(x-Lsp); }
+          if(x > ap){ V -= P; M -= P*(x-ap); }
+          return {V, M};
+        },
+        Mmax: { x: ap, val: 0 } // computed later
+      };
+    } else if(load === 'udl'){
+      const w = P;
+      // UDL over entire beam
+      // ΣM about R1: R2*Lsp - w*L*(L/2) = 0 → R2 = w*L*L/(2*Lsp)
+      const R2 = w*L*L/(2*Lsp);
+      const R1 = w*L - R2;
+      return {
+        R1, R2,
+        fn(x){
+          let V = R1 - w*x;
+          let M = R1*x - w*x*x/2;
+          if(x > Lsp){ V += R2; M += R2*(x-Lsp); }
+          return {V, M};
+        },
+        Mmax: { x: Lsp, val: 0 }
+      };
+    } else if(load === 'mom'){
+      const M0 = P;
+      // ΣM about R1: R2*Lsp + M0 = 0 → R2 = -M0/Lsp; R1 = -R2
+      const R2 = -M0/Lsp;
+      const R1 = -R2;
+      return {
+        R1, R2,
+        fn(x){
+          let V = R1;
+          let M = R1*x;
+          if(x > Lsp){ V += R2; M += R2*(x-Lsp); }
+          if(x > ap){ M += M0; }
+          return {V, M};
+        },
+        Mmax: { x: ap-0.001, val: 0 }
+      };
+    }
+  }
+  return { R1:0, R2:0, fn:()=>({V:0,M:0}), Mmax:{x:0, val:0} };
+}
+
+function render(){
+  setReadouts();
+  clr(svg);
+  const beam = document.getElementById('beam').value;
+  const load = document.getElementById('load').value;
+  const P = parseFloat(document.getElementById('P').value);
+  const L = parseFloat(document.getElementById('L').value);
+  const a = parseFloat(document.getElementById('A').value);
+
+  const data = computeVM(beam, load, P, L, a);
+  const ap = a * L;
+
+  // Layout
+  const xL = 70, xR = 800;
+  const yBeam = 80;
+  const yV0 = 230; const Vh = 110;
+  const yM0 = 420; const Mh = 110;
+
+  // Beam
+  // Sample V and M
+  const N = 200;
+  const samples = [];
+  let Vmin = 0, Vmax = 0, Mmin = 0, Mmax = 0;
+  for(let i=0;i<=N;i++){
+    const x = (i/N)*L;
+    const {V, M} = data.fn(x);
+    samples.push({x, V, M});
+    if(V < Vmin) Vmin = V;
+    if(V > Vmax) Vmax = V;
+    if(M < Mmin) Mmin = M;
+    if(M > Mmax) Mmax = M;
+  }
+  // Always include zero
+  const Vrange = Math.max(Math.abs(Vmin), Math.abs(Vmax), 1);
+  const Mrange = Math.max(Math.abs(Mmin), Math.abs(Mmax), 1);
+
+  function bx(x){ return xL + (x/L)*(xR-xL); }
+  function vy(V){ return yV0 - (V/Vrange) * (Vh/2 - 6); }
+  function my(M){ return yM0 - (M/Mrange) * (Mh/2 - 6); }
+
+  // --- Beam line ---
+  nsmk(svg, 'line',{x1:xL, y1:yBeam, x2:xR, y2:yBeam, stroke:'#5ec8ff', 'stroke-width':6});
+
+  // Supports
+  function drawPin(x){
+    nsmk(svg, 'polygon',{points:`${x},${yBeam+3} ${x-12},${yBeam+22} ${x+12},${yBeam+22}`,
+      fill:'#8f99a8'});
+    nsmk(svg, 'line',{x1:x-18, y1:yBeam+24, x2:x+18, y2:yBeam+24, stroke:'#8f99a8', 'stroke-width':2});
+  }
+  function drawRoller(x){
+    nsmk(svg, 'polygon',{points:`${x},${yBeam+3} ${x-12},${yBeam+20} ${x+12},${yBeam+20}`,
+      fill:'none', stroke:'#8f99a8', 'stroke-width':1.5});
+    nsmk(svg, 'circle',{cx:x-6, cy:yBeam+24, r:3, fill:'#8f99a8'});
+    nsmk(svg, 'circle',{cx:x+6, cy:yBeam+24, r:3, fill:'#8f99a8'});
+    nsmk(svg, 'line',{x1:x-18, y1:yBeam+29, x2:x+18, y2:yBeam+29, stroke:'#8f99a8', 'stroke-width':2});
+  }
+  function drawWall(x){
+    for(let i=0;i<6;i++){
+      nsmk(svg, 'line',{x1:x-12, y1:yBeam-18+i*8, x2:x, y2:yBeam-12+i*8, stroke:'#8f99a8', 'stroke-width':1.5});
+    }
+    nsmk(svg, 'line',{x1:x, y1:yBeam-22, x2:x, y2:yBeam+22, stroke:'#8f99a8', 'stroke-width':2});
+  }
+
+  if(beam === 'ss'){
+    drawPin(bx(0));
+    drawRoller(bx(L));
+  } else if(beam === 'cantL'){
+    drawWall(bx(0));
+  } else if(beam === 'over'){
+    drawPin(bx(0));
+    drawRoller(bx(L/2));
+  }
+
+  // Load visualization
+  if(load === 'point'){
+    nsmk(svg, 'line',{x1:bx(ap), y1:yBeam-50, x2:bx(ap), y2:yBeam-5,
+      stroke:'#ff7b72', 'stroke-width':3});
+    nsmk(svg, 'polygon',{points:`${bx(ap)},${yBeam-5} ${bx(ap)-7},${yBeam-15} ${bx(ap)+7},${yBeam-15}`,
+      fill:'#ff7b72'});
+    nsmk(svg, 'text',{x:bx(ap)+10, y:yBeam-35, class:'label', fill:'#ff7b72'})
+      .textContent = `P = ${P} N`;
+  } else if(load === 'udl'){
+    // arrows across the full span
+    let xS = 0, xE = L;
+    if(beam === 'over') { xS = 0; xE = L; }
+    for(let xi = xS; xi <= xE; xi += L/15){
+      nsmk(svg, 'line',{x1:bx(xi), y1:yBeam-30, x2:bx(xi), y2:yBeam-4,
+        stroke:'#ff7b72', 'stroke-width':1.5});
+      nsmk(svg, 'polygon',{points:`${bx(xi)},${yBeam-4} ${bx(xi)-4},${yBeam-10} ${bx(xi)+4},${yBeam-10}`,
+        fill:'#ff7b72'});
+    }
+    nsmk(svg, 'line',{x1:bx(xS), y1:yBeam-32, x2:bx(xE), y2:yBeam-32, stroke:'#ff7b72', 'stroke-width':2});
+    nsmk(svg, 'text',{x:bx((xS+xE)/2), y:yBeam-38, 'text-anchor':'middle', class:'label', fill:'#ff7b72'})
+      .textContent = `w = ${P} N/m`;
+  } else if(load === 'mom'){
+    // Curved arrow at ap
+    const cx = bx(ap), cy = yBeam-20;
+    nsmk(svg, 'path',{d:`M ${cx-15} ${cy} A 15 15 0 1 1 ${cx-14.9} ${cy-0.1}`,
+      fill:'none', stroke:'#ff7b72', 'stroke-width':2.5});
+    nsmk(svg, 'polygon',{points:`${cx-15},${cy} ${cx-22},${cy-6} ${cx-22},${cy+6}`, fill:'#ff7b72'});
+    nsmk(svg, 'text',{x:cx+10, y:cy+5, class:'label', fill:'#ff7b72'})
+      .textContent = `M₀ = ${P} N·m`;
+  }
+
+  // V diagram
+  // Zero line
+  nsmk(svg, 'line',{x1:xL, y1:yV0, x2:xR, y2:yV0, stroke:'#444b57', 'stroke-width':1});
+  nsmk(svg, 'text',{x:xL-6, y:yV0+4, 'text-anchor':'end', class:'axis-label'}).textContent='0';
+  nsmk(svg, 'text',{x:xL-50, y:yV0-Vh/2, class:'axis-label'}).textContent='V(x)';
+
+  // Build V path (allow jumps at point loads/moments)
+  let path = '';
+  // For point load, V jumps at x=ap. We need a vertical line segment.
+  let last = null;
+  for(const s of samples){
+    if(last && Math.abs(s.V - last.V) > Vrange*0.1 && Math.abs(s.x - last.x) < 0.01){
+      path += ` L ${bx(s.x)} ${vy(s.V)}`;
+    } else if(last === null){
+      path = `M ${bx(s.x)} ${vy(s.V)}`;
+    } else {
+      path += ` L ${bx(s.x)} ${vy(s.V)}`;
+    }
+    last = s;
+  }
+  // Fill below V curve (semitransparent)
+  let fillPath = `M ${xL} ${yV0}`;
+  for(const s of samples){ fillPath += ` L ${bx(s.x)} ${vy(s.V)}`; }
+  fillPath += ` L ${xR} ${yV0} Z`;
+  nsmk(svg, 'path',{d:fillPath, fill:'#ffb86c', 'fill-opacity':0.15});
+  nsmk(svg, 'path',{d:path, fill:'none', stroke:'#ffb86c', 'stroke-width':2});
+
+  // Mark V endpoints
+  nsmk(svg, 'text',{x:bx(0)-4, y:vy(samples[0].V)-4, 'text-anchor':'end', class:'label-dim', fill:'#ffb86c'})
+    .textContent = `${samples[0].V.toFixed(1)}`;
+  nsmk(svg, 'text',{x:bx(L)+4, y:vy(samples[N].V)-4, class:'label-dim', fill:'#ffb86c'})
+    .textContent = `${samples[N].V.toFixed(1)}`;
+
+  // M diagram (drawn below, but in engineering convention often drawn on tension side — we'll draw positive M downward to match tension on bottom)
+  nsmk(svg, 'line',{x1:xL, y1:yM0, x2:xR, y2:yM0, stroke:'#444b57', 'stroke-width':1});
+  nsmk(svg, 'text',{x:xL-6, y:yM0+4, 'text-anchor':'end', class:'axis-label'}).textContent='0';
+  nsmk(svg, 'text',{x:xL-50, y:yM0-Mh/2, class:'axis-label'}).textContent='M(x)';
+
+  let mpath = '';
+  for(let i=0;i<samples.length;i++){
+    const s = samples[i];
+    mpath += (i===0?'M':' L') + ` ${bx(s.x)} ${my(s.M)}`;
+  }
+  let mfill = `M ${xL} ${yM0}`;
+  for(const s of samples){ mfill += ` L ${bx(s.x)} ${my(s.M)}`; }
+  mfill += ` L ${xR} ${yM0} Z`;
+  nsmk(svg, 'path',{d:mfill, fill:'#a3e635', 'fill-opacity':0.15});
+  nsmk(svg, 'path',{d:mpath, fill:'none', stroke:'#a3e635', 'stroke-width':2});
+
+  // Mark M_max: find sample with largest |M|
+  let maxIdx = 0, maxAbs = 0;
+  for(let i=0;i<samples.length;i++){
+    if(Math.abs(samples[i].M) > maxAbs){ maxAbs = Math.abs(samples[i].M); maxIdx = i; }
+  }
+  const ms = samples[maxIdx];
+  nsmk(svg, 'circle',{cx:bx(ms.x), cy:my(ms.M), r:5, fill:'#a3e635'});
+  nsmk(svg, 'line',{x1:bx(ms.x), y1:my(ms.M), x2:bx(ms.x), y2:yM0,
+    stroke:'#a3e635', 'stroke-width':1, 'stroke-dasharray':'3 3'});
+  nsmk(svg, 'text',{x:bx(ms.x)+8, y:my(ms.M)-6, class:'label', fill:'#a3e635'})
+    .textContent = `M_max = ${ms.M.toFixed(1)} N·m at x = ${ms.x.toFixed(2)} m`;
+
+  // Click handler for section selection
+  svg.style.cursor = 'crosshair';
+  svg.onclick = (ev) => {
+    const r = svg.getBoundingClientRect();
+    const xPx = (ev.clientX - r.left) * (880 / r.width);
+    if(xPx < xL || xPx > xR) return;
+    clickX = (xPx - xL) / (xR - xL);
+    render();
+    renderSection();
+  };
+
+  // Marker at clickX
+  const xClickModel = clickX * L;
+  const xClickPx = bx(xClickModel);
+  const {V:vC, M:mC} = data.fn(xClickModel);
+  nsmk(svg, 'line',{x1:xClickPx, y1:yBeam-50, x2:xClickPx, y2:yM0+Mh/2+10,
+    stroke:'#ff7b72', 'stroke-width':1, 'stroke-dasharray':'4 3', opacity:0.7});
+  nsmk(svg, 'circle',{cx:xClickPx, cy:yBeam, r:4, fill:'#ff7b72'});
+
+  // Reactions text
+  document.getElementById('results').innerHTML =
+    `<b>Reactions:</b> R₁ = ${data.R1.toFixed(2)} N · R₂ = ${data.R2.toFixed(2)} N<br>` +
+    `<b>At x = ${xClickModel.toFixed(2)} m (red marker):</b> ` +
+    `V = <span class="readout">${vC.toFixed(2)} N</span>, ` +
+    `M = <span class="readout">${mC.toFixed(2)} N·m</span><br>` +
+    `<b>M_max</b> = <span class="readout">${ms.M.toFixed(2)} N·m</span> at x = ${ms.x.toFixed(2)} m ` +
+    `<span style="color:var(--fg-dim)">— this is where V crosses zero (or a discontinuity).</span>`;
+
+  renderSection(mC);
+}
+
+function renderSection(M_at_click){
+  clr(ssvg);
+  // Use given M (passed in) or recompute
+  if(M_at_click === undefined){
+    const beam = document.getElementById('beam').value;
+    const load = document.getElementById('load').value;
+    const P = parseFloat(document.getElementById('P').value);
+    const L = parseFloat(document.getElementById('L').value);
+    const a = parseFloat(document.getElementById('A').value);
+    const data = computeVM(beam, load, P, L, a);
+    M_at_click = data.fn(clickX*L).M;
+  }
+
+  // Assume rectangular cross-section 50mm x 100mm (b x h)
+  const b = 50, h = 100;
+  const I = b*Math.pow(h,3)/12;  // mm⁴
+  const c = h/2;
+  // σ = M·c/I, M in N·m → N·mm
+  const sigma_max = (M_at_click*1000) * c / I; // MPa
+
+  // Beam profile on left
+  const cx = 220, cy = 140;
+  const bPx = 70, hPx = 140;
+  nsmk(ssvg, 'rect',{x:cx-bPx/2, y:cy-hPx/2, width:bPx, height:hPx,
+    fill:'#1d232c', stroke:'#5ec8ff', 'stroke-width':2});
+  // Neutral axis
+  nsmk(ssvg, 'line',{x1:cx-bPx/2-10, y1:cy, x2:cx+bPx/2+10, y2:cy,
+    stroke:'#ffb86c', 'stroke-width':1.5, 'stroke-dasharray':'5 4'});
+  nsmk(ssvg, 'text',{x:cx+bPx/2+14, y:cy+4, class:'label', fill:'#ffb86c'})
+    .textContent = 'NA';
+
+  // Stress distribution to the right
+  const px0 = 360, py0 = cy-hPx/2, pxw = 280, pyh = hPx;
+  // Zero line in middle
+  const pxMid = px0 + pxw/2;
+  nsmk(ssvg, 'line',{x1:pxMid, y1:py0, x2:pxMid, y2:py0+pyh, stroke:'#444b57', 'stroke-width':1});
+  // Axis line at cy (neutral)
+  nsmk(ssvg, 'line',{x1:px0-20, y1:cy, x2:px0+pxw+20, y2:cy, stroke:'#ffb86c', 'stroke-width':1, 'stroke-dasharray':'4 3'});
+
+  // Stress diagram: linear from -sigma_max at top (compression for + M) to +sigma_max at bottom (tension for +M)
+  // For positive M (sagging), bottom fibre is in tension.
+  // Visual scale: cap stress arrow at ±pxw/2-10
+  const scaleS = Math.min(pxw/2 - 10, pyh) / Math.max(1, Math.abs(sigma_max));
+  const topX = pxMid - sigma_max * scaleS;   // top fibre stress (compression if +M)
+  const botX = pxMid + sigma_max * scaleS;
+
+  // Filled triangle showing distribution (one side compression, other tension)
+  const dCol = '#5ec8ff', tCol = '#ff7b72';
+  // Compression side (top, x<pxMid)
+  nsmk(ssvg, 'polygon',{
+    points:`${pxMid},${cy} ${topX},${py0} ${pxMid},${py0}`,
+    fill:dCol, 'fill-opacity':0.4, stroke:dCol, 'stroke-width':1.5});
+  // Tension side (bottom)
+  nsmk(ssvg, 'polygon',{
+    points:`${pxMid},${cy} ${botX},${py0+pyh} ${pxMid},${py0+pyh}`,
+    fill:tCol, 'fill-opacity':0.4, stroke:tCol, 'stroke-width':1.5});
+
+  // σ_max labels
+  nsmk(ssvg, 'text',{x:topX-6, y:py0-4, 'text-anchor':'end', class:'label', fill:dCol})
+    .textContent = `σ_top = ${(-sigma_max).toFixed(2)} MPa`;
+  nsmk(ssvg, 'text',{x:botX+6, y:py0+pyh+12, class:'label', fill:tCol})
+    .textContent = `σ_bot = ${sigma_max.toFixed(2)} MPa`;
+  nsmk(ssvg, 'text',{x:pxMid, y:py0-20, 'text-anchor':'middle', class:'label', fill:'#dde3ec', 'font-weight':'600'})
+    .textContent = `σ = M·y/I`;
+
+  // Dim arrows
+  nsmk(ssvg, 'text',{x:cx, y:cy-hPx/2-14, 'text-anchor':'middle', class:'label-dim'})
+    .textContent = `b = ${b} mm`;
+  nsmk(ssvg, 'text',{x:cx+bPx/2+20, y:cy-hPx/2+10, class:'label-dim'})
+    .textContent = `h = ${h} mm`;
+  nsmk(ssvg, 'text',{x:cx-bPx/2-10, y:cy-hPx/2-30, class:'label-dim'})
+    .textContent = `I = b·h³/12 = ${I.toFixed(0)} mm⁴`;
+
+  nsmk(ssvg, 'text',{x:pxMid, y:py0+pyh+30, 'text-anchor':'middle', class:'label-dim'})
+    .textContent = `(top: compression for +M; bottom: tension)`;
+  nsmk(ssvg, 'text',{x:px0+pxw+30, y:cy+4, 'text-anchor':'start', class:'label', fill:'#a3e635'})
+    .textContent = `M = ${M_at_click.toFixed(2)} N·m`;
+}
+
+document.getElementById('beam').onchange = render;
+document.getElementById('load').onchange = render;
+document.getElementById('P').oninput = render;
+document.getElementById('A').oninput = render;
+document.getElementById('L').oninput = render;
+
+render();
+</script>
+</body>
+</html>

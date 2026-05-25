@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Capacitor explorer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Capacitor explorer</h1>
+  <p class="lede">Three lenses on a real cap: the textbook geometry equation, the impedance plot that exposes why a cap stops being a cap above SRF, and the DC-bias derating that makes "10 µF" mean "maybe 3 µF" at rated voltage.</p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="geom">C = εA/d</div>
+    <div class="tab" data-tab="srf">Impedance vs. frequency</div>
+    <div class="tab" data-tab="bias">DC-bias derating</div>
+  </div>
+
+  <!-- ===== TAB 1: GEOMETRY ===== -->
+  <div class="tab-panel active" id="tab-geom">
+    <p>A capacitor is two conductors separated by an insulator. Capacitance scales linearly with plate area and the dielectric constant — and inversely with plate spacing.</p>
+    <section class="controls">
+      <div class="control">
+        <label>Plate area A (cm²): <span class="readout" id="rA">10.0</span></label>
+        <input type="range" id="A" min="0.5" max="50" step="0.5" value="10">
+      </div>
+      <div class="control">
+        <label>Plate spacing d (µm): <span class="readout" id="rd">10</span></label>
+        <input type="range" id="d" min="1" max="100" step="1" value="10">
+      </div>
+      <div class="control">
+        <label>Dielectric (ε_r)</label>
+        <select id="er">
+          <option value="1">Vacuum / air (1)</option>
+          <option value="3.5">Polypropylene (3.5)</option>
+          <option value="3.5">Polyester / Mylar (3.5)</option>
+          <option value="6">C0G / NP0 ceramic (6)</option>
+          <option value="3000" selected>X7R MLCC (~3000)</option>
+          <option value="9">Aluminum oxide (~9)</option>
+        </select>
+      </div>
+    </section>
+    <div class="figure">
+      <svg id="geomSvg" viewBox="0 0 720 280" width="100%" height="280">
+        <!-- top plate -->
+        <rect id="topPlate" x="160" y="80" width="400" height="14" fill="#c0c4ca" stroke="#777" stroke-width="1"/>
+        <!-- bottom plate -->
+        <rect id="botPlate" x="160" y="180" width="400" height="14" fill="#c0c4ca" stroke="#777" stroke-width="1"/>
+        <!-- dielectric -->
+        <rect id="diel" x="160" y="94" width="400" height="86" fill="#5ec8ff" fill-opacity="0.15" stroke="#5ec8ff" stroke-width="1" stroke-dasharray="4 3"/>
+        <!-- field lines -->
+        <g id="fieldLines" stroke="#ffb86c" stroke-width="1.5"></g>
+        <!-- dimension d -->
+        <line x1="600" y1="94" x2="600" y2="180" stroke="#dde3ec" stroke-width="1"/>
+        <line x1="595" y1="94" x2="605" y2="94" stroke="#dde3ec" stroke-width="1"/>
+        <line x1="595" y1="180" x2="605" y2="180" stroke="#dde3ec" stroke-width="1"/>
+        <text x="615" y="142" class="label">d</text>
+        <!-- leads -->
+        <line x1="80" y1="87" x2="160" y2="87" class="wire"/>
+        <line x1="80" y1="187" x2="160" y2="187" class="wire"/>
+        <text x="40" y="91" class="label">+</text>
+        <text x="40" y="191" class="label">−</text>
+        <!-- big readout -->
+        <text x="360" y="245" text-anchor="middle" class="label" font-size="14">Capacitance</text>
+        <text id="cReadout" x="360" y="270" text-anchor="middle" fill="#5ec8ff" font="600 22px ui-monospace,monospace">0 F</text>
+      </svg>
+      <div class="legend"><span style="color:var(--accent2)">orange lines</span> = electric field density (more lines = stronger field)</div>
+    </div>
+  </div>
+
+  <!-- ===== TAB 2: IMPEDANCE / SRF ===== -->
+  <div class="tab-panel" id="tab-srf">
+    <p>A real cap is a series RLC: ESL (lead/package inductance), ESR (loss), and ideal C. The minimum impedance happens at the self-resonant frequency (SRF). Above SRF, the inductance dominates and the cap behaves like an inductor.</p>
+    <section class="controls">
+      <div class="control">
+        <label>Capacitor family</label>
+        <select id="capFamily">
+          <option value="x7r">X7R / X5R MLCC (general bypass)</option>
+          <option value="c0g">C0G / NP0 MLCC (precision)</option>
+          <option value="elec">Aluminum electrolytic (bulk)</option>
+          <option value="tant">Tantalum (compact bulk)</option>
+          <option value="poly">Polypropylene film (audio)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Capacitance: <span class="readout" id="rCap">1.0 µF</span></label>
+        <input type="range" id="capVal" min="-9" max="-3" step="0.1" value="-6">
+      </div>
+      <div class="control">
+        <label>SRF: <span class="readout" id="rSrf">—</span></label>
+        <label>ESR @ SRF: <span class="readout" id="rEsr">—</span></label>
+      </div>
+    </section>
+    <div class="figure">
+      <svg id="srfSvg" viewBox="0 0 720 360" width="100%" height="360">
+        <!-- axes -->
+        <line x1="60" y1="40" x2="60" y2="300" class="axis"/>
+        <line x1="60" y1="300" x2="700" y2="300" class="axis"/>
+        <!-- grid + axis labels populated by JS -->
+        <g id="srfGrid"></g>
+        <!-- traces -->
+        <path id="capTrace" class="trace trace-1" d=""/>
+        <path id="indTrace" class="trace trace-2" d=""/>
+        <path id="totalTrace" class="trace" d="" stroke="#fff" stroke-width="2.5"/>
+        <!-- SRF marker -->
+        <line id="srfLine" x1="0" y1="40" x2="0" y2="300" stroke="#ff7b72" stroke-width="1" stroke-dasharray="4 3"/>
+        <text id="srfLbl" x="0" y="30" text-anchor="middle" fill="#ff7b72" font="11px ui-monospace,monospace">SRF</text>
+        <!-- axis titles -->
+        <text x="380" y="335" text-anchor="middle" class="axis-label">Frequency (Hz, log)</text>
+        <text x="20" y="170" transform="rotate(-90 20 170)" text-anchor="middle" class="axis-label">|Z| (Ω, log)</text>
+        <!-- region labels -->
+        <text x="120" y="60" fill="#5ec8ff" font="11px ui-monospace,monospace">capacitive (Z↓ with f)</text>
+        <text x="540" y="60" fill="#ffb86c" font="11px ui-monospace,monospace">inductive (Z↑ with f)</text>
+      </svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:#5ec8ff"></span>1/(ωC) — ideal cap</span>
+        <span><span class="swatch" style="background:#ffb86c"></span>ωL — ESL</span>
+        <span><span class="swatch" style="background:#fff"></span>|Z| total (sees both, plus ESR floor)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB 3: DC BIAS DERATING ===== -->
+  <div class="tab-panel" id="tab-bias">
+    <p>X5R/X7R MLCCs lose dramatic capacitance as you bias them with DC voltage. "10 µF 6.3V X5R" at 5 V applied may only be 3 µF. C0G/NP0 are flat. Electrolytic and tantalum stay near nominal.</p>
+    <section class="controls">
+      <div class="control">
+        <label>Cap family</label>
+        <select id="biasFam">
+          <option value="x5r" selected>X5R (worst-case)</option>
+          <option value="x7r">X7R</option>
+          <option value="c0g">C0G / NP0</option>
+          <option value="elec">Aluminum electrolytic</option>
+          <option value="tant">Tantalum</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Rated voltage Vr (V): <span class="readout" id="rVr">6.3</span></label>
+        <input type="range" id="vr" min="2.5" max="50" step="0.1" value="6.3">
+      </div>
+      <div class="control">
+        <label>Applied DC bias (V): <span class="readout" id="rVdc">3.3</span></label>
+        <input type="range" id="vdc" min="0" max="50" step="0.1" value="3.3">
+      </div>
+      <div class="control">
+        <label>Effective C: <span class="readout" id="rCeff">— %</span> of nominal</label>
+      </div>
+    </section>
+    <div class="figure">
+      <svg id="biasSvg" viewBox="0 0 720 320" width="100%" height="320">
+        <line x1="60" y1="30" x2="60" y2="270" class="axis"/>
+        <line x1="60" y1="270" x2="700" y2="270" class="axis"/>
+        <g id="biasGrid"></g>
+        <path id="biasTrace" class="trace trace-1" d=""/>
+        <!-- operating point -->
+        <line id="opLine" x1="0" y1="30" x2="0" y2="270" stroke="#a3e635" stroke-width="1" stroke-dasharray="4 3"/>
+        <circle id="opDot" cx="0" cy="0" r="5" fill="#a3e635"/>
+        <text x="380" y="305" text-anchor="middle" class="axis-label">Applied DC bias (V)</text>
+        <text x="22" y="150" transform="rotate(-90 22 150)" text-anchor="middle" class="axis-label">Effective capacitance (% nominal)</text>
+      </svg>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>An MLCC is mostly air</b> — Plate area is tens of mm², spacing is microns; the giant ε_r of X7R ceramic does the heavy lifting. C0G uses a low-ε ceramic, which is why C0G parts are physically larger for the same capacitance.</li>
+    <li><b>Above SRF, your bypass cap is an antenna</b> — A 10 µF 0805 SRFs around 2–5 MHz. At 100 MHz it's a small inductor. That's why decoupling stacks pair a 10 µF bulk with a 100 nF and sometimes a 1 nF — each owns a different frequency band.</li>
+    <li><b>DC bias eats X5R alive</b> — Drag the bias slider toward Vr and watch capacitance crash. The rule: size X5R parts at 2× the rated voltage if the cap value matters. Or use C0G when it must be exact.</li>
+    <li><b>ESR is the noise floor</b> — Below SRF, ESR sets how low |Z| can go. Switching supply output caps use low-ESR types (polymer, ceramic) precisely because the ESR floor sets ripple voltage.</li>
+    <li><b>Electrolytic and tantalum don't derate with bias</b> — But electrolytic has 100× the ESR of an MLCC. Pick by frequency, not just capacitance.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>C</dt><dd><span class="eq">C = ε₀·ε_r·A / d</span></dd>
+        <dt>E</dt><dd><span class="eq">E = ½·C·V²</span></dd>
+        <dt>X_C</dt><dd><span class="eq">X_C = 1 / (2π·f·C)</span></dd>
+        <dt>SRF</dt><dd><span class="eq">f_SRF = 1 / (2π·√(L_ESL·C))</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>X7R/X5R DC-bias loss</b> — drops 50–80 % at rated V_DC.</li>
+        <li><b>Tantalum</b> — derate voltage 2× (operate at ≤ 50 % of rating).</li>
+        <li><b>Aluminum electrolytic</b> — limited life; ESR rises as it dries out.</li>
+        <li><b>C0G/NP0</b> — stable; tiny C values, exact for filters/timing.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Cap is inductive above SRF</b> — your "bypass" becomes an antenna.</li>
+        <li><b>Datasheet C ≠ operating C</b> — ceramic capacitance shrinks under DC bias and temperature.</li>
+        <li><b>Polarity</b> — reversing aluminum/tantalum kills them (often violently).</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 2 — Passive Components</a> ·
+    Topic: Capacitor types, ESR/ESL, SRF, DC-bias derating
+  </footer>
+</main>
+<script>
+  // ---------- TAB MGMT ----------
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ---------- TAB 1: GEOM ----------
+  const EPS0 = 8.854e-12; // F/m
+  const ASlider = document.getElementById('A');
+  const dSlider = document.getElementById('d');
+  const erSel = document.getElementById('er');
+
+  function renderGeom() {
+    const A_cm2 = +ASlider.value;
+    const d_um = +dSlider.value;
+    const er = +erSel.value;
+    document.getElementById('rA').textContent = A_cm2.toFixed(1);
+    document.getElementById('rd').textContent = d_um;
+    // C in F: A in m² (1 cm² = 1e-4 m²), d in m (1 µm = 1e-6 m)
+    const A_m2 = A_cm2 * 1e-4;
+    const d_m = d_um * 1e-6;
+    const C = EPS0 * er * A_m2 / d_m;
+    document.getElementById('cReadout').textContent = formatC(C);
+
+    // Visualize: scale plates to A (width up to ~480 px), gap to d
+    const w = Math.max(60, Math.min(560, 80 + A_cm2 * 12));
+    const gap = Math.max(8, Math.min(120, d_um * 1.5));
+    const cx = 360;
+    const cyTop = 160 - gap/2 - 7;
+    const cyBot = 160 + gap/2 - 7;
+    document.getElementById('topPlate').setAttribute('x', cx - w/2);
+    document.getElementById('topPlate').setAttribute('y', cyTop);
+    document.getElementById('topPlate').setAttribute('width', w);
+    document.getElementById('botPlate').setAttribute('x', cx - w/2);
+    document.getElementById('botPlate').setAttribute('y', cyBot);
+    document.getElementById('botPlate').setAttribute('width', w);
+    document.getElementById('diel').setAttribute('x', cx - w/2);
+    document.getElementById('diel').setAttribute('y', cyTop + 14);
+    document.getElementById('diel').setAttribute('width', w);
+    document.getElementById('diel').setAttribute('height', gap);
+    // dim line on the right
+    document.querySelector('#geomSvg line[x1="600"][x2="600"]').setAttribute('x1', cx + w/2 + 40);
+    document.querySelector('#geomSvg line[x1="600"][x2="600"]').setAttribute('x2', cx + w/2 + 40);
+    document.querySelector('#geomSvg line[x1="600"][x2="600"]').setAttribute('y1', cyTop + 14);
+    document.querySelector('#geomSvg line[x1="600"][x2="600"]').setAttribute('y2', cyBot);
+
+    // field lines — number ∝ A and 1/d (more density = stronger field)
+    const fl = document.getElementById('fieldLines');
+    fl.innerHTML = '';
+    const numLines = Math.max(4, Math.min(40, Math.round(w/18)));
+    // field strength ∝ 1/d → encode in opacity/width
+    const strength = Math.min(1, 30/d_um);
+    for (let i = 0; i < numLines; i++) {
+      const lx = cx - w/2 + (w/(numLines+1)) * (i+1);
+      const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      l.setAttribute('x1', lx);
+      l.setAttribute('y1', cyTop + 14);
+      l.setAttribute('x2', lx);
+      l.setAttribute('y2', cyBot);
+      l.setAttribute('stroke', '#ffb86c');
+      l.setAttribute('stroke-width', 0.8 + strength * 1.5);
+      l.setAttribute('opacity', 0.3 + strength * 0.6);
+      fl.appendChild(l);
+    }
+  }
+  function formatC(C) {
+    if (C >= 1) return C.toFixed(2) + ' F';
+    if (C >= 1e-3) return (C*1e3).toFixed(2) + ' mF';
+    if (C >= 1e-6) return (C*1e6).toFixed(2) + ' µF';
+    if (C >= 1e-9) return (C*1e9).toFixed(2) + ' nF';
+    if (C >= 1e-12) return (C*1e12).toFixed(2) + ' pF';
+    return (C*1e15).toFixed(2) + ' fF';
+  }
+  [ASlider, dSlider, erSel].forEach(e => e.addEventListener('input', renderGeom));
+  renderGeom();
+
+  // ---------- TAB 2: SRF ----------
+  // Family-specific defaults: { esl_nH, esr_mOhm }
+  const FAMILY = {
+    x7r:  {esl: 1.5, esr: 5},
+    c0g:  {esl: 1.5, esr: 8},
+    elec: {esl: 15,  esr: 200},
+    tant: {esl: 5,   esr: 80},
+    poly: {esl: 8,   esr: 20}
+  };
+  const capFamily = document.getElementById('capFamily');
+  const capVal = document.getElementById('capVal');
+
+  function renderSrf() {
+    const C = Math.pow(10, +capVal.value); // F
+    const fam = FAMILY[capFamily.value];
+    const L = fam.esl * 1e-9; // H
+    const R = fam.esr * 1e-3; // Ω
+    const fSrf = 1 / (2 * Math.PI * Math.sqrt(L * C));
+    document.getElementById('rCap').textContent = formatC(C);
+    document.getElementById('rSrf').textContent = formatFreq(fSrf);
+    document.getElementById('rEsr').textContent = R.toFixed(3) + ' Ω';
+
+    // axis: log-log plot, x: 10 Hz to 1 GHz (8 decades), y: 1 mΩ to 10 kΩ (7 decades)
+    const fmin = 1, fmax = 9; // log10 Hz
+    const zmin = -3, zmax = 4; // log10 Ω
+    const xPx = lf => 60 + (lf - fmin) / (fmax - fmin) * 640;
+    const yPx = lz => 300 - (lz - zmin) / (zmax - zmin) * 260;
+
+    // grid
+    let grid = '';
+    for (let f = fmin; f <= fmax; f++) {
+      const x = xPx(f);
+      grid += `<line class="grid-line" x1="${x}" y1="40" x2="${x}" y2="300"/>`;
+      grid += `<text class="axis-label" x="${x}" y="316" text-anchor="middle">10^${f}</text>`;
+    }
+    for (let z = zmin; z <= zmax; z++) {
+      const y = yPx(z);
+      grid += `<line class="grid-line" x1="60" y1="${y}" x2="700" y2="${y}"/>`;
+      const lbl = z < 0 ? `10^${z}` : `10^${z}`;
+      grid += `<text class="axis-label" x="56" y="${y+3}" text-anchor="end">${lbl}</text>`;
+    }
+    document.getElementById('srfGrid').innerHTML = grid;
+
+    // Traces
+    let capD = '', indD = '', totD = '';
+    const N = 240;
+    for (let i = 0; i <= N; i++) {
+      const lf = fmin + (fmax - fmin) * i / N;
+      const f = Math.pow(10, lf);
+      const Zc = 1 / (2 * Math.PI * f * C);
+      const Zl = 2 * Math.PI * f * L;
+      // total: |R + j(ωL - 1/(ωC))|
+      const reac = Zl - Zc;
+      const Ztot = Math.sqrt(R*R + reac*reac);
+      const yc = yPx(Math.log10(Math.max(1e-4, Zc)));
+      const yl = yPx(Math.log10(Math.max(1e-4, Zl)));
+      const yt = yPx(Math.log10(Math.max(1e-4, Ztot)));
+      const x = xPx(lf);
+      capD += (i===0?'M':'L') + x + ',' + yc + ' ';
+      indD += (i===0?'M':'L') + x + ',' + yl + ' ';
+      totD += (i===0?'M':'L') + x + ',' + yt + ' ';
+    }
+    document.getElementById('capTrace').setAttribute('d', capD);
+    document.getElementById('indTrace').setAttribute('d', indD);
+    document.getElementById('totalTrace').setAttribute('d', totD);
+
+    // SRF marker
+    const xSrf = xPx(Math.log10(fSrf));
+    if (xSrf >= 60 && xSrf <= 700) {
+      document.getElementById('srfLine').setAttribute('x1', xSrf);
+      document.getElementById('srfLine').setAttribute('x2', xSrf);
+      document.getElementById('srfLbl').setAttribute('x', xSrf);
+      document.getElementById('srfLbl').setAttribute('opacity', 1);
+      document.getElementById('srfLine').setAttribute('opacity', 1);
+    } else {
+      document.getElementById('srfLbl').setAttribute('opacity', 0);
+      document.getElementById('srfLine').setAttribute('opacity', 0);
+    }
+  }
+  function formatFreq(f) {
+    if (f >= 1e9) return (f/1e9).toFixed(2) + ' GHz';
+    if (f >= 1e6) return (f/1e6).toFixed(2) + ' MHz';
+    if (f >= 1e3) return (f/1e3).toFixed(2) + ' kHz';
+    return f.toFixed(1) + ' Hz';
+  }
+  capFamily.addEventListener('change', renderSrf);
+  capVal.addEventListener('input', renderSrf);
+  renderSrf();
+
+  // ---------- TAB 3: DC BIAS ----------
+  // Models (approximate, per family):
+  // C(V) = C0 * f(V/Vr) where f depends on family
+  const BIAS_MODEL = {
+    x5r:  v => Math.max(0.15, 1 - 0.85 * Math.pow(v, 1.3)),  // crashes hard
+    x7r:  v => Math.max(0.25, 1 - 0.70 * Math.pow(v, 1.2)),
+    c0g:  v => 1.0,                                            // flat
+    elec: v => 1.0 - 0.02 * v,                                 // ~2% across range
+    tant: v => 1.0 - 0.05 * v                                  // ~5% across range
+  };
+  const biasFam = document.getElementById('biasFam');
+  const vr = document.getElementById('vr');
+  const vdc = document.getElementById('vdc');
+
+  function renderBias() {
+    const VR = +vr.value;
+    const VDC = Math.min(+vdc.value, VR);
+    document.getElementById('rVr').textContent = VR.toFixed(1);
+    document.getElementById('rVdc').textContent = VDC.toFixed(1);
+    vdc.max = VR;
+    const f = BIAS_MODEL[biasFam.value];
+    const eff = f(VDC / VR);
+    document.getElementById('rCeff').textContent = (eff * 100).toFixed(1) + ' %';
+
+    // Plot: x in [0, VR], y in [0, 110%]
+    const xPx = v => 60 + (v / VR) * 640;
+    const yPx = p => 270 - (p / 110) * 240;
+
+    // grid
+    let grid = '';
+    for (let i = 0; i <= 5; i++) {
+      const v = (VR * i / 5);
+      const x = xPx(v);
+      grid += `<line class="grid-line" x1="${x}" y1="30" x2="${x}" y2="270"/>`;
+      grid += `<text class="axis-label" x="${x}" y="286" text-anchor="middle">${v.toFixed(1)}</text>`;
+    }
+    for (let p = 0; p <= 110; p += 10) {
+      const y = yPx(p);
+      grid += `<line class="grid-line" x1="60" y1="${y}" x2="700" y2="${y}"/>`;
+      grid += `<text class="axis-label" x="56" y="${y+3}" text-anchor="end">${p}%</text>`;
+    }
+    document.getElementById('biasGrid').innerHTML = grid;
+
+    // trace
+    let d = '';
+    const N = 100;
+    for (let i = 0; i <= N; i++) {
+      const v = VR * i / N;
+      const e = f(v / VR);
+      const x = xPx(v);
+      const y = yPx(e * 100);
+      d += (i===0?'M':'L') + x + ',' + y + ' ';
+    }
+    document.getElementById('biasTrace').setAttribute('d', d);
+
+    // operating point
+    const xOp = xPx(VDC);
+    const yOp = yPx(eff * 100);
+    document.getElementById('opLine').setAttribute('x1', xOp);
+    document.getElementById('opLine').setAttribute('x2', xOp);
+    document.getElementById('opDot').setAttribute('cx', xOp);
+    document.getElementById('opDot').setAttribute('cy', yOp);
+  }
+  [biasFam, vr, vdc].forEach(e => e.addEventListener('input', renderBias));
+  biasFam.addEventListener('change', renderBias);
+  renderBias();
+</script>
+</body>
+</html>

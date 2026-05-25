@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System Block Diagram — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  /* clickable block */
+  .blk{cursor:pointer;transition:filter 0.15s}
+  .blk:hover{filter:brightness(1.3)}
+  .blk.selected rect,.blk.selected circle{stroke-width:3;stroke:var(--accent)}
+  .info-panel{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:14px;margin-top:12px;min-height:90px}
+  .info-panel.empty{color:var(--fg-dim);font-style:italic}
+  .info-panel h4{margin:0 0 6px;color:var(--accent);
+    font:600 13px ui-monospace,monospace;text-transform:uppercase;
+    letter-spacing:0.04em}
+  .info-panel .meta{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    margin-bottom:8px}
+  .info-panel ul{margin:6px 0;padding-left:18px;font-size:12.5px}
+  .info-panel ul li{margin:3px 0}
+</style>
+</head>
+<body>
+<main>
+  <h1>System Block Diagram — Multi-Axis Robot Arm</h1>
+  <p class="lede">Click any block to see its responsibilities, interfaces, and where its messages flow. This is the canonical mechatronic system: host brain talks over one bus to many smart-joint slaves.</p>
+
+  <p>A robot arm is not "one big controller running everything." It's a federation: a high-level computer that knows about the world and plans trajectories (ROS 2 on a Raspberry Pi 5), a deterministic bus that carries those plans down to each joint (CAN-FD), and one smart-controller per joint that closes the fast current/velocity/position loops locally (STM32 + gate driver + motor + encoder). The host never sees the 20-kHz current loop — it only sees the 1-kHz joint state. Each joint never sees the trajectory planner — it only sees its target angle and speed. This separation of timescales (planning Hz, joint kHz) is the entire architectural rationale.</p>
+
+  <div class="figure">
+    <h3>Click a block to see its role</h3>
+    <svg viewBox="0 0 900 460" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+          <polygon points="0 0, 8 4, 0 8" fill="var(--fg-dim)"/>
+        </marker>
+        <marker id="arrA" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+          <polygon points="0 0, 8 4, 0 8" fill="var(--accent)"/>
+        </marker>
+      </defs>
+
+      <!-- Top: Operator -->
+      <g class="blk" data-id="op">
+        <rect x="40" y="30" width="140" height="46" rx="6" fill="var(--bg)" stroke="var(--fg-dim)" stroke-width="1.5"/>
+        <text x="110" y="50" text-anchor="middle" class="label">Operator / Teleop</text>
+        <text x="110" y="66" text-anchor="middle" class="label-dim">joystick · UI · MoveIt</text>
+      </g>
+
+      <!-- Host: Pi 5 + ROS 2 -->
+      <g class="blk" data-id="host">
+        <rect x="240" y="30" width="200" height="80" rx="8" fill="var(--bg)" stroke="var(--accent)" stroke-width="2"/>
+        <text x="340" y="52" text-anchor="middle" class="label" font-weight="bold" fill="var(--accent)">HOST COMPUTER</text>
+        <text x="340" y="70" text-anchor="middle" class="label-dim">Raspberry Pi 5 · Ubuntu 22.04</text>
+        <text x="340" y="86" text-anchor="middle" class="label-dim">ROS 2 Humble · MoveIt 2</text>
+        <text x="340" y="102" text-anchor="middle" class="label-dim">ros2_control · planner · TF</text>
+      </g>
+
+      <!-- Perception -->
+      <g class="blk" data-id="cam">
+        <rect x="500" y="30" width="140" height="46" rx="6" fill="var(--bg)" stroke="var(--accent3)" stroke-width="1.5"/>
+        <text x="570" y="50" text-anchor="middle" class="label" fill="var(--accent3)">Perception</text>
+        <text x="570" y="66" text-anchor="middle" class="label-dim">RealSense D435i</text>
+      </g>
+
+      <!-- Operator ↔ Host -->
+      <line x1="180" y1="53" x2="240" y2="70" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="195" y="48" class="label-dim">USB / SSH</text>
+
+      <!-- Camera ↔ Host -->
+      <line x1="500" y1="53" x2="440" y2="70" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="445" y="45" class="label-dim">USB 3</text>
+
+      <!-- CAN-FD bus -->
+      <g class="blk" data-id="bus">
+        <rect x="60" y="180" width="780" height="40" rx="6" fill="var(--bg-elev)" stroke="var(--accent2)" stroke-width="2"/>
+        <text x="450" y="198" text-anchor="middle" class="label" font-weight="bold" fill="var(--accent2)">CAN-FD BUS — 1 Mbps arb / 5 Mbps data · 120 Ω termination both ends</text>
+        <text x="450" y="214" text-anchor="middle" class="label-dim">11-bit IDs · 64-byte payloads · arbitration via priority · cyclic 1 kHz</text>
+        <!-- termination resistors -->
+        <rect x="40" y="190" width="14" height="20" fill="none" stroke="var(--warn)"/>
+        <text x="47" y="184" text-anchor="middle" class="label-dim" fill="var(--warn)">120Ω</text>
+        <rect x="846" y="190" width="14" height="20" fill="none" stroke="var(--warn)"/>
+        <text x="853" y="184" text-anchor="middle" class="label-dim" fill="var(--warn)">120Ω</text>
+      </g>
+
+      <!-- Host to bus -->
+      <line x1="340" y1="110" x2="340" y2="180" stroke="var(--accent)" stroke-width="2" marker-end="url(#arrA)"/>
+      <text x="350" y="148" class="label-dim" fill="var(--accent)">CAN-FD HAT</text>
+      <text x="350" y="162" class="label-dim" fill="var(--accent)">(MCP2518FD)</text>
+
+      <!-- Joint controllers J1..J6 -->
+      <g class="blk" data-id="j1" transform="translate(80,260)">
+        <rect width="100" height="60" rx="6" fill="var(--bg)" stroke="var(--accent3)" stroke-width="1.5"/>
+        <text x="50" y="22" text-anchor="middle" class="label" fill="var(--accent3)" font-weight="bold">J1</text>
+        <text x="50" y="38" text-anchor="middle" class="label-dim">STM32G431</text>
+        <text x="50" y="52" text-anchor="middle" class="label-dim">+ DRV8316</text>
+      </g>
+      <g class="blk" data-id="j2" transform="translate(200,260)">
+        <rect width="100" height="60" rx="6" fill="var(--bg)" stroke="var(--accent3)" stroke-width="1.5"/>
+        <text x="50" y="22" text-anchor="middle" class="label" fill="var(--accent3)" font-weight="bold">J2</text>
+        <text x="50" y="38" text-anchor="middle" class="label-dim">STM32G431</text>
+        <text x="50" y="52" text-anchor="middle" class="label-dim">+ DRV8316</text>
+      </g>
+      <g class="blk" data-id="j3" transform="translate(320,260)">
+        <rect width="100" height="60" rx="6" fill="var(--bg)" stroke="var(--accent3)" stroke-width="1.5"/>
+        <text x="50" y="22" text-anchor="middle" class="label" fill="var(--accent3)" font-weight="bold">J3</text>
+        <text x="50" y="38" text-anchor="middle" class="label-dim">STM32G431</text>
+        <text x="50" y="52" text-anchor="middle" class="label-dim">+ DRV8316</text>
+      </g>
+      <g class="blk" data-id="j4" transform="translate(440,260)">
+        <rect width="100" height="60" rx="6" fill="var(--bg)" stroke="var(--accent3)" stroke-width="1.5"/>
+        <text x="50" y="22" text-anchor="middle" class="label" fill="var(--accent3)" font-weight="bold">J4</text>
+        <text x="50" y="38" text-anchor="middle" class="label-dim">STM32G431</text>
+        <text x="50" y="52" text-anchor="middle" class="label-dim">+ DRV8316</text>
+      </g>
+      <g class="blk" data-id="j5" transform="translate(560,260)">
+        <rect width="100" height="60" rx="6" fill="var(--bg)" stroke="var(--accent3)" stroke-width="1.5"/>
+        <text x="50" y="22" text-anchor="middle" class="label" fill="var(--accent3)" font-weight="bold">J5</text>
+        <text x="50" y="38" text-anchor="middle" class="label-dim">STM32G431</text>
+        <text x="50" y="52" text-anchor="middle" class="label-dim">+ DRV8316</text>
+      </g>
+      <g class="blk" data-id="j6" transform="translate(680,260)">
+        <rect width="100" height="60" rx="6" fill="var(--bg)" stroke="var(--accent3)" stroke-width="1.5"/>
+        <text x="50" y="22" text-anchor="middle" class="label" fill="var(--accent3)" font-weight="bold">J6</text>
+        <text x="50" y="38" text-anchor="middle" class="label-dim">STM32G431</text>
+        <text x="50" y="52" text-anchor="middle" class="label-dim">+ DRV8316</text>
+      </g>
+
+      <!-- Bus stubs to joints -->
+      <line x1="130" y1="220" x2="130" y2="260" stroke="var(--accent2)" stroke-width="1.5"/>
+      <line x1="250" y1="220" x2="250" y2="260" stroke="var(--accent2)" stroke-width="1.5"/>
+      <line x1="370" y1="220" x2="370" y2="260" stroke="var(--accent2)" stroke-width="1.5"/>
+      <line x1="490" y1="220" x2="490" y2="260" stroke="var(--accent2)" stroke-width="1.5"/>
+      <line x1="610" y1="220" x2="610" y2="260" stroke="var(--accent2)" stroke-width="1.5"/>
+      <line x1="730" y1="220" x2="730" y2="260" stroke="var(--accent2)" stroke-width="1.5"/>
+
+      <!-- Local motor + encoder per joint (illustrative — show on J3) -->
+      <g class="blk" data-id="motor" transform="translate(320,340)">
+        <rect width="100" height="46" rx="6" fill="var(--bg)" stroke="var(--warn)" stroke-width="1.5"/>
+        <text x="50" y="20" text-anchor="middle" class="label" fill="var(--warn)">BLDC motor</text>
+        <text x="50" y="36" text-anchor="middle" class="label-dim">+ harmonic gear</text>
+      </g>
+      <line x1="370" y1="320" x2="370" y2="340" stroke="var(--warn)" stroke-width="1.5"/>
+      <text x="378" y="333" class="label-dim" fill="var(--warn)">3φ</text>
+
+      <g class="blk" data-id="enc" transform="translate(440,340)">
+        <rect width="100" height="46" rx="6" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="50" y="20" text-anchor="middle" class="label" fill="var(--accent)">Encoder</text>
+        <text x="50" y="36" text-anchor="middle" class="label-dim">AS5048A SPI</text>
+      </g>
+      <line x1="490" y1="320" x2="490" y2="340" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="498" y="333" class="label-dim" fill="var(--accent)">SPI</text>
+
+      <!-- "per joint" callout -->
+      <text x="450" y="408" text-anchor="middle" class="label-dim" font-style="italic">Each joint controller owns its own motor + encoder (FOC current loop @ 20 kHz, local)</text>
+
+      <!-- Power rail -->
+      <g class="blk" data-id="pwr">
+        <rect x="60" y="430" width="780" height="22" rx="4" fill="var(--bg-elev)" stroke="var(--warn)" stroke-width="1.5"/>
+        <text x="450" y="446" text-anchor="middle" class="label" fill="var(--warn)">48 V power rail (joints) · 24 V (logic input) · 5 V · 3.3 V — star ground</text>
+      </g>
+    </svg>
+    <div id="infoPanel" class="info-panel empty">Click a block above.</div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Separation of timescales</b> — host plans at 10–100 Hz, sends joint targets at 1 kHz over CAN-FD, joints close the current loop at 20 kHz locally. The fast loops never cross the bus.</li>
+    <li><b>The bus is the contract</b> — pick CAN-FD and a message schema (DBC or ad-hoc), and the host team and the joint-firmware team can work independently. Bus failures become well-defined: missing heartbeat, CRC error, out-of-range value.</li>
+    <li><b>Termination matters</b> — exactly two 120 Ω resistors, one at each physical end of the bus. Three resistors → over-termination → comms fail. One resistor → reflections → comms fail intermittently.</li>
+    <li><b>Power is its own topology</b> — 48 V motor rail must be physically separate from 3.3 V logic with a star ground. Otherwise motor commutation noise rides on your ADC reference and current measurements look like trash.</li>
+    <li><b>Smart joints scale</b> — adding J7 (wrist roll) means: new STM32 board, new CAN ID, add stub to bus, declare in URDF. No change to existing joints. This is the architectural win over a "one big MCU" design.</li>
+    <li><b>The encoder is in the loop, not on the bus</b> — joint controller reads encoder over local SPI at 20 kHz. Sending raw encoder counts over CAN every iteration would saturate the bus and add tens of µs of latency. Send <i>state</i> (position/velocity) at 1 kHz instead.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>ARM PROJECT STACK</h3>
+      <ul>
+        <li><b>Host</b> — Raspberry Pi 5, Ubuntu 22.04, ROS 2 Humble.</li>
+        <li><b>Bus</b> — CAN-FD, 1 Mbps/5 Mbps, MCP2518FD HAT on Pi.</li>
+        <li><b>Joint MCU</b> — STM32G431 (FPU + HRTIM + fast ADC).</li>
+        <li><b>Driver</b> — DRV8316 or B-G431B-ESC1 dev board.</li>
+        <li><b>Encoder</b> — AS5048A 14-bit magnetic SPI.</li>
+        <li><b>Frame</b> — URDF + TF2 tree, every link gets a frame_id.</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>LOOP RATES (RULE OF THUMB)</h3>
+      <dl>
+        <dt>Trajectory</dt><dd>10–100 Hz (host)</dd>
+        <dt>Joint state pub</dt><dd>1 kHz (over CAN-FD)</dd>
+        <dt>Position loop</dt><dd>250–500 Hz (joint MCU)</dd>
+        <dt>Velocity loop</dt><dd>1–2 kHz (joint MCU)</dd>
+        <dt>Current loop</dt><dd>10–20 kHz (joint MCU, local)</dd>
+      </dl>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Sending the fast loop over the bus</b> — never. Each tier closes locally; only state and targets cross.</li>
+        <li><b>Mid-bus termination</b> — 120 Ω goes at endpoints only. Stubs to nodes ≤ 30 cm.</li>
+        <li><b>Shared ground between motor and logic</b> — separate them, tie at one star point.</li>
+        <li><b>No URDF / frame discipline</b> — every sensor and joint must have a documented frame; otherwise TF tree breaks and MoveIt refuses to plan.</li>
+        <li><b>Hardcoding CAN IDs in N firmwares</b> — one shared message header, generated from a DBC file.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 7 — System Integration</a> ·
+    Topic: System Block Diagram (multi-axis robot)
+  </footer>
+</main>
+<script>
+  const info = {
+    op:{
+      title:'Operator / Teleop',
+      meta:'role: send goals · listen to errors',
+      bullets:['Joystick (USB gamepad) or web UI via SSH to the Pi.','MoveIt Setup Assistant for canned poses; rqt_robot_steering for teleop.','E-stop button is wired to the host AND directly to each joint enable line — never trust software alone.','Latency target: <100 ms perceived for teleop; not safety-critical.']
+    },
+    host:{
+      title:'Host Computer (Pi 5 + ROS 2)',
+      meta:'role: high-level brain · trajectory · scene graph',
+      bullets:['Runs ros2_control with a CAN-FD hardware interface.','MoveIt 2 plans trajectories from cartesian goals; sends joint waypoints at ~100 Hz.','Maintains the TF tree — every frame_id (base_link, link_1..6, tool0) registered.','Publishes /joint_states at 1 kHz from CAN feedback; subscribes to /joint_trajectory.','Not real-time — 10 ms Linux jitter is acceptable because joints handle the fast stuff.']
+    },
+    cam:{
+      title:'Perception (RealSense D435i)',
+      meta:'role: see the world · feed planner',
+      bullets:['Depth + RGB over USB 3 to the Pi.','Published as a ROS 2 sensor_msgs/PointCloud2 topic.','Registered to the robot via hand-eye calibration — its frame_id sits in the TF tree.','Used by MoveIt for collision avoidance and by perception nodes for object pose estimation.']
+    },
+    bus:{
+      title:'CAN-FD Bus',
+      meta:'role: deterministic transport · the contract',
+      bullets:['Differential pair (CANH/CANL), twisted, 120 Ω each end.','Arbitration phase 1 Mbps; data phase up to 5 Mbps with 64-byte payloads.','Priority via CAN ID — lower ID wins. Reserve low IDs for safety/heartbeat.','Cyclic schedule: each joint TX state at 1 kHz at a fixed phase offset to avoid arbitration churn.','Message catalog kept in a .dbc file, code generated for both host and joint sides.']
+    },
+    j1:{title:'Joint 1 Controller (base rotation)',meta:'role: close current/velocity/position loop locally',
+      bullets:['STM32G431 with built-in CAN-FD peripheral.','FOC current loop @ 20 kHz; velocity @ 1 kHz; position @ 500 Hz.','Receives target_position + target_velocity over CAN.','Transmits state (q, q_dot, current, temp, fault) at 1 kHz, CAN ID 0x110.']},
+    j2:{title:'Joint 2 Controller (shoulder)',meta:'role: heavy lift — largest motor',
+      bullets:['Same firmware as J1 but with shoulder-specific gear ratio + current limit.','Tunings are joint-specific; parameter file flashed at provisioning time.','CAN ID 0x120 for state, 0x121 for command.','Reports gravity-comp torque to host for outer-loop trajectories.']},
+    j3:{title:'Joint 3 Controller (elbow)',meta:'role: mid-arm joint',
+      bullets:['STM32G431 + DRV8316 + AS5048A encoder.','Shown expanded below — every joint has the same local hardware fan-out.','CAN ID 0x130 state, 0x131 command.']},
+    j4:{title:'Joint 4 Controller (wrist 1)',meta:'role: smaller motor, faster spin',
+      bullets:['Smaller motor (less inertia) → higher current-loop bandwidth viable.','Same MCU; PID gains differ.','CAN ID 0x140 / 0x141.']},
+    j5:{title:'Joint 5 Controller (wrist 2)',meta:'role: orient the end-effector',
+      bullets:['One of three wrist joints; combined orientation forms tool0 frame.','CAN ID 0x150 / 0x151.']},
+    j6:{title:'Joint 6 Controller (tool roll)',meta:'role: final orientation + tool comms',
+      bullets:['Last in chain; carries the tool-side electrical interface.','CAN ID 0x160 / 0x161, plus tool-specific messages 0x170+.']},
+    motor:{title:'BLDC Motor + Harmonic Gear',meta:'role: actuator',
+      bullets:['3-phase BLDC, ~50–100 W per joint.','Harmonic gear (e.g. CSF-25) gives high reduction (100:1) with zero backlash — essential for repeatability.','Joint controller drives the 3 phases via DRV8316 half-bridges.']},
+    enc:{title:'Encoder (AS5048A)',meta:'role: feedback',
+      bullets:['14-bit magnetic absolute, SPI bus to the local STM32.','Read every current-loop tick (20 kHz) — the SPI transfer is ~4 µs at 10 MHz.','Mounted on the motor shaft before the gearbox for high resolution; second encoder after gearbox for backlash compensation if needed.']},
+    pwr:{title:'Power Distribution',meta:'role: rails + isolation + protection',
+      bullets:['48 V DC bus to all joint drivers (lower current at higher voltage).','24 V → buck → 5 V → 3.3 V for logic; logic rail floats separately from motor rail.','Inrush limiter (NTC or precharge resistor) on bus-up to protect connectors.','Star ground at the PSU; never daisy-chain returns through motor frames.']}
+  };
+  const panel=document.getElementById('infoPanel');
+  document.querySelectorAll('.blk').forEach(g=>{
+    g.addEventListener('click',()=>{
+      document.querySelectorAll('.blk').forEach(x=>x.classList.remove('selected'));
+      g.classList.add('selected');
+      const d=info[g.dataset.id];
+      if(!d){panel.className='info-panel empty';panel.textContent='No info for this block.';return;}
+      panel.className='info-panel';
+      panel.innerHTML=`<h4>${d.title}</h4><div class="meta">${d.meta}</div><ul>${d.bullets.map(b=>`<li>${b}</li>`).join('')}</ul>`;
+    });
+  });
+</script>
+</body>
+</html>

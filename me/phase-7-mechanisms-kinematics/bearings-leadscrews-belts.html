@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bearings, lead screws, timing belts — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  /* Common SVG conventions */
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:16px;margin:14px 0}
+  .ok{color:var(--accent3)}
+  .bad{color:var(--warn)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Bearings, lead/ball screws, timing belts</h1>
+  <p class="lede">Three panels covering the rotary-to-rotary, rotary-to-linear, and rotary-to-linear-belted
+  transmissions that anchor most machine builds. Bearings: pick by load direction, compute L₁₀ life.
+  Screws: lead-screw efficiency vs ball-screw efficiency and the self-locking criterion. Belts:
+  GT2 2 mm pitch — linear travel per motor revolution.</p>
+
+  <h2>(a) Bearings — load direction & L₁₀ life</h2>
+  <div class="figure">
+    <svg id="bearings" viewBox="0 0 880 280" width="100%" height="280"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>Radial load</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>Axial load</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Combined</span>
+    </div>
+  </div>
+
+  <section class="controls">
+    <div class="control">
+      <label>Dynamic load rating C (N)</label>
+      <input type="range" id="C" min="500" max="50000" step="100" value="9500">
+      <span class="readout" id="CRO">9500 N</span>
+    </div>
+    <div class="control">
+      <label>Equivalent load P (N)</label>
+      <input type="range" id="P" min="50" max="10000" step="10" value="500">
+      <span class="readout" id="PRO">500 N</span>
+    </div>
+    <div class="control">
+      <label>Shaft speed (RPM)</label>
+      <input type="range" id="rpm" min="50" max="6000" step="10" value="1000">
+      <span class="readout" id="rpmRO">1000 RPM</span>
+    </div>
+    <div class="control">
+      <label>Bearing type</label>
+      <select id="bType">
+        <option value="3">Ball bearing (exponent 3)</option>
+        <option value="3.333">Roller bearing (exponent 10/3)</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="panel" id="lifePanel"></div>
+
+  <h2>(b) Lead screw vs ball screw — efficiency</h2>
+  <section class="controls">
+    <div class="control">
+      <label>Lead L (mm/rev)</label>
+      <input type="range" id="lead" min="1" max="20" step="0.5" value="4">
+      <span class="readout" id="leadRO">4 mm</span>
+    </div>
+    <div class="control">
+      <label>Mean thread radius d_m/2 (mm)</label>
+      <input type="range" id="dm" min="3" max="20" step="0.5" value="4">
+      <span class="readout" id="dmRO">4 mm</span>
+    </div>
+    <div class="control">
+      <label>Friction coefficient μ (lead screw, lubricated)</label>
+      <input type="range" id="mu" min="0.05" max="0.30" step="0.01" value="0.15">
+      <span class="readout" id="muRO">0.15</span>
+    </div>
+    <div class="control">
+      <label>Driving direction</label>
+      <select id="dir">
+        <option value="raise">Raise load (motor → linear out)</option>
+        <option value="lower">Lower load (linear → motor, back-drive check)</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="screw" viewBox="0 0 880 240" width="100%" height="240"></svg>
+  </div>
+  <div class="panel" id="screwPanel"></div>
+
+  <h2>(c) Timing belt — GT2 linear travel</h2>
+  <section class="controls">
+    <div class="control">
+      <label>Belt pitch p (mm)</label>
+      <select id="bPitch">
+        <option value="2">GT2 — 2 mm</option>
+        <option value="3">GT3 — 3 mm</option>
+        <option value="5">HTD 5M — 5 mm</option>
+        <option value="8">HTD 8M — 8 mm</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Pulley teeth z</label>
+      <input type="range" id="zP" min="10" max="40" step="1" value="20">
+      <span class="readout" id="zPRO">20</span>
+    </div>
+    <div class="control">
+      <label>Motor steps/rev (with microstep)</label>
+      <input type="range" id="steps" min="200" max="6400" step="200" value="3200">
+      <span class="readout" id="stepsRO">3200 (NEMA17 1/16)</span>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="belt" viewBox="0 0 880 240" width="100%" height="240"></svg>
+  </div>
+  <div class="panel" id="beltPanel"></div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>L₁₀ is "90% of bearings reach this life."</b> Half will far exceed it; 10% fail earlier. Multiply by service-factor judgement (2–5×) when sizing for a long-life machine.</li>
+    <li><b>L₁₀ ∝ (C/P)³.</b> Doubling C/P gives 8× life; halving the load gives 8× life. Tiny load reductions matter a lot.</li>
+    <li><b>Lead screw efficiency ≈ 30–50%</b>; ball screw ≈ 85–95%. The 3× efficiency advantage of a ball screw is the entire reason CNC chose them — same motor, 3× the load capability.</li>
+    <li><b>Self-locking when λ ≤ arctan(μ).</b> Required for Z-axis on power-off (your part won't crash down). Lost on a ball screw — needs a brake.</li>
+    <li><b>Belts give resolution for free.</b> A 20T GT2 + 1/16 microstep NEMA17 → 40 mm / 3200 steps = 12.5 µm theoretical resolution. Real accuracy is much worse (belt stretch, backlash at idlers).</li>
+    <li><b>Don't over-tension belts.</b> Excess tension wrecks the small bearings inside the stepper motor; loose belts skip and lose position. Aim for ~1–3 mm deflection at midspan under ~5 N finger pressure on a typical 200 mm 3D-printer span.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Ball brg life</dt><dd><span class="eq">L₁₀ = (C/P)³ · 10⁶ rev</span></dd>
+        <dt>In hours</dt><dd><span class="eq">L₁₀ₕ = L₁₀ / (60·RPM)</span></dd>
+        <dt>Lead screw η</dt><dd><span class="eq">η = tan λ / tan(λ+φ)</span> <span class="eq-note">≈ 30–50%</span></dd>
+        <dt>Ball screw η</dt><dd><span class="eq-note">≈ 85–95%</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>608</b> bearing: 8 mm bore × 22 mm OD × 7 mm</li>
+        <li>Fits: inner <b>H7/p6</b> (press), outer <b>H7/h6</b> (slip — one ring must float)</li>
+        <li><b>GT2 belt</b>: 2 mm pitch × 20 T pulley = 40 mm/rev</li>
+        <li>L₁₀ ∝ (C/P)³ — halve P → 8× life</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Press-fit both rings</b> = no thermal/misalignment slip → bearing dies fast</li>
+        <li><b>Ball screw back-drives</b> (η too high to self-lock) → vertical axis needs a brake on power-off</li>
+        <li>Lead screws self-lock when λ ≤ arctan(µ) — intended for Z-axes without brakes</li>
+        <li>Over-tensioned belts crush stepper bearings; aim ~1–3 mm midspan deflection</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 7 — Mechanisms & Kinematics</a> ·
+    Topic: Bearings, lead/ball screws, timing belts
+  </footer>
+</main>
+<script>
+function ns(svg, tag, attrs={}){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  svg.appendChild(e);
+  return e;
+}
+function clear(svg){ while(svg.firstChild) svg.removeChild(svg.firstChild); }
+
+// ===== (a) Bearings panel =====
+function drawBearings(){
+  const svg = document.getElementById('bearings');
+  clear(svg);
+  // 5 bearing types in a row: deep-groove, angular contact, cylindrical roller, tapered, thrust
+  const types = [
+    {name:'Deep-groove ball', loadR:1.0, loadA:0.2, x:90},
+    {name:'Angular contact ball', loadR:0.7, loadA:0.7, x:250},
+    {name:'Cylindrical roller', loadR:1.0, loadA:0, x:410},
+    {name:'Tapered roller', loadR:1.0, loadA:0.7, x:570},
+    {name:'Thrust ball', loadR:0, loadA:1.0, x:730},
+  ];
+  for(const t of types){
+    drawBearingIcon(svg, t.x, 110, t);
+    ns(svg,'text',{x:t.x,y:200,class:'label','text-anchor':'middle'}).textContent=t.name;
+    // Load arrows
+    if(t.loadR > 0){
+      drawArrow(svg, t.x - 50, 110, t.x - 20, 110, '#5ec8ff', 2);
+      ns(svg,'text',{x:t.x-50,y:100,class:'label-dim','text-anchor':'middle',fill:'#5ec8ff'}).textContent='F_r';
+    }
+    if(t.loadA > 0){
+      drawArrow(svg, t.x, 50, t.x, 80, '#ffb86c', 2);
+      ns(svg,'text',{x:t.x+12,y:62,class:'label-dim',fill:'#ffb86c'}).textContent='F_a';
+    }
+    // Capacity hints
+    const radial = t.loadR > 0.9 ? 'HIGH' : t.loadR > 0.3 ? 'MED' : 'NONE';
+    const axial = t.loadA > 0.9 ? 'HIGH' : t.loadA > 0.3 ? 'MED' : 'LOW';
+    ns(svg,'text',{x:t.x,y:218,class:'label-dim','text-anchor':'middle'}).textContent=`R:${radial} · A:${axial}`;
+  }
+  ns(svg,'text',{x:440,y:30,class:'label','text-anchor':'middle'}).textContent='Bearing types by load direction';
+}
+function drawBearingIcon(svg, cx, cy, type){
+  // Outer race (rectangle cross-section, viewed from side)
+  ns(svg,'rect',{x:cx-30,y:cy-30,width:60,height:60,fill:'none',stroke:'#dde3ec','stroke-width':1.5,rx:2});
+  // Inner race
+  ns(svg,'rect',{x:cx-18,y:cy-18,width:36,height:36,fill:'#0e1116',stroke:'#dde3ec','stroke-width':1.5,rx:2});
+  // Shaft cutaway
+  ns(svg,'rect',{x:cx-10,y:cy-30,width:20,height:60,fill:'#3a4a5a',stroke:'#8f99a8','stroke-width':1});
+  // Rolling elements depending on type
+  if(type.name.includes('ball') && !type.name.includes('Thrust')){
+    if(type.name.includes('Angular')){
+      // Angular contact: contact line at angle ~30°
+      ns(svg,'circle',{cx:cx-20,cy:cy-9,r:6,fill:'#5ec8ff',stroke:'#fff','stroke-width':1});
+      ns(svg,'circle',{cx:cx+20,cy:cy-9,r:6,fill:'#5ec8ff',stroke:'#fff','stroke-width':1});
+      ns(svg,'circle',{cx:cx-20,cy:cy+9,r:6,fill:'#5ec8ff',stroke:'#fff','stroke-width':1});
+      ns(svg,'circle',{cx:cx+20,cy:cy+9,r:6,fill:'#5ec8ff',stroke:'#fff','stroke-width':1});
+    } else {
+      ns(svg,'circle',{cx:cx-22,cy:cy,r:7,fill:'#5ec8ff',stroke:'#fff','stroke-width':1});
+      ns(svg,'circle',{cx:cx+22,cy:cy,r:7,fill:'#5ec8ff',stroke:'#fff','stroke-width':1});
+    }
+  } else if(type.name.includes('Cylindrical')){
+    ns(svg,'rect',{x:cx-26,y:cy-5,width:14,height:10,fill:'#5ec8ff',stroke:'#fff','stroke-width':1});
+    ns(svg,'rect',{x:cx+12,y:cy-5,width:14,height:10,fill:'#5ec8ff',stroke:'#fff','stroke-width':1});
+  } else if(type.name.includes('Tapered')){
+    ns(svg,'polygon',{points:`${cx-26},${cy-8} ${cx-12},${cy-4} ${cx-12},${cy+4} ${cx-26},${cy+8}`,
+      fill:'#5ec8ff',stroke:'#fff','stroke-width':1});
+    ns(svg,'polygon',{points:`${cx+26},${cy-8} ${cx+12},${cy-4} ${cx+12},${cy+4} ${cx+26},${cy+8}`,
+      fill:'#5ec8ff',stroke:'#fff','stroke-width':1});
+  } else if(type.name.includes('Thrust')){
+    // Two horizontal washers with balls between
+    ns(svg,'rect',{x:cx-30,y:cy-25,width:60,height:10,fill:'none',stroke:'#dde3ec','stroke-width':1.5});
+    ns(svg,'rect',{x:cx-30,y:cy+15,width:60,height:10,fill:'none',stroke:'#dde3ec','stroke-width':1.5});
+    ns(svg,'circle',{cx:cx-15,cy:cy-1,r:7,fill:'#5ec8ff',stroke:'#fff','stroke-width':1});
+    ns(svg,'circle',{cx:cx+15,cy:cy-1,r:7,fill:'#5ec8ff',stroke:'#fff','stroke-width':1});
+  }
+}
+function drawArrow(svg, x1, y1, x2, y2, color, width){
+  ns(svg,'line',{x1,y1,x2,y2,stroke:color,'stroke-width':width});
+  const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy);
+  if(len<0.1) return;
+  const ux=dx/len, uy=dy/len;
+  const bx = x2 - 8*ux, by = y2 - 8*uy;
+  const px = -uy, py = ux;
+  ns(svg,'polygon',{points:`${x2},${y2} ${bx+4.5*px},${by+4.5*py} ${bx-4.5*px},${by-4.5*py}`, fill:color});
+}
+
+// ===== (a) L10 life calculator =====
+function updateLife(){
+  const C = parseFloat(document.getElementById('C').value);
+  const P = parseFloat(document.getElementById('P').value);
+  const rpm = parseFloat(document.getElementById('rpm').value);
+  const exp = parseFloat(document.getElementById('bType').value);
+  const ratio = C/P;
+  const Lrev = Math.pow(ratio, exp) * 1e6;
+  const Lhours = Lrev / (60 * rpm);
+  const Ldays = Lhours / 24;
+  const Lyears = Ldays / 365;
+  let level = '';
+  if(Lhours > 100000) level = '<span class="ok">> 100k hours — excellent</span>';
+  else if(Lhours > 10000) level = '<span class="ok">> 10k hours — production-grade life</span>';
+  else if(Lhours > 1000) level = '<span style="color:var(--accent2)">> 1k hours — adequate for a hobby build</span>';
+  else level = '<span class="bad">< 1k hours — underspec\'d. Increase C or reduce P.</span>';
+  document.getElementById('lifePanel').innerHTML =
+    `<b>L₁₀ = (C/P)^${exp.toFixed(2)} × 10⁶ revs</b><br>` +
+    `C/P = ${ratio.toFixed(2)} &nbsp;·&nbsp; L₁₀ = ${(Lrev/1e6).toFixed(2)} × 10⁶ revs<br>` +
+    `At ${rpm} RPM: <b>${Lhours.toFixed(0)} hours</b> = ${Ldays.toFixed(1)} days = ${Lyears.toFixed(2)} years (continuous)<br>` +
+    level + `<br>` +
+    `<span style="color:var(--fg-dim);font-size:12px">L₁₀ = 90% survival probability. Median life L₅₀ ≈ 5× L₁₀. Apply service factor ×2–5 for safety in real designs.</span>`;
+}
+
+// ===== (b) Screw panel =====
+function drawScrew(){
+  const svg = document.getElementById('screw');
+  clear(svg);
+  const lead = parseFloat(document.getElementById('lead').value);
+  const dm = parseFloat(document.getElementById('dm').value);
+  const mu = parseFloat(document.getElementById('mu').value);
+  const dir = document.getElementById('dir').value;
+
+  // Compute lead angle λ and friction angle φ
+  const lambda = Math.atan(lead / (Math.PI * 2 * dm));  // d_m = 2 * (dm slider) gives mean diameter
+  const phi = Math.atan(mu);
+  // Efficiency (raising load): η = tan(λ) / tan(λ + φ)
+  const etaRaise = Math.tan(lambda) / Math.tan(lambda + phi);
+  // Lowering load: η_lower = tan(λ - φ) / tan(λ); if λ < φ, self-locking (η_lower < 0).
+  const etaLower = Math.tan(lambda - phi) / Math.tan(lambda);
+  const selfLocking = lambda < phi;
+  // Ball screw approximation: μ_eff ≈ 0.005 → η ≈ 90%
+  const etaBall = Math.tan(lambda) / Math.tan(lambda + Math.atan(0.005));
+
+  // Draw the screw side view
+  ns(svg,'text',{x:440,y:24,class:'label','text-anchor':'middle'}).textContent='Lead screw threads — lead angle λ at mean radius';
+  // Threads (V-form)
+  const sx = 200, sy = 120;
+  for(let i=0; i<8; i++){
+    const x = sx + i*52;
+    // Thread profile (V)
+    ns(svg,'polygon',{points:`${x},${sy-30} ${x+18},${sy-30} ${x+26},${sy} ${x+10},${sy} `,
+      fill:'#1f3a4a',stroke:'#5ec8ff','stroke-width':1.5});
+  }
+  // Shaft body
+  ns(svg,'line',{x1:170,y1:sy,x2:680,y2:sy,stroke:'#3a4a5a','stroke-width':6});
+
+  // Lead angle indicator (arc)
+  ns(svg,'text',{x:720,y:80,class:'label-dim'}).textContent=`Lead L = ${lead.toFixed(1)} mm`;
+  ns(svg,'text',{x:720,y:98,class:'label-dim'}).textContent=`d_m/2 = ${dm.toFixed(1)} mm`;
+  ns(svg,'text',{x:720,y:116,class:'label-dim'}).textContent=`λ = ${(lambda*180/Math.PI).toFixed(2)}°`;
+  ns(svg,'text',{x:720,y:134,class:'label-dim'}).textContent=`φ = arctan(μ) = ${(phi*180/Math.PI).toFixed(2)}°`;
+
+  // Helix triangle illustration
+  const tx = 60, ty = 160;
+  ns(svg,'line',{x1:tx,y1:ty,x2:tx+100,y2:ty,stroke:'#dde3ec','stroke-width':1.5});  // unrolled circumference
+  ns(svg,'line',{x1:tx+100,y1:ty,x2:tx+100,y2:ty-30,stroke:'#dde3ec','stroke-width':1.5}); // lead
+  ns(svg,'line',{x1:tx,y1:ty,x2:tx+100,y2:ty-30,stroke:'#ff7b72','stroke-width':2}); // hypotenuse = helix
+  ns(svg,'text',{x:tx+50,y:ty+14,class:'label-dim','text-anchor':'middle'}).textContent='πd_m';
+  ns(svg,'text',{x:tx+106,y:ty-15,class:'label-dim'}).textContent='L';
+  ns(svg,'text',{x:tx+30,y:ty-8,class:'label',fill:'#ff7b72'}).textContent=`λ`;
+
+  // Update panel
+  let html = `<b>Lead screw (μ = ${mu})</b><br>`;
+  html += `Lead angle λ = arctan(L / πd_m) = arctan(${lead.toFixed(1)} / ${(Math.PI*2*dm).toFixed(2)}) = <b>${(lambda*180/Math.PI).toFixed(2)}°</b><br>`;
+  html += `Friction angle φ = arctan(μ) = arctan(${mu}) = <b>${(phi*180/Math.PI).toFixed(2)}°</b><br>`;
+  html += `Raising efficiency η = tan(λ) / tan(λ+φ) = <b>${(etaRaise*100).toFixed(1)}%</b><br>`;
+  if(selfLocking){
+    html += `<span class="ok">SELF-LOCKING</span> (λ < φ): load cannot back-drive the screw. Good for Z-axis hold without brake.<br>`;
+  } else {
+    html += `<span style="color:var(--accent2)">Back-drivable</span>: load can drive the screw. Lowering efficiency = ${(etaLower*100).toFixed(1)}%. Use a brake or self-locking detent if holding under power-off.<br>`;
+  }
+  html += `<br><b>Ball screw (μ ≈ 0.005)</b>: η = <b>${(etaBall*100).toFixed(1)}%</b> — but <span class="bad">never self-locking</span>; needs a brake to hold a vertical load when power is off.<br>`;
+  html += `<span style="color:var(--fg-dim);font-size:12px">Torque to raise load F: T = F · L / (2π · η). Higher η ⇒ less motor torque ⇒ smaller, cheaper motor.</span>`;
+  document.getElementById('screwPanel').innerHTML = html;
+}
+
+// ===== (c) Belt panel =====
+function drawBelt(){
+  const svg = document.getElementById('belt');
+  clear(svg);
+  const p = parseFloat(document.getElementById('bPitch').value);
+  const z = parseInt(document.getElementById('zP').value);
+  const steps = parseInt(document.getElementById('steps').value);
+  const circumference = z * p;
+  const diameter = circumference / Math.PI;
+  const distancePerRev = circumference;
+  const distancePerStep = distancePerRev / steps;
+
+  // Draw pulley + belt run
+  ns(svg,'text',{x:440,y:24,class:'label','text-anchor':'middle'}).textContent=`Timing belt: ${z}-tooth pulley × ${p} mm pitch — animated`;
+  const r = Math.max(30, Math.min(80, diameter * 1.6));
+  const CX = 200, CY = 130;
+  const CX2 = 680;
+
+  // Belt: two horizontal lines + arcs at each pulley
+  ns(svg,'path',{d:`M ${CX} ${CY-r} L ${CX2} ${CY-r} A ${r} ${r} 0 0 1 ${CX2} ${CY+r} L ${CX} ${CY+r} A ${r} ${r} 0 0 1 ${CX} ${CY-r} Z`,
+    fill:'none',stroke:'#ffb86c','stroke-width':3});
+
+  // Pulley with teeth
+  function drawPulley(cx, cy){
+    ns(svg,'circle',{cx,cy,r:r-4,fill:'#0e1116',stroke:'#5ec8ff','stroke-width':1.5});
+    for(let i=0;i<z;i++){
+      const a = i*2*Math.PI/z;
+      const x1 = cx + (r-4)*Math.cos(a);
+      const y1 = cy + (r-4)*Math.sin(a);
+      const x2 = cx + (r-1)*Math.cos(a);
+      const y2 = cy + (r-1)*Math.sin(a);
+      ns(svg,'line',{x1,y1,x2,y2,stroke:'#5ec8ff','stroke-width':2});
+    }
+    ns(svg,'circle',{cx,cy,r:6,fill:'#3a4a5a',stroke:'#dde3ec','stroke-width':1});
+  }
+  drawPulley(CX, CY);
+  drawPulley(CX2, CY);
+
+  // Labels
+  ns(svg,'text',{x:CX,y:CY+r+24,class:'label','text-anchor':'middle',fill:'#5ec8ff'}).textContent=`drive`;
+  ns(svg,'text',{x:CX2,y:CY+r+24,class:'label','text-anchor':'middle',fill:'#5ec8ff'}).textContent=`idler`;
+
+  document.getElementById('beltPanel').innerHTML =
+    `<b>Belt: ${p} mm pitch × ${z}-tooth pulley</b><br>` +
+    `Pitch circumference = z · p = ${z} × ${p} = <b>${circumference} mm</b> (= linear travel per pulley revolution)<br>` +
+    `Pitch diameter d = circumference / π = <b>${diameter.toFixed(2)} mm</b><br>` +
+    `Resolution per step at ${steps} steps/rev: <b>${(distancePerStep*1000).toFixed(2)} µm/step</b><br>` +
+    `<span style="color:var(--fg-dim);font-size:12px">Typical CoreXY: GT2 (2 mm) × 20T pulley × NEMA17 @ 1/16 microstep → 40 mm/rev ÷ 3200 = 12.5 µm theoretical, ~50 µm real (belt stretch, mechanical play).</span>`;
+}
+
+// ==== Wire up ====
+drawBearings();
+updateLife();
+drawScrew();
+drawBelt();
+
+['C','P','rpm'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', e=>{
+    let v = parseFloat(e.target.value);
+    let suffix = id === 'rpm' ? ' RPM' : ' N';
+    document.getElementById(id+'RO').textContent = v + suffix;
+    updateLife();
+  });
+});
+document.getElementById('bType').addEventListener('change', updateLife);
+
+document.getElementById('lead').addEventListener('input', e=>{
+  document.getElementById('leadRO').textContent = parseFloat(e.target.value).toFixed(1) + ' mm';
+  drawScrew();
+});
+document.getElementById('dm').addEventListener('input', e=>{
+  document.getElementById('dmRO').textContent = parseFloat(e.target.value).toFixed(1) + ' mm';
+  drawScrew();
+});
+document.getElementById('mu').addEventListener('input', e=>{
+  document.getElementById('muRO').textContent = parseFloat(e.target.value).toFixed(2);
+  drawScrew();
+});
+document.getElementById('dir').addEventListener('change', drawScrew);
+
+document.getElementById('bPitch').addEventListener('change', drawBelt);
+document.getElementById('zP').addEventListener('input', e=>{
+  document.getElementById('zPRO').textContent = e.target.value;
+  drawBelt();
+});
+document.getElementById('steps').addEventListener('input', e=>{
+  const v = parseInt(e.target.value);
+  const label = v === 200 ? '200 (full step)' : v === 400 ? '400 (1/2)' : v === 800 ? '800 (1/4)' : v === 1600 ? '1600 (1/8)' : v === 3200 ? '3200 (1/16)' : v === 6400 ? '6400 (1/32)' : v + '';
+  document.getElementById('stepsRO').textContent = label;
+  drawBelt();
+});
+</script>
+</body>
+</html>

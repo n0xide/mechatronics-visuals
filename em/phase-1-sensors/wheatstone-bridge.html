@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wheatstone Bridge — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Wheatstone Bridge — Microvolt Detector</h1>
+  <p class="lede">Four resistors in a diamond. When all four match, the output is zero. Nudge one a little — the bridge multiplies that nudge into a measurable signal.</p>
+
+  <p>A strain gauge's resistance changes by about 0.2% at full strain — a fraction so tiny no ADC could resolve it directly. The Wheatstone bridge is the trick that made strain measurement practical in the 1840s: arrange two voltage dividers in parallel, take the <i>difference</i> of their midpoints, and the common-mode (everything that doesn't change) cancels out. Now a 0.2% resistance change shows up as a millivolt-scale differential signal that an instrumentation amplifier can boost to volts. Adding gauges in opposing arms doubles or quadruples sensitivity <i>and</i> cancels temperature drift. Every load cell in your kitchen scale, every torque sensor in industry, every pressure transducer — it's this circuit underneath.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Configuration:</label>
+      <select id="cfg">
+        <option value="quarter">Quarter bridge (1 active gauge)</option>
+        <option value="half">Half bridge (2 active, opposite arms)</option>
+        <option value="full">Full bridge (4 active gauges)</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Strain ε: <span class="readout" id="eRead">+1000 µε</span></label>
+      <input id="e" type="range" min="-2000" max="2000" step="10" value="1000">
+    </div>
+    <div class="control">
+      <label>Gauge Factor: <span class="readout" id="gfRead">2.0</span></label>
+      <input id="gf" type="range" min="1.5" max="200" step="0.1" value="2">
+    </div>
+    <div class="control">
+      <label>V_excitation: <span class="readout" id="vexRead">5.0 V</span></label>
+      <input id="vex" type="range" min="1" max="10" step="0.1" value="5">
+    </div>
+    <div class="control">
+      <label>INA gain G: <span class="readout" id="gRead">100×</span></label>
+      <input id="g" type="range" min="1" max="1000" step="1" value="100">
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Bridge schematic — drag the gauges</h3>
+    <svg id="brSvg" viewBox="0 0 720 380" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <!-- V+ excitation top, GND bottom, midpoints A and B -->
+      <text x="360" y="22" class="label" text-anchor="middle">V_ex</text>
+      <line x1="360" y1="30" x2="360" y2="60" class="wire"/>
+      <circle cx="360" cy="60" r="4" fill="var(--accent)"/>
+      <line x1="360" y1="60" x2="180" y2="170" class="wire"/>
+      <line x1="360" y1="60" x2="540" y2="170" class="wire"/>
+
+      <!-- R1 top-left -->
+      <rect x="240" y="100" width="40" height="60" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="2" id="r1Box"/>
+      <text x="260" y="98" class="label" text-anchor="middle" id="r1Lbl">R1</text>
+      <text x="295" y="135" class="label-dim" id="r1Val">350 Ω</text>
+
+      <!-- R2 top-right -->
+      <rect x="440" y="100" width="40" height="60" fill="var(--bg-elev2)" stroke="var(--accent2)" stroke-width="2" id="r2Box"/>
+      <text x="460" y="98" class="label" text-anchor="middle" id="r2Lbl">R2</text>
+      <text x="495" y="135" class="label-dim" id="r2Val">350 Ω</text>
+
+      <!-- midpoint A (left) -->
+      <line x1="260" y1="160" x2="180" y2="170" class="wire"/>
+      <line x1="180" y1="170" x2="180" y2="220" class="wire"/>
+      <circle cx="180" cy="195" r="4" fill="var(--accent3)"/>
+      <text x="165" y="200" class="label" fill="var(--accent3)" text-anchor="end">V_A</text>
+
+      <!-- midpoint B (right) -->
+      <line x1="460" y1="160" x2="540" y2="170" class="wire"/>
+      <line x1="540" y1="170" x2="540" y2="220" class="wire"/>
+      <circle cx="540" cy="195" r="4" fill="var(--accent3)"/>
+      <text x="555" y="200" class="label" fill="var(--accent3)">V_B</text>
+
+      <!-- R3 bottom-left -->
+      <rect x="240" y="220" width="40" height="60" fill="var(--bg-elev2)" stroke="var(--accent2)" stroke-width="2" id="r3Box"/>
+      <text x="295" y="255" class="label-dim" id="r3Val">350 Ω</text>
+      <text x="260" y="295" class="label" text-anchor="middle" id="r3Lbl">R3</text>
+
+      <!-- R4 bottom-right -->
+      <rect x="440" y="220" width="40" height="60" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="2" id="r4Box"/>
+      <text x="495" y="255" class="label-dim" id="r4Val">350 Ω</text>
+      <text x="460" y="295" class="label" text-anchor="middle" id="r4Lbl">R4</text>
+
+      <line x1="260" y1="280" x2="180" y2="290" class="wire"/>
+      <line x1="460" y1="280" x2="540" y2="290" class="wire"/>
+      <line x1="180" y1="290" x2="180" y2="320" class="wire"/>
+      <line x1="540" y1="290" x2="540" y2="320" class="wire"/>
+      <line x1="180" y1="320" x2="540" y2="320" class="wire"/>
+      <line x1="360" y1="320" x2="360" y2="340" class="wire"/>
+      <line x1="340" y1="340" x2="380" y2="340" class="wire"/>
+      <text x="386" y="345" class="label-dim">GND</text>
+
+      <!-- INA125 (rendered to right of bridge) -->
+      <line x1="180" y1="195" x2="600" y2="195" class="wire" stroke-dasharray="4,4"/>
+      <line x1="540" y1="195" x2="600" y2="195" class="wire" stroke-dasharray="4,4"/>
+      <rect x="600" y="160" width="100" height="70" fill="var(--bg-elev2)" stroke="var(--accent2)" stroke-width="1.5"/>
+      <text x="650" y="200" class="label" text-anchor="middle" fill="var(--accent2)">INA125</text>
+      <text x="650" y="215" class="label-dim" text-anchor="middle">gain G</text>
+      <text x="713" y="170" class="label" fill="var(--accent3)">V_out</text>
+    </svg>
+  </div>
+
+  <div class="figure">
+    <h3>Live calculations</h3>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Note</th></tr>
+      <tr><td>ΔR / R</td><td><span class="readout" id="drR">0.20%</span></td><td>= GF · ε per active gauge</td></tr>
+      <tr><td>V_A (left midpoint)</td><td><span class="readout" id="vA">2.5025 V</span></td><td>balanced ≈ V_ex/2</td></tr>
+      <tr><td>V_B (right midpoint)</td><td><span class="readout" id="vB">2.4975 V</span></td><td>opposite arm</td></tr>
+      <tr><td>V_bridge = V_A − V_B</td><td><span class="readout" id="vBr">5.0 mV</span></td><td>raw differential</td></tr>
+      <tr><td>V_bridge / V_ex</td><td><span class="readout" id="vBrRatio">1.0 mV/V</span></td><td>load-cell spec lingua franca</td></tr>
+      <tr><td>V_out (after INA, gain G)</td><td><span class="readout" id="vOut">500 mV</span></td><td>into ADC</td></tr>
+      <tr><td>ADC counts (12-bit, Vref=3.3V)</td><td><span class="readout" id="vAdc">620</span></td><td>headroom check</td></tr>
+    </table>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Quarter bridge output is 1/4 of full bridge</b> — adding more active gauges multiplies sensitivity directly: ×1, ×2, ×4 for quarter/half/full. Same ε, same GF, same V_ex.</li>
+    <li><b>Half bridge cancels temperature</b> — both gauges drift together with temperature; if they're in opposite arms (R1↑ and R3↑), the imbalance cancels. Use this in outdoor / engine-bay environments.</li>
+    <li><b>mV/V is the load-cell spec</b> — datasheets give bridge output normalized by excitation (typically 2 mV/V at rated load). Multiply by your V_ex to get raw output.</li>
+    <li><b>Raw signal is millivolts, ADC needs volts</b> — gain of 100–1000× is mandatory. INA125 / AD620 / INA826 are the workhorses; HX711 integrates this + 24-bit ADC into a single 50¢ chip for load cells.</li>
+    <li><b>Bridge is small-signal linear</b> — formulas assume ΔR/R ≪ 1. For huge resistance changes (LDR, FSR) the bridge breaks; use a divider instead.</li>
+    <li><b>Common-mode is at V_ex/2</b> — your INA needs a common-mode input range that covers this. 5V excitation puts both midpoints at ~2.5V; cheap rail-to-rail INAs handle it.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Quarter bridge</dt><dd><span class="eq">V_br ≈ (V_ex/4) · GF · ε</span></dd>
+        <dt>Half bridge</dt><dd><span class="eq">V_br ≈ (V_ex/2) · GF · ε</span></dd>
+        <dt>Full bridge</dt><dd><span class="eq">V_br = V_ex · GF · ε</span></dd>
+        <dt>After INA</dt><dd><span class="eq">V_out = G · V_br</span></dd>
+        <dt>GF metallic foil</dt><dd><span class="eq">GF ≈ 2.0</span></dd>
+        <dt>GF semiconductor</dt><dd><span class="eq">GF ≈ 100–200</span><span class="eq-note">10× sensitivity, 10× temp drift</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>1, 2, 4×</b> — quarter, half, full bridge sensitivity.</li>
+        <li><b>Opposite arms add</b> — same-sign strain in R1 + R3 or R2 + R4 adds; same-arm cancels.</li>
+        <li><b>2 mV/V @ rated</b> — typical load-cell output at full scale.</li>
+        <li><b>HX711</b> — 50¢ part = bridge amp + 24-bit ADC; default for hobby load cells.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Quarter bridge + temp swing</b> — uncancelled drift dwarfs the strain signal. Use dummy gauge in adjacent arm.</li>
+        <li><b>INA without rail-to-rail input</b> — common-mode at V_ex/2 may clip. Check input range.</li>
+        <li><b>Long lead wires</b> — wire resistance enters the divider. Use 3-wire or 6-wire (Kelvin) connections beyond ~1 m.</li>
+        <li><b>Excitation voltage noise</b> — bridge ratios it directly into output. Use a clean, low-noise reference.</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>WIRING (INA125 + load cell)</h3>
+      <ul>
+        <li><b>E+/E−</b> → V_ex (often 5 V) / GND.</li>
+        <li><b>S+/S−</b> → INA differential inputs.</li>
+        <li><b>R_G</b> sets gain: G = 4 + 60kΩ/R_G.</li>
+        <li><b>REF</b> → mid-rail for bipolar output, GND for unipolar.</li>
+        <li><b>V_out</b> → ADC. Add 1 kΩ + 10 nF RC for anti-alias.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 1 — Sensors</a> ·
+    Topic: Wheatstone Bridge
+  </footer>
+</main>
+<script>
+  const cfg = document.getElementById('cfg');
+  const eEl = document.getElementById('e');
+  const gfEl = document.getElementById('gf');
+  const vexEl = document.getElementById('vex');
+  const gEl = document.getElementById('g');
+
+  function update(){
+    const mode = cfg.value;
+    const ep = parseFloat(eEl.value) * 1e-6; // strain (dimensionless)
+    const GF = parseFloat(gfEl.value);
+    const Vex = parseFloat(vexEl.value);
+    const G = parseFloat(gEl.value);
+    const R0 = 350; // nominal Ω
+
+    // ΔR per active gauge
+    const dRoR = GF * ep;
+
+    let R1=R0, R2=R0, R3=R0, R4=R0;
+    if(mode === 'quarter'){
+      R1 = R0 * (1 + dRoR);
+    } else if(mode === 'half'){
+      // opposite arms, same sign
+      R1 = R0 * (1 + dRoR);
+      R3 = R0 * (1 + dRoR);
+    } else { // full
+      // R1, R3 tension; R2, R4 compression
+      R1 = R0 * (1 + dRoR);
+      R3 = R0 * (1 + dRoR);
+      R2 = R0 * (1 - dRoR);
+      R4 = R0 * (1 - dRoR);
+    }
+    // V_A is between R1 (top) and R3 (bottom). V_A = Vex · R3/(R1+R3)
+    // V_B is between R2 (top) and R4 (bottom). V_B = Vex · R4/(R2+R4)
+    const VA = Vex * R3/(R1+R3);
+    const VB = Vex * R4/(R2+R4);
+    const Vbr = VA - VB;
+    const Vout = G * Vbr;
+    const adc = Math.round(Math.min(Math.max(Vout, 0), 3.3) / 3.3 * 4095);
+    const mvPerV = Vbr/Vex * 1000;
+
+    document.getElementById('eRead').textContent = (ep*1e6).toFixed(0)+' µε';
+    document.getElementById('gfRead').textContent = GF.toFixed(1)+'×';
+    document.getElementById('vexRead').textContent = Vex.toFixed(2)+' V';
+    document.getElementById('gRead').textContent = G.toFixed(0)+'×';
+    document.getElementById('drR').textContent = (dRoR*100).toFixed(3)+'%';
+    document.getElementById('vA').textContent = VA.toFixed(4)+' V';
+    document.getElementById('vB').textContent = VB.toFixed(4)+' V';
+    document.getElementById('vBr').textContent = (Vbr*1000).toFixed(3)+' mV';
+    document.getElementById('vBrRatio').textContent = mvPerV.toFixed(3)+' mV/V';
+    document.getElementById('vOut').textContent = Math.abs(Vout) < 1 ? (Vout*1000).toFixed(1)+' mV' : Vout.toFixed(3)+' V';
+    document.getElementById('vAdc').textContent = adc;
+
+    // Update R labels and color highlight active arms
+    document.getElementById('r1Val').textContent = R1.toFixed(2)+' Ω';
+    document.getElementById('r2Val').textContent = R2.toFixed(2)+' Ω';
+    document.getElementById('r3Val').textContent = R3.toFixed(2)+' Ω';
+    document.getElementById('r4Val').textContent = R4.toFixed(2)+' Ω';
+
+    // active highlighting
+    const set = (id, active) => {
+      const el = document.getElementById(id);
+      el.setAttribute('stroke', active ? 'var(--accent)' : 'var(--fg-dim)');
+      el.setAttribute('stroke-width', active ? 2.5 : 1.2);
+    };
+    if(mode === 'quarter'){
+      set('r1Box', true); set('r2Box', false); set('r3Box', false); set('r4Box', false);
+    } else if(mode === 'half'){
+      set('r1Box', true); set('r2Box', false); set('r3Box', true); set('r4Box', false);
+    } else {
+      set('r1Box', true); set('r2Box', true); set('r3Box', true); set('r4Box', true);
+    }
+  }
+  [cfg, eEl, gfEl, vexEl, gEl].forEach(el => el.addEventListener('input', update));
+  update();
+</script>
+</body>
+</html>

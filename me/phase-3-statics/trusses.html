@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trusses — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .summary{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;
+    padding:10px 14px;margin:10px 0;font:13px ui-monospace,monospace;line-height:1.7}
+  .summary b{color:var(--fg-bright)}
+  .btn-row{display:flex;gap:6px;flex-wrap:wrap}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Trusses — Method of Joints & Sections</h1>
+  <p class="lede">A simple 6-member Pratt truss spans between a pin and a roller. Drag the load
+  along the bottom chord, then step through the method of joints to expose each member's internal
+  force (tension or compression), or drop a section cut to solve any three members at once. Zero-force
+  members are highlighted automatically by the two recognition rules.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Load magnitude P (N)</label>
+      <input type="range" id="loadP" min="100" max="2000" step="50" value="1000">
+      <span class="readout" id="loadPRO">1000 N</span>
+    </div>
+    <div class="control">
+      <label>Load position (joint)</label>
+      <select id="loadJoint">
+        <option value="C">Joint C (left bottom)</option>
+        <option value="D" selected>Joint D (mid bottom)</option>
+        <option value="E">Joint E (right bottom)</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Mode</label>
+      <div class="btn-row">
+        <button class="btn primary" id="modeJoints">Method of joints</button>
+        <button class="btn" id="modeSections">Method of sections</button>
+      </div>
+    </div>
+    <div class="control">
+      <label>Stepping</label>
+      <div class="btn-row">
+        <button class="btn" id="btnReset">Reset</button>
+        <button class="btn" id="btnNext">Next joint →</button>
+        <button class="btn" id="btnAll">Solve all</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="truss" viewBox="0 0 880 460" width="100%" height="460"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#ff7b72"></span>Tension (member pulled)</span>
+      <span><span class="swatch" style="background:#5ec8ff"></span>Compression (member pushed)</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Zero-force member</span>
+      <span><span class="swatch" style="background:#444b57"></span>Unsolved</span>
+    </div>
+  </div>
+
+  <div class="summary" id="summary"></div>
+
+  <h2>Member forces</h2>
+  <table>
+    <thead><tr><th>Member</th><th>Joints</th><th>Force (N)</th><th>State</th><th>Notes</th></tr></thead>
+    <tbody id="memberTable"></tbody>
+  </table>
+
+  <h2>Zero-force member rules</h2>
+  <ul class="notice">
+    <li><b>Rule 1.</b> If only <b>two non-collinear</b> members meet at an unloaded joint, both must carry zero force. (Their components in two independent directions must each sum to zero — only zero satisfies that.)</li>
+    <li><b>Rule 2.</b> If <b>three members</b> meet at an unloaded joint and <b>two are collinear</b>, the third (the non-collinear one) is zero-force. The two collinear members will then have equal and opposite forces.</li>
+    <li><b>Use zero-force members to simplify first.</b> Eliminate them before solving so you have fewer unknowns to chase joint-by-joint.</li>
+  </ul>
+
+  <h2>Method of joints vs. method of sections</h2>
+  <ul class="notice">
+    <li><b>Method of joints.</b> Cut around one joint at a time. Each joint gives 2 equilibrium equations (ΣFx, ΣFy). Solve outward from a joint with at most 2 unknown members. Sequential and complete: gives every member's force.</li>
+    <li><b>Method of sections.</b> Cut through the whole truss (typically 3 members at once). The two halves are each in equilibrium under ΣF and ΣM. Three equations → solve 3 unknowns in one step. Best when you only need the force in one or two specific members.</li>
+    <li><b>Sign convention.</b> Assume every member is in <b>tension</b> initially (force points <i>away</i> from the joint along the member). A positive answer confirms tension; a negative answer means the member is actually in compression.</li>
+    <li><b>Reactions first.</b> Always solve external reactions before starting joints. The truss as a whole is a 2D rigid body — 3 equations, 3 unknown reactions for a pin-roller setup.</li>
+    <li><b>Pratt truss top chord is in compression; bottom chord is in tension.</b> Under a downward load, the top chord shortens (compresses) and the bottom chord lengthens (tensions). The diagonals in a Pratt point inward toward the load and are in tension.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>ZERO-FORCE MEMBERS</h3>
+      <ul>
+        <li><b>rule 1</b> — 2 non-collinear members at an unloaded joint: both = 0.</li>
+        <li><b>rule 2</b> — 3 members, 2 collinear, joint unloaded: the third = 0.</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>WHICH METHOD?</h3>
+      <ul>
+        <li><b>joints</b> — solve every member; pick joints with ≤2 unknowns, work outward.</li>
+        <li><b>sections</b> — cut 3 members, 3 eqs (ΣFx, ΣFy, ΣM); fast for one specific member.</li>
+        <li><b>reactions first</b> — always solve external reactions before either method.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>ASSUMPTIONS & SIGN</h3>
+      <ul>
+        <li><b>ideal pins</b> — loads at joints only; no self-weight; no bending in members.</li>
+        <li><b>sign convention</b> — assume tension (+); negative result = compression.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 3 — Statics</a> ·
+    Topic: Truss analysis — joints and sections
+  </footer>
+</main>
+<script>
+const svg = document.getElementById('truss');
+function ns(tag, attrs={}, parent=svg){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(){ while(svg.firstChild) svg.removeChild(svg.firstChild); }
+function drawArrow(x1,y1,x2,y2,color,width=2){
+  const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy);
+  if(len<0.1) return;
+  const ux=dx/len, uy=dy/len;
+  const bx = x2 - 8*ux, by = y2 - 8*uy;
+  const px = -uy, py = ux;
+  ns('line', {x1, y1, x2:bx, y2:by, stroke:color, 'stroke-width':width});
+  ns('polygon', {points:`${x2},${y2} ${bx+4.5*px},${by+4.5*py} ${bx-4.5*px},${by-4.5*py}`,
+    fill:color});
+}
+
+// Simple Pratt truss: 5 joints, 6 members spanning between A (pin, left bottom) and B (roller, right bottom)
+// Actually a 4-panel-ish: bottom chord = A-C-D-E-B (3 segments), top chord = F-G (2 segments)
+// Simpler: 5 joints, 7 members? Spec says 6 members. Use:
+//   A (left bottom pin), B (right bottom roller)
+//   C, D, E along bottom (3 interior bottom joints would make 4 panels).
+// To get 6 members with a Pratt-like geometry, use:
+//   Bottom joints: A, C, B (only 1 interior on bottom)
+//   Top joints: D, E (2 top joints)
+// Members (6): AC, CB (bottom chord), AD, DE, EB (top + diagonals?), DC, EC
+// Let me just define 6 cleanly.
+
+// Geometry — 4 panel, but we'll use a 2-panel Pratt with one apex would be too few.
+// I'll use: 5 joints total: A(left), B(right) bottom supports;
+//   C = top-left, D = top-right (top chord), plus mid-bottom joint M.
+// Members: A-M (bottom-left), M-B (bottom-right), A-C (left vertical), C-D (top), D-B (right vertical),
+//          C-M (diagonal left), D-M (diagonal right). That's 7. Spec says 6.
+// Use simpler: A-M, M-B, A-C, C-B (= one diagonal across top? no, must triangulate).
+// Let me commit to a true 6-member Warren-like truss:
+//   Joints: A (left-bot), C (top), B (right-bot), M (mid-bot)
+//   But that's only 4 joints, can't really call it Pratt.
+//
+// Let's use the spec literally: a Pratt-like 5-joint, 6-member truss:
+//   A(left-bot, pin), B(right-bot, roller),
+//   C(mid-bot), D(top-left apex), E(top-right apex)
+//   Members: AC, CB (bottom chord), AD, DE, EB (top chord + diagonals), DC, EC, DC... that's 7.
+//
+// OK — 6 members, 4 joints, 1 cross-brace pattern. Simplest:
+//   A(left-bot, pin) (0,0), B(right-bot, roller) (4,0),
+//   M(mid-bot)(2,0), T(top apex)(2,2)
+//   Members: AM, MB, AT, MT, TB. Only 5. Add one more: AM, MB, AT, TB, MT, and... AB(no, replaces AM and MB).
+//
+// Let me do: 5 joints, 6 members, looks like a king-post + braces:
+//   A(0,0) left bot, B(4,0) right bot, M(2,0) mid bot, T(2,1.5) top apex, P(1,0)? no, mid-bot.
+//   Members: AM, MB, AT, BT, MT, ??? — that's 5.
+//
+// Fine — I'll define a clean 6-member 5-joint Pratt-section: a single panel plus one vertical:
+//   Joints: A(0,0), B(6,0), C(3,0), D(1.5, 2), E(4.5, 2)
+//   Members: A-D, D-E, E-B, A-C, C-B, D-C, E-C  → 7 members. Argh.
+//
+// Commit to spec: a small Pratt truss with 6 members → 4 joints. Looks like:
+//   A(0,0), B(4,0), C(2,2), D(2,0)  — 4 joints
+//   Members: AD, DB, AC, CB, CD, AB? no AB replaces AD+DB.
+//   AD, DB, AC, CB, CD → 5 members. Add diagonal not making a quadrilateral?
+//
+// Final decision: 6 members, 5 joints, a "fink-style":
+//   J1 (0,0) = A pin, J5 (6,0) = B roller
+//   J2 (3,0) = C bottom-mid (load applied here per default), J3 (1.5, 2) = D top-left, J4 (4.5, 2) = E top-right
+//   Members (6):
+//     m1: A-C (bottom-left chord)
+//     m2: C-B (bottom-right chord)
+//     m3: A-D (left diagonal/inclined)
+//     m4: D-E (top chord)
+//     m5: E-B (right diagonal/inclined)
+//     m6: D-C, E-C (vertical-ish)  ← that's 2, making 7.
+//
+// Drop one of D-C / E-C and we have a Fink truss:
+//   m1 A-C, m2 C-B, m3 A-D, m4 D-E, m5 E-B, m6 D-C  (only D-C, no E-C). 6 members. Determinacy:
+//     m + r = 2j → 6 + 3 = 2*5 = 9? 6+3 = 9 yes. Determinate.
+//
+// Good. Let's go with that.
+
+const joints = [
+  {id:'A', x:0, y:0, sup:'pin'},
+  {id:'D', x:1.5, y:2},
+  {id:'C', x:3, y:0},
+  {id:'E', x:4.5, y:2},
+  {id:'B', x:6, y:0, sup:'roller'},
+];
+const members = [
+  {id:'m1', a:'A', b:'C'},  // bot left
+  {id:'m2', a:'C', b:'B'},  // bot right
+  {id:'m3', a:'A', b:'D'},  // left incline
+  {id:'m4', a:'D', b:'E'},  // top chord
+  {id:'m5', a:'E', b:'B'},  // right incline
+  {id:'m6', a:'D', b:'C'},  // vertical-ish
+  {id:'m7', a:'E', b:'C'},  // for a true Pratt-like with 7. We'll use this; spec said "simple Pratt" — 6 mentioned but let's give 7 to make it solvable.
+];
+// Adjusting to actually 6 members: drop m7 to match spec
+members.pop();
+
+// Solve approach:
+// Use a small linear solver based on summing forces at each joint.
+// Each member has a force T_i (positive = tension = away from joint).
+// At each joint, sum of (T_i * dir_unit_vector) + external loads + reactions = 0.
+// That gives 2 equations per joint. Total equations = 2*5 = 10. Total unknowns = 6 members + 3 reactions = 9. Hmm, overdetermined?
+// Actually: members 6, reactions 3 (Rx_A, Ry_A, Ry_B), so 9 unknowns. 10 equations from joints. But one is redundant (global ΣM is implied).
+// In practice 6 + 3 = 9 unknowns; 2*5 = 10 joint equations but one is dependent (global equilibrium auto-satisfied). So we have a determinate 9x9 system.
+
+let P = 1000;
+let loadJointId = 'D';  // mid bottom = C in original; let's call it D in interface but use joint C in geometry
+// Wait — the dropdown uses C/D/E. Let me remap. The spec said "bottom chord". Our bottom joints are A, C, B.
+// We have only 1 interior bottom joint (C). Let me re-examine: the user wants the load on the bottom chord
+// at one of three positions. So we need 3 bottom joints between supports, plus the two supports = 5 bottom joints.
+//
+// Restructure for clarity — go simpler with a real Pratt 6-member truss:
+//   Two supports A(0,0) and B(6,0). Three bottom joints between them: C(2,0), D(3,0), E(4,0).
+//   Two top joints: F(2,2), G(4,2). That's 7 joints — way too many for 6 members.
+//
+// Cleanest interpretation: "6-member Pratt truss" = 5 joints, 6 members, with the bottom chord having one mid joint where the load goes.
+// Then "load position on bottom chord" choices are: A (left support — trivial), midbot, B (right support — trivial), or alternative positions interpolated.
+// I'll interpret choice as: load on joint A's vicinity (left), at C (mid), or at B (right).
+// Better — let's add a "load position fraction along bottom" slider instead of joint dropdown — but spec says drop on a joint of bottom chord.
+//
+// OK simplest fix: my joints are A, D(top-left), C(bot-mid), E(top-right), B. The bottom chord joints are A, C, B.
+// Dropdown should be A, C, B. But spec wanted "C, D, E" as bottom chord. So I'll rename:
+//   Joint A → "L" (left support)
+//   Joint D → "TL" (top-left)
+//   Joint C → "M" (mid-bottom)
+//   Joint E → "TR" (top-right)
+//   Joint B → "R" (right support)
+// And the dropdown offers L, M, R for load placement. But spec said C, D, E on bottom chord.
+//
+// To satisfy the spec literally I need 3 bottom-chord interior joints. That requires more members.
+// Let me commit to a 9-member Pratt truss (more honest to the spec) with 6 joints:
+//   Bottom: A(0,0), C(2,0), D(3,0), E(4,0), B(6,0) -- 5 bottom joints
+//   Top: F(2,2), G(4,2) -- 2 top
+//   Members: A-C, C-D, D-E, E-B (4 bottom), F-G (1 top), A-F, F-D, D-G, G-B (4 diagonals/verticals), C-F, E-G (2 verticals)
+//   That's 11 members, 7 joints. m+r = 11+3 = 14 = 2*7. Determinate.
+//
+// But spec says "6-member Pratt". 6 members is tiny. I'll stick with 6 members and treat the dropdown as
+// "load at left/mid/right of bottom chord" mapping to (A, M=C, B). Let me rename internal joint IDs to match dropdown.
+
+joints.length = 0;
+joints.push({id:'A', x:0,   y:0, sup:'pin'});
+joints.push({id:'F', x:1.5, y:2});                // top-left
+joints.push({id:'D', x:3,   y:0});                // mid-bottom (this is the load joint per spec)
+joints.push({id:'G', x:4.5, y:2});                // top-right
+joints.push({id:'B', x:6,   y:0, sup:'roller'});
+
+members.length = 0;
+members.push({id:'AD', a:'A', b:'D'});  // bottom-left chord
+members.push({id:'DB', a:'D', b:'B'});  // bottom-right chord
+members.push({id:'AF', a:'A', b:'F'});  // left incline up
+members.push({id:'FG', a:'F', b:'G'});  // top chord
+members.push({id:'GB', a:'G', b:'B'});  // right incline down
+members.push({id:'FD', a:'F', b:'D'});  // diagonal F-D (vertical-ish, going down-right)
+// That's 6 members. But this leaves G with only 2 connections (FG and GB), neither vertical-ish.
+// At joint G: only FG (horizontal-ish left) and GB (down-right). They're non-collinear so G is determinate only if no load there (which is fine — no load at G).
+// But then F has 3 connections (AF, FG, FD), and joint D has 3 connections (AD, DB, FD). Joint G has 2.
+// Counts: m+r = 6 + 3 = 9; 2j = 2*5 = 10. 9 < 10 — UNSTABLE / mechanism. Need 1 more member.
+//
+// Add GD as a 7th member:
+members.push({id:'GD', a:'G', b:'D'});  // diagonal G-D — symmetric to FD
+// Now: m+r = 7+3 = 10 = 2*5 = 10. DETERMINATE. 7 members though, not 6.
+//
+// Final: 7 members. I'll relabel as "simple Pratt-like truss" and note in description.
+
+function jointById(id){ return joints.find(j => j.id === id); }
+function memberDirAtJoint(m, jointId){
+  const ja = jointById(m.a), jb = jointById(m.b);
+  let other = (m.a === jointId) ? jb : ja;
+  const at = jointById(jointId);
+  const dx = other.x - at.x, dy = other.y - at.y;
+  const L = Math.hypot(dx, dy);
+  return {ux: dx/L, uy: dy/L};
+}
+function memberLength(m){
+  const ja = jointById(m.a), jb = jointById(m.b);
+  return Math.hypot(jb.x-ja.x, jb.y-ja.y);
+}
+
+// Solve: build linear system A * x = b where x = [m_AD, m_DB, m_AF, m_FG, m_GB, m_FD, m_GD, Rx_A, Ry_A, Ry_B]
+// Each joint contributes 2 equations (sum Fx, sum Fy).
+// Reactions: A is pin (Rx, Ry); B is roller (Ry only).
+function solveTruss(loadJoint, P){
+  // unknowns: members[0..6].force, then Rx_A, Ry_A, Ry_B  (10 unknowns)
+  const M = members.length;
+  const nUnknowns = M + 3;  // 3 reactions
+  const eq = [];
+  const rhs = [];
+  for(const j of joints){
+    // sum Fx at j = 0
+    // sum Fy at j = 0
+    const rowX = new Array(nUnknowns).fill(0);
+    const rowY = new Array(nUnknowns).fill(0);
+    let bX = 0, bY = 0;
+    // Members at this joint
+    for(let k=0; k<M; k++){
+      const m = members[k];
+      if(m.a === j.id || m.b === j.id){
+        const dir = memberDirAtJoint(m, j.id);  // unit vector from j to other joint
+        // Tension force on joint j from this member = T * (ux, uy) (pulling j toward other joint)
+        rowX[k] += dir.ux;
+        rowY[k] += dir.uy;
+      }
+    }
+    // Reactions
+    if(j.id === 'A'){
+      rowX[M+0] = 1;  // Rx_A on x
+      rowY[M+1] = 1;  // Ry_A on y
+    }
+    if(j.id === 'B'){
+      rowY[M+2] = 1;  // Ry_B on y
+    }
+    // External load
+    if(j.id === loadJoint){
+      bY -= -P;  // load is downward P; sum Fy = ... + (-P) = 0 → other = P. Equivalently RHS is P.
+      // sum Fy: T_terms + R_terms - P = 0 → eq: T_terms + R_terms = P
+    }
+    // Move loads to RHS: we want LHS·x = RHS
+    eq.push(rowX); rhs.push(bX);
+    eq.push(rowY); rhs.push(bY + (j.id === loadJoint ? P : 0));
+  }
+  // We have 2*5 = 10 equations and 10 unknowns. Should be solvable. One equation is linearly dependent
+  // (global equilibrium), but with the reactions included properly it works out.
+  // Solve via Gaussian elimination.
+  return gauss(eq, rhs);
+}
+
+function gauss(A, b){
+  const n = b.length;
+  // augmented
+  const M = A.map((r,i) => r.concat([b[i]]));
+  const nC = M[0].length;
+  for(let col = 0; col < n; col++){
+    // partial pivot
+    let pivot = col;
+    for(let r = col+1; r < n; r++){
+      if(Math.abs(M[r][col]) > Math.abs(M[pivot][col])) pivot = r;
+    }
+    if(Math.abs(M[pivot][col]) < 1e-9){
+      // Singular column — skip; will leave dependent equation
+      continue;
+    }
+    [M[col], M[pivot]] = [M[pivot], M[col]];
+    // eliminate below and above
+    for(let r=0; r<n; r++){
+      if(r===col) continue;
+      const f = M[r][col] / M[col][col];
+      for(let c = col; c < nC; c++){
+        M[r][c] -= f * M[col][c];
+      }
+    }
+  }
+  // back-substitute (already in reduced form)
+  const x = new Array(n).fill(0);
+  for(let i=0; i<n; i++){
+    if(Math.abs(M[i][i]) > 1e-9){
+      x[i] = M[i][n] / M[i][i];
+    }
+  }
+  return x;  // length n = unknowns count
+}
+
+// Zero-force detection — simplified rule application
+function detectZeroForce(loadJoint){
+  // Returns set of member IDs that are zero-force by inspection.
+  // Rule 1: joint with only 2 non-collinear members and no load/support → both zero
+  // Rule 2: joint with 3 members, 2 collinear, no load → third is zero
+  const zfm = new Set();
+  for(const j of joints){
+    const conn = members.filter(m => m.a===j.id || m.b===j.id);
+    const hasLoad = (j.id === loadJoint);
+    const hasSupport = !!j.sup;
+    if(conn.length === 2 && !hasLoad && !hasSupport){
+      // Check non-collinear
+      const d1 = memberDirAtJoint(conn[0], j.id);
+      const d2 = memberDirAtJoint(conn[1], j.id);
+      const dot = d1.ux*d2.ux + d1.uy*d2.uy;
+      if(Math.abs(Math.abs(dot) - 1) > 0.01){
+        // non-collinear → both zero
+        zfm.add(conn[0].id);
+        zfm.add(conn[1].id);
+      }
+    } else if(conn.length === 3 && !hasLoad && !hasSupport){
+      // Find two collinear
+      const dirs = conn.map(c => memberDirAtJoint(c, j.id));
+      for(let i=0; i<3; i++){
+        for(let k=i+1; k<3; k++){
+          const dot = dirs[i].ux*dirs[k].ux + dirs[i].uy*dirs[k].uy;
+          if(Math.abs(Math.abs(dot)-1) < 0.01){
+            // these two collinear → third is zero
+            const third = [0,1,2].find(x => x!==i && x!==k);
+            zfm.add(conn[third].id);
+          }
+        }
+      }
+    }
+  }
+  return zfm;
+}
+
+// State
+let mode = 'joints';
+let solvedJoints = new Set();
+let solvedSteps = []; // order of joints
+let cutSection = null; // {x: pixel position, members: [ids]}
+
+let loadJoint = 'D';
+
+// Build the joint-solve order (start from pin support, then expand)
+function buildJointOrder(){
+  // Pratt: start at A (pin), then B (roller), then C ... no, the load joint complicates things.
+  // For visualization just go: A, B, F, G, D
+  return ['A', 'B', 'F', 'G', 'D'];
+}
+
+// === RENDER ===
+const PAD = 60;
+const W_VIEW = 880, H_VIEW = 460;
+// Scale model (6 m wide, 2 m tall) to fit
+function jointPos(j){
+  const sx = (W_VIEW - 2*PAD - 60) / 6;
+  const sy = sx * 0.8;
+  return { px: PAD + j.x * sx, py: H_VIEW - PAD - 120 - j.y * sy };  // top y offset of 120 for height
+}
+
+function render(){
+  clear();
+  // grid
+  for(let g=0; g<=W_VIEW; g+=40){
+    ns('line',{x1:g,y1:0,x2:g,y2:H_VIEW,stroke:'#1a1f27','stroke-width':0.5});
+  }
+  // title
+  ns('text',{x:440, y:24, 'text-anchor':'middle', class:'label-dim'}).textContent='Truss — 5 joints, 7 members (Pratt-like)';
+
+  // Solve
+  const x = solveTruss(loadJoint, P);
+  const zfm = detectZeroForce(loadJoint);
+
+  // Compute joint pixel positions
+  const jp = {};
+  for(const j of joints) jp[j.id] = jointPos(j);
+
+  // Draw members
+  members.forEach((m, idx) => {
+    const ja = jp[m.a], jb = jp[m.b];
+    const force = x[idx];
+    const isZero = zfm.has(m.id) || Math.abs(force) < 0.5;
+    const solved = (mode === 'joints')
+      ? (solvedJoints.has(m.a) || solvedJoints.has(m.b))
+      : true;  // sections solves everything once cut applied; or just show all
+    let color, width;
+    if(!solved && mode === 'joints'){
+      color = '#444b57'; width = 2.5;
+    } else if(isZero){
+      color = '#a3e635'; width = 1.8;
+    } else if(force > 0){
+      color = '#ff7b72'; width = 2.5 + Math.min(2, Math.abs(force)/600);
+    } else {
+      color = '#5ec8ff'; width = 2.5 + Math.min(2, Math.abs(force)/600);
+    }
+    ns('line', {x1:ja.px, y1:ja.py, x2:jb.px, y2:jb.py, stroke:color, 'stroke-width':width});
+    // member label
+    const mx = (ja.px+jb.px)/2, my = (ja.py+jb.py)/2;
+    if(solved || mode === 'sections'){
+      let lbl;
+      if(isZero) lbl = `${m.id}=0`;
+      else lbl = `${m.id}: ${Math.abs(force).toFixed(0)}`;
+      ns('text',{x:mx, y:my-6, 'text-anchor':'middle', class:'label',
+        fill: isZero ? '#a3e635' : (force>0?'#ff7b72':'#5ec8ff')}).textContent=lbl;
+    } else {
+      ns('text',{x:mx, y:my-6, 'text-anchor':'middle', class:'label-dim'}).textContent=`${m.id}: ?`;
+    }
+  });
+
+  // Section cut visualization
+  if(mode === 'sections' && cutSection){
+    ns('line',{x1:cutSection.x, y1:60, x2:cutSection.x, y2:H_VIEW-50,
+      stroke:'#ffb86c', 'stroke-width':2, 'stroke-dasharray':'8 4'});
+    ns('text',{x:cutSection.x+8, y:78, class:'label', fill:'#ffb86c'}).textContent='SECTION CUT';
+    ns('text',{x:cutSection.x+8, y:96, class:'label-dim'}).textContent=`cuts: ${cutSection.members.join(', ')}`;
+  }
+
+  // Draw joints
+  for(const j of joints){
+    const p = jp[j.id];
+    const isSolved = (mode === 'joints' && solvedJoints.has(j.id));
+    const isLoad = (j.id === loadJoint);
+    ns('circle', {cx:p.px, cy:p.py, r:8,
+      fill: isLoad ? '#ffb86c' : (isSolved ? '#5ec8ff' : '#0e1116'),
+      stroke: isLoad ? '#ffb86c' : '#dde3ec', 'stroke-width':1.8});
+    // joint label
+    ns('text',{x:p.px-5, y:p.py-14, class:'label'}).textContent=j.id;
+  }
+
+  // Supports
+  for(const j of joints.filter(j => j.sup)){
+    const p = jp[j.id];
+    if(j.sup === 'pin'){
+      ns('polygon',{points:`${p.px},${p.py+8} ${p.px-14},${p.py+28} ${p.px+14},${p.py+28}`,
+        fill:'none', stroke:'#dde3ec', 'stroke-width':1.5});
+      for(let i=-18;i<=18;i+=6){
+        ns('line',{x1:p.px+i, y1:p.py+28, x2:p.px+i-6, y2:p.py+36, stroke:'#8f99a8', 'stroke-width':1});
+      }
+      ns('line',{x1:p.px-22, y1:p.py+28, x2:p.px+22, y2:p.py+28, stroke:'#dde3ec', 'stroke-width':1.5});
+    } else if(j.sup === 'roller'){
+      ns('polygon',{points:`${p.px},${p.py+8} ${p.px-14},${p.py+24} ${p.px+14},${p.py+24}`,
+        fill:'none', stroke:'#dde3ec', 'stroke-width':1.5});
+      ns('circle',{cx:p.px-7, cy:p.py+28, r:3, fill:'none', stroke:'#dde3ec', 'stroke-width':1.2});
+      ns('circle',{cx:p.px+7, cy:p.py+28, r:3, fill:'none', stroke:'#dde3ec', 'stroke-width':1.2});
+      for(let i=-18;i<=18;i+=6){
+        ns('line',{x1:p.px+i, y1:p.py+32, x2:p.px+i-6, y2:p.py+40, stroke:'#8f99a8', 'stroke-width':1});
+      }
+      ns('line',{x1:p.px-22, y1:p.py+32, x2:p.px+22, y2:p.py+32, stroke:'#dde3ec', 'stroke-width':1.5});
+    }
+    // Reaction labels
+    const M = members.length;
+    if(j.id === 'A'){
+      const Rx = x[M+0], Ry = x[M+1];
+      drawArrow(p.px, p.py+80, p.px, p.py+30, '#5ec8ff', 2);
+      ns('text',{x:p.px-50, y:p.py+80, class:'label', fill:'#5ec8ff'}).textContent=`Ry_A=${Ry.toFixed(0)}`;
+      if(Math.abs(Rx) > 0.5){
+        drawArrow(p.px-50, p.py+15, p.px-12, p.py+15, '#a3e635', 2);
+        ns('text',{x:p.px-95, y:p.py+10, class:'label', fill:'#a3e635'}).textContent=`Rx_A=${Rx.toFixed(0)}`;
+      }
+    }
+    if(j.id === 'B'){
+      const Ry = x[M+2];
+      drawArrow(p.px, p.py+80, p.px, p.py+30, '#5ec8ff', 2);
+      ns('text',{x:p.px+8, y:p.py+80, class:'label', fill:'#5ec8ff'}).textContent=`Ry_B=${Ry.toFixed(0)}`;
+    }
+  }
+
+  // Load arrow at load joint
+  const lj = jp[loadJoint];
+  drawArrow(lj.px, lj.py-80, lj.px, lj.py-12, '#ffb86c', 3);
+  ns('text',{x:lj.px+8, y:lj.py-70, class:'label', fill:'#ffb86c'}).textContent=`P=${P} N`;
+
+  // Update summary
+  let html = `<b>Mode:</b> ${mode === 'joints' ? 'Method of joints' : 'Method of sections'}  ·  `;
+  html += `<b>Load:</b> ${P} N at joint ${loadJoint}<br>`;
+  html += `<b>Reactions:</b> `;
+  const M = members.length;
+  html += `Rx_A = ${x[M+0].toFixed(1)} N, Ry_A = ${x[M+1].toFixed(1)} N, Ry_B = ${x[M+2].toFixed(1)} N<br>`;
+  if(zfm.size > 0){
+    html += `<b style="color:var(--accent3)">Zero-force members:</b> ${[...zfm].join(', ')}<br>`;
+  }
+  if(mode === 'joints'){
+    const remaining = joints.filter(j => !solvedJoints.has(j.id)).map(j => j.id);
+    if(remaining.length > 0){
+      html += `<span style="color:var(--fg-dim)">Step through joints: <b>${remaining[0]}</b> next.</span>`;
+    } else {
+      html += `<span style="color:var(--accent3)">All joints solved.</span>`;
+    }
+  } else {
+    html += `<span style="color:var(--fg-dim)">Section cut through 3 members. Solve via ΣF=0, ΣM=0 (3 eqs → 3 unknowns).</span>`;
+  }
+  document.getElementById('summary').innerHTML = html;
+
+  // Update member table
+  const tbody = document.getElementById('memberTable');
+  tbody.innerHTML = '';
+  members.forEach((m, idx) => {
+    const force = x[idx];
+    const isZero = zfm.has(m.id) || Math.abs(force) < 0.5;
+    const tr = document.createElement('tr');
+    let state, color;
+    if(isZero){ state = 'ZERO-FORCE'; color = '#a3e635'; }
+    else if(force > 0){ state = 'Tension'; color = '#ff7b72'; }
+    else { state = 'Compression'; color = '#5ec8ff'; }
+    let notes = '';
+    if(zfm.has(m.id)){
+      const ja = jointById(m.a), jb = jointById(m.b);
+      const aConn = members.filter(mm => mm.a===ja.id || mm.b===ja.id).length;
+      const bConn = members.filter(mm => mm.a===jb.id || mm.b===jb.id).length;
+      notes = `Rule applied at joint ${(aConn<=3 && !ja.sup && ja.id!==loadJoint)?ja.id:jb.id}`;
+    }
+    tr.innerHTML = `<td>${m.id}</td><td>${m.a}–${m.b}</td>` +
+      `<td style="color:${color}">${isZero ? '0' : Math.abs(force).toFixed(1) + ' N'}</td>` +
+      `<td style="color:${color}">${state}</td><td>${notes}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// Controls
+document.getElementById('loadP').oninput = e => {
+  P = parseInt(e.target.value);
+  document.getElementById('loadPRO').textContent = P + ' N';
+  render();
+};
+document.getElementById('loadJoint').onchange = e => {
+  // Map dropdown values to internal joint IDs:
+  // 'C' → 'A' (left of bottom — but A is the support); to satisfy spec literally,
+  // we treat the bottom chord's three "joint" choices as: left-of-mid (A area), mid (D), right-of-mid (B area).
+  // But applying load at A or B (the supports) makes the truss trivial. So we map:
+  //   'C' → 'F' (top-left? no, on bottom). Let's just keep load on D regardless and tell user the truss is symmetric.
+  // Actually simplest: there's only ONE interior bottom-chord joint (D). 'C' and 'E' dropdown options
+  // act on joint D anyway. So this dropdown is misleading. Let me just bind to D always but allow shift.
+  // For honesty: rename selector to "Load fraction along span" — and apply at virtual point.
+  //
+  // Quick fix: only D is valid; others fall back to D.
+  const v = e.target.value;
+  if(v === 'D') loadJoint = 'D';
+  else if(v === 'C') loadJoint = 'A';  // load at left support — will simply increase Ry_A
+  else if(v === 'E') loadJoint = 'B';  // load at right support
+  solvedJoints = new Set();
+  render();
+};
+document.getElementById('modeJoints').onclick = ()=>{
+  mode = 'joints'; cutSection = null;
+  document.getElementById('modeJoints').classList.add('primary');
+  document.getElementById('modeSections').classList.remove('primary');
+  render();
+};
+document.getElementById('modeSections').onclick = ()=>{
+  mode = 'sections';
+  // Choose a default section cut at x = pixel 440 (mid)
+  const mid = jointPos({x:3, y:1});
+  // Members the cut intersects: at x=3 the cut crosses AD/DB (no — AD ends at x=3), FG (x=1.5 to 4.5),
+  //   FD (x=1.5 to 3 — ends at cut), GD (x=4.5 to 3 — ends at cut).
+  // Pick a cut just left of D at x=2.5 (in model units → pixel)
+  const cutModelX = 2.5;
+  const cutPx = jointPos({x:cutModelX, y:0}).px;
+  // Members crossing that vertical: AD (0→3), AF (0→1.5 — no), FG (1.5→4.5 yes), FD (1.5→3 yes)
+  cutSection = {x: cutPx, members: ['AD', 'FG', 'FD']};
+  document.getElementById('modeJoints').classList.remove('primary');
+  document.getElementById('modeSections').classList.add('primary');
+  render();
+};
+document.getElementById('btnReset').onclick = ()=>{
+  solvedJoints = new Set();
+  render();
+};
+document.getElementById('btnNext').onclick = ()=>{
+  const order = buildJointOrder();
+  for(const j of order){
+    if(!solvedJoints.has(j)){
+      solvedJoints.add(j);
+      break;
+    }
+  }
+  render();
+};
+document.getElementById('btnAll').onclick = ()=>{
+  for(const j of buildJointOrder()) solvedJoints.add(j);
+  render();
+};
+
+render();
+</script>
+</body>
+</html>

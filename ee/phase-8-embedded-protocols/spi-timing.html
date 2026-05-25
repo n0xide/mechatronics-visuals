@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPI Timing — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number],.control input[type=text]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0;flex-wrap:wrap}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>SPI Timing</h1>
+  <p class="lede">Four SPI modes set by two bits: clock polarity (CPOL) and clock phase (CPHA). The combination determines whether data is sampled on a rising or falling edge.</p>
+
+  <p>SPI is full-duplex, master-clocked, and four-wire (SCK, MOSI, MISO, CS). The only ambiguity is when in the clock cycle the slave latches data. The four modes cover all four answers; every SPI device picks one (sometimes two) and its datasheet says which.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Mode: <span class="readout" id="modeRead">Mode 0 (CPOL=0, CPHA=0)</span></label>
+      <select id="modeSel">
+        <option value="0" selected>Mode 0 — CPOL=0, CPHA=0 (most common)</option>
+        <option value="1">Mode 1 — CPOL=0, CPHA=1</option>
+        <option value="2">Mode 2 — CPOL=1, CPHA=0</option>
+        <option value="3">Mode 3 — CPOL=1, CPHA=1</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>MOSI byte: <span class="readout" id="mosiRead">0xA5</span></label>
+      <input id="mosiInput" type="text" value="A5" maxlength="2">
+    </div>
+    <div class="control">
+      <label>MISO byte (from slave): <span class="readout" id="misoRead">0x3C</span></label>
+      <input id="misoInput" type="text" value="3C" maxlength="2">
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Waveforms — CS, SCK, MOSI, MISO</h3>
+    <svg id="spiPlot" viewBox="0 0 900 380" width="100%"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>SCK / lines</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>sample edge</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>change edge</span>
+    </div>
+  </div>
+
+  <h2>Mode summary table</h2>
+  <table>
+    <thead><tr><th>Mode</th><th>CPOL</th><th>CPHA</th><th>Clock idle</th><th>Sample edge</th><th>Change edge</th><th>Common users</th></tr></thead>
+    <tbody>
+      <tr><td>0</td><td>0</td><td>0</td><td>LOW</td><td>↑ rising</td><td>↓ falling</td><td>SD cards, most sensors, ILI9488</td></tr>
+      <tr><td>1</td><td>0</td><td>1</td><td>LOW</td><td>↓ falling</td><td>↑ rising</td><td>some audio codecs</td></tr>
+      <tr><td>2</td><td>1</td><td>0</td><td>HIGH</td><td>↓ falling</td><td>↑ rising</td><td>some NOR flash</td></tr>
+      <tr><td>3</td><td>1</td><td>1</td><td>HIGH</td><td>↑ rising</td><td>↓ falling</td><td>some inertial sensors</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Multi-device topologies</h2>
+  <div class="figure">
+    <svg viewBox="0 0 900 380" width="100%">
+      <text x="20" y="22" class="label" style="font-weight:600;font-size:14px">Independent CS (star)</text>
+      <text x="20" y="40" class="label-dim">Shared SCK/MOSI/MISO bus; one CS line per slave.</text>
+      <!-- Master -->
+      <rect x="30" y="60" width="100" height="130" fill="var(--bg-elev2)" stroke="var(--fg)"/>
+      <text x="80" y="78" class="label" text-anchor="middle">MCU (master)</text>
+      <text x="40" y="100" class="label-dim">SCK</text>
+      <text x="40" y="118" class="label-dim">MOSI</text>
+      <text x="40" y="136" class="label-dim">MISO</text>
+      <text x="40" y="154" class="label-dim">CS1</text>
+      <text x="40" y="172" class="label-dim">CS2</text>
+      <line x1="130" y1="96" x2="320" y2="96" class="wire"/>
+      <line x1="130" y1="114" x2="320" y2="114" class="wire"/>
+      <line x1="130" y1="132" x2="320" y2="132" class="wire"/>
+      <!-- buses fan out -->
+      <line x1="200" y1="96" x2="200" y2="220" class="wire"/>
+      <line x1="200" y1="114" x2="200" y2="240" class="wire"/>
+      <line x1="200" y1="132" x2="200" y2="260" class="wire"/>
+      <line x1="280" y1="96" x2="280" y2="220" class="wire"/>
+      <line x1="280" y1="114" x2="280" y2="240" class="wire"/>
+      <line x1="280" y1="132" x2="280" y2="260" class="wire"/>
+      <!-- CS lines -->
+      <line x1="130" y1="150" x2="170" y2="150" class="wire" stroke="var(--accent2)"/>
+      <line x1="170" y1="150" x2="170" y2="220" class="wire" stroke="var(--accent2)"/>
+      <line x1="130" y1="168" x2="310" y2="168" class="wire" stroke="var(--accent2)"/>
+      <line x1="310" y1="168" x2="310" y2="220" class="wire" stroke="var(--accent2)"/>
+      <!-- Slave 1 -->
+      <rect x="155" y="220" width="90" height="60" fill="var(--bg-elev2)" stroke="var(--fg)"/>
+      <text x="200" y="240" class="label" text-anchor="middle">Slave 1</text>
+      <text x="200" y="258" class="label-dim" text-anchor="middle">flash</text>
+      <!-- Slave 2 -->
+      <rect x="265" y="220" width="90" height="60" fill="var(--bg-elev2)" stroke="var(--fg)"/>
+      <text x="310" y="240" class="label" text-anchor="middle">Slave 2</text>
+      <text x="310" y="258" class="label-dim" text-anchor="middle">ADC</text>
+      <text x="20" y="305" class="label-dim">+ Pin cost: N slaves → N CS pins on MCU.</text>
+      <text x="20" y="325" class="label-dim">+ Any slave individually accessible.</text>
+      <text x="20" y="345" class="label-dim">− CS pin pressure on small MCUs.</text>
+
+      <!-- DAISY CHAIN -->
+      <text x="470" y="22" class="label" style="font-weight:600;font-size:14px">Daisy chain</text>
+      <text x="470" y="40" class="label-dim">MISO of slave N → MOSI of slave N+1; all CS tied; data shifts through chain.</text>
+      <rect x="480" y="60" width="100" height="130" fill="var(--bg-elev2)" stroke="var(--fg)"/>
+      <text x="530" y="78" class="label" text-anchor="middle">MCU (master)</text>
+      <text x="490" y="100" class="label-dim">SCK</text>
+      <text x="490" y="118" class="label-dim">MOSI</text>
+      <text x="490" y="136" class="label-dim">MISO</text>
+      <text x="490" y="154" class="label-dim">CS</text>
+      <!-- SCK trunk -->
+      <line x1="580" y1="96" x2="870" y2="96" class="wire"/>
+      <line x1="580" y1="154" x2="870" y2="154" class="wire" stroke="var(--accent2)"/>
+      <!-- MOSI to slave1 -->
+      <line x1="580" y1="114" x2="620" y2="114" class="wire"/>
+      <line x1="620" y1="114" x2="620" y2="225" class="wire"/>
+      <line x1="620" y1="225" x2="640" y2="225" class="wire"/>
+      <!-- Slave 1 -->
+      <rect x="640" y="210" width="80" height="60" fill="var(--bg-elev2)" stroke="var(--fg)"/>
+      <text x="680" y="230" class="label" text-anchor="middle">Slave 1</text>
+      <text x="680" y="248" class="label-dim" text-anchor="middle">DIN→DOUT</text>
+      <!-- Slave1 DOUT -> Slave2 DIN -->
+      <line x1="720" y1="240" x2="760" y2="240" class="wire" stroke="var(--accent3)"/>
+      <!-- Slave 2 -->
+      <rect x="760" y="210" width="80" height="60" fill="var(--bg-elev2)" stroke="var(--fg)"/>
+      <text x="800" y="230" class="label" text-anchor="middle">Slave 2</text>
+      <text x="800" y="248" class="label-dim" text-anchor="middle">DIN→DOUT</text>
+      <!-- back to master MISO -->
+      <line x1="840" y1="240" x2="870" y2="240" class="wire"/>
+      <line x1="870" y1="240" x2="870" y2="136" class="wire"/>
+      <line x1="870" y1="136" x2="580" y2="136" class="wire"/>
+      <!-- CS to both slaves -->
+      <line x1="680" y1="154" x2="680" y2="210" class="wire" stroke="var(--accent2)"/>
+      <line x1="800" y1="154" x2="800" y2="210" class="wire" stroke="var(--accent2)"/>
+
+      <text x="470" y="305" class="label-dim">+ One CS, scales to many devices.</text>
+      <text x="470" y="325" class="label-dim">− Must clock 8·N bits to update all; serial latency.</text>
+      <text x="470" y="345" class="label-dim">Used by: WS2812 strings, register-only chains.</text>
+    </svg>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>CPOL = clock idle level</b> — 0 means clock rests LOW, 1 means rests HIGH. Easy to set wrong; you'll get correct-looking but garbled data.</li>
+    <li><b>CPHA = sample on first or second edge</b> — CPHA=0 samples on first edge after CS asserts, CPHA=1 samples on second edge. The change edge is always the opposite.</li>
+    <li><b>CS frames the transaction</b> — slave drives MISO and accepts MOSI only while its CS is LOW. CS HIGH should three-state MISO so other slaves can use the bus.</li>
+    <li><b>Full duplex</b> — every clock cycle both MOSI and MISO transfer one bit. Even "read-only" transactions still shift MOSI; protocols ignore the don't-care bits.</li>
+    <li><b>Daisy chain is simple but serial</b> — to address slave 5 in a 5-chain, you must shift 40 bits. Independent CS lets you talk to any slave in 8 clocks; pick based on chain length and pin budget.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card">
+      <h3>SPI MODES</h3>
+      <table>
+        <tr><th>Mode</th><th>CPOL</th><th>CPHA</th><th>Idle</th><th>Sample</th></tr>
+        <tr><td><b>0</b></td><td>0</td><td>0</td><td>LOW</td><td>rising</td></tr>
+        <tr><td>1</td><td>0</td><td>1</td><td>LOW</td><td>falling</td></tr>
+        <tr><td>2</td><td>1</td><td>0</td><td>HIGH</td><td>falling</td></tr>
+        <tr><td>3</td><td>1</td><td>1</td><td>HIGH</td><td>rising</td></tr>
+      </table>
+      <ul><li>Mode 0 is the default — try it first.</li></ul>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>CS active LOW</b> — frames each transaction.</li>
+        <li><b>Full-duplex</b> — MOSI + MISO shift together on every clock.</li>
+        <li><b>MSB-first</b> by convention (some devices LSB).</li>
+        <li><b>No ACK</b> — master assumes slave heard.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Multi-device wiring</b> — needs independent CS per slave OR daisy chain.</li>
+        <li><b>Long traces</b> — capacitance drops max f_clk; keep CS/MISO short.</li>
+        <li><b>Wrong mode</b> — data looks plausible but every byte shifted by 1 bit.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 8 — Embedded Interface Protocols</a> ·
+    Topic: SPI Timing
+  </footer>
+</main>
+<script>
+  function parseHex(s){ s=s.trim(); return parseInt(s,16)&0xFF; }
+
+  function draw(){
+    const mode=parseInt(document.getElementById('modeSel').value);
+    const mosi=parseHex(document.getElementById('mosiInput').value||'00');
+    const miso=parseHex(document.getElementById('misoInput').value||'00');
+    const CPOL = (mode>>1)&1;
+    const CPHA = mode&1;
+    const labels=['Mode 0 (CPOL=0, CPHA=0)','Mode 1 (CPOL=0, CPHA=1)','Mode 2 (CPOL=1, CPHA=0)','Mode 3 (CPOL=1, CPHA=1)'];
+    document.getElementById('modeRead').textContent=labels[mode];
+    document.getElementById('mosiRead').textContent='0x'+mosi.toString(16).toUpperCase().padStart(2,'0');
+    document.getElementById('misoRead').textContent='0x'+miso.toString(16).toUpperCase().padStart(2,'0');
+
+    const svg=document.getElementById('spiPlot');
+    const W=900, H=380, mL=70, mR=30, mT=20, mB=30;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const bits=8;
+    const cycleW = pw/(bits+2); // 1 setup, 8 cycles, 1 hold
+    // each clock cycle spans cycleW
+    const rowH = ph/4;
+    const rows = {
+      CS:   {y0:mT+rowH*0+10, y1:mT+rowH*0+30, name:'CS̄'},
+      SCK:  {y0:mT+rowH*1+10, y1:mT+rowH*1+30, name:'SCK'},
+      MOSI: {y0:mT+rowH*2+10, y1:mT+rowH*2+30, name:'MOSI'},
+      MISO: {y0:mT+rowH*3+10, y1:mT+rowH*3+30, name:'MISO'}
+    };
+
+    let s='';
+    // row labels and baselines
+    for(const k of ['CS','SCK','MOSI','MISO']){
+      const r=rows[k];
+      s+=`<text x="${mL-8}" y="${r.y0+18}" class="label" text-anchor="end">${r.name}</text>`;
+      s+=`<line x1="${mL}" y1="${(r.y0+r.y1)/2}" x2="${mL+pw}" y2="${(r.y0+r.y1)/2}" class="grid-line"/>`;
+    }
+    // CS: HIGH for first half-cycle, LOW for 8 cycles, HIGH at end
+    const csStartX = mL + cycleW*0.5;
+    const csEndX = mL + cycleW*(bits+0.5);
+    let csPath = `M${mL},${rows.CS.y0} L${csStartX},${rows.CS.y0} L${csStartX},${rows.CS.y1} L${csEndX},${rows.CS.y1} L${csEndX},${rows.CS.y0} L${mL+pw},${rows.CS.y0}`;
+    s+=`<path d="${csPath}" class="trace trace-1"/>`;
+    s+=`<text x="${csStartX-3}" y="${rows.CS.y0-3}" class="label-dim" text-anchor="end">↓ assert</text>`;
+    s+=`<text x="${csEndX+3}" y="${rows.CS.y0-3}" class="label-dim">↑ deassert</text>`;
+
+    // SCK: idle at CPOL, then 8 cycles
+    const sckIdleY = CPOL===0 ? rows.SCK.y1 : rows.SCK.y0;
+    const sckActiveY = CPOL===0 ? rows.SCK.y0 : rows.SCK.y1;
+    let sckPath = `M${mL},${sckIdleY}`;
+    sckPath += ` L${csStartX},${sckIdleY}`;
+    let prevY = sckIdleY;
+    const sampleEdges=[], changeEdges=[];
+    for(let i=0;i<bits;i++){
+      const xStart = csStartX + i*cycleW;
+      const xMid = csStartX + (i+0.5)*cycleW;
+      const xEnd = csStartX + (i+1)*cycleW;
+      // first half: go to active
+      sckPath += ` L${xStart},${prevY} L${xStart},${sckActiveY} L${xMid},${sckActiveY}`;
+      // edge at xStart is "first edge"
+      // second half: back to idle
+      sckPath += ` L${xMid},${sckIdleY} L${xEnd},${sckIdleY}`;
+      prevY = sckIdleY;
+      // sample edge per CPHA:
+      // CPHA=0: data sampled on first edge (idle→active at xStart)
+      // CPHA=1: data sampled on second edge (active→idle at xMid)
+      if(CPHA===0) sampleEdges.push({x:xStart, bit:i});
+      else sampleEdges.push({x:xMid, bit:i});
+      if(CPHA===0) changeEdges.push({x:xMid, bit:i});
+      else changeEdges.push({x:xStart, bit:i});
+    }
+    sckPath += ` L${csEndX},${sckIdleY} L${mL+pw},${sckIdleY}`;
+    s+=`<path d="${sckPath}" class="trace trace-1"/>`;
+
+    // MOSI: MSB first by SPI convention. Data is "set up" on change edge, "sampled" on sample edge.
+    // For CPHA=0, data is presented before first edge; for CPHA=1, data changes on first edge.
+    function drawData(rowKey, byte, color){
+      const r=rows[rowKey];
+      let path=`M${mL},${(r.y0+r.y1)/2}`;
+      let py=(r.y0+r.y1)/2;
+      path += ` L${csStartX},${py}`;
+      for(let i=0;i<bits;i++){
+        const bit=(byte>>(7-i))&1;
+        const y = bit===1 ? r.y0 : r.y1;
+        // change happens at "change edge" of this bit i (but for first bit when CPHA=0, present at CS assert)
+        let xChange;
+        if(CPHA===0){
+          // first bit: present at CS assert; subsequent at change edges (which are at xMid of previous bit)
+          if(i===0) xChange = csStartX;
+          else xChange = csStartX + (i-0.5)*cycleW; // mid of previous bit
+        } else {
+          // change at first edge of bit i
+          xChange = csStartX + i*cycleW;
+        }
+        path += ` L${xChange},${py} L${xChange},${y}`;
+        py = y;
+        // hold to next change point or end
+        let xHold;
+        if(i===bits-1) xHold = csEndX;
+        else {
+          if(CPHA===0) xHold = csStartX + (i+0.5)*cycleW;
+          else xHold = csStartX + (i+1)*cycleW;
+        }
+        path += ` L${xHold},${y}`;
+        // bit label
+        const xMidBit = csStartX + (i+0.5)*cycleW;
+        s+=`<text x="${xMidBit}" y="${r.y0-3}" class="label-dim" text-anchor="middle">${bit}</text>`;
+      }
+      path += ` L${mL+pw},${py}`;
+      s+=`<path d="${path}" class="trace" stroke="${color}" stroke-width="2"/>`;
+    }
+    drawData('MOSI', mosi, 'var(--accent2)');
+    drawData('MISO', miso, 'var(--accent3)');
+
+    // Sample-edge markers
+    sampleEdges.forEach(e=>{
+      s+=`<line x1="${e.x}" y1="${rows.SCK.y0-4}" x2="${e.x}" y2="${rows.SCK.y1+4}" stroke="var(--accent3)" stroke-width="2" stroke-dasharray="2 2"/>`;
+      const arrow = (CPOL===0 ? (CPHA===0?'↑':'↓') : (CPHA===0?'↓':'↑'));
+      s+=`<text x="${e.x}" y="${rows.SCK.y0-6}" class="label" style="fill:var(--accent3);font-size:10px" text-anchor="middle">${arrow}</text>`;
+    });
+    // Change-edge markers (more subtle)
+    changeEdges.forEach(e=>{
+      s+=`<line x1="${e.x}" y1="${rows.SCK.y0-2}" x2="${e.x}" y2="${rows.SCK.y1+2}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="1 3"/>`;
+    });
+
+    // bit numbers above SCK
+    for(let i=0;i<bits;i++){
+      const xMid = csStartX + (i+0.5)*cycleW;
+      s+=`<text x="${xMid}" y="${mT+6}" class="label-dim" text-anchor="middle">bit ${7-i} (MSB-first)</text>`;
+    }
+    svg.innerHTML=s;
+  }
+
+  ['modeSel','mosiInput','misoInput'].forEach(id=>
+    document.getElementById(id).addEventListener('input',draw));
+  draw();
+</script>
+</body>
+</html>

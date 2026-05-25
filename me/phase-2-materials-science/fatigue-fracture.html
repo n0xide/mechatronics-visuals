@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fatigue and fracture — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .marker-line{stroke:var(--accent);stroke-width:1;stroke-dasharray:3 2;opacity:0.6}
+  .marker-dot{fill:var(--fg-bright);stroke:var(--accent);stroke-width:2}
+  .panels{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+  .panels > .figure{margin:0}
+  @media (max-width: 720px){ .panels{grid-template-columns:1fr} }
+  .readout-card{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px;font:13px ui-monospace,monospace;
+    display:flex;flex-direction:column;gap:3px}
+  .readout-card .name{color:var(--fg-dim);font-size:11px;text-transform:uppercase;letter-spacing:0.05em}
+  .readout-card .v{color:var(--accent);font:600 16px ui-monospace,monospace}
+  .goodman-line{stroke:var(--accent2);stroke-width:1.5}
+  .safe-region{fill:var(--accent3);fill-opacity:0.08;stroke:none}
+  .unsafe-region{fill:var(--warn);fill-opacity:0.08;stroke:none}
+  .bar-bg{fill:var(--bg-elev2);stroke:var(--line)}
+  .bar-mat{fill:#7c8ba0;stroke:#a0adc2;stroke-width:1}
+  .stress-arrow{stroke:var(--warn);stroke-width:2;fill:none;marker-end:url(#farr)}
+  .stress-gradient{fill:url(#stressgrad)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Fatigue and fracture: cyclic, mean, and notches</h1>
+  <p class="lede">Static failure is the easy case — fatigue is sneakier. Parts that survive a single peak load
+  break later under cyclic loads well below UTS. Steel has an endurance limit (a safe stress for infinite life).
+  Aluminum doesn't — it just keeps degrading. Notches amplify nominal stress by K_t, so a tiny hole can move
+  you from "infinite life" to "fails Tuesday."</p>
+
+  <h2>S-N curve: how many cycles before failure?</h2>
+  <section class="controls">
+    <div class="control">
+      <label for="sigInput">alternating stress σ_alt (MPa)</label>
+      <input type="range" id="sigInput" min="20" max="500" value="200" step="1">
+      <span class="readout" id="sigOut">200 MPa</span>
+    </div>
+    <div class="control">
+      <label>steel cycles to failure (UTS=540 MPa, Se≈270 MPa)</label>
+      <span class="readout" id="steelN">—</span>
+    </div>
+    <div class="control">
+      <label>aluminum cycles to failure (no endurance limit)</label>
+      <span class="readout" id="alN">—</span>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="snSvg" viewBox="0 0 880 420" width="100%">
+      <g id="snGrid"></g>
+      <g id="snAxis"></g>
+      <g id="snCurves"></g>
+      <g id="snMarker"></g>
+      <text class="axis-label" x="440" y="405" text-anchor="middle">cycles to failure, N (log scale)</text>
+      <text class="axis-label" x="14" y="210" text-anchor="middle" transform="rotate(-90 14 210)">alternating stress σ_alt (MPa)</text>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>steel (endurance limit at ~0.5·UTS)</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>aluminum (no true endurance limit)</span>
+      <span><span class="swatch" style="background:#a3e635"></span>your applied σ_alt</span>
+    </div>
+  </div>
+
+  <h2>Goodman diagram: mean + alternating stress together</h2>
+  <p>Real loads aren't purely reversed. Add a mean stress and the safe alternating stress drops. The Goodman
+  line connects Sy (or UTS) on the σ_mean axis to Se on the σ_alt axis — anything below the line is safe.</p>
+
+  <div class="panels">
+    <div class="figure">
+      <svg id="goodmanSvg" viewBox="0 0 440 360" width="100%">
+        <g id="gmGrid"></g>
+        <g id="gmAxis"></g>
+        <g id="gmRegions"></g>
+        <g id="gmLines"></g>
+        <g id="gmPoint"></g>
+        <text class="axis-label" x="220" y="350" text-anchor="middle">σ_mean (MPa)</text>
+        <text class="axis-label" x="12" y="180" text-anchor="middle" transform="rotate(-90 12 180)">σ_alt (MPa)</text>
+      </svg>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <div class="readout-card" style="flex:1">
+          <span class="name">σ_mean</span>
+          <span class="v" id="meanOut">100 MPa</span>
+        </div>
+        <div class="readout-card" style="flex:1">
+          <span class="name">Goodman safety factor</span>
+          <span class="v" id="nfOut">—</span>
+        </div>
+      </div>
+      <section class="controls" style="margin:10px 0 0">
+        <div class="control">
+          <label for="meanInput">σ_mean (MPa)</label>
+          <input type="range" id="meanInput" min="0" max="540" value="100" step="1">
+        </div>
+      </section>
+    </div>
+
+    <div class="figure">
+      <svg id="ktSvg" viewBox="0 0 440 360" width="100%">
+        <defs>
+          <marker id="farr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#ff7b72"/>
+          </marker>
+          <linearGradient id="stressgrad" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%"  stop-color="#5ec8ff" stop-opacity="0.5"/>
+            <stop offset="50%" stop-color="#ff7b72" stop-opacity="0.8"/>
+            <stop offset="100%" stop-color="#5ec8ff" stop-opacity="0.5"/>
+          </linearGradient>
+        </defs>
+        <g id="ktDraw"></g>
+        <text class="axis-label" x="220" y="350" text-anchor="middle">notched bar under tension — stress concentrates at notch root</text>
+      </svg>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <div class="readout-card" style="flex:1">
+          <span class="name">K_t (concentration factor)</span>
+          <span class="v" id="ktOut">2.50</span>
+        </div>
+        <div class="readout-card" style="flex:1">
+          <span class="name">σ_max at notch root</span>
+          <span class="v" id="smaxOut">— MPa</span>
+        </div>
+      </div>
+      <section class="controls" style="margin:10px 0 0">
+        <div class="control">
+          <label for="rInput">notch root radius r (mm)</label>
+          <input type="range" id="rInput" min="1" max="100" value="20" step="1">
+          <span class="readout" id="rOut">2.0 mm</span>
+        </div>
+        <div class="control">
+          <label for="snomInput">nominal σ on net section (MPa)</label>
+          <input type="range" id="snomInput" min="10" max="300" value="100" step="1">
+          <span class="readout" id="snomOut">100 MPa</span>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Steel's "knee" at ~10⁶ cycles is the endurance limit.</b> Stay below it and the part survives forever (in theory). It's the reason rotating-machinery design uses fatigue strength as the limit, not yield.</li>
+    <li><b>Aluminum has no knee.</b> Drag the slider low — aluminum cycles climb but never go infinite. For aluminum, design to a target life (e.g., 10⁷ cycles at 0.4·UTS).</li>
+    <li><b>The Goodman line shrinks the safe region.</b> A part loaded with σ_mean = 0.5·Sy can only sustain σ_alt ≈ 0.5·Se before fatigue failure. Mean stress is not free.</li>
+    <li><b>Sharper notch = higher K_t.</b> The slider drops r toward zero — σ_max blows up. Press-fit corners, sharp-internal-corners on machined parts, and unfileted bolt threads are real fatigue origins.</li>
+    <li><b>Use K_t on σ_alt only, not σ_mean</b> (in basic Goodman). Notches concentrate cyclic stress; static stress redistributes via local yielding. Goodman-Soderberg variants refine this.</li>
+    <li><b>FDM print fatigue is dominated by layer interfaces.</b> Stress concentration at any layer line acts like a built-in notch — orient critical loads in-layer, not across.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FATIGUE EQUATIONS</h3>
+      <dl>
+        <dt>Goodman</dt><dd><span class="eq">σ_alt/Se + σ_mean/Sut ≤ 1/n</span></dd>
+        <dt>notch peak</dt><dd><span class="eq">σ_max = K_t · σ_nom</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>ENDURANCE ANCHORS</h3>
+      <ul>
+        <li><b>steel</b> — Se ≈ 0.5·UTS at 10⁶ cycles (true knee).</li>
+        <li><b>aluminum</b> — NO true endurance limit; design to N.</li>
+        <li><b>FDM</b> — worse fatigue from layer interfaces.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>below UTS ≠ safe</b> — cyclic loads still cause failure.</li>
+        <li><b>surface finish</b> — rough surface dramatically cuts fatigue life.</li>
+        <li><b>K_t on σ_alt only</b> — basic Goodman; static stress yields locally.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 2 — Materials Science</a> ·
+    Topic: Fatigue, S-N curves, Goodman, stress concentration
+  </footer>
+</main>
+<script>
+// ----- S-N curve --------------------------------------------------------------
+// Plot σ vs N on log-log style axes
+// Steel: power-law region from UTS at 1 cycle to Se at 10^6, flat after
+// Aluminum: power-law decay throughout, lower Se at 10^7 ≈ 0.35*UTS
+
+const STEEL = {UTS:540, Se:270, knee:1e6, ult_N:1};
+const ALUM  = {UTS:310, S_at_1e7:110, ult_N:1};
+
+function steelSN(sig){
+  // Given σ_alt, return N
+  if (sig >= STEEL.UTS) return 1;
+  if (sig <= STEEL.Se) return Infinity;
+  // log-log line from (N=1, σ=UTS) to (N=1e6, σ=Se)
+  // log(σ) = log(UTS) + (log(Se)-log(UTS))/(log(1e6)-log(1)) * log(N)
+  // → log(N) = (log(σ)-log(UTS)) / ((log(Se)-log(UTS))/log(1e6))
+  const a = (Math.log10(STEEL.Se)-Math.log10(STEEL.UTS))/Math.log10(STEEL.knee);
+  const logN = (Math.log10(sig)-Math.log10(STEEL.UTS))/a;
+  return Math.pow(10, logN);
+}
+function alumSN(sig){
+  // From (1, UTS) to (1e7, 110); continues
+  if (sig >= ALUM.UTS) return 1;
+  if (sig < 30) return Infinity;
+  const knee = 1e7;
+  const a = (Math.log10(ALUM.S_at_1e7)-Math.log10(ALUM.UTS))/Math.log10(knee);
+  const logN = (Math.log10(sig)-Math.log10(ALUM.UTS))/a;
+  return Math.pow(10, logN);
+}
+
+const snSvg = document.getElementById("snSvg");
+const PADn = {l:70, r:30, t:30, b:50};
+const W1=880, H1=420;
+const PWn = W1-PADn.l-PADn.r, PHn = H1-PADn.t-PADn.b;
+
+// x = log(N) from 0 (1 cycle) to 9 (1e9)
+// y = σ from 0 to 600 MPa
+function xN(N){ return PADn.l + Math.log10(N)/9 * PWn; }
+function ySig(s){ return PADn.t + (1 - s/600) * PHn; }
+
+function renderSN(){
+  const sig = +document.getElementById("sigInput").value;
+  document.getElementById("sigOut").textContent = sig + " MPa";
+
+  // Grid
+  let g = "";
+  for (let i=0;i<=9;i++){
+    const x = xN(Math.pow(10,i));
+    g += `<line class="grid-line" x1="${x}" x2="${x}" y1="${PADn.t}" y2="${PADn.t+PHn}"/>`;
+    g += `<text class="axis-label" x="${x}" y="${PADn.t+PHn+14}" text-anchor="middle">10${superscript(i)}</text>`;
+  }
+  for (let s=0;s<=600;s+=100){
+    const y = ySig(s);
+    g += `<line class="grid-line" x1="${PADn.l}" x2="${PADn.l+PWn}" y1="${y}" y2="${y}"/>`;
+    g += `<text class="axis-label" x="${PADn.l-6}" y="${y+3}" text-anchor="end">${s}</text>`;
+  }
+  document.getElementById("snGrid").innerHTML = g;
+  document.getElementById("snAxis").innerHTML =
+    `<line class="axis" x1="${PADn.l}" x2="${PADn.l+PWn}" y1="${PADn.t+PHn}" y2="${PADn.t+PHn}"/>` +
+    `<line class="axis" x1="${PADn.l}" x2="${PADn.l}" y1="${PADn.t}" y2="${PADn.t+PHn}"/>`;
+
+  // Steel curve
+  const steelPts = [];
+  for (let s=600;s>=STEEL.Se;s-=2){
+    const N = steelSN(s);
+    if (N < 1) continue;
+    if (N > 1e9) break;
+    steelPts.push([xN(Math.max(1,N)), ySig(s)]);
+  }
+  // Flat segment from knee to far right
+  const kneeX = xN(STEEL.knee);
+  const farX = xN(1e9);
+  const seY = ySig(STEEL.Se);
+  let steelPath = "M";
+  for (const p of steelPts) steelPath += `${p[0]},${p[1]} L`;
+  // append flat
+  steelPath = steelPath.slice(0,-2) + ` L ${kneeX},${seY} L ${farX},${seY}`;
+
+  const alumPts = [];
+  for (let s=600;s>=30;s-=2){
+    const N = alumSN(s);
+    if (N < 1) continue;
+    if (N > 1e9) break;
+    alumPts.push([xN(Math.max(1,N)), ySig(s)]);
+  }
+  let alumPath = "M";
+  for (const p of alumPts) alumPath += `${p[0]},${p[1]} L`;
+  alumPath = alumPath.slice(0,-2);
+
+  document.getElementById("snCurves").innerHTML =
+    `<path class="trace trace-1" d="${steelPath}"/>` +
+    `<path class="trace trace-2" d="${alumPath}"/>` +
+    `<line stroke="#5ec8ff" stroke-width="1" stroke-dasharray="3 3" opacity="0.5" x1="${PADn.l}" y1="${seY}" x2="${PADn.l+PWn}" y2="${seY}"/>` +
+    `<text class="label-dim" x="${PADn.l+PWn-6}" y="${seY-4}" text-anchor="end" fill="#5ec8ff">steel Se = 270 MPa</text>`;
+
+  // Marker — show your σ on both curves
+  const steelN = steelSN(sig);
+  const alN = alumSN(sig);
+  let mk = `<line class="marker-line" x1="${PADn.l}" y1="${ySig(sig)}" x2="${PADn.l+PWn}" y2="${ySig(sig)}" stroke="#a3e635" opacity="0.7"/>`;
+  if (isFinite(steelN) && steelN >= 1){
+    const sx = xN(steelN); const sy = ySig(sig);
+    mk += `<circle class="marker-dot" cx="${sx}" cy="${sy}" r="5" stroke="#5ec8ff"/>`;
+  }
+  if (isFinite(alN) && alN >= 1){
+    const ax = xN(alN); const ay = ySig(sig);
+    mk += `<circle class="marker-dot" cx="${ax}" cy="${ay}" r="5" stroke="#ffb86c"/>`;
+  }
+  document.getElementById("snMarker").innerHTML = mk;
+
+  // Readouts
+  document.getElementById("steelN").textContent = formatN(steelN);
+  document.getElementById("alN").textContent = formatN(alN);
+}
+
+function superscript(n){
+  const map = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+  return String(n).split("").map(d=>map[+d]).join("");
+}
+function formatN(N){
+  if (!isFinite(N)) return "∞ (infinite life)";
+  if (N < 1) return "<1 (static failure)";
+  if (N < 1e3) return Math.round(N) + " cycles";
+  const exp = Math.floor(Math.log10(N));
+  const mant = N / Math.pow(10, exp);
+  return mant.toFixed(1) + " × 10" + superscript(exp) + " cycles";
+}
+
+// ----- Goodman ----------------------------------------------------------------
+const gmSvg = document.getElementById("goodmanSvg");
+const PADg = {l:50, r:20, t:20, b:40};
+const W2=440, H2=360;
+const PWg = W2-PADg.l-PADg.r, PHg = H2-PADg.t-PADg.b;
+const UTS = 540, Se = 270;
+
+function xMean(m){ return PADg.l + (m/UTS)*PWg; }
+function yAlt(a){ return PADg.t + (1 - a/Se)*PHg; }
+
+function renderGoodman(){
+  const m = +document.getElementById("meanInput").value;
+  const sig = +document.getElementById("sigInput").value; // reuse for alt
+  document.getElementById("meanOut").textContent = m + " MPa";
+
+  // Grid
+  let g = "";
+  for (let mv=0; mv<=UTS; mv+=100){
+    const x = xMean(mv);
+    g += `<line class="grid-line" x1="${x}" x2="${x}" y1="${PADg.t}" y2="${PADg.t+PHg}"/>`;
+    g += `<text class="axis-label" x="${x}" y="${PADg.t+PHg+14}" text-anchor="middle">${mv}</text>`;
+  }
+  for (let av=0; av<=Se; av+=50){
+    const y = yAlt(av);
+    g += `<line class="grid-line" x1="${PADg.l}" x2="${PADg.l+PWg}" y1="${y}" y2="${y}"/>`;
+    g += `<text class="axis-label" x="${PADg.l-6}" y="${y+3}" text-anchor="end">${av}</text>`;
+  }
+  document.getElementById("gmGrid").innerHTML = g;
+  document.getElementById("gmAxis").innerHTML =
+    `<line class="axis" x1="${PADg.l}" x2="${PADg.l+PWg}" y1="${PADg.t+PHg}" y2="${PADg.t+PHg}"/>` +
+    `<line class="axis" x1="${PADg.l}" x2="${PADg.l}" y1="${PADg.t}" y2="${PADg.t+PHg}"/>`;
+
+  // Goodman line: from (0, Se) to (UTS, 0)
+  const x1=xMean(0), y1=yAlt(Se), x2=xMean(UTS), y2=yAlt(0);
+  // Safe region (below line)
+  document.getElementById("gmRegions").innerHTML =
+    `<polygon class="safe-region" points="${x1},${y1} ${x2},${y2} ${x2},${PADg.t+PHg} ${PADg.l},${PADg.t+PHg}"/>` +
+    `<polygon class="unsafe-region" points="${x1},${y1} ${x2},${y2} ${PADg.l+PWg},${PADg.t}"/>`;
+  document.getElementById("gmLines").innerHTML =
+    `<line class="goodman-line" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>` +
+    `<text class="label-dim" x="${PADg.l+8}" y="${y1-6}" fill="#ffb86c">Se = ${Se}</text>` +
+    `<text class="label-dim" x="${x2-30}" y="${y2-6}" fill="#ffb86c">UTS = ${UTS}</text>` +
+    `<text class="label-dim" x="${(x1+x2)/2-30}" y="${(y1+y2)/2-6}" fill="#ffb86c">Goodman line</text>`;
+
+  // Point at (σ_mean, σ_alt)
+  const sigClamped = Math.min(sig, Se);
+  const px = xMean(m), py = yAlt(sigClamped);
+  const safe = (sig/Se + m/UTS) <= 1;
+  document.getElementById("gmPoint").innerHTML =
+    `<circle cx="${px}" cy="${py}" r="6" fill="${safe?'#a3e635':'#ff7b72'}" stroke="${safe?'#0e1116':'#0e1116'}" stroke-width="2"/>` +
+    `<text class="label" x="${px+10}" y="${py-6}" fill="${safe?'#a3e635':'#ff7b72'}">(${m}, ${sig})</text>`;
+
+  // Safety factor: n = 1 / (σ_alt/Se + σ_mean/UTS)
+  const denom = sig/Se + m/UTS;
+  const nf = (denom > 0) ? 1/denom : Infinity;
+  document.getElementById("nfOut").textContent =
+    (isFinite(nf) ? nf.toFixed(2) : "∞") + (safe ? " (safe)" : " (UNSAFE)");
+  document.getElementById("nfOut").style.color = safe ? "var(--accent3)" : "var(--warn)";
+}
+
+// ----- Kt panel ---------------------------------------------------------------
+function renderKt(){
+  const r = +document.getElementById("rInput").value / 10; // 0.1 to 10 mm
+  const snom = +document.getElementById("snomInput").value;
+  document.getElementById("rOut").textContent = r.toFixed(1) + " mm";
+  document.getElementById("snomOut").textContent = snom + " MPa";
+
+  // Empirical-ish Kt for a notched flat bar: Kt ≈ 1 + 2*sqrt(d/r) (Inglis-like)
+  // Use width=30 mm, depth-of-notch d=5 mm. Kt clamped to a believable range.
+  const d = 5; // notch depth, mm
+  let Kt = 1 + 2*Math.sqrt(d/r);
+  if (Kt > 8) Kt = 8;
+  const smax = Kt * snom;
+  document.getElementById("ktOut").textContent = Kt.toFixed(2);
+  document.getElementById("smaxOut").textContent = smax.toFixed(0) + " MPa";
+
+  // Draw a notched bar (top view)
+  // Bar runs horizontally, notches top and bottom in the middle
+  // Notch root radius drawn proportionally
+  const cx=220, cy=160;
+  const barW = 320, barH = 90;
+  const notchDepth = 30; // visual depth
+  const notchRPx = Math.max(2, Math.min(40, r*6)); // radius in pixels
+  const notchHalfW = Math.max(notchRPx*1.2, 18);
+
+  // Build path for top edge of bar with a curved notch
+  let topPath = `M${cx-barW/2},${cy-barH/2}`;
+  topPath += ` L${cx-notchHalfW},${cy-barH/2}`;
+  // arc into the notch
+  topPath += ` Q${cx-notchHalfW},${cy-barH/2+notchDepth-notchRPx} ${cx-notchRPx},${cy-barH/2+notchDepth-notchRPx*0.3}`;
+  topPath += ` A${notchRPx},${notchRPx} 0 0 0 ${cx+notchRPx},${cy-barH/2+notchDepth-notchRPx*0.3}`;
+  topPath += ` Q${cx+notchHalfW},${cy-barH/2+notchDepth-notchRPx} ${cx+notchHalfW},${cy-barH/2}`;
+  topPath += ` L${cx+barW/2},${cy-barH/2}`;
+  // right side
+  topPath += ` L${cx+barW/2},${cy+barH/2}`;
+  // bottom (mirror)
+  topPath += ` L${cx+notchHalfW},${cy+barH/2}`;
+  topPath += ` Q${cx+notchHalfW},${cy+barH/2-notchDepth+notchRPx} ${cx+notchRPx},${cy+barH/2-notchDepth+notchRPx*0.3}`;
+  topPath += ` A${notchRPx},${notchRPx} 0 0 0 ${cx-notchRPx},${cy+barH/2-notchDepth+notchRPx*0.3}`;
+  topPath += ` Q${cx-notchHalfW},${cy+barH/2-notchDepth+notchRPx} ${cx-notchHalfW},${cy+barH/2}`;
+  topPath += ` L${cx-barW/2},${cy+barH/2} Z`;
+
+  // Color intensity at notch root: more red if Kt high
+  const intensity = Math.min(1, (Kt-1)/4);
+  const rootColor = `rgba(255, 123, 114, ${0.3 + 0.6*intensity})`;
+
+  let s = `<path d="${topPath}" class="bar-mat"/>`;
+  // Stress hotspot at notch root
+  s += `<circle cx="${cx}" cy="${cy-barH/2+notchDepth+notchRPx*0.5}" r="${5+intensity*8}" fill="${rootColor}"/>`;
+  s += `<circle cx="${cx}" cy="${cy+barH/2-notchDepth-notchRPx*0.5}" r="${5+intensity*8}" fill="${rootColor}"/>`;
+
+  // Stress arrows (applied tension)
+  s += `<path class="stress-arrow" d="M${cx-barW/2-50},${cy} L${cx-barW/2-10},${cy}" marker-start="url(#farr)"/>`;
+  s += `<path class="stress-arrow" d="M${cx+barW/2+10},${cy} L${cx+barW/2+50},${cy}"/>`;
+  s += `<text class="label" x="${cx-barW/2-55}" y="${cy-8}" fill="#ff7b72" text-anchor="end">σ_nom</text>`;
+  s += `<text class="label" x="${cx+barW/2+55}" y="${cy-8}" fill="#ff7b72">σ_nom</text>`;
+
+  // Annotation at notch root
+  s += `<line stroke="#ffb86c" stroke-width="1" x1="${cx+notchRPx+8}" y1="${cy-barH/2+notchDepth-2}" x2="${cx+50}" y2="${cy-barH/2+notchDepth-18}"/>`;
+  s += `<text class="label" x="${cx+54}" y="${cy-barH/2+notchDepth-20}" fill="#ffb86c">σ_max = K_t · σ_nom</text>`;
+  s += `<text class="label-dim" x="${cx+54}" y="${cy-barH/2+notchDepth-6}" fill="#ffb86c">${smax.toFixed(0)} MPa</text>`;
+
+  // Radius indicator
+  s += `<text class="label-dim" x="${cx}" y="${cy+8}" text-anchor="middle">r = ${r.toFixed(1)} mm</text>`;
+  s += `<text class="label-dim" x="${cx}" y="${cy+22}" text-anchor="middle">K_t = ${Kt.toFixed(2)}</text>`;
+
+  document.getElementById("ktDraw").innerHTML = s;
+}
+
+document.getElementById("sigInput").addEventListener("input", ()=>{renderSN(); renderGoodman();});
+document.getElementById("meanInput").addEventListener("input", renderGoodman);
+document.getElementById("rInput").addEventListener("input", renderKt);
+document.getElementById("snomInput").addEventListener("input", renderKt);
+
+renderSN();
+renderGoodman();
+renderKt();
+</script>
+</body>
+</html>

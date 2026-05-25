@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gripper &amp; end-effector — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto;margin:0 auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  .metric{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:8px 12px;font:12px ui-monospace,monospace}
+  .metric b{color:var(--fg-bright);font-size:14px}
+  .metric.warn{border-color:var(--warn)}
+  .metric.warn b{color:var(--warn)}
+  .metrics{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin:12px 0}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Gripper &amp; end-effector — grasp, force, TCP</h1>
+  <p class="lede">Pick a gripper type, set the payload + friction, then watch whether the grasp holds.
+  Each gripper trades off speed, payload, shape-tolerance, and contact-area. The TCP (tool-center-point)
+  offset from the flange determines where the IK solver actually plans for — getting it wrong is the most
+  common cause of "the arm is half an inch off."</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Gripper type</label>
+      <select id="gtype">
+        <option value="pj" selected>Parallel-jaw (2-finger)</option>
+        <option value="3f">Three-finger (centric)</option>
+        <option value="suc">Suction cup (vacuum)</option>
+        <option value="mag">Magnetic</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Payload mass (kg)</label>
+      <input type="range" id="mass" min="0.05" max="5.0" step="0.05" value="0.5">
+      <span class="readout" id="massRO">0.50</span>
+    </div>
+    <div class="control">
+      <label>Grasp force / vacuum / magnet (N)</label>
+      <input type="range" id="force" min="1" max="200" step="1" value="40">
+      <span class="readout" id="forceRO">40</span>
+    </div>
+    <div class="control">
+      <label>Coefficient of friction μ</label>
+      <input type="range" id="mu" min="0.1" max="1.2" step="0.05" value="0.5">
+      <span class="readout" id="muRO">0.50</span>
+    </div>
+    <div class="control">
+      <label>TCP offset from flange (mm, Z)</label>
+      <input type="range" id="tcp" min="0" max="250" step="1" value="120">
+      <span class="readout" id="tcpRO">120</span>
+    </div>
+    <div class="control">
+      <label>Object shape</label>
+      <select id="shape">
+        <option value="box" selected>Box (parallel sides)</option>
+        <option value="cyl">Cylinder</option>
+        <option value="ball">Sphere</option>
+        <option value="flat">Flat sheet</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="gSvg" viewBox="0 0 880 420" width="100%" height="420"></svg>
+  </div>
+
+  <h2>Grasp analysis</h2>
+  <div class="metrics" id="metrics"></div>
+
+  <h2>Position control vs force control</h2>
+  <p><b>Position-controlled gripper</b> (cheap servo or stepper): commands a target width; if the object is
+  smaller than expected the jaws never make contact, if larger they stall. Use when geometry is repeatable.</p>
+  <p><b>Force-controlled gripper</b> (current-limited motor or pneumatic regulator): commands a target
+  closing force; jaws close until the force-sensor or motor-current threshold is reached. Use for varying
+  geometry, fragile objects, or deformable parts. Required for collaborative robots.</p>
+  <p><b>Slip detection</b>: high-end grippers (Robotiq, Schunk EGI) have tactile arrays or skin-vibration
+  sensors. Drop detection → instant force boost. Without sensors, retry the grasp if the post-pick image
+  doesn't see the object.</p>
+
+  <h2>Tool center point (TCP) and flange frame</h2>
+  <p>The robot's IK solves for the <b>flange</b> pose (last joint frame). Real planning happens in
+  <b>tool0</b> = flange + a constant tool transform. In MoveIt 2 you set the tool offset in the URDF; in
+  ABB / KUKA controllers you define a "tool" (TCP + tool mass + COG) and reference it on every move. Wrong
+  TCP → the tool tip lands in the wrong spot by exactly the offset error.</p>
+
+  <h2>Grasp-type comparison</h2>
+  <table>
+    <thead><tr><th>Type</th><th>Payload</th><th>Speed</th><th>Shape tolerance</th><th>Surface</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Parallel-jaw</td><td>up to 10 kg</td><td>0.1–0.5 s</td><td>low — needs parallel sides</td><td>any rigid</td><td>most common; finger swap for parts</td></tr>
+      <tr><td>Three-finger</td><td>up to 5 kg</td><td>0.3–1 s</td><td>high — centric</td><td>any rigid</td><td>round and irregular objects</td></tr>
+      <tr><td>Suction</td><td>0.05–50 kg</td><td>&lt; 0.1 s</td><td>flat surfaces only</td><td>non-porous</td><td>needs vacuum pump; loses grip on porous</td></tr>
+      <tr><td>Magnetic</td><td>up to 100 kg</td><td>&lt; 0.1 s</td><td>any ferrous shape</td><td>ferrous metal only</td><td>residual magnetism after release; degausser needed</td></tr>
+    </tbody>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Friction-grip math is simple:</b> a parallel-jaw holds against gravity if 2·μ·F ≥ m·g. Doubling friction or force; halving mass. Try mass = 5 kg, force = 40 N, μ = 0.5 → 40 N ≤ 49 N → slips.</li>
+    <li><b>Suction grip is direct:</b> F_vacuum = ΔP · A. A 30 mm cup at 0.6 bar = 42 N straight pull. But shear is limited (~30% of normal force) and a leaky surface kills the grip.</li>
+    <li><b>Magnetic grip is direction-dependent:</b> normal pull-off force ≫ shear force. Magnet rated 200 N pull-off may give only 40–60 N shear.</li>
+    <li><b>Three-finger gripper auto-centers</b> regardless of where you placed the part — great for binning or feed-by-vibration applications.</li>
+    <li><b>Wrong TCP offset</b> → the arm reaches a depth that is exactly the offset error. Re-measure after every tool change.</li>
+    <li><b>Soft fingers (urethane pads) raise effective μ</b> by deforming around the part. Used in bin-picking + small-parts assembly.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>HOLDING-FORCE MATH</h3>
+      <dl>
+        <dt>Parallel jaw (vertical lift)</dt><dd><span class="eq">2·μ·F_grip ≥ m·g·SF</span></dd>
+        <dt>Suction</dt><dd><span class="eq">F = ΔP · A · (1/SF)</span></dd>
+        <dt>Magnet (normal)</dt><dd><span class="eq">F_n = B²·A / (2·μ₀)</span></dd>
+        <dt>Magnet (shear)</dt><dd><span class="eq">F_s ≈ 0.3 · F_n</span></dd>
+        <dt>Dynamic SF</dt><dd><span class="eq">≥ 2 (static), ≥ 4 (moving)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>GRIPPER PICK GUIDE</h3>
+      <ul>
+        <li><b>Repeatable rigid box</b> → parallel-jaw, position-controlled.</li>
+        <li><b>Variable / fragile</b> → parallel-jaw force-controlled or pneumatic Festo.</li>
+        <li><b>Round / irregular</b> → three-finger gripper (Robotiq 3F, Schunk SDH).</li>
+        <li><b>Flat sheet, non-porous</b> → suction (most factory pick-place).</li>
+        <li><b>Ferrous metal pile</b> → magnetic (single-piece; multi-piece needs separator).</li>
+        <li><b>Compliant / unknown</b> → soft / Festo BionicSoftHand or Soft Robotics mGrip.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li><b>Wrong TCP</b> — every motion is off by the offset error; calibrate after any tool change.</li>
+        <li><b>Wrong tool inertia</b> — controller dynamics + torque limits use it. Heavy tool with default inertia → vibration or shutdown.</li>
+        <li><b>Suction leak</b> — porous, dusty, or curved surfaces lose seal. Spec multi-cup arrays or compliant lips.</li>
+        <li><b>Magnet residual</b> — part sticks after release. Use electromagnet or degausser.</li>
+        <li><b>SF=1.0 designs</b> — they fail under acceleration. Use SF ≥ 2 static, ≥ 4 dynamic.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 8 — Robotics &amp; Mechatronics Systems</a> ·
+    Topic: grippers, end-effectors, TCP, force vs position control
+  </footer>
+</main>
+<script>
+const svg = document.getElementById('gSvg');
+function ns(tag, attrs={}, parent){
+  const e=document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k,attrs[k]);
+  parent.appendChild(e); return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+let gtype='pj', mass=0.5, force=40, mu=0.5, tcp=120, shape='box';
+
+function draw(){
+  clear(svg);
+  const W=880,H=420;
+  // flange + tool drawn vertically; object below
+  const FX = W/2;
+  const flangeY = 80;
+  // flange disc
+  ns('rect',{x:FX-40,y:flangeY-15,width:80,height:30,rx:4,fill:'#1d232c',stroke:'#dde3ec','stroke-width':1.5},svg);
+  ns('text',{x:FX,y:flangeY+5,fill:'#dde3ec',font:'12px ui-monospace','text-anchor':'middle'},svg).textContent='flange';
+  // tool shaft
+  const tcpPx = Math.min(180, tcp*0.6 + 30);
+  ns('rect',{x:FX-8,y:flangeY+15,width:16,height:tcpPx,fill:'#ffb86c',opacity:0.9},svg);
+  const tcpY = flangeY+15+tcpPx;
+  // TCP offset annotation
+  ns('line',{x1:FX-60,y1:flangeY+15,x2:FX-60,y2:tcpY,stroke:'#a3e635','stroke-width':1.5},svg);
+  ns('line',{x1:FX-66,y1:flangeY+15,x2:FX-54,y2:flangeY+15,stroke:'#a3e635','stroke-width':1.5},svg);
+  ns('line',{x1:FX-66,y1:tcpY,x2:FX-54,y2:tcpY,stroke:'#a3e635','stroke-width':1.5},svg);
+  ns('text',{x:FX-72,y:(flangeY+15+tcpY)/2+4,fill:'#a3e635',font:'11px ui-monospace','text-anchor':'end'},svg).textContent='TCP = '+tcp.toFixed(0)+' mm';
+
+  // object dimensions
+  const objW = (shape==='flat'?160:90);
+  const objH = (shape==='flat'?20:(shape==='ball'?90:80));
+  const objY = tcpY + 40;
+
+  // draw gripper depending on type
+  function drawObject(){
+    if(shape==='box') ns('rect',{x:FX-objW/2,y:objY,width:objW,height:objH,rx:3,fill:'#1d232c',stroke:'#5ec8ff','stroke-width':1.5},svg);
+    else if(shape==='cyl'){ ns('ellipse',{cx:FX,cy:objY,rx:objW/2,ry:8,fill:'#1d232c',stroke:'#5ec8ff','stroke-width':1.5},svg);
+      ns('rect',{x:FX-objW/2,y:objY,width:objW,height:objH,fill:'#1d232c',stroke:'none'},svg);
+      ns('line',{x1:FX-objW/2,y1:objY,x2:FX-objW/2,y2:objY+objH,stroke:'#5ec8ff','stroke-width':1.5},svg);
+      ns('line',{x1:FX+objW/2,y1:objY,x2:FX+objW/2,y2:objY+objH,stroke:'#5ec8ff','stroke-width':1.5},svg);
+      ns('ellipse',{cx:FX,cy:objY+objH,rx:objW/2,ry:8,fill:'#1d232c',stroke:'#5ec8ff','stroke-width':1.5},svg);
+    } else if(shape==='ball') ns('circle',{cx:FX,cy:objY+objH/2,r:objW/2,fill:'#1d232c',stroke:'#5ec8ff','stroke-width':1.5},svg);
+    else ns('rect',{x:FX-objW/2,y:objY,width:objW,height:objH,rx:1,fill:'#1d232c',stroke:'#5ec8ff','stroke-width':1.5},svg);
+    ns('text',{x:FX,y:objY+objH+18,fill:'#5ec8ff',font:'12px ui-monospace','text-anchor':'middle'},svg).textContent=mass.toFixed(2)+' kg';
+    // gravity arrow
+    ns('line',{x1:FX+objW/2+18,y1:objY+objH/2,x2:FX+objW/2+18,y2:objY+objH/2+30,stroke:'#ff7b72','stroke-width':2},svg);
+    ns('polygon',{points:`${FX+objW/2+18},${objY+objH/2+34} ${FX+objW/2+14},${objY+objH/2+26} ${FX+objW/2+22},${objY+objH/2+26}`,fill:'#ff7b72'},svg);
+    ns('text',{x:FX+objW/2+28,y:objY+objH/2+24,fill:'#ff7b72',font:'11px ui-monospace'},svg).textContent='mg';
+  }
+
+  if(gtype==='pj'){
+    // parallel jaws above object
+    const jw=14, jh=30;
+    ns('rect',{x:FX-objW/2-jw,y:objY-5,width:jw,height:jh,fill:'#5ec8ff'},svg);
+    ns('rect',{x:FX+objW/2,y:objY-5,width:jw,height:jh,fill:'#5ec8ff'},svg);
+    // arrows showing grip force
+    ns('line',{x1:FX-objW/2-jw-30,y1:objY+10,x2:FX-objW/2-jw,y2:objY+10,stroke:'#a3e635','stroke-width':2},svg);
+    ns('polygon',{points:`${FX-objW/2-jw-2},${objY+10} ${FX-objW/2-jw-10},${objY+6} ${FX-objW/2-jw-10},${objY+14}`,fill:'#a3e635'},svg);
+    ns('line',{x1:FX+objW/2+jw+30,y1:objY+10,x2:FX+objW/2+jw,y2:objY+10,stroke:'#a3e635','stroke-width':2},svg);
+    ns('polygon',{points:`${FX+objW/2+jw+2},${objY+10} ${FX+objW/2+jw+10},${objY+6} ${FX+objW/2+jw+10},${objY+14}`,fill:'#a3e635'},svg);
+    ns('text',{x:FX-objW/2-jw-34,y:objY+4,fill:'#a3e635',font:'11px ui-monospace','text-anchor':'end'},svg).textContent='F='+force+' N';
+    drawObject();
+  } else if(gtype==='3f'){
+    // 3 fingers, 120° apart on a circle around object center
+    const cx=FX, cy=objY+objH/2;
+    const R = objW*0.6;
+    for(let i=0;i<3;i++){
+      const ang = -Math.PI/2 + i*2*Math.PI/3;
+      const fx = cx + R*Math.cos(ang), fy = cy + R*Math.sin(ang);
+      // finger
+      const dx = -Math.cos(ang)*30, dy=-Math.sin(ang)*30;
+      ns('line',{x1:fx,y1:fy,x2:fx+dx,y2:fy+dy,stroke:'#5ec8ff','stroke-width':10,'stroke-linecap':'round'},svg);
+      ns('line',{x1:fx,y1:fy,x2:fx-Math.cos(ang)*16,y2:fy-Math.sin(ang)*16,stroke:'#a3e635','stroke-width':2},svg);
+    }
+    drawObject();
+    ns('text',{x:FX,y:objY+objH+38,fill:'#a3e635',font:'11px ui-monospace','text-anchor':'middle'},svg).textContent='centric grip, F='+force+' N each';
+  } else if(gtype==='suc'){
+    // suction cup on top of object
+    const cupY = objY - 8;
+    ns('ellipse',{cx:FX,cy:cupY,rx:25,ry:7,fill:'#ffb86c'},svg);
+    ns('line',{x1:FX,y1:cupY-2,x2:FX,y2:tcpY,stroke:'#ffb86c','stroke-width':6},svg);
+    drawObject();
+    // vacuum arrows up
+    ns('line',{x1:FX,y1:objY+objH/2,x2:FX,y2:cupY+4,stroke:'#a3e635','stroke-width':2},svg);
+    ns('polygon',{points:`${FX},${cupY+4} ${FX-4},${cupY+12} ${FX+4},${cupY+12}`,fill:'#a3e635'},svg);
+    ns('text',{x:FX+18,y:cupY-10,fill:'#a3e635',font:'11px ui-monospace'},svg).textContent='ΔP·A = '+force+' N';
+  } else { // magnet
+    ns('rect',{x:FX-26,y:objY-16,width:52,height:18,rx:3,fill:'#ffb86c',stroke:'#dde3ec','stroke-width':1.2},svg);
+    ns('text',{x:FX,y:objY-3,fill:'#0e1116',font:'10px ui-monospace','text-anchor':'middle'},svg).textContent='N S N S';
+    drawObject();
+    ns('text',{x:FX+40,y:objY-3,fill:'#a3e635',font:'11px ui-monospace'},svg).textContent='F_n='+force+' N';
+  }
+
+  // labels
+  ns('text',{x:14,y:H-12,fill:'#8f99a8',font:'11px ui-monospace'},svg).textContent='Side view: tool hanging from flange; gravity pulls payload downward.';
+
+  // analysis
+  const g=9.81;
+  let holdF=0, sf=0, ok=false, lostBy=0, mode='';
+  if(gtype==='pj'){ holdF = 2*mu*force; mode='friction (2·μ·F)'; }
+  else if(gtype==='3f'){ holdF = 3*mu*force; mode='friction (3·μ·F)'; }
+  else if(gtype==='suc'){ holdF = force; mode='direct (ΔP·A)'; }
+  else { holdF = (shape==='flat'||shape==='box') ? force : force*0.6; mode='magnetic normal (×0.6 for non-flat)'; }
+  const reqF = mass*g;
+  sf = holdF/Math.max(0.001,reqF);
+  ok = sf>=1;
+
+  const m=document.getElementById('metrics'); m.innerHTML='';
+  function metric(label,val,warn){
+    const d=document.createElement('div');d.className='metric'+(warn?' warn':'');
+    d.innerHTML='<div style="color:var(--fg-dim)">'+label+'</div><b>'+val+'</b>';
+    m.appendChild(d);
+  }
+  metric('Required hold force', reqF.toFixed(2)+' N (mg)');
+  metric('Available hold force', holdF.toFixed(2)+' N');
+  metric('Mechanism', mode);
+  metric('Static safety factor', sf.toFixed(2), sf<2);
+  metric('Static grip OK?', ok?'yes':'NO (slips)', !ok);
+  metric('Dynamic OK (SF≥4)?', sf>=4?'yes':'caution', sf<4);
+  metric('TCP offset (Z)', tcp.toFixed(0)+' mm');
+}
+
+['mass','force','mu','tcp'].forEach(id=>{
+  document.getElementById(id).oninput = e=>{
+    const v=parseFloat(e.target.value);
+    if(id==='mass') mass=v; else if(id==='force') force=v;
+    else if(id==='mu') mu=v; else tcp=v;
+    document.getElementById(id+'RO').textContent = (id==='mass'||id==='mu')?v.toFixed(2):v.toFixed(0);
+    draw();
+  };
+});
+document.getElementById('gtype').onchange=e=>{gtype=e.target.value;draw();};
+document.getElementById('shape').onchange=e=>{shape=e.target.value;draw();};
+draw();
+</script>
+</body>
+</html>

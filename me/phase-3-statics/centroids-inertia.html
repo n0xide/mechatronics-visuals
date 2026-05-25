@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Centroids & Moment of Inertia — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  button.btn.warn{background:var(--warn);color:var(--bg);border-color:var(--warn)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .summary{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;
+    padding:10px 14px;margin:10px 0;font:13px ui-monospace,monospace;line-height:1.7}
+  .summary b{color:var(--fg-bright)}
+  .shape-row{display:flex;align-items:center;gap:6px;margin:3px 0;font:11px ui-monospace,monospace;
+    background:var(--bg-elev2);padding:4px 8px;border-radius:4px}
+  .shape-row input{width:50px;padding:1px 4px;font:11px ui-monospace,monospace;
+    background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:3px}
+  .shape-row select{padding:1px 4px;font:11px ui-monospace,monospace;
+    background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:3px}
+  .swatch-box{width:10px;height:10px;border-radius:2px}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Centroids & Moment of Inertia — Composite Shapes</h1>
+  <p class="lede">Build a cross-section from rectangles, circles, and triangles. The composite-area
+  method gives the centroid (x̄, ȳ); the parallel-axis theorem gives the moment of inertia about
+  the centroidal axes. Holes go in as negative-area shapes — they pull the centroid <em>away</em>
+  from where they sit.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Add shape</label>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        <button class="btn" id="addRect">+Rectangle</button>
+        <button class="btn" id="addCircle">+Circle</button>
+        <button class="btn" id="addTri">+Triangle</button>
+      </div>
+    </div>
+    <div class="control">
+      <label>Preset</label>
+      <select id="preset">
+        <option value="">— load a preset —</option>
+        <option value="ibeam">I-beam</option>
+        <option value="tbeam">T-beam</option>
+        <option value="hollowsquare">Hollow square (negative inner)</option>
+        <option value="lbracket">L-bracket</option>
+        <option value="cylinder-hole">Disc with hole</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Clear</label>
+      <button class="btn warn" id="btnClear">Remove all shapes</button>
+    </div>
+    <div class="control">
+      <label>Show</label>
+      <div style="display:flex;gap:4px">
+        <button class="btn primary" id="btnCentroid">Centroid</button>
+        <button class="btn" id="btnInertia">Inertia</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="canvas" viewBox="0 0 880 460" width="100%" height="460"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>Sub-shape (positive area)</span>
+      <span><span class="swatch" style="background:#ff7b72"></span>Hole (negative area)</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Composite centroid (x̄, ȳ)</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>Sub-shape centroid</span>
+    </div>
+  </div>
+
+  <h3>Shapes</h3>
+  <div id="shapeList"></div>
+
+  <div class="summary" id="summary"></div>
+
+  <h2>Composite centroid table</h2>
+  <table>
+    <thead><tr><th>i</th><th>Shape</th><th>A (mm²)</th><th>x_i (mm)</th><th>y_i (mm)</th><th>A·x_i</th><th>A·y_i</th></tr></thead>
+    <tbody id="centroidTable"></tbody>
+    <tfoot id="centroidFoot"></tfoot>
+  </table>
+
+  <h2>Moment of inertia table (about composite centroid)</h2>
+  <table>
+    <thead><tr><th>i</th><th>Shape</th><th>I_cg,x (mm⁴)</th><th>A·d_y²</th><th>I_x = I_cg + A·d²</th></tr></thead>
+    <tbody id="inertiaTable"></tbody>
+    <tfoot id="inertiaFoot"></tfoot>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Centroid = area-weighted average of sub-centroids.</b> x̄ = ΣA_i·x_i / ΣA_i, ȳ = ΣA_i·y_i / ΣA_i. The bigger a sub-shape, the more it pulls the centroid toward itself.</li>
+    <li><b>Holes are negative areas.</b> Subtract A·x and A·y for the hole's region. The centroid shifts <i>away</i> from the hole — material moves opposite the missing chunk.</li>
+    <li><b>Axes of symmetry contain the centroid.</b> If the shape has a vertical axis of symmetry, x̄ is on that axis. If horizontal, ȳ is. Use symmetry to skip integrations whenever possible.</li>
+    <li><b>I about centroidal axis = sum of (I_cg + A·d²) for each sub-shape.</b> The parallel-axis theorem transfers each sub-shape's inertia (taken about its own centroid) over to the composite centroid using the squared offset d.</li>
+    <li><b>I scales with the cube of dimension perpendicular to bending.</b> A rectangle's I_x = b·h³/12 — height h enters cubed. Double the height: 8× the stiffness. Width only enters linearly. <i>That's why beams are tall, not fat.</i></li>
+    <li><b>The A·d² term often dominates for I-beams.</b> The flanges' own centroidal I is small, but they sit far from the composite centroid — A·d² is huge. That's the I-beam's secret.</li>
+    <li><b>Polar moment J = I_x + I_y.</b> For circular cross-sections in torsion: J = π·d⁴/32. Combines bending stiffnesses about both axes.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>centroid</dt><dd><span class="eq">x̄ = Σ(A_i · x_i) / ΣA_i</span></dd>
+        <dt>rectangle</dt><dd><span class="eq">I = b·h³ / 12</span><span class="eq-note">about centroidal axis</span></dd>
+        <dt>circle</dt><dd><span class="eq">I = π·d⁴ / 64</span></dd>
+        <dt>parallel axis</dt><dd><span class="eq">I = I_cg + A · d²</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>symmetry</b> — centroid always lies on any axis of symmetry.</li>
+        <li><b>holes</b> — treat as NEGATIVE area in the composite sum.</li>
+        <li><b>circles</b> — J = I_x + I_y (perpendicular-axis theorem).</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>which axis?</b> — I depends on axis; always specify which one.</li>
+        <li><b>units</b> — centroid in length, A in length², I in length⁴. Don't mix.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 3 — Statics</a> ·
+    Topic: Centroids and second moment of area
+  </footer>
+</main>
+<script>
+const svg = document.getElementById('canvas');
+function ns(tag, attrs={}, parent=svg){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(){ while(svg.firstChild) svg.removeChild(svg.firstChild); }
+
+// Coordinate system: model in mm (x right, y up).
+// Drawing window: origin at left side, scale 4 px/mm
+const SCALE = 4;
+const ORIGIN_X = 100; // px from left edge
+const ORIGIN_Y = 360; // px from top (so model y=0 is here, y up goes upward in screen)
+function mx(x){ return ORIGIN_X + x * SCALE; }
+function my(y){ return ORIGIN_Y - y * SCALE; }
+
+// Shape data:
+// {id, type:'rect'|'circle'|'tri', x, y, w, h, r, negative}
+// For rectangles: (x,y) = lower-left corner; w,h dimensions
+// For circles: (x,y) = center; r = radius
+// For triangles: right triangle with right angle at (x,y); legs w (right) and h (up)
+let shapes = [];
+let nextId = 1;
+
+function shapeArea(s){
+  if(s.type === 'rect') return s.w * s.h * (s.negative ? -1 : 1);
+  if(s.type === 'circle') return Math.PI * s.r * s.r * (s.negative ? -1 : 1);
+  if(s.type === 'tri') return 0.5 * s.w * s.h * (s.negative ? -1 : 1);
+  return 0;
+}
+function shapeCentroid(s){
+  if(s.type === 'rect') return {x: s.x + s.w/2, y: s.y + s.h/2};
+  if(s.type === 'circle') return {x: s.x, y: s.y};
+  if(s.type === 'tri') return {x: s.x + s.w/3, y: s.y + s.h/3};
+  return {x:0, y:0};
+}
+function shapeI_cg_x(s){
+  // about the sub-shape's own horizontal centroidal axis
+  if(s.type === 'rect') return (s.w * Math.pow(s.h,3)) / 12 * (s.negative ? -1 : 1);
+  if(s.type === 'circle') return (Math.PI * Math.pow(s.r,4)) / 4 * (s.negative ? -1 : 1);
+  if(s.type === 'tri') return (s.w * Math.pow(s.h,3)) / 36 * (s.negative ? -1 : 1);
+  return 0;
+}
+function shapeI_cg_y(s){
+  if(s.type === 'rect') return (s.h * Math.pow(s.w,3)) / 12 * (s.negative ? -1 : 1);
+  if(s.type === 'circle') return (Math.PI * Math.pow(s.r,4)) / 4 * (s.negative ? -1 : 1);
+  if(s.type === 'tri') return (s.h * Math.pow(s.w,3)) / 36 * (s.negative ? -1 : 1);
+  return 0;
+}
+
+function computeComposite(){
+  let A = 0, Ax = 0, Ay = 0;
+  for(const s of shapes){
+    const a = shapeArea(s);
+    const c = shapeCentroid(s);
+    A += a;
+    Ax += a * c.x;
+    Ay += a * c.y;
+  }
+  if(Math.abs(A) < 1e-6) return null;
+  const xbar = Ax / A, ybar = Ay / A;
+  // Inertia about composite centroid
+  let Ix = 0, Iy = 0;
+  for(const s of shapes){
+    const a = shapeArea(s);
+    const c = shapeCentroid(s);
+    const dx = c.x - xbar, dy = c.y - ybar;
+    Ix += shapeI_cg_x(s) + a * dy * dy;
+    Iy += shapeI_cg_y(s) + a * dx * dx;
+  }
+  return {A, xbar, ybar, Ix, Iy};
+}
+
+function render(){
+  clear();
+  // axes/grid
+  for(let i=-200; i<=300; i+=10){
+    if(Math.abs(i) > 200) continue;
+    const xx = mx(i);
+    if(xx < 20 || xx > 860) continue;
+    ns('line',{x1:xx, y1:30, x2:xx, y2:430, stroke:'#1a1f27', 'stroke-width':0.5});
+  }
+  for(let i=-50; i<=160; i+=10){
+    const yy = my(i);
+    if(yy < 30 || yy > 430) continue;
+    ns('line',{x1:20, y1:yy, x2:860, y2:yy, stroke:'#1a1f27', 'stroke-width':0.5});
+  }
+  // x and y axes
+  ns('line',{x1:20, y1:my(0), x2:860, y2:my(0), stroke:'#444b57', 'stroke-width':1.2});
+  ns('line',{x1:mx(0), y1:30, x2:mx(0), y2:430, stroke:'#444b57', 'stroke-width':1.2});
+  ns('text',{x:850, y:my(0)-4, class:'label-dim'}).textContent='x (mm)';
+  ns('text',{x:mx(0)+4, y:36, class:'label-dim'}).textContent='y (mm)';
+  // axis tick labels
+  for(let i=-40; i<=200; i+=20){
+    const xx = mx(i);
+    if(xx < 30 || xx > 860 || i===0) continue;
+    ns('text',{x:xx, y:my(0)+14, 'text-anchor':'middle', class:'label-dim'}).textContent=i.toString();
+  }
+  for(let i=-20; i<=160; i+=20){
+    const yy = my(i);
+    if(yy < 30 || yy > 430 || i===0) continue;
+    ns('text',{x:mx(0)-8, y:yy+4, 'text-anchor':'end', class:'label-dim'}).textContent=i.toString();
+  }
+
+  // Draw shapes
+  for(const s of shapes){
+    const color = s.negative ? '#ff7b72' : '#5ec8ff';
+    const fillOp = s.negative ? 0.15 : 0.18;
+    if(s.type === 'rect'){
+      ns('rect',{x:mx(s.x), y:my(s.y + s.h), width:s.w*SCALE, height:s.h*SCALE,
+        fill:color, 'fill-opacity':fillOp, stroke:color, 'stroke-width':1.5,
+        'stroke-dasharray':s.negative?'4 3':''});
+    } else if(s.type === 'circle'){
+      ns('circle',{cx:mx(s.x), cy:my(s.y), r:s.r*SCALE,
+        fill:color, 'fill-opacity':fillOp, stroke:color, 'stroke-width':1.5,
+        'stroke-dasharray':s.negative?'4 3':''});
+    } else if(s.type === 'tri'){
+      const p1 = `${mx(s.x)},${my(s.y)}`;
+      const p2 = `${mx(s.x + s.w)},${my(s.y)}`;
+      const p3 = `${mx(s.x)},${my(s.y + s.h)}`;
+      ns('polygon',{points:`${p1} ${p2} ${p3}`,
+        fill:color, 'fill-opacity':fillOp, stroke:color, 'stroke-width':1.5,
+        'stroke-dasharray':s.negative?'4 3':''});
+    }
+    // sub-centroid dot
+    const c = shapeCentroid(s);
+    ns('circle',{cx:mx(c.x), cy:my(c.y), r:4, fill:'#ffb86c'});
+    ns('text',{x:mx(c.x)+6, y:my(c.y)-4, class:'label-dim', fill:'#ffb86c'}).textContent=`${s.id}${s.negative?' (–)':''}`;
+  }
+
+  // Composite centroid
+  const comp = computeComposite();
+  if(comp){
+    const cx = mx(comp.xbar), cy = my(comp.ybar);
+    // crosshair (translucent)
+    ns('line',{x1:cx-30, y1:cy, x2:cx+30, y2:cy, stroke:'#a3e635', 'stroke-width':2, opacity:0.85});
+    ns('line',{x1:cx, y1:cy-30, x2:cx, y2:cy+30, stroke:'#a3e635', 'stroke-width':2, opacity:0.85});
+    ns('circle',{cx, cy, r:9, fill:'none', stroke:'#a3e635', 'stroke-width':2.5});
+    ns('circle',{cx, cy, r:3, fill:'#a3e635'});
+    ns('text',{x:cx+14, y:cy-12, class:'label', fill:'#a3e635'}).textContent=`(x̄=${comp.xbar.toFixed(2)}, ȳ=${comp.ybar.toFixed(2)})`;
+    // d-arrows for first 2 shapes (to visualize the parallel-axis offset)
+    shapes.slice(0,3).forEach(s => {
+      const c = shapeCentroid(s);
+      const sx = mx(c.x), sy = my(c.y);
+      if(Math.hypot(sx-cx, sy-cy) > 6){
+        ns('line',{x1:cx, y1:cy, x2:sx, y2:sy, stroke:'#ffb86c', 'stroke-width':1, 'stroke-dasharray':'3 3', opacity:0.55});
+      }
+    });
+  }
+
+  updateTables(comp);
+  updateShapeList();
+}
+
+function updateTables(comp){
+  // Centroid table
+  const tbody = document.getElementById('centroidTable');
+  tbody.innerHTML = '';
+  let totA = 0, totAx = 0, totAy = 0;
+  shapes.forEach((s,i) => {
+    const a = shapeArea(s);
+    const c = shapeCentroid(s);
+    totA += a; totAx += a*c.x; totAy += a*c.y;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i+1}</td><td>${s.type}${s.negative?' (hole)':''}</td>` +
+      `<td>${a.toFixed(2)}</td><td>${c.x.toFixed(2)}</td><td>${c.y.toFixed(2)}</td>` +
+      `<td>${(a*c.x).toFixed(2)}</td><td>${(a*c.y).toFixed(2)}</td>`;
+    tbody.appendChild(tr);
+  });
+  const tfoot = document.getElementById('centroidFoot');
+  if(comp){
+    tfoot.innerHTML = `<tr><th colspan="2">Σ</th><th>${totA.toFixed(2)}</th>` +
+      `<th colspan="2"></th><th>${totAx.toFixed(2)}</th><th>${totAy.toFixed(2)}</th></tr>` +
+      `<tr><th colspan="5">Centroid (x̄, ȳ) = (ΣA·x/ΣA, ΣA·y/ΣA)</th>` +
+      `<th colspan="2" style="color:var(--accent3)">(${comp.xbar.toFixed(3)}, ${comp.ybar.toFixed(3)}) mm</th></tr>`;
+  } else { tfoot.innerHTML = ''; }
+
+  // Inertia table
+  const itbody = document.getElementById('inertiaTable');
+  itbody.innerHTML = '';
+  let totIx = 0;
+  if(comp){
+    shapes.forEach((s,i) => {
+      const a = shapeArea(s);
+      const c = shapeCentroid(s);
+      const dy = c.y - comp.ybar;
+      const Icg = shapeI_cg_x(s);
+      const Ad2 = a * dy * dy;
+      const Ix = Icg + Ad2;
+      totIx += Ix;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${i+1}</td><td>${s.type}${s.negative?' (hole)':''}</td>` +
+        `<td>${Icg.toFixed(2)}</td><td>${Ad2.toFixed(2)}</td><td>${Ix.toFixed(2)}</td>`;
+      itbody.appendChild(tr);
+    });
+    document.getElementById('inertiaFoot').innerHTML =
+      `<tr><th colspan="4">Σ I_x about composite centroid</th>` +
+      `<th style="color:var(--accent3)">${totIx.toFixed(2)} mm⁴</th></tr>` +
+      `<tr><th colspan="4">Σ I_y about composite centroid</th>` +
+      `<th style="color:var(--accent3)">${comp.Iy.toFixed(2)} mm⁴</th></tr>` +
+      `<tr><th colspan="4">Polar J = I_x + I_y</th>` +
+      `<th style="color:var(--accent3)">${(totIx + comp.Iy).toFixed(2)} mm⁴</th></tr>`;
+  } else {
+    document.getElementById('inertiaFoot').innerHTML = '';
+  }
+
+  // Summary
+  let html;
+  if(comp){
+    html = `<b>Total area:</b> <span class="readout">${comp.A.toFixed(2)} mm²</span>  ·  ` +
+      `<b>Centroid:</b> <span class="readout">(${comp.xbar.toFixed(2)}, ${comp.ybar.toFixed(2)}) mm</span><br>` +
+      `<b>I_x (about composite centroidal x-axis):</b> <span class="readout">${comp.Ix.toFixed(2)} mm⁴</span>  ·  ` +
+      `<b>I_y:</b> <span class="readout">${comp.Iy.toFixed(2)} mm⁴</span><br>` +
+      `<span style="color:var(--fg-dim)">Parallel-axis check: I = I_cg + A·d². Holes contribute negative A and negative I_cg.</span>`;
+  } else {
+    html = `<span style="color:var(--fg-dim)">Add at least one shape (or load a preset) to see results.</span>`;
+  }
+  document.getElementById('summary').innerHTML = html;
+}
+
+function updateShapeList(){
+  const list = document.getElementById('shapeList');
+  list.innerHTML = '';
+  shapes.forEach((s, idx) => {
+    const row = document.createElement('div');
+    row.className = 'shape-row';
+    const sw = document.createElement('span');
+    sw.className='swatch-box';
+    sw.style.background = s.negative ? '#ff7b72' : '#5ec8ff';
+    row.appendChild(sw);
+    row.appendChild(document.createTextNode(` [${s.id}] ${s.type} `));
+    // Add parameter inputs
+    if(s.type === 'rect'){
+      row.appendChild(makeInput('x', s, 'x'));
+      row.appendChild(makeInput('y', s, 'y'));
+      row.appendChild(makeInput('w', s, 'w'));
+      row.appendChild(makeInput('h', s, 'h'));
+    } else if(s.type === 'circle'){
+      row.appendChild(makeInput('x', s, 'x'));
+      row.appendChild(makeInput('y', s, 'y'));
+      row.appendChild(makeInput('r', s, 'r'));
+    } else if(s.type === 'tri'){
+      row.appendChild(makeInput('x', s, 'x'));
+      row.appendChild(makeInput('y', s, 'y'));
+      row.appendChild(makeInput('w', s, 'w'));
+      row.appendChild(makeInput('h', s, 'h'));
+    }
+    // negative toggle
+    const neg = document.createElement('button');
+    neg.className = 'btn';
+    neg.style.padding = '1px 6px';
+    neg.style.fontSize = '11px';
+    neg.textContent = s.negative ? 'hole' : 'solid';
+    neg.onclick = ()=>{ s.negative = !s.negative; render(); };
+    row.appendChild(neg);
+    // remove
+    const rm = document.createElement('button');
+    rm.className = 'btn warn';
+    rm.style.padding = '1px 6px';
+    rm.style.fontSize = '11px';
+    rm.textContent = 'x';
+    rm.onclick = ()=>{ shapes.splice(idx,1); render(); };
+    row.appendChild(rm);
+    list.appendChild(row);
+  });
+}
+
+function makeInput(lbl, s, prop){
+  const span = document.createElement('span');
+  span.style.marginLeft = '4px';
+  span.appendChild(document.createTextNode(lbl+'='));
+  const inp = document.createElement('input');
+  inp.type='number'; inp.value = s[prop]; inp.step='1';
+  inp.oninput = ()=>{ s[prop] = parseFloat(inp.value) || 0; render(); };
+  span.appendChild(inp);
+  return span;
+}
+
+function addRect(x=10, y=10, w=40, h=20){
+  shapes.push({id:nextId++, type:'rect', x, y, w, h, negative:false});
+  render();
+}
+function addCircle(x=30, y=30, r=15){
+  shapes.push({id:nextId++, type:'circle', x, y, r, negative:false});
+  render();
+}
+function addTri(x=10, y=10, w=30, h=30){
+  shapes.push({id:nextId++, type:'tri', x, y, w, h, negative:false});
+  render();
+}
+
+function loadPreset(p){
+  shapes = []; nextId = 1;
+  if(p === 'ibeam'){
+    // top flange (60w x 10h), bottom flange (60w x 10h), web (10w x 40h between)
+    shapes.push({id:nextId++, type:'rect', x:0,  y:0,  w:60, h:10, negative:false});  // bottom flange
+    shapes.push({id:nextId++, type:'rect', x:25, y:10, w:10, h:40, negative:false});  // web
+    shapes.push({id:nextId++, type:'rect', x:0,  y:50, w:60, h:10, negative:false});  // top flange
+  } else if(p === 'tbeam'){
+    shapes.push({id:nextId++, type:'rect', x:25, y:0,  w:10, h:40, negative:false});  // stem
+    shapes.push({id:nextId++, type:'rect', x:0,  y:40, w:60, h:10, negative:false});  // top flange
+  } else if(p === 'hollowsquare'){
+    shapes.push({id:nextId++, type:'rect', x:0, y:0, w:60, h:60, negative:false});
+    shapes.push({id:nextId++, type:'rect', x:15, y:15, w:30, h:30, negative:true});
+  } else if(p === 'lbracket'){
+    shapes.push({id:nextId++, type:'rect', x:0, y:0, w:60, h:10, negative:false});
+    shapes.push({id:nextId++, type:'rect', x:0, y:10, w:10, h:50, negative:false});
+  } else if(p === 'cylinder-hole'){
+    shapes.push({id:nextId++, type:'circle', x:30, y:30, r:25, negative:false});
+    shapes.push({id:nextId++, type:'circle', x:30, y:30, r:10, negative:true});
+  }
+  render();
+}
+
+// Hook up controls
+document.getElementById('addRect').onclick = ()=>addRect();
+document.getElementById('addCircle').onclick = ()=>addCircle();
+document.getElementById('addTri').onclick = ()=>addTri();
+document.getElementById('btnClear').onclick = ()=>{ shapes=[]; render(); };
+document.getElementById('preset').onchange = e => {
+  if(e.target.value) { loadPreset(e.target.value); e.target.value=''; }
+};
+document.getElementById('btnCentroid').onclick = ()=>{
+  document.getElementById('btnCentroid').classList.add('primary');
+  document.getElementById('btnInertia').classList.remove('primary');
+};
+document.getElementById('btnInertia').onclick = ()=>{
+  document.getElementById('btnInertia').classList.add('primary');
+  document.getElementById('btnCentroid').classList.remove('primary');
+};
+
+// Load I-beam by default
+loadPreset('ibeam');
+</script>
+</body>
+</html>

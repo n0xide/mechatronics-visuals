@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FDM process — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+
+  .infill-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
+  .infill-card{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;padding:10px;text-align:center}
+  .infill-card .name{font:600 13px ui-monospace,monospace;color:var(--fg-bright);margin-top:6px}
+  .infill-card .iso{font:11px ui-monospace,monospace;color:var(--fg-dim);margin-top:2px}
+  .iso-good{color:var(--accent3) !important}
+  .iso-mid{color:var(--accent2) !important}
+  .iso-bad{color:var(--warn) !important}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>FDM process</h1>
+  <p class="lede">Three properties of FDM determine whether your print survives load: layer adhesion (weakest direction is between layers), print orientation (rotate the part to keep load in-plane), and infill geometry (pattern and density of the interior lattice). Switch tabs to explore each.</p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="adhesion">Layer adhesion</div>
+    <div class="tab" data-tab="orientation">Print orientation</div>
+    <div class="tab" data-tab="infill">Infill &amp; perimeters</div>
+  </div>
+
+  <!-- TAB 1: LAYER ADHESION -->
+  <div class="tab-panel active" id="panel-adhesion">
+    <h3>Tensile strength: in-plane vs between-layer</h3>
+    <p style="color:var(--fg-dim);font-size:13px;margin-bottom:14px">For every common filament, between-layer (Z-axis) strength is 50–70% of in-plane (XY) strength. The polymer chains within a layer entangle strongly during extrusion; between layers, they only fuse where freshly extruded plastic re-melts the previous layer's surface — that's a thinner, weaker bond zone.</p>
+    <div class="figure">
+      <svg viewBox="0 0 760 380" xmlns="http://www.w3.org/2000/svg">
+        <line class="axis" x1="60" y1="320" x2="720" y2="320"/>
+        <line class="axis" x1="60" y1="40" x2="60" y2="320"/>
+        <!-- Y axis ticks -->
+        <g class="axis-label">
+          <text x="55" y="324" text-anchor="end">0</text>
+          <text x="55" y="262" text-anchor="end">15</text>
+          <text x="55" y="202" text-anchor="end">30</text>
+          <text x="55" y="142" text-anchor="end">45</text>
+          <text x="55" y="82" text-anchor="end">60</text>
+        </g>
+        <text class="axis-label" x="20" y="180" transform="rotate(-90 20 180)">UTS (MPa)</text>
+        <!-- grid -->
+        <line class="grid-line" x1="60" y1="262" x2="720" y2="262"/>
+        <line class="grid-line" x1="60" y1="202" x2="720" y2="202"/>
+        <line class="grid-line" x1="60" y1="142" x2="720" y2="142"/>
+        <line class="grid-line" x1="60" y1="82" x2="720" y2="82"/>
+
+        <!-- Bars: 5 filaments, 2 bars each. Scale: 60MPa -> 240px height; baseline 320. 1MPa = 4px -->
+        <!-- PLA 50 / 30 -->
+        <g>
+          <rect x="100" y="120" width="36" height="200" fill="#5ec8ff"/>
+          <rect x="140" y="200" width="36" height="120" fill="#ffb86c"/>
+          <text class="label" x="138" y="340" text-anchor="middle">PLA</text>
+          <text class="label-dim" x="118" y="114" text-anchor="middle">50</text>
+          <text class="label-dim" x="158" y="194" text-anchor="middle">30</text>
+        </g>
+        <!-- PETG 45 / 25 -->
+        <g>
+          <rect x="220" y="140" width="36" height="180" fill="#5ec8ff"/>
+          <rect x="260" y="220" width="36" height="100" fill="#ffb86c"/>
+          <text class="label" x="258" y="340" text-anchor="middle">PETG</text>
+          <text class="label-dim" x="238" y="134" text-anchor="middle">45</text>
+          <text class="label-dim" x="278" y="214" text-anchor="middle">25</text>
+        </g>
+        <!-- ABS 38 / 18 -->
+        <g>
+          <rect x="340" y="168" width="36" height="152" fill="#5ec8ff"/>
+          <rect x="380" y="248" width="36" height="72" fill="#ffb86c"/>
+          <text class="label" x="378" y="340" text-anchor="middle">ABS</text>
+          <text class="label-dim" x="358" y="162" text-anchor="middle">38</text>
+          <text class="label-dim" x="398" y="242" text-anchor="middle">18</text>
+        </g>
+        <!-- ASA 42 / 22 -->
+        <g>
+          <rect x="460" y="152" width="36" height="168" fill="#5ec8ff"/>
+          <rect x="500" y="232" width="36" height="88" fill="#ffb86c"/>
+          <text class="label" x="498" y="340" text-anchor="middle">ASA</text>
+          <text class="label-dim" x="478" y="146" text-anchor="middle">42</text>
+          <text class="label-dim" x="518" y="226" text-anchor="middle">22</text>
+        </g>
+        <!-- PA12 60 / 35 -->
+        <g>
+          <rect x="580" y="80" width="36" height="240" fill="#5ec8ff"/>
+          <rect x="620" y="180" width="36" height="140" fill="#ffb86c"/>
+          <text class="label" x="618" y="340" text-anchor="middle">PA12</text>
+          <text class="label-dim" x="598" y="74" text-anchor="middle">60</text>
+          <text class="label-dim" x="638" y="174" text-anchor="middle">35</text>
+        </g>
+      </svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:#5ec8ff;height:14px;border-radius:2px"></span>In-plane (XY) tensile</span>
+        <span><span class="swatch" style="background:#ffb86c;height:14px;border-radius:2px"></span>Between-layer (Z) tensile</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: PRINT ORIENTATION -->
+  <div class="tab-panel" id="panel-orientation">
+    <h3>Same part, two orientations, same load</h3>
+    <p style="color:var(--fg-dim);font-size:13px;margin-bottom:14px">A cantilever bracket loaded at the tip. The bending moment causes tension on the top fibres and compression on the bottom. Orient so that tension runs in-plane (along layer lines), not between layers.</p>
+    <div class="figure">
+      <svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg">
+        <!-- LEFT: orientation A — layers vertical (load between layers) -->
+        <g transform="translate(40,40)">
+          <text class="label" x="150" y="0" text-anchor="middle" style="font-weight:600">Orientation A — flat-printed</text>
+          <text class="label-dim" x="150" y="16" text-anchor="middle">load applied perpendicular to layers</text>
+          <!-- bracket body with horizontal layer lines (stacked rectangles) -->
+          <g>
+            <rect x="40" y="80" width="200" height="14" fill="#1d232c" stroke="#5ec8ff" stroke-width="0.5"/>
+            <rect x="40" y="94" width="200" height="14" fill="#1d232c" stroke="#5ec8ff" stroke-width="0.5"/>
+            <rect x="40" y="108" width="200" height="14" fill="#1d232c" stroke="#5ec8ff" stroke-width="0.5"/>
+            <rect x="40" y="122" width="200" height="14" fill="#1d232c" stroke="#5ec8ff" stroke-width="0.5"/>
+            <rect x="40" y="136" width="200" height="14" fill="#1d232c" stroke="#5ec8ff" stroke-width="0.5"/>
+            <rect x="40" y="150" width="200" height="14" fill="#1d232c" stroke="#5ec8ff" stroke-width="0.5"/>
+          </g>
+          <!-- wall (fixed end) -->
+          <rect x="20" y="80" width="20" height="84" fill="#2a313c"/>
+          <line x1="20" y1="80" x2="14" y2="74" stroke="#8f99a8" stroke-width="1"/>
+          <line x1="20" y1="100" x2="14" y2="94" stroke="#8f99a8" stroke-width="1"/>
+          <line x1="20" y1="120" x2="14" y2="114" stroke="#8f99a8" stroke-width="1"/>
+          <line x1="20" y1="140" x2="14" y2="134" stroke="#8f99a8" stroke-width="1"/>
+          <line x1="20" y1="160" x2="14" y2="154" stroke="#8f99a8" stroke-width="1"/>
+          <!-- load arrow -->
+          <line x1="240" y1="50" x2="240" y2="78" stroke="#ff7b72" stroke-width="2.5"/>
+          <polygon points="240,82 236,74 244,74" fill="#ff7b72"/>
+          <text class="label" x="240" y="44" text-anchor="middle" fill="#ff7b72" style="font-weight:600">F</text>
+          <!-- failure marker -->
+          <path d="M 40 122 L 60 116 L 80 124 L 100 118 L 120 122 L 140 120 L 160 122" stroke="#ff7b72" stroke-width="2" fill="none" stroke-dasharray="3,2"/>
+          <text class="label-dim" x="150" y="200" text-anchor="middle" fill="#ff7b72">crack propagates along layer interface</text>
+          <text class="label" x="150" y="222" text-anchor="middle" fill="#ff7b72" style="font-weight:600">WEAK</text>
+          <text class="label-dim" x="150" y="238" text-anchor="middle">~30 MPa effective</text>
+        </g>
+
+        <!-- RIGHT: orientation B — layers horizontal (load in-plane) -->
+        <g transform="translate(420,40)">
+          <text class="label" x="150" y="0" text-anchor="middle" style="font-weight:600">Orientation B — upright-printed</text>
+          <text class="label-dim" x="150" y="16" text-anchor="middle">load applied parallel to layers</text>
+          <!-- bracket body with vertical layer lines -->
+          <g>
+            <rect x="40" y="80" width="14" height="84" fill="#1d232c" stroke="#a3e635" stroke-width="0.5"/>
+            <rect x="54" y="80" width="14" height="84" fill="#1d232c" stroke="#a3e635" stroke-width="0.5"/>
+            <rect x="68" y="80" width="14" height="84" fill="#1d232c" stroke="#a3e635" stroke-width="0.5"/>
+            <rect x="82" y="80" width="14" height="84" fill="#1d232c" stroke="#a3e635" stroke-width="0.5"/>
+            <rect x="96" y="80" width="14" height="84" fill="#1d232c" stroke="#a3e635" stroke-width="0.5"/>
+            <rect x="110" y="80" width="14" height="84" fill="#1d232c" stroke="#a3e635" stroke-width="0.5"/>
+            <rect x="124" y="80" width="14" height="84" fill="#1d232c" stroke="#a3e635" stroke-width="0.5"/>
+            <rect x="138" y="80" width="14" height="84" fill="#1d232c" stroke="#a3e635" stroke-width="0.5"/>
+            <rect x="152" y="80" width="14" height="84" fill="#1d232c" stroke="#a3e635" stroke-width="0.5"/>
+            <rect x="166" y="80" width="14" height="84" fill="#1d232c" stroke="#a3e635" stroke-width="0.5"/>
+            <rect x="180" y="80" width="14" height="84" fill="#1d232c" stroke="#a3e635" stroke-width="0.5"/>
+            <rect x="194" y="80" width="14" height="84" fill="#1d232c" stroke="#a3e635" stroke-width="0.5"/>
+            <rect x="208" y="80" width="14" height="84" fill="#1d232c" stroke="#a3e635" stroke-width="0.5"/>
+            <rect x="222" y="80" width="14" height="84" fill="#1d232c" stroke="#a3e635" stroke-width="0.5"/>
+          </g>
+          <rect x="20" y="80" width="20" height="84" fill="#2a313c"/>
+          <line x1="20" y1="80" x2="14" y2="74" stroke="#8f99a8" stroke-width="1"/>
+          <line x1="20" y1="100" x2="14" y2="94" stroke="#8f99a8" stroke-width="1"/>
+          <line x1="20" y1="120" x2="14" y2="114" stroke="#8f99a8" stroke-width="1"/>
+          <line x1="20" y1="140" x2="14" y2="134" stroke="#8f99a8" stroke-width="1"/>
+          <line x1="20" y1="160" x2="14" y2="154" stroke="#8f99a8" stroke-width="1"/>
+          <line x1="240" y1="50" x2="240" y2="78" stroke="#ff7b72" stroke-width="2.5"/>
+          <polygon points="240,82 236,74 244,74" fill="#ff7b72"/>
+          <text class="label" x="240" y="44" text-anchor="middle" fill="#ff7b72" style="font-weight:600">F</text>
+          <text class="label-dim" x="150" y="200" text-anchor="middle" fill="#a3e635">tensile fibres run along layers</text>
+          <text class="label" x="150" y="222" text-anchor="middle" fill="#a3e635" style="font-weight:600">STRONG</text>
+          <text class="label-dim" x="150" y="238" text-anchor="middle">~50 MPa effective</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- TAB 3: INFILL -->
+  <div class="tab-panel" id="panel-infill">
+    <h3>Infill pattern comparison</h3>
+    <p style="color:var(--fg-dim);font-size:13px;margin-bottom:14px">Patterns differ in how strength varies with load direction. <b>Gyroid</b> is the only common pattern that's truly isotropic (similar stiffness in X, Y, Z). Rectilinear is faster to print but anisotropic. Adjust the sliders to see how perimeters and density combine.</p>
+
+    <div class="infill-grid">
+      <div class="infill-card">
+        <svg viewBox="0 0 100 100" width="100" height="100">
+          <rect x="2" y="2" width="96" height="96" fill="none" stroke="#5ec8ff" stroke-width="1.5"/>
+          <line x1="2" y1="20" x2="98" y2="20" stroke="#5ec8ff" stroke-width="1"/>
+          <line x1="2" y1="40" x2="98" y2="40" stroke="#5ec8ff" stroke-width="1"/>
+          <line x1="2" y1="60" x2="98" y2="60" stroke="#5ec8ff" stroke-width="1"/>
+          <line x1="2" y1="80" x2="98" y2="80" stroke="#5ec8ff" stroke-width="1"/>
+        </svg>
+        <div class="name">Rectilinear</div>
+        <div class="iso iso-bad">isotropy: low</div>
+      </div>
+      <div class="infill-card">
+        <svg viewBox="0 0 100 100" width="100" height="100">
+          <rect x="2" y="2" width="96" height="96" fill="none" stroke="#a3e635" stroke-width="1.5"/>
+          <path d="M 10 50 Q 25 20 50 50 T 90 50" stroke="#a3e635" stroke-width="1.2" fill="none"/>
+          <path d="M 10 70 Q 25 40 50 70 T 90 70" stroke="#a3e635" stroke-width="1.2" fill="none"/>
+          <path d="M 10 30 Q 25 0 50 30 T 90 30" stroke="#a3e635" stroke-width="1.2" fill="none"/>
+          <path d="M 50 10 Q 80 25 50 50 T 50 90" stroke="#a3e635" stroke-width="1.2" fill="none"/>
+          <path d="M 30 10 Q 60 25 30 50 T 30 90" stroke="#a3e635" stroke-width="1.2" fill="none"/>
+          <path d="M 70 10 Q 100 25 70 50 T 70 90" stroke="#a3e635" stroke-width="1.2" fill="none"/>
+        </svg>
+        <div class="name">Gyroid</div>
+        <div class="iso iso-good">isotropy: high</div>
+      </div>
+      <div class="infill-card">
+        <svg viewBox="0 0 100 100" width="100" height="100">
+          <rect x="2" y="2" width="96" height="96" fill="none" stroke="#ffb86c" stroke-width="1.5"/>
+          <line x1="2" y1="50" x2="98" y2="50" stroke="#ffb86c" stroke-width="1"/>
+          <line x1="50" y1="2" x2="50" y2="98" stroke="#ffb86c" stroke-width="1"/>
+          <line x1="2" y1="2" x2="98" y2="98" stroke="#ffb86c" stroke-width="1"/>
+          <line x1="98" y1="2" x2="2" y2="98" stroke="#ffb86c" stroke-width="1"/>
+          <line x1="2" y1="25" x2="98" y2="25" stroke="#ffb86c" stroke-width="1"/>
+          <line x1="2" y1="75" x2="98" y2="75" stroke="#ffb86c" stroke-width="1"/>
+          <line x1="25" y1="2" x2="25" y2="98" stroke="#ffb86c" stroke-width="1"/>
+          <line x1="75" y1="2" x2="75" y2="98" stroke="#ffb86c" stroke-width="1"/>
+        </svg>
+        <div class="name">Cubic</div>
+        <div class="iso iso-mid">isotropy: medium</div>
+      </div>
+      <div class="infill-card">
+        <svg viewBox="0 0 100 100" width="100" height="100">
+          <rect x="2" y="2" width="96" height="96" fill="none" stroke="#5ec8ff" stroke-width="1.5"/>
+          <polygon points="25,20 45,20 55,35 45,50 25,50 15,35" fill="none" stroke="#5ec8ff" stroke-width="1"/>
+          <polygon points="55,20 75,20 85,35 75,50 55,50 45,35" fill="none" stroke="#5ec8ff" stroke-width="1"/>
+          <polygon points="25,50 45,50 55,65 45,80 25,80 15,65" fill="none" stroke="#5ec8ff" stroke-width="1"/>
+          <polygon points="55,50 75,50 85,65 75,80 55,80 45,65" fill="none" stroke="#5ec8ff" stroke-width="1"/>
+        </svg>
+        <div class="name">Honeycomb</div>
+        <div class="iso iso-mid">isotropy: medium</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="control">
+        <label>Perimeters: <span class="readout" id="rPerim">3</span></label>
+        <input type="range" id="sPerim" min="1" max="8" step="1" value="3">
+      </div>
+      <div class="control">
+        <label>Infill density: <span class="readout" id="rInfill">25</span>%</label>
+        <input type="range" id="sInfill" min="0" max="100" step="5" value="25">
+      </div>
+    </div>
+    <div class="figure" style="padding:12px 18px">
+      <div style="display:flex;justify-content:space-between;font:12px ui-monospace,monospace;color:var(--fg-dim);margin-bottom:6px">
+        <span>Relative bending strength (vs PETG baseline, 2 perimeters, 20% infill)</span>
+        <span class="readout" id="rStrength">1.0×</span>
+      </div>
+      <svg viewBox="0 0 700 60" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="20" width="700" height="20" fill="var(--bg-elev2)" stroke="var(--line)" stroke-width="1"/>
+        <rect id="strengthBar" x="0" y="20" width="120" height="20" fill="#a3e635"/>
+        <line x1="120" y1="14" x2="120" y2="46" stroke="#8f99a8" stroke-width="1" stroke-dasharray="3,2"/>
+        <text x="124" y="12" class="label-dim">baseline 1.0×</text>
+      </svg>
+      <p style="font-size:11px;color:var(--fg-dim);margin-top:8px">Perimeters dominate bending stiffness — they're the outer fibres of the beam. Doubling perimeters from 2→4 typically gains more strength than doubling infill 20→40%.</p>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Z-axis is always your weakest direction.</b> Between-layer bonds are ~50–70% of in-plane strength; design loads to run along, not across, layer lines.</li>
+    <li><b>Orientation matters more than material.</b> A PLA part loaded in-plane often outperforms a PETG part loaded between layers.</li>
+    <li><b>Gyroid is the isotropic infill.</b> Use it when load direction is unpredictable or rotational; rectilinear is fine when you know the load axis.</li>
+    <li><b>Perimeters &gt; infill</b> for bending stiffness — the outer fibres of any beam carry the most stress. 4 walls and 20% infill beats 2 walls and 40% infill in most bending cases.</li>
+    <li><b>Honeycomb is a print-time trap.</b> Pretty, but slower than gyroid for similar stiffness; gyroid wins on speed + isotropy.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li>Z-axis strength = <b>30–60%</b> of XY</li>
+        <li><b>Gyroid</b> = only isotropic infill</li>
+        <li>Structural: <b>≥3 perimeters + ≥40% infill</b></li>
+        <li>Overhang limit: <b>PETG ~50°, PLA ~55°</b></li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>DECISION</h3>
+      <ul>
+        <li>Orient critical loads <b>parallel</b> to layers</li>
+        <li><b>Tree supports</b> for organic geometry</li>
+        <li><b>Grid supports</b> for flat overhangs</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li>100% infill ≠ strong — <b>perimeters dominate</b></li>
+        <li>Cooling fan &gt;50% kills <b>layer adhesion</b></li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 5 — Manufacturing Processes</a> ·
+    Topic: FDM process (layer adhesion, orientation, infill)
+  </footer>
+</main>
+<script>
+// Tabs
+for (const t of document.querySelectorAll(".tab")){
+  t.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active");
+    document.getElementById("panel-" + t.getAttribute("data-tab")).classList.add("active");
+  });
+}
+
+// Strength calculation: baseline is 2 perim + 20% infill = 1.0
+// Perimeter contribution dominates: each extra perim adds ~0.18; infill adds ~0.012 per %
+const sPerim = document.getElementById("sPerim");
+const sInfill = document.getElementById("sInfill");
+const rPerim = document.getElementById("rPerim");
+const rInfill = document.getElementById("rInfill");
+const rStrength = document.getElementById("rStrength");
+const strengthBar = document.getElementById("strengthBar");
+
+function updateStrength(){
+  const p = +sPerim.value, i = +sInfill.value;
+  rPerim.textContent = p;
+  rInfill.textContent = i;
+  const base = 1.0;
+  const s = base + (p - 2) * 0.18 + (i - 20) * 0.012;
+  const sClamp = Math.max(0.2, s);
+  rStrength.textContent = sClamp.toFixed(2) + "×";
+  // Bar scales: baseline 1.0 = 120px; max ~3.0× = 360px
+  const w = Math.min(700, sClamp * 120);
+  strengthBar.setAttribute("width", w);
+  // Color: bar greens up with strength
+  if (sClamp >= 1.5) strengthBar.setAttribute("fill", "#a3e635");
+  else if (sClamp >= 0.9) strengthBar.setAttribute("fill", "#ffb86c");
+  else strengthBar.setAttribute("fill", "#ff7b72");
+}
+sPerim.addEventListener("input", updateStrength);
+sInfill.addEventListener("input", updateStrength);
+updateStrength();
+</script>
+</body>
+</html>

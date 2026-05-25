@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Equilibrium 2D &amp; 3D — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright);border-color:var(--accent)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  .eq{font:13px ui-monospace,Menlo,monospace;background:var(--bg-elev2);
+    border:1px solid var(--line);border-radius:4px;padding:8px 12px;margin:6px 0;color:var(--fg)}
+  .eq .lhs{color:var(--accent3)}
+  .eq .rhs{color:var(--accent)}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Equilibrium — ΣF=0, ΣM=0 in 2D and 3D</h1>
+  <p class="lede">A simply supported beam (pin + roller). Slide the load left/right or change its
+  magnitude; the reactions update from the equilibrium equations. Compute moments about either
+  support — both give the same answer (sanity check). Toggle to 3D for the six-equation case.</p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="d2">2D — beam</div>
+    <div class="tab" data-tab="d3">3D — bracket</div>
+  </div>
+
+  <div class="tab-panel active" id="panel-d2">
+    <section class="controls">
+      <div class="control">
+        <label>Load position a (m from left)</label>
+        <input type="range" id="loadA" min="0.2" max="9.8" step="0.1" value="6">
+        <span class="readout" id="loadAR">6.0 m</span>
+      </div>
+      <div class="control">
+        <label>Load magnitude P (N, down)</label>
+        <input type="range" id="loadP" min="10" max="500" step="10" value="200">
+        <span class="readout" id="loadPR">200 N</span>
+      </div>
+      <div class="control">
+        <label>Beam length L (m)</label>
+        <input type="range" id="beamL" min="4" max="12" step="0.5" value="10">
+        <span class="readout" id="beamLR">10.0 m</span>
+      </div>
+    </section>
+    <div class="figure">
+      <svg id="svg2d" viewBox="0 0 880 320" width="100%" height="320"></svg>
+    </div>
+    <h3>Sum about left support A (eliminates RA)</h3>
+    <div class="eq" id="eqA"></div>
+    <h3>Sum about right support B (eliminates RB) — sanity check</h3>
+    <div class="eq" id="eqB"></div>
+    <h3>Sum of vertical forces (sanity check #2)</h3>
+    <div class="eq" id="eqY"></div>
+  </div>
+
+  <div class="tab-panel" id="panel-d3">
+    <section class="controls">
+      <div class="control">
+        <label>Tip load Fz (N, down)</label>
+        <input type="range" id="fz3" min="10" max="200" step="10" value="50">
+        <span class="readout" id="fz3R">50 N</span>
+      </div>
+      <div class="control">
+        <label>Arm length Lx (m)</label>
+        <input type="range" id="lx3" min="0.1" max="0.8" step="0.05" value="0.3">
+        <span class="readout" id="lx3R">0.30 m</span>
+      </div>
+      <div class="control">
+        <label>Arm depth Ly (m)</label>
+        <input type="range" id="ly3" min="0.05" max="0.5" step="0.05" value="0.15">
+        <span class="readout" id="ly3R">0.15 m</span>
+      </div>
+    </section>
+    <div class="figure">
+      <svg id="svg3d" viewBox="0 0 880 380" width="100%" height="380"></svg>
+    </div>
+    <h3>Six equilibrium equations at the wall (built-in support)</h3>
+    <div class="eq" id="eq3F"></div>
+    <div class="eq" id="eq3M"></div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Three equations, three unknowns in 2D.</b> ΣFx=0, ΣFy=0, ΣM=0 about any point. Pin+roller gives 3 unknowns (RAx, RAy, RB). Solvable.</li>
+    <li><b>Pick your moment center wisely.</b> Summing about a support kills that support's reactions from the moment equation — leaving one equation in one unknown. Much easier algebra.</li>
+    <li><b>Cross-check with ΣFy.</b> RA + RB should always equal the total downward load. If it doesn't, you made an arithmetic error.</li>
+    <li><b>Load near the right → right reaction grows.</b> Intuitive: the support nearest the load takes most of the weight (lever arm logic).</li>
+    <li><b>Centered load → reactions are equal.</b> RA=RB=P/2. Symmetry is your friend.</li>
+    <li><b>3D needs six equations.</b> A cantilever bracket loaded at its tip produces a force <i>and</i> a bending moment at the wall — both must be reacted. Notice My=Fz·Lx (bending) and Mx=−Fz·Ly (twist if load is off-axis).</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>EQUATIONS</h3>
+      <dl>
+        <dt>2D (3 eqs)</dt><dd><span class="eq">ΣFx=0, ΣFy=0, ΣM=0</span></dd>
+        <dt>3D (6 eqs)</dt><dd><span class="eq">ΣFx=ΣFy=ΣFz=0</span><span class="eq">ΣMx=ΣMy=ΣMz=0</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SPECIAL BODIES</h3>
+      <ul>
+        <li><b>two-force body</b> — forces equal, opposite, collinear along the line joining them.</li>
+        <li><b>three-force body</b> — forces are concurrent (lines meet at a point) or all parallel.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>sign drift</b> — fix +x, +y, +CCW once; don't flip mid-problem.</li>
+        <li><b>wrong moment point</b> — pick the point that eliminates the most unknowns (typically a support).</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 3 — Statics</a> ·
+    Topic: Equilibrium equations
+  </footer>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const svg = $('svg2d');
+const svg3 = $('svg3d');
+
+function ns(tag, attrs, parent){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  (parent||svg).appendChild(e);
+  return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+function arrow(s,x1,y1,x2,y2,color){
+  const dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy); if(L<1) return;
+  const ux=dx/L,uy=dy/L,bx=x2-9*ux,by=y2-9*uy,px=-uy,py=ux;
+  ns('line',{x1,y1,x2:bx,y2:by,stroke:color,'stroke-width':2.2},s);
+  ns('polygon',{points:`${x2},${y2} ${bx+5*px},${by+5*py} ${bx-5*px},${by-5*py}`,fill:color},s);
+}
+
+// ---------- 2D ----------
+function render2D(){
+  clear(svg);
+  const L = parseFloat($('beamL').value);
+  const a = Math.min(parseFloat($('loadA').value), L-0.1);
+  const P = parseFloat($('loadP').value);
+  $('beamLR').textContent = L.toFixed(1)+' m';
+  $('loadAR').textContent = a.toFixed(1)+' m';
+  $('loadPR').textContent = P.toFixed(0)+' N';
+
+  const X0=80, X1=800, Yb=180;
+  const px = X0 + (a/L)*(X1-X0);
+
+  // beam
+  ns('rect',{x:X0,y:Yb-6,width:X1-X0,height:12,fill:'#1d232c',stroke:'#dde3ec','stroke-width':1.5});
+
+  // pin (left)
+  ns('polygon',{points:`${X0},${Yb} ${X0-14},${Yb+22} ${X0+14},${Yb+22}`,fill:'none',stroke:'#dde3ec','stroke-width':1.5});
+  for(let i=-16;i<=16;i+=6) ns('line',{x1:X0+i,y1:Yb+22,x2:X0+i-6,y2:Yb+30,stroke:'#8f99a8','stroke-width':1});
+  ns('line',{x1:X0-20,y1:Yb+22,x2:X0+20,y2:Yb+22,stroke:'#dde3ec','stroke-width':1.5});
+  ns('text',{x:X0-8,y:Yb+50,class:'label-dim'}).textContent='A';
+
+  // roller (right)
+  ns('polygon',{points:`${X1},${Yb} ${X1-14},${Yb+18} ${X1+14},${Yb+18}`,fill:'none',stroke:'#dde3ec','stroke-width':1.5});
+  ns('circle',{cx:X1-8,cy:Yb+22,r:4,fill:'none',stroke:'#dde3ec','stroke-width':1.2});
+  ns('circle',{cx:X1+8,cy:Yb+22,r:4,fill:'none',stroke:'#dde3ec','stroke-width':1.2});
+  for(let i=-16;i<=16;i+=6) ns('line',{x1:X1+i,y1:Yb+28,x2:X1+i-6,y2:Yb+36,stroke:'#8f99a8','stroke-width':1});
+  ns('line',{x1:X1-20,y1:Yb+28,x2:X1+20,y2:Yb+28,stroke:'#dde3ec','stroke-width':1.5});
+  ns('text',{x:X1-8,y:Yb+56,class:'label-dim'}).textContent='B';
+
+  // load P
+  arrow(svg, px, Yb-60, px, Yb-8, '#ffb86c');
+  ns('text',{x:px-22,y:Yb-66,class:'label',fill:'#ffb86c'}).textContent=`P=${P}N`;
+
+  // compute reactions
+  // SumMA: RB*L - P*a = 0  =>  RB = P*a/L
+  // SumFy: RA + RB - P = 0  =>  RA = P - RB
+  const RB = P*a/L;
+  const RA = P - RB;
+
+  // reactions
+  arrow(svg, X0, Yb+80, X0, Yb+15, '#5ec8ff');
+  ns('text',{x:X0+10,y:Yb+75,class:'label',fill:'#5ec8ff'}).textContent=`RA=${RA.toFixed(1)}N`;
+  arrow(svg, X1, Yb+80, X1, Yb+15, '#5ec8ff');
+  ns('text',{x:X1-90,y:Yb+75,class:'label',fill:'#5ec8ff'}).textContent=`RB=${RB.toFixed(1)}N`;
+
+  // dim line a
+  ns('line',{x1:X0,y1:Yb-90,x2:px,y2:Yb-90,stroke:'#8f99a8','stroke-width':1});
+  ns('line',{x1:X0,y1:Yb-85,x2:X0,y2:Yb-95,stroke:'#8f99a8','stroke-width':1});
+  ns('line',{x1:px,y1:Yb-85,x2:px,y2:Yb-95,stroke:'#8f99a8','stroke-width':1});
+  ns('text',{x:(X0+px)/2-12,y:Yb-95,class:'label-dim'}).textContent=`a=${a.toFixed(1)}m`;
+  // dim line L
+  ns('line',{x1:X0,y1:Yb+115,x2:X1,y2:Yb+115,stroke:'#8f99a8','stroke-width':1});
+  ns('line',{x1:X0,y1:Yb+110,x2:X0,y2:Yb+120,stroke:'#8f99a8','stroke-width':1});
+  ns('line',{x1:X1,y1:Yb+110,x2:X1,y2:Yb+120,stroke:'#8f99a8','stroke-width':1});
+  ns('text',{x:(X0+X1)/2-22,y:Yb+135,class:'label-dim'}).textContent=`L=${L.toFixed(1)}m`;
+
+  // Moment center markers
+  ns('circle',{cx:X0,cy:Yb,r:4,fill:'#ff7b72'});
+  ns('circle',{cx:X1,cy:Yb,r:4,fill:'#ff7b72'});
+
+  // equation strings
+  $('eqA').innerHTML =
+    `<span class="lhs">ΣM_A = 0:</span>  RB·L − P·a = 0  →  ` +
+    `<span class="rhs">RB = P·a/L = ${P}·${a.toFixed(1)}/${L.toFixed(1)} = ${RB.toFixed(2)} N</span>`;
+  $('eqB').innerHTML =
+    `<span class="lhs">ΣM_B = 0:</span>  −RA·L + P·(L−a) = 0  →  ` +
+    `<span class="rhs">RA = P·(L−a)/L = ${P}·${(L-a).toFixed(1)}/${L.toFixed(1)} = ${RA.toFixed(2)} N</span>`;
+  $('eqY').innerHTML =
+    `<span class="lhs">ΣFy = 0:</span>  RA + RB − P = ${RA.toFixed(2)} + ${RB.toFixed(2)} − ${P} = ` +
+    `<span class="rhs">${(RA+RB-P).toFixed(3)} N  ✓</span>`;
+}
+
+['loadA','loadP','beamL'].forEach(id=>$(id).oninput=render2D);
+
+// ---------- 3D ----------
+function render3D(){
+  clear(svg3);
+  const Fz = parseFloat($('fz3').value);
+  const Lx = parseFloat($('lx3').value);
+  const Ly = parseFloat($('ly3').value);
+  $('fz3R').textContent = Fz+' N';
+  $('lx3R').textContent = Lx.toFixed(2)+' m';
+  $('ly3R').textContent = Ly.toFixed(2)+' m';
+
+  // isometric projection
+  const ox=200, oy=240, sc=350;
+  // axes basis (project 3d to 2d isometrically)
+  const ex = [1, -0.5];   // +x
+  const ey = [0.7, 0.3];  // +y (depth)
+  const ez = [0, -1];     // +z (up)
+  function P(x,y,z){
+    return [ox + sc*(x*ex[0] + y*ey[0] + z*ez[0]),
+            oy + sc*(x*ex[1] + y*ey[1] + z*ez[1])];
+  }
+
+  // Wall (yz plane at x=0)
+  const w0=P(0,0,-0.2), w1=P(0,Ly+0.1,-0.2), w2=P(0,Ly+0.1,0.4), w3=P(0,0,0.4);
+  ns('polygon',{points:`${w0[0]},${w0[1]} ${w1[0]},${w1[1]} ${w2[0]},${w2[1]} ${w3[0]},${w3[1]}`,
+    fill:'#1d232c',stroke:'#5ec8ff','stroke-width':1.5},svg3);
+  // hatching on wall
+  for(let t=-0.15; t<0.35; t+=0.08){
+    const a=P(-0.03, 0, t), b=P(0, Ly+0.05, t);
+    ns('line',{x1:a[0],y1:a[1],x2:b[0],y2:b[1],stroke:'#8f99a8','stroke-width':0.7},svg3);
+  }
+
+  // L-bracket arm: from (0, Ly, 0) to (Lx, Ly, 0)
+  const b0 = P(0, 0, 0);
+  const b1 = P(0, Ly, 0);
+  const b2 = P(Lx, Ly, 0);
+  // top of beam
+  const t0 = P(0, 0, 0.03);
+  const t1 = P(0, Ly, 0.03);
+  const t2 = P(Lx, Ly, 0.03);
+
+  // segment 1: along y
+  ns('polygon',{points:`${b0[0]},${b0[1]} ${b1[0]},${b1[1]} ${t1[0]},${t1[1]} ${t0[0]},${t0[1]}`,
+    fill:'#2a313c',stroke:'#dde3ec','stroke-width':1.3},svg3);
+  // segment 2: along x
+  ns('polygon',{points:`${b1[0]},${b1[1]} ${b2[0]},${b2[1]} ${t2[0]},${t2[1]} ${t1[0]},${t1[1]}`,
+    fill:'#2a313c',stroke:'#dde3ec','stroke-width':1.3},svg3);
+
+  // tip load
+  const tip = P(Lx, Ly, 0);
+  const tipTop = P(Lx, Ly, 0.18);
+  arrow(svg3, tipTop[0], tipTop[1], tip[0], tip[1], '#ffb86c');
+  ns('text',{x:tipTop[0]+8,y:tipTop[1]-4,class:'label',fill:'#ffb86c'}).textContent=`Fz=${Fz}N ↓`;
+
+  // axes
+  const ax = P(0.7, 0, 0); arrow(svg3, ox, oy, ax[0], ax[1], '#a3e635');
+  ns('text',{x:ax[0]+6,y:ax[1]+12,class:'label',fill:'#a3e635'}).textContent='x';
+  const ay = P(0, 0.5, 0); arrow(svg3, ox, oy, ay[0], ay[1], '#ffb86c');
+  ns('text',{x:ay[0]+6,y:ay[1]+4,class:'label',fill:'#ffb86c'}).textContent='y';
+  const az = P(0, 0, 0.4); arrow(svg3, ox, oy, az[0], az[1], '#5ec8ff');
+  ns('text',{x:az[0]-12,y:az[1]-4,class:'label',fill:'#5ec8ff'}).textContent='z';
+
+  // reactions at wall (at origin)
+  // Rz upward at wall
+  const rz1 = P(-0.05, 0, -0.05), rz2 = P(-0.05, 0, 0.18);
+  arrow(svg3, rz1[0], rz1[1], rz2[0], rz2[1], '#5ec8ff');
+  ns('text',{x:rz2[0]-30,y:rz2[1]-6,class:'label',fill:'#5ec8ff'}).textContent=`Rz=${Fz}N`;
+
+  // Equations
+  // Reactions at wall: Rx=0, Ry=0, Rz=Fz (upward to balance load)
+  // Moments: take about origin
+  // M = r × F, where r=(Lx, Ly, 0), F=(0, 0, -Fz)
+  // Mx = Ly*(-Fz) - 0*0 = -Ly*Fz
+  // My = 0*0 - Lx*(-Fz) = Lx*Fz
+  // Mz = Lx*0 - Ly*0 = 0
+  // Reaction moments at wall must balance: Mwx = +Ly*Fz, Mwy = -Lx*Fz, Mwz = 0
+  const Mwx = Ly*Fz;
+  const Mwy = -Lx*Fz;
+
+  $('eq3F').innerHTML =
+    `<span class="lhs">ΣFx = 0:</span>  Rx = 0  &nbsp;·&nbsp; ` +
+    `<span class="lhs">ΣFy = 0:</span>  Ry = 0  &nbsp;·&nbsp; ` +
+    `<span class="lhs">ΣFz = 0:</span>  <span class="rhs">Rz = Fz = ${Fz.toFixed(1)} N</span>`;
+  $('eq3M').innerHTML =
+    `<span class="lhs">ΣMx = 0:</span>  <span class="rhs">Mx = Ly·Fz = ${Mwx.toFixed(2)} N·m</span> (twist)<br>` +
+    `<span class="lhs">ΣMy = 0:</span>  <span class="rhs">My = −Lx·Fz = ${Mwy.toFixed(2)} N·m</span> (bending) <br>` +
+    `<span class="lhs">ΣMz = 0:</span>  <span class="rhs">Mz = 0</span> (no in-plane torque)`;
+}
+
+['fz3','lx3','ly3'].forEach(id=>$(id).oninput=render3D);
+
+// Tabs
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick = ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('panel-'+t.dataset.tab).classList.add('active');
+  };
+});
+
+render2D();
+render3D();
+</script>
+</body>
+</html>

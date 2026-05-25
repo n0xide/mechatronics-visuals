@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Karnaugh Maps — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .kmap-wrap{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start}
+  .kmap-svg{background:var(--bg-elev2);border-radius:6px;padding:8px}
+  .kmap-controls{flex:1;min-width:200px}
+  .min-form{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;
+    padding:10px;font:14px ui-monospace,monospace;color:var(--accent);margin:8px 0;
+    word-break:break-all}
+  .mode-btns{display:flex;gap:6px;margin:8px 0;flex-wrap:wrap}
+  .mode-btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 10px;font:12px ui-monospace,monospace;cursor:pointer}
+  .mode-btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .group-list{font:12px ui-monospace,monospace;color:var(--fg-dim);margin-top:8px}
+  .group-list .grp{display:inline-block;padding:2px 8px;border-radius:4px;margin:2px 4px 2px 0}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Karnaugh Maps</h1>
+  <p class="lede">Click cells to set 0 / 1 / X (don't care). The tool auto-groups powers of 2 and reads off the minimized SOP or POS expression. Gray-code adjacency is visible in the row/column labels.</p>
+
+  <p>A K-map is a 2D rearrangement of the truth table where <b>physically adjacent cells differ by exactly one variable</b> (Gray code). That means any group of adjacent 1s — of size 1, 2, 4, 8, or 16 — collapses into a product term with one variable eliminated per doubling. Wrap-around counts: the top edge is adjacent to the bottom, the left to the right.</p>
+
+  <div class="mode-btns">
+    <button class="mode-btn" data-vars="2">2-variable</button>
+    <button class="mode-btn active" data-vars="3">3-variable</button>
+    <button class="mode-btn" data-vars="4">4-variable</button>
+    <span style="flex:1"></span>
+    <button class="mode-btn" data-form="sop" id="formSop" style="background:var(--accent);color:var(--bg);border-color:var(--accent)">SOP (group 1s)</button>
+    <button class="mode-btn" data-form="pos" id="formPos">POS (group 0s)</button>
+  </div>
+
+  <div class="figure">
+    <div class="kmap-wrap">
+      <svg id="kmapSvg" viewBox="0 0 400 360" width="100%" style="max-width:480px" class="kmap-svg"></svg>
+      <div class="kmap-controls">
+        <h3>Cell legend</h3>
+        <p style="font-size:12px;color:var(--fg-dim)">Click a cell to cycle <code>0 → 1 → X → 0</code>. X is a don't-care; the grouper treats it as whichever value enlarges a group.</p>
+
+        <h3>Minimized expression</h3>
+        <div class="min-form" id="minForm">F = 0</div>
+
+        <h3>Groups found</h3>
+        <div class="group-list" id="groupList">—</div>
+
+        <h3>Presets</h3>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+          <button class="btn" onclick="loadPreset('majority')">Majority</button>
+          <button class="btn" onclick="loadPreset('xor3')">XOR-3</button>
+          <button class="btn" onclick="loadPreset('parity')">Even parity</button>
+          <button class="btn" onclick="loadPreset('clear')">Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Gray code on the labels</b> — 00, 01, 11, 10 (not 00, 01, 10, 11). Adjacent cells must differ by one bit so that doubling a group eliminates exactly one variable.</li>
+    <li><b>Wrap-around groups are legal</b> — top edge ↔ bottom edge, left ↔ right. The map is topologically a torus.</li>
+    <li><b>Group sizes are powers of 2</b> only — 1, 2, 4, 8, 16. Each doubling removes one literal from the term.</li>
+    <li><b>Don't-cares are free literals</b> — set them to 1 if they enlarge a 1-group, to 0 if they enlarge a 0-group. The minimizer here makes that choice automatically.</li>
+    <li><b>SOP vs POS picks whichever is shorter</b> — if F is mostly 1s, group the few 0s and write POS; if mostly 0s, group the 1s as SOP.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>GROUPING RULES</h3>
+      <ul>
+        <li><b>Size = 2ᵏ</b> — only 1, 2, 4, 8, 16 cells.</li>
+        <li><b>Rectangles only</b> — no L-shapes or diagonals.</li>
+        <li><b>Wrap edges</b> — top↔bottom, left↔right are adjacent.</li>
+        <li><b>Overlap OK</b> — cells can belong to multiple groups.</li>
+        <li><b>Biggest first</b> — larger group = fewer variables.</li>
+      </ul>
+    </div>
+    <div class="cheat-card formulas">
+      <h3>GRAY-CODE ORDER</h3>
+      <dl>
+        <dt>2-var</dt><dd>columns: 0,1; rows: 0,1</dd>
+        <dt>3-var</dt><dd>cols: 00,01,11,10</dd>
+        <dt>4-var</dt><dd>cols and rows: 00,01,11,10</dd>
+        <dt>step</dt><dd>1 bit changes per move</dd>
+        <dt>vars dropped</dt><dd>log₂(group size)</dd>
+      </dl>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Forgetting wrap</b> — corners of 4-var K-map are all adjacent.</li>
+        <li><b>Missing don't-cares</b> — X cells can enlarge a group for free.</li>
+        <li><b>Non-essential prime implicants</b> — covering with too many groups bloats the SOP.</li>
+        <li><b>Hazards</b> — minimal SOP can glitch on input transitions; add redundant terms.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 5 — Digital Electronics</a> ·
+    Topic: Karnaugh Maps
+  </footer>
+</main>
+<script>
+  // K-map state
+  let nVars = 3;
+  let form = 'sop';
+  // store cells: array of {value: 0|1|2} where 2 = X (don't care)
+  let cells = [];
+
+  // Gray code orders for K-map columns/rows
+  const G2 = [0,1];        // 0, 1
+  const G4 = [0,1,3,2];    // 00, 01, 11, 10  (gray-coded indices)
+
+  function init(){
+    cells = new Array(1<<nVars).fill(0);
+    render();
+  }
+
+  function cellIndex(rowI, colI, rowVars, colVars){
+    // rowI, colI are positions in the gray sequence; convert to actual var bits
+    // We need the actual minterm number where MSBs are row vars (high), LSBs are col vars (low).
+    const rowOrder = rowVars===1 ? G2 : G4;
+    const colOrder = colVars===1 ? G2 : G4;
+    const rowVal = rowOrder[rowI];  // gray-coded value
+    const colVal = colOrder[colI];
+    // assemble: row vars are upper bits, col vars are lower bits
+    const minterm = (rowVal << colVars) | colVal;
+    return minterm;
+  }
+
+  function varAssignment(idx){
+    // returns an array of bits, e.g. for n=3 idx=5 → [1,0,1] for [A,B,C]
+    const bits = [];
+    for(let i=nVars-1;i>=0;i--) bits.push((idx>>i)&1);
+    return bits;
+  }
+
+  // --- group finder: prime implicants (powers of 2 rectangles on the torus) ---
+  // For simplicity we do an exhaustive search of all rectangular groups (powers of 2 in each dim).
+  // Adjacency on a K-map with rowOrder x colOrder is just the gray ordering — but we can also
+  // think of it more simply: a group is a set of minterms whose ON-bit positions cover a "cube"
+  // in n-dim — i.e. the set of minterms can be written with k variables free.
+  // A k-cube has 2^k minterms; we look for k from n down to 0.
+
+  function isCube(indices){
+    // Returns null if not a cube, else {mask: which bits are "X", value: fixed bits}
+    if(indices.length===0) return null;
+    if((indices.length & (indices.length-1)) !== 0) return null; // not power of 2
+    // Determine the variable bits that are constant across all indices
+    let andAll = indices[0], orAll = indices[0];
+    for(const x of indices){ andAll &= x; orAll |= x; }
+    // mask = bits that differ
+    const mask = (andAll ^ orAll);
+    // Check that indices form exactly the cube: all 2^k completions of "fixed" bits with "free" bits
+    if((1 << popcount(mask)) !== indices.length) return null;
+    // Generate cube members
+    const fixed = andAll;
+    const freeBits = bitsOf(mask);
+    const set = new Set(indices);
+    const k = freeBits.length;
+    for(let i=0;i<(1<<k);i++){
+      let v = fixed;
+      for(let j=0;j<k;j++) if((i>>j)&1) v |= (1<<freeBits[j]);
+      if(!set.has(v)) return null;
+    }
+    return {mask, fixed};
+  }
+
+  function popcount(x){ let c=0; while(x){c+=x&1; x>>=1;} return c; }
+  function bitsOf(mask){
+    const arr=[]; for(let i=0;i<8;i++) if((mask>>i)&1) arr.push(i); return arr;
+  }
+
+  function allCubes(targetSet, dontCares){
+    // Find all maximal cubes (prime implicants) that consist of targetSet members
+    // plus optionally any subset of dontCares.
+    const allowed = new Set([...targetSet, ...dontCares]);
+    const cubes = [];
+    // Enumerate by mask (free bits) descending k
+    for(let mask=(1<<nVars)-1; mask>=0; mask--){
+      const free = bitsOf(mask);
+      const k = free.length;
+      // For each assignment of the fixed bits
+      const fixedBits = [];
+      for(let i=0;i<nVars;i++) if(!((mask>>i)&1)) fixedBits.push(i);
+      const nf = fixedBits.length;
+      for(let f=0; f<(1<<nf); f++){
+        let fixed = 0;
+        for(let j=0;j<nf;j++) if((f>>j)&1) fixed |= (1<<fixedBits[j]);
+        // Build cube members
+        let ok = true;
+        let coversTarget = false;
+        for(let i=0;i<(1<<k);i++){
+          let v = fixed;
+          for(let j=0;j<k;j++) if((i>>j)&1) v |= (1<<free[j]);
+          if(!allowed.has(v)){ ok=false; break; }
+          if(targetSet.has(v)) coversTarget = true;
+        }
+        if(ok && coversTarget){
+          cubes.push({mask, fixed, size: 1<<k});
+        }
+      }
+    }
+    // Filter to only maximal cubes (drop any cube strictly contained in another)
+    const maximal = cubes.filter(c=>{
+      for(const o of cubes){
+        if(o===c) continue;
+        // c is contained in o if o.mask & c.mask === c.mask (o is at least as free)
+        // and o.fixed == c.fixed restricted to o's fixed bits
+        if((o.mask & c.mask) === c.mask && o.size > c.size){
+          // also c.fixed and o.fixed must agree on o's fixed bits
+          const oFixedBits = ~o.mask & ((1<<nVars)-1);
+          if((c.fixed & oFixedBits) === (o.fixed & oFixedBits)) return false;
+        }
+      }
+      return true;
+    });
+    return maximal;
+  }
+
+  function pickCovering(targetSet, dontCares){
+    // Greedy: pick cubes that cover the most uncovered target minterms
+    const cubes = allCubes(targetSet, dontCares);
+    const uncovered = new Set(targetSet);
+    const picked = [];
+    while(uncovered.size > 0){
+      let best=null, bestCount=0;
+      for(const c of cubes){
+        let cnt = 0;
+        for(const v of cubesMembers(c)){
+          if(uncovered.has(v)) cnt++;
+        }
+        if(cnt > bestCount){ bestCount = cnt; best = c; }
+      }
+      if(!best){ break; }
+      picked.push(best);
+      for(const v of cubesMembers(best)) uncovered.delete(v);
+    }
+    return picked;
+  }
+
+  function cubesMembers(c){
+    const free = bitsOf(c.mask);
+    const k = free.length;
+    const arr = [];
+    for(let i=0;i<(1<<k);i++){
+      let v = c.fixed;
+      for(let j=0;j<k;j++) if((i>>j)&1) v |= (1<<free[j]);
+      arr.push(v);
+    }
+    return arr;
+  }
+
+  function termFromCube(c, varNames, neg){
+    // For SOP: literal is varNames[i] if (c.fixed>>i)&1, else complemented
+    // bit i corresponds to varNames[nVars-1-i] (since bit 0 is rightmost = last var)
+    // Actually we stored: index = sum of (bit<<i) where varAssignment puts var[0] at bit nVars-1
+    // Re-derive: var k (0=A, 1=B, ...) → bit position nVars-1-k
+    const lits = [];
+    for(let k=0;k<nVars;k++){
+      const bitPos = nVars-1-k;
+      if(!((c.mask>>bitPos)&1)){
+        const v = (c.fixed>>bitPos)&1;
+        if(neg){
+          // for POS: each maxterm uses OR; variable appears complemented relative to SOP
+          lits.push(v===1 ? varNames[k]+'̄' : varNames[k]);
+        } else {
+          lits.push(v===1 ? varNames[k] : varNames[k]+'̄');
+        }
+      }
+    }
+    if(lits.length===0) return neg ? '0' : '1';
+    return neg ? '('+lits.join('+')+')' : lits.join('');
+  }
+
+  function render(){
+    const colors = ['#ff7b72','#a3e635','#5ec8ff','#ffb86c','#c084fc','#f472b6','#22d3ee','#facc15'];
+    const svg = document.getElementById('kmapSvg');
+    let rowVars, colVars, rowLabels, colLabels, axisRow, axisCol;
+    const names = ['A','B','C','D'];
+    if(nVars===2){ rowVars=1; colVars=1; rowLabels=['0','1']; colLabels=['0','1']; axisRow='A'; axisCol='B'; }
+    else if(nVars===3){ rowVars=1; colVars=2; rowLabels=['0','1']; colLabels=['00','01','11','10']; axisRow='A'; axisCol='BC'; }
+    else { rowVars=2; colVars=2; rowLabels=['00','01','11','10']; colLabels=['00','01','11','10']; axisRow='AB'; axisCol='CD'; }
+
+    const cw = 60, ch = 60;
+    const ox = 80, oy = 60;
+    const rows = rowVars===1 ? 2 : 4;
+    const cols = colVars===1 ? 2 : 4;
+    const W = ox + cols*cw + 20;
+    const H = oy + rows*ch + 40;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+    let html = '';
+    // axis labels
+    html += `<text x="${ox + cols*cw/2}" y="20" class="label" text-anchor="middle">${axisCol}</text>`;
+    html += `<text x="20" y="${oy + rows*ch/2}" class="label" text-anchor="middle" transform="rotate(-90 20,${oy + rows*ch/2})">${axisRow}</text>`;
+    // column labels
+    for(let c=0;c<cols;c++){
+      html += `<text x="${ox + c*cw + cw/2}" y="${oy - 8}" class="label-dim" text-anchor="middle">${colLabels[c]}</text>`;
+    }
+    // row labels
+    for(let r=0;r<rows;r++){
+      html += `<text x="${ox - 8}" y="${oy + r*ch + ch/2 + 4}" class="label-dim" text-anchor="end">${rowLabels[r]}</text>`;
+    }
+
+    // cells
+    const cellRect = (idx)=> {
+      // find r,c that maps to this idx
+      for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+        if(cellIndex(r,c,rowVars,colVars)===idx) return {r,c};
+      }
+      return null;
+    };
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        const idx = cellIndex(r,c,rowVars,colVars);
+        const v = cells[idx];
+        const txt = v===0?'0':(v===1?'1':'X');
+        const fg = v===1?'var(--accent3)':(v===0?'var(--warn)':'var(--accent2)');
+        html += `<rect x="${ox+c*cw}" y="${oy+r*ch}" width="${cw}" height="${ch}" fill="var(--bg)" stroke="var(--fg-dim)" stroke-width="1" data-idx="${idx}" style="cursor:pointer"/>`;
+        html += `<text x="${ox+c*cw+cw/2}" y="${oy+r*ch+ch/2-4}" text-anchor="middle" fill="${fg}" style="font:600 18px ui-monospace,monospace;pointer-events:none">${txt}</text>`;
+        html += `<text x="${ox+c*cw+cw/2}" y="${oy+r*ch+ch/2+14}" text-anchor="middle" class="label-dim" style="pointer-events:none">m${idx}</text>`;
+      }
+    }
+
+    // Compute groups
+    const ones = new Set(), zeros = new Set(), dc = new Set();
+    for(let i=0;i<cells.length;i++){
+      if(cells[i]===1) ones.add(i);
+      else if(cells[i]===0) zeros.add(i);
+      else dc.add(i);
+    }
+
+    const target = form==='sop' ? ones : zeros;
+    const groups = target.size === 0 ? [] : pickCovering(target, dc);
+
+    // Overlay group rectangles
+    const stride = cw;
+    groups.forEach((g, gi)=>{
+      const color = colors[gi % colors.length];
+      const members = cubesMembers(g);
+      // find bounding cells; we draw individual rects per member with slight padding
+      members.forEach(m=>{
+        const rc = cellRect(m);
+        if(!rc) return;
+        const pad = 4 + gi*2;
+        html += `<rect x="${ox+rc.c*cw+pad}" y="${oy+rc.r*ch+pad}" width="${cw-2*pad}" height="${ch-2*pad}" fill="${color}" fill-opacity="0.15" stroke="${color}" stroke-width="2" rx="6" style="pointer-events:none"/>`;
+      });
+    });
+
+    svg.innerHTML = html;
+
+    // Wire up clicks
+    svg.querySelectorAll('rect[data-idx]').forEach(r=>{
+      r.onclick = ()=>{
+        const idx = parseInt(r.dataset.idx);
+        cells[idx] = (cells[idx]+1) % 3;
+        render();
+      };
+    });
+
+    // Build expression
+    const varNames = names.slice(0, nVars);
+    if(form==='sop'){
+      if(ones.size===0) document.getElementById('minForm').textContent = 'F = 0  (no minterms)';
+      else if(ones.size + dc.size === (1<<nVars)){
+        document.getElementById('minForm').textContent = 'F = 1  (tautology)';
+      } else {
+        const terms = groups.map(g => termFromCube(g, varNames, false));
+        document.getElementById('minForm').textContent = 'F = ' + terms.join(' + ');
+      }
+    } else {
+      if(zeros.size===0) document.getElementById('minForm').textContent = 'F = 1  (no maxterms)';
+      else if(zeros.size + dc.size === (1<<nVars)){
+        document.getElementById('minForm').textContent = 'F = 0  (contradiction)';
+      } else {
+        const terms = groups.map(g => termFromCube(g, varNames, true));
+        document.getElementById('minForm').textContent = 'F = ' + terms.join(' · ');
+      }
+    }
+
+    // Group list
+    const list = document.getElementById('groupList');
+    if(groups.length===0){ list.textContent = '—'; }
+    else {
+      list.innerHTML = groups.map((g,gi)=>{
+        const color = colors[gi % colors.length];
+        const sz = g.size;
+        const term = termFromCube(g, varNames, form==='pos');
+        return `<span class="grp" style="background:${color}33;color:${color}">size ${sz}: ${term}</span>`;
+      }).join(' ');
+    }
+  }
+
+  // mode buttons
+  document.querySelectorAll('.mode-btn[data-vars]').forEach(b=>{
+    b.onclick = ()=>{
+      document.querySelectorAll('.mode-btn[data-vars]').forEach(x=>x.classList.remove('active'));
+      x => x;
+      b.classList.add('active');
+      nVars = parseInt(b.dataset.vars);
+      init();
+    };
+  });
+  document.querySelectorAll('.mode-btn[data-form]').forEach(b=>{
+    b.onclick = ()=>{
+      document.querySelectorAll('.mode-btn[data-form]').forEach(x=>{x.classList.remove('active');x.style.background='';x.style.color='';x.style.borderColor='';});
+      b.classList.add('active');
+      b.style.background='var(--accent)';b.style.color='var(--bg)';b.style.borderColor='var(--accent)';
+      form = b.dataset.form;
+      render();
+    };
+  });
+
+  function loadPreset(p){
+    if(p==='clear'){ cells = new Array(1<<nVars).fill(0); render(); return; }
+    if(p==='majority'){
+      // F = AB + AC + BC (3-var)
+      if(nVars!==3){ nVars=3; document.querySelectorAll('.mode-btn[data-vars]').forEach(x=>x.classList.remove('active')); document.querySelector('.mode-btn[data-vars="3"]').classList.add('active'); }
+      cells = [0,0,0,1,0,1,1,1]; render(); return;
+    }
+    if(p==='xor3'){
+      if(nVars!==3){ nVars=3; document.querySelectorAll('.mode-btn[data-vars]').forEach(x=>x.classList.remove('active')); document.querySelector('.mode-btn[data-vars="3"]').classList.add('active'); }
+      cells = [0,1,1,0,1,0,0,1]; render(); return;
+    }
+    if(p==='parity'){
+      // 4-var even parity (output 1 when even number of 1s)
+      if(nVars!==4){ nVars=4; document.querySelectorAll('.mode-btn[data-vars]').forEach(x=>x.classList.remove('active')); document.querySelector('.mode-btn[data-vars="4"]').classList.add('active'); }
+      cells = new Array(16).fill(0);
+      for(let i=0;i<16;i++){
+        let c=0; for(let j=0;j<4;j++) c += (i>>j)&1;
+        cells[i] = (c%2===0)?1:0;
+      }
+      render(); return;
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>

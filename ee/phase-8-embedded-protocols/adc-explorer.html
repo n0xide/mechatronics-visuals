@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADC Explorer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number],.control input[type=text]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0;flex-wrap:wrap}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>ADC Explorer</h1>
+  <p class="lede">Two faces of analog-to-digital conversion: how a SAR converter resolves a sample by binary search, and how a too-slow sample rate folds high frequencies into the audible band.</p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="sar">SAR ADC algorithm</div>
+    <div class="tab" data-tab="alias">Aliasing &amp; Nyquist</div>
+  </div>
+
+  <!-- SAR -->
+  <div class="tab-panel active" id="tab-sar">
+    <p>The successive-approximation register sees an analog input and guesses its code one bit at a time, from MSB to LSB. Each step: set the bit, see whether the DAC's output exceeds V_in; if yes, clear the bit, else keep it. After N steps, the register holds the N-bit code. The trial DAC inside the ADC is what gives "succ-approximation" its name.</p>
+
+    <section class="controls">
+      <div class="control">
+        <label>V_in: <span class="readout" id="sarVinRead">2.345 V</span></label>
+        <input id="sarVin" type="range" min="0" max="3.3" step="0.01" value="2.345">
+      </div>
+      <div class="control">
+        <label>V_ref: <span class="readout" id="sarVrefRead">3.3 V</span></label>
+        <select id="sarVref">
+          <option value="3.3" selected>3.3 V</option>
+          <option value="5">5 V</option>
+          <option value="1.024">1.024 V (precision ref)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Step: <span class="readout" id="sarStepRead">8 (final)</span></label>
+        <input id="sarStep" type="range" min="0" max="8" step="1" value="8">
+      </div>
+      <div class="control">
+        <button class="btn primary" id="animBtn">▶ animate 8 steps</button>
+      </div>
+    </section>
+
+    <div class="figure">
+      <h3>Binary search trial DAC vs V_in</h3>
+      <svg id="sarPlot" viewBox="0 0 900 280" width="100%"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>V_in (analog input)</span>
+        <span><span class="swatch" style="background:var(--accent2)"></span>trial DAC voltage at step k</span>
+        <span><span class="swatch" style="background:var(--accent3)"></span>bit kept (1)</span>
+        <span><span class="swatch" style="background:var(--warn)"></span>bit cleared (0)</span>
+      </div>
+    </div>
+
+    <div class="figure">
+      <h3>SAR register at each step</h3>
+      <svg id="sarBits" viewBox="0 0 900 140" width="100%"></svg>
+      <table>
+        <tr><th>Final code</th><td><span class="readout" id="sarCode">10110100</span> = <span class="readout" id="sarDec">180</span></td></tr>
+        <tr><th>Quantized V</th><td><span class="readout" id="sarQuantV">2.320 V</span></td></tr>
+        <tr><th>Quantization error</th><td><span class="readout" id="sarErr">+12.9 mV</span> (≤ 1 LSB = <span class="readout" id="sarLSB">12.9 mV</span>)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ALIAS -->
+  <div class="tab-panel" id="tab-alias">
+    <p>Sample a 9 Hz sine at 10 Hz — you don't see a 9 Hz wave. You see a 1 Hz wave going the wrong direction. That ghost is an alias: any frequency f &gt; f_sample/2 folds into the [0, f_sample/2] band at distance |f − round(f/f_sample)·f_sample|. The Nyquist limit is f_sample/2.</p>
+
+    <section class="controls">
+      <div class="control">
+        <label>Signal frequency f_sig: <span class="readout" id="alFsigRead">9 Hz</span></label>
+        <input id="alFsig" type="range" min="1" max="200" step="0.5" value="9">
+      </div>
+      <div class="control">
+        <label>Sample rate f_s: <span class="readout" id="alFsRead">10 Hz</span></label>
+        <input id="alFs" type="range" min="1" max="200" step="0.5" value="10">
+      </div>
+      <div class="control">
+        <label>Nyquist limit: <span class="readout" id="alNyqRead">5.0 Hz</span></label>
+      </div>
+      <div class="control">
+        <label>Alias frequency: <span class="readout" id="alAliasRead">1.0 Hz</span></label>
+      </div>
+    </section>
+
+    <div class="figure">
+      <h3>Continuous signal · samples · reconstructed apparent signal</h3>
+      <svg id="aliasPlot" viewBox="0 0 900 280" width="100%"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>true signal (f_sig)</span>
+        <span><span class="swatch" style="background:var(--accent2)"></span>samples (at f_s)</span>
+        <span><span class="swatch" style="background:var(--warn)"></span>reconstructed alias (in-band)</span>
+      </div>
+    </div>
+
+    <div class="figure">
+      <h3>Anti-aliasing RC filter (inset)</h3>
+      <svg viewBox="0 0 900 220" width="100%">
+        <text x="20" y="22" class="label">Put a low-pass RC filter before the ADC. Cutoff f_c ≈ f_s / 5 to 10. Anything above f_c is attenuated; anything above f_s/2 is suppressed enough that its alias is below the noise floor.</text>
+        <!-- circuit -->
+        <line x1="40" y1="100" x2="120" y2="100" class="wire"/>
+        <circle cx="40" cy="100" r="3" fill="var(--accent)"/>
+        <text x="30" y="104" class="label" text-anchor="end" style="fill:var(--accent)">Vin</text>
+        <rect x="120" y="92" width="60" height="16" class="wire" fill="var(--bg-elev2)"/>
+        <text x="150" y="86" class="label" text-anchor="middle">R</text>
+        <line x1="180" y1="100" x2="320" y2="100" class="wire"/>
+        <line x1="240" y1="100" x2="240" y2="140" class="wire"/>
+        <line x1="225" y1="140" x2="255" y2="140" class="wire"/>
+        <line x1="225" y1="148" x2="255" y2="148" class="wire"/>
+        <text x="270" y="148" class="label">C</text>
+        <line x1="240" y1="158" x2="240" y2="178" class="wire"/>
+        <line x1="225" y1="178" x2="255" y2="178" class="wire" stroke-width="2"/>
+        <text x="265" y="180" class="label-dim">GND</text>
+        <line x1="320" y1="100" x2="380" y2="100" class="wire"/>
+        <rect x="380" y="80" width="100" height="40" fill="var(--bg-elev2)" stroke="var(--fg)"/>
+        <text x="430" y="105" class="label" text-anchor="middle">ADC</text>
+        <text x="320" y="90" class="label-dim" text-anchor="middle">V_in (filtered)</text>
+        <!-- frequency response sketch -->
+        <g transform="translate(540,40)">
+          <line x1="0" y1="100" x2="320" y2="100" class="axis"/>
+          <line x1="0" y1="0" x2="0" y2="120" class="axis"/>
+          <text x="160" y="135" class="axis-label" text-anchor="middle">frequency (log)</text>
+          <text x="-30" y="50" class="axis-label" text-anchor="middle">|H(f)|</text>
+          <path d="M0,10 L130,10 Q160,40 200,70 L320,110" stroke="var(--accent2)" fill="none" stroke-width="2"/>
+          <line x1="130" y1="10" x2="130" y2="115" stroke="var(--accent3)" stroke-dasharray="3 3"/>
+          <text x="130" y="130" class="label-dim" style="fill:var(--accent3)" text-anchor="middle">f_c = 1/(2πRC)</text>
+          <line x1="220" y1="0" x2="220" y2="115" stroke="var(--warn)" stroke-dasharray="3 3"/>
+          <text x="220" y="148" class="label-dim" style="fill:var(--warn)" text-anchor="middle">f_s/2 (Nyquist)</text>
+          <text x="50" y="6" class="label-dim">passband</text>
+          <text x="240" y="120" class="label-dim">−20 dB/dec</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>SAR takes N clock cycles for N bits</b> — 12-bit at 1 MHz clock = 12 µs conversion. Conversion time scales linearly with resolution.</li>
+    <li><b>Each step halves the uncertainty</b> — bit 7 splits [0, V_ref] in half, bit 6 splits the chosen half, and so on. Classic binary search.</li>
+    <li><b>Quantization error is always ≤ 1 LSB</b> — but it never goes away with more samples. To reduce it you need more bits or oversampling + averaging (+1 ENOB per 4× oversample).</li>
+    <li><b>Nyquist is necessary, not sufficient</b> — sampling at exactly 2·f_signal recovers nothing if your samples land on the zero-crossings. Practical rule: f_s ≥ 5×f_max signal, plus an anti-aliasing filter.</li>
+    <li><b>Aliases are real signal-level energy</b> — software can't tell an alias from a legitimate low-frequency signal. The only fix is hardware filtering before the sample-hold capacitor.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>V_in</dt><dd><span class="eq">V_in = (code / 2^N) · V_ref</span></dd>
+        <dt>LSB</dt><dd><span class="eq">V_LSB = V_ref / 2^N</span></dd>
+        <dt>Nyquist</dt><dd><span class="eq">f_s &gt; 2 · f_max</span><span class="eq-note">practical: ≥ 5×</span></dd>
+        <dt>Oversample</dt><dd><span class="eq">4× → +1 ENOB</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE — topologies</h3>
+      <ul>
+        <li><b>SAR</b> — most MCUs, N cycles for N bits, 10–18 bit, MHz rates.</li>
+        <li><b>ΔΣ (sigma-delta)</b> — audio, 24-bit, slow (kHz).</li>
+        <li><b>Flash</b> — fastest, low bits, used in scopes.</li>
+        <li><b>ENOB ≤ N</b> — noise eats real resolution.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>No anti-alias filter</b> — high-f content folds down into baseband; can't be removed in software.</li>
+        <li><b>High source impedance</b> — &gt; 1–10 kΩ; sample cap can't charge in t_acq.</li>
+        <li><b>Bad V_ref</b> — accuracy is only as good as the reference; avoid V_cc as ref.</li>
+        <li><b>Ground noise</b> — share AGND/DGND at one point only.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 8 — Embedded Interface Protocols</a> ·
+    Topic: ADC Explorer
+  </footer>
+</main>
+<script>
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.addEventListener('click',()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('tab-'+t.dataset.tab).classList.add('active');
+    });
+  });
+
+  // SAR
+  function sarConvert(Vin, Vref, N){
+    const steps=[];
+    let code=0;
+    for(let i=N-1;i>=0;i--){
+      const trial = code | (1<<i);
+      const Vtrial = trial/(1<<N) * Vref;
+      const keep = (Vtrial <= Vin);
+      if(keep) code = trial;
+      steps.push({bit:i, Vtrial, keep, code});
+    }
+    return {code, steps};
+  }
+
+  function drawSAR(){
+    const Vin=parseFloat(document.getElementById('sarVin').value);
+    const Vref=parseFloat(document.getElementById('sarVref').value);
+    const stopAt=parseInt(document.getElementById('sarStep').value);
+    const N=8;
+    document.getElementById('sarVinRead').textContent=Vin.toFixed(3)+" V";
+    document.getElementById('sarVrefRead').textContent=Vref.toFixed(3)+" V";
+    document.getElementById('sarStepRead').textContent=stopAt+(stopAt===0?' (start)':stopAt===N?' (final)':'');
+    if(Vin>Vref) document.getElementById('sarVin').max=Vref;
+
+    const {code, steps} = sarConvert(Vin, Vref, N);
+    const shownSteps = steps.slice(0, stopAt);
+    const partialCode = shownSteps.length ? shownSteps[shownSteps.length-1].code : 0;
+
+    // Plot trial DAC over steps
+    const svg=document.getElementById('sarPlot');
+    const W=900, H=280, mL=70, mR=30, mT=20, mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const xs=k=>mL+(k/N)*pw;
+    const ys=v=>mT+ph-(v/Vref)*ph;
+    let s='';
+    // grid
+    for(let i=0;i<=N;i++){
+      const x=xs(i);
+      s+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" class="grid-line"/>`;
+      if(i<N) s+=`<text x="${(xs(i)+xs(i+1))/2}" y="${mT+ph+15}" class="axis-label" text-anchor="middle">step ${i+1} (bit ${N-1-i})</text>`;
+    }
+    for(let i=0;i<=8;i++){
+      const y=ys(i*Vref/8);
+      s+=`<line x1="${mL}" y1="${y}" x2="${mL+pw}" y2="${y}" class="grid-line"/>`;
+      s+=`<text x="${mL-6}" y="${y+3}" class="axis-label" text-anchor="end">${(i*Vref/8).toFixed(2)}V</text>`;
+    }
+    // Vin line
+    s+=`<line x1="${mL}" y1="${ys(Vin)}" x2="${mL+pw}" y2="${ys(Vin)}" stroke="var(--accent)" stroke-width="2"/>`;
+    s+=`<text x="${mL+pw+4}" y="${ys(Vin)+4}" class="label" style="fill:var(--accent)">Vin</text>`;
+    // trial DAC stair
+    shownSteps.forEach((st,k)=>{
+      const x0=xs(k), x1=xs(k+1);
+      const yT=ys(st.Vtrial);
+      const color = st.keep ? 'var(--accent3)' : 'var(--warn)';
+      s+=`<rect x="${x0}" y="${Math.min(yT, ys(Vin))}" width="${x1-x0}" height="${Math.abs(yT - ys(Vin))}" fill="${color}" opacity="0.15"/>`;
+      s+=`<line x1="${x0}" y1="${yT}" x2="${x1}" y2="${yT}" stroke="var(--accent2)" stroke-width="2"/>`;
+      s+=`<circle cx="${(x0+x1)/2}" cy="${yT}" r="4" fill="${color}"/>`;
+      s+=`<text x="${(x0+x1)/2}" y="${yT-8}" class="label" text-anchor="middle" style="fill:${color}">${st.keep?'KEEP 1':'CLEAR 0'}</text>`;
+    });
+    svg.innerHTML=s;
+
+    // Bits register
+    const svgB=document.getElementById('sarBits');
+    const W2=900, H2=140;
+    const cellW = (W2-80)/N;
+    const yC = 50;
+    let b='';
+    b+=`<text x="20" y="${yC+10}" class="label" text-anchor="start">SAR:</text>`;
+    for(let i=0;i<N;i++){
+      const bit=(partialCode>>(N-1-i))&1;
+      const isResolved = i<stopAt;
+      const x=60+i*cellW;
+      const fill = isResolved ? (bit?'var(--accent3)':'var(--warn)') : 'var(--bg-elev2)';
+      const stroke = isResolved ? 'var(--fg-bright)' : 'var(--fg-dim)';
+      b+=`<rect x="${x}" y="${yC-20}" width="${cellW*0.9}" height="40" fill="${fill}" opacity="${isResolved?0.4:0.15}" stroke="${stroke}"/>`;
+      b+=`<text x="${x+cellW*0.45}" y="${yC+8}" class="label" text-anchor="middle" style="font-weight:600;font-size:20px">${isResolved?bit:'?'}</text>`;
+      b+=`<text x="${x+cellW*0.45}" y="${yC+34}" class="label-dim" text-anchor="middle">bit ${N-1-i}</text>`;
+      b+=`<text x="${x+cellW*0.45}" y="${yC-26}" class="label-dim" text-anchor="middle">${1<<(N-1-i)}</text>`;
+    }
+    b+=`<text x="20" y="${yC+90}" class="label-dim">value at this step: ${partialCode}/${(1<<N)-1} · ${(partialCode/(1<<N)*Vref).toFixed(3)} V</text>`;
+    svgB.innerHTML=b;
+
+    // Final readouts
+    const finalV = code/(1<<N)*Vref;
+    const lsb = Vref/(1<<N);
+    document.getElementById('sarCode').textContent=code.toString(2).padStart(N,'0');
+    document.getElementById('sarDec').textContent=code;
+    document.getElementById('sarQuantV').textContent=finalV.toFixed(3)+" V";
+    document.getElementById('sarErr').textContent=((Vin-finalV)*1000).toFixed(1)+" mV";
+    document.getElementById('sarLSB').textContent=(lsb*1000).toFixed(2)+" mV";
+  }
+
+  ['sarVin','sarVref','sarStep'].forEach(id=>
+    document.getElementById(id).addEventListener('input',drawSAR));
+  document.getElementById('animBtn').addEventListener('click',()=>{
+    const slider=document.getElementById('sarStep');
+    slider.value=0;
+    let k=0;
+    const iv=setInterval(()=>{
+      k++;
+      slider.value=k;
+      drawSAR();
+      if(k>=8) clearInterval(iv);
+    },350);
+  });
+
+  // ALIAS
+  function drawAlias(){
+    const fSig=parseFloat(document.getElementById('alFsig').value);
+    const fs=parseFloat(document.getElementById('alFs').value);
+    const fNyq=fs/2;
+    let alias;
+    // fold fSig into [0, fNyq]
+    const nMod = Math.round(fSig/fs);
+    alias = Math.abs(fSig - nMod*fs);
+    document.getElementById('alFsigRead').textContent=fSig.toFixed(1)+" Hz";
+    document.getElementById('alFsRead').textContent=fs.toFixed(1)+" Hz";
+    document.getElementById('alNyqRead').textContent=fNyq.toFixed(2)+" Hz";
+    const aliased = alias < fNyq - 0.01 && Math.abs(alias - fSig) > 0.01;
+    document.getElementById('alAliasRead').textContent= aliased
+      ? alias.toFixed(2)+" Hz ← ALIAS"
+      : fSig.toFixed(2)+" Hz (no aliasing)";
+
+    const svg=document.getElementById('aliasPlot');
+    const W=900, H=280, mL=60, mR=30, mT=20, mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const tMax = 1; // 1 second window
+    const xs=t=>mL+(t/tMax)*pw;
+    const ys=v=>mT+ph/2-(v)*((ph/2)*0.85);
+    let s='';
+    // grid
+    for(let i=0;i<=10;i++){
+      const x=mL+i/10*pw;
+      s+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" class="grid-line"/>`;
+      s+=`<text x="${x}" y="${mT+ph+15}" class="axis-label" text-anchor="middle">${(i/10).toFixed(1)} s</text>`;
+    }
+    for(let i=-2;i<=2;i++){
+      const y=ys(i*0.5);
+      s+=`<line x1="${mL}" y1="${y}" x2="${mL+pw}" y2="${y}" class="grid-line"/>`;
+      s+=`<text x="${mL-6}" y="${y+3}" class="axis-label" text-anchor="end">${(i*0.5).toFixed(1)}</text>`;
+    }
+    s+=`<line x1="${mL}" y1="${ys(0)}" x2="${mL+pw}" y2="${ys(0)}" stroke="var(--fg-dim)"/>`;
+
+    // true signal
+    let pTrue='';
+    for(let k=0;k<=600;k++){
+      const t=k/600*tMax;
+      const v=Math.sin(2*Math.PI*fSig*t);
+      pTrue += (k===0?'M':'L')+xs(t)+','+ys(v)+' ';
+    }
+    s+=`<path d="${pTrue}" class="trace trace-1" stroke-width="1.5"/>`;
+
+    // sample points
+    const nSamples = Math.floor(fs*tMax);
+    for(let k=0;k<=nSamples;k++){
+      const t = k/fs;
+      if(t>tMax) break;
+      const v = Math.sin(2*Math.PI*fSig*t);
+      s+=`<circle cx="${xs(t)}" cy="${ys(v)}" r="4" fill="var(--accent2)"/>`;
+      s+=`<line x1="${xs(t)}" y1="${ys(0)}" x2="${xs(t)}" y2="${ys(v)}" stroke="var(--accent2)" stroke-width="1" opacity="0.4"/>`;
+    }
+
+    // reconstructed alias (sin at alias freq, sampled at same points)
+    if(aliased){
+      let pAlias='';
+      for(let k=0;k<=600;k++){
+        const t=k/600*tMax;
+        const v=Math.sin(2*Math.PI*alias*t);
+        pAlias += (k===0?'M':'L')+xs(t)+','+ys(v)+' ';
+      }
+      s+=`<path d="${pAlias}" class="trace" stroke="var(--warn)" stroke-width="2" stroke-dasharray="6 3"/>`;
+    }
+
+    s+=`<text x="${W/2}" y="${H-6}" class="axis-label" text-anchor="middle">${aliased?'samples (orange) match alias (red dashed) — ADC cannot distinguish from true signal':'sample rate is adequate; no aliasing'}</text>`;
+    svg.innerHTML=s;
+  }
+
+  ['alFsig','alFs'].forEach(id=>
+    document.getElementById(id).addEventListener('input',drawAlias));
+  drawSAR();
+  drawAlias();
+</script>
+</body>
+</html>

@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diodes, Zener, transformers — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .marker-line{stroke:var(--warn);stroke-width:1.2;stroke-dasharray:4 3}
+  .marker-dot{fill:var(--warn);stroke:var(--bg);stroke-width:1.5}
+  .schem-text{fill:var(--fg);font:12px ui-monospace,monospace}
+  .schem-readout{font:600 14px ui-monospace,Menlo,monospace;color:var(--accent3)}
+  .preset-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .preset-row .btn{padding:4px 10px;font-size:12px}
+  .preset-row .btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .value-display{font:600 22px ui-monospace,Menlo,monospace;color:var(--accent);
+    text-align:center;padding:12px;background:var(--bg-elev2);
+    border-radius:6px;margin:10px 0}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Diodes, Zener, transformers</h1>
+  <p class="lede">Three near-cousins that all bend energy in deliberate ways: the diode rectifies, the Zener clamps, the transformer scales. Switch tabs to play with each — same shockingly simple equations underneath, very different jobs in a real schematic.</p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="diode">Diode I-V</div>
+    <div class="tab" data-tab="zener">Zener regulator</div>
+    <div class="tab" data-tab="xfmr">Transformer</div>
+  </div>
+
+  <!-- ===== DIODE ===== -->
+  <div class="tab-panel active" id="tab-diode">
+    <p>The diode equation I = Is·(e^(V/(n·VT)) − 1) is exponential — current rises by ~10× for each ~60 mV increase in forward voltage. That's why "Vf" is a useful approximation: the curve is so steep that current pretty much pins to a fixed voltage once it conducts.</p>
+    <section class="controls">
+      <div class="control">
+        <label>Threshold Vf = <span class="readout" id="rVf">0.70 V</span></label>
+        <input type="range" id="sVf" min="0.20" max="3.50" value="0.70" step="0.01">
+        <div class="preset-row">
+          <button class="btn" data-vf="0.30">Schottky 0.3</button>
+          <button class="btn active" data-vf="0.70">Si 0.7</button>
+          <button class="btn" data-vf="1.80">Red LED 1.8</button>
+          <button class="btn" data-vf="2.10">Yellow 2.1</button>
+          <button class="btn" data-vf="3.20">Blue LED 3.2</button>
+        </div>
+      </div>
+      <div class="control">
+        <label>Ideality factor n = <span class="readout" id="rN">1.5</span></label>
+        <input type="range" id="sN" min="1.0" max="2.5" value="1.5" step="0.05">
+      </div>
+      <div class="control">
+        <label>Compare with</label>
+        <button class="btn" id="overlayBtn">Toggle overlay (all 5 presets)</button>
+      </div>
+    </section>
+    <div class="figure">
+      <svg id="diodeSvg" viewBox="0 0 880 420" width="100%" height="420" aria-label="Diode I-V curve"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>Selected diode I-V</span>
+        <span><span class="swatch" style="background:var(--accent2)"></span>Linear-piecewise approx (V &lt; Vf: off, V ≥ Vf: ideal source)</span>
+        <span><span class="swatch" style="background:var(--warn)"></span>Vf threshold</span>
+      </div>
+    </div>
+    <h3>Quick guide</h3>
+    <table>
+      <thead><tr><th>Type</th><th>Vf (typ)</th><th>Use</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Schottky</td><td>0.2–0.4 V</td><td>Power rectifiers, freewheel, low-Vdrop signal</td><td>Metal-semi junction → fast switching, no minority storage</td></tr>
+        <tr><td>Silicon (1N4148, 1N400x)</td><td>0.6–0.8 V</td><td>General signal, freewheel up to ~MHz</td><td>Cheap, robust, well-modeled</td></tr>
+        <tr><td>Red / IR LED</td><td>1.7–2.0 V</td><td>Indicators</td><td>Lower bandgap, cheapest LEDs</td></tr>
+        <tr><td>Green / yellow LED</td><td>2.0–2.4 V</td><td>Indicators</td><td></td></tr>
+        <tr><td>Blue / white LED</td><td>3.0–3.5 V</td><td>Indicators, illumination</td><td>InGaN wide bandgap</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== ZENER ===== -->
+  <div class="tab-panel" id="tab-zener">
+    <p>A Zener diode is just a regular diode that's allowed to operate in reverse breakdown at a precise V_z. Put it across the output of a series resistor and you get the simplest possible voltage regulator. Slide V_in past V_z and watch V_out flatten — but watch the power-in-Zener bar too.</p>
+    <section class="controls">
+      <div class="control">
+        <label>V_in = <span class="readout" id="zVin">12.0 V</span></label>
+        <input type="range" id="szVin" min="0" max="30" value="12" step="0.1">
+      </div>
+      <div class="control">
+        <label>V_z = <span class="readout" id="zVz">5.1 V</span></label>
+        <input type="range" id="szVz" min="2" max="15" value="5.1" step="0.1">
+      </div>
+      <div class="control">
+        <label>R_series = <span class="readout" id="zRs">330 Ω</span></label>
+        <input type="range" id="szRs" min="10" max="2200" value="330" step="10">
+      </div>
+      <div class="control">
+        <label>I_load = <span class="readout" id="zIl">10 mA</span></label>
+        <input type="range" id="szIl" min="0" max="100" value="10" step="0.5">
+      </div>
+    </section>
+    <div class="figure">
+      <svg id="zenerSchem" viewBox="0 0 880 220" width="100%" height="220" aria-label="Zener regulator schematic"></svg>
+    </div>
+    <div class="value-display" id="zReadout">V_out = 5.1 V · I_R = 18.5 mA · I_Z = 8.5 mA · P_Z = 43 mW</div>
+    <div class="figure">
+      <h3 style="margin-top:0">V_out vs. V_in sweep (live)</h3>
+      <svg id="zenerCurve" viewBox="0 0 880 280" width="100%" height="280" aria-label="Zener regulation curve"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>V_out</span>
+        <span><span class="swatch" style="background:var(--accent2)"></span>I_Z (Zener current)</span>
+        <span><span class="swatch" style="background:var(--warn)"></span>Current operating point</span>
+      </div>
+    </div>
+    <ul class="notice">
+      <li><b>Below V_z</b> — Zener is off; V_out follows V_in minus the load-driven R_s drop. No regulation here.</li>
+      <li><b>Above V_z</b> — Zener clamps; excess current goes through it as I_Z. Power P_Z = V_z·I_Z. Pick R_s so I_Z stays in [I_zmin, P_max/V_z].</li>
+      <li><b>Heat budget</b> — A 1 W Zener at 5.1 V can sink only ~200 mA. Linear regulators are wasteful; switching needed for high I.</li>
+    </ul>
+  </div>
+
+  <!-- ===== TRANSFORMER ===== -->
+  <div class="tab-panel" id="tab-xfmr">
+    <p>An ideal transformer trades voltage for current at the ratio n = N₁/N₂, conserving power. Impedance reflects as the square: Z_pri = n²·Z_sec. That's the basis of audio-output matching, RF impedance transformation, and the working principle of every isolated power supply.</p>
+    <section class="controls">
+      <div class="control">
+        <label>Primary turns N₁ = <span class="readout" id="rN1">120</span></label>
+        <input type="range" id="sN1" min="10" max="500" value="120" step="1">
+      </div>
+      <div class="control">
+        <label>Secondary turns N₂ = <span class="readout" id="rN2">12</span></label>
+        <input type="range" id="sN2" min="1" max="500" value="12" step="1">
+      </div>
+      <div class="control">
+        <label>Primary voltage V₁ = <span class="readout" id="rV1">120 V</span></label>
+        <input type="range" id="sV1" min="1" max="240" value="120" step="1">
+      </div>
+      <div class="control">
+        <label>Load on secondary R_load = <span class="readout" id="rRl">8 Ω</span></label>
+        <input type="range" id="sRl" min="0.5" max="1000" value="8" step="0.5">
+      </div>
+    </section>
+    <div class="figure">
+      <svg id="xfmrSvg" viewBox="0 0 880 320" width="100%" height="320" aria-label="Transformer diagram"></svg>
+    </div>
+    <div class="value-display" id="xReadout">n = 10 · V₂ = 12.0 V · I₂ = 1.50 A · I₁ = 0.150 A · Z_pri = 800 Ω</div>
+    <ul class="notice">
+      <li><b>Voltage scales with turns</b> — V₂ = V₁/n. Step-down (n &gt; 1) for utility-mains conversion; step-up (n &lt; 1) for high-voltage gates and Tesla coils.</li>
+      <li><b>Current scales inversely</b> — I₂ = n·I₁. Power conserved: V₁·I₁ = V₂·I₂ (ideal case).</li>
+      <li><b>Impedance reflects as n²</b> — A 4 Ω speaker through a 1:5 transformer looks like 100 Ω at the primary. That's how a vacuum-tube output stage drives 8 Ω cones from a 5 kΩ plate impedance.</li>
+      <li><b>Power conservation is the law you can't break</b> — Stepping up voltage 10× means stepping down current 10×. There's no free energy in a transformer.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE — V_f &amp; V_T</h3>
+      <ul>
+        <li><b>Si diode</b> — V_f ≈ 0.7 V.</li>
+        <li><b>Schottky</b> — V_f ≈ 0.3 V.</li>
+        <li><b>LED red</b> ≈ 1.8 V · <b>green</b> ≈ 2.1 V · <b>blue/white</b> ≈ 3.2 V.</li>
+        <li><b>Thermal voltage</b> — V_T = 26 mV @ 25 °C.</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>DECISION RULE</h3>
+      <ul>
+        <li><b>Schottky</b> — high-freq switching, low V_f drop, but leakier.</li>
+        <li><b>Si rectifier</b> — general AC/DC, slower recovery, robust.</li>
+        <li><b>Zener</b> — clamp / reference / over-voltage protection.</li>
+        <li><b>Transformer</b> — V₂ = V₁/n · I₂ = n·I₁ · Z_pri = n²·Z_sec.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Zener heat</b> — under load, dissipates V_z · I_z; size resistor + Zener wattage.</li>
+        <li><b>Transformer dot convention</b> — same-polarity dots → in-phase; flipping a winding inverts the waveform.</li>
+        <li><b>Schottky leakage at high T</b> — reverse current can climb 10× at 100 °C.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 2 — Passive Components</a> ·
+    Topic: Diode I-V, Zener regulator, transformer turns ratio + impedance reflection
+  </footer>
+</main>
+<script>
+  // -------- TAB switching --------
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+      // redraw on activation in case sizes settled
+      if (t.dataset.tab === 'diode') drawDiode();
+      if (t.dataset.tab === 'zener') { drawZenerSchem(); drawZenerCurve(); }
+      if (t.dataset.tab === 'xfmr') drawXfmr();
+    });
+  });
+
+  const $ = id => document.getElementById(id);
+
+  // ===================== DIODE TAB =====================
+  const dState = { Vf: 0.70, n: 1.5, overlay: false };
+  const VT = 0.026; // 26 mV at room temp
+  const PRESETS = [
+    {Vf:0.30, name:'Schottky',  color:'#7fd1ff'},
+    {Vf:0.70, name:'Silicon',   color:'#ffb86c'},
+    {Vf:1.80, name:'Red LED',   color:'#ff7b72'},
+    {Vf:2.10, name:'Yellow',    color:'#f5d76e'},
+    {Vf:3.20, name:'Blue LED',  color:'#5ec8ff'}
+  ];
+
+  function diodeI(V, Vf, n){
+    // Use a soft exponential anchored so that I = 1 mA at V = Vf
+    // I = I_ref · exp((V - Vf)/(n·VT))
+    const Iref = 1e-3;
+    return Iref * (Math.exp((V - Vf) / (n * VT)) - Math.exp(-Vf / (n*VT)));
+  }
+
+  function drawDiode(){
+    const svg = $('diodeSvg');
+    svg.innerHTML = '';
+    const W = 880, H = 420;
+    const padL = 70, padR = 24, padT = 16, padB = 44;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+    const Vmin = 0, Vmax = 4;
+    const Imax = 100; // mA — visible top
+    // grid
+    for (let v = 0; v <= 4; v += 0.5){
+      const x = padL + (v - Vmin)/(Vmax - Vmin) * plotW;
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('class','grid-line');
+      ln.setAttribute('x1',x); ln.setAttribute('x2',x);
+      ln.setAttribute('y1',padT); ln.setAttribute('y2',padT+plotH);
+      svg.appendChild(ln);
+      const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('class','axis-label');
+      lbl.setAttribute('x',x); lbl.setAttribute('y',H-padB+14);
+      lbl.setAttribute('text-anchor','middle');
+      lbl.textContent = v.toFixed(1) + ' V';
+      svg.appendChild(lbl);
+    }
+    for (let i = 0; i <= 100; i += 20){
+      const y = padT + plotH - (i/Imax) * plotH;
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('class','grid-line');
+      ln.setAttribute('x1',padL); ln.setAttribute('x2',W-padR);
+      ln.setAttribute('y1',y); ln.setAttribute('y2',y);
+      svg.appendChild(ln);
+      const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('class','axis-label');
+      lbl.setAttribute('x',padL-8); lbl.setAttribute('y',y+3);
+      lbl.setAttribute('text-anchor','end');
+      lbl.textContent = i + ' mA';
+      svg.appendChild(lbl);
+    }
+    // axes
+    ['x','y'].forEach(axis => {
+      const ax = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ax.setAttribute('class','axis');
+      if (axis === 'x'){
+        ax.setAttribute('x1',padL); ax.setAttribute('x2',W-padR);
+        ax.setAttribute('y1',padT+plotH); ax.setAttribute('y2',padT+plotH);
+      } else {
+        ax.setAttribute('x1',padL); ax.setAttribute('x2',padL);
+        ax.setAttribute('y1',padT); ax.setAttribute('y2',padT+plotH);
+      }
+      svg.appendChild(ax);
+    });
+    const xlab = document.createElementNS('http://www.w3.org/2000/svg','text');
+    xlab.setAttribute('class','axis-label');
+    xlab.setAttribute('x',(padL + (W-padR))/2);
+    xlab.setAttribute('y',H-6);
+    xlab.setAttribute('text-anchor','middle');
+    xlab.textContent = 'V_forward (V)';
+    svg.appendChild(xlab);
+    const ylab = document.createElementNS('http://www.w3.org/2000/svg','text');
+    ylab.setAttribute('class','axis-label');
+    ylab.setAttribute('x',18); ylab.setAttribute('y', padT + plotH/2);
+    ylab.setAttribute('text-anchor','middle');
+    ylab.setAttribute('transform',`rotate(-90 18 ${padT + plotH/2})`);
+    ylab.textContent = 'I_forward (mA)';
+    svg.appendChild(ylab);
+
+    function plotIV(Vf, n, klass, color, dashed){
+      let d = '';
+      const N = 600;
+      let first = true;
+      for (let i = 0; i <= N; i++){
+        const V = Vmin + (Vmax - Vmin) * i / N;
+        const I = diodeI(V, Vf, n) * 1000; // to mA
+        const px = padL + (V - Vmin)/(Vmax - Vmin) * plotW;
+        const py = padT + plotH - Math.max(0, Math.min(Imax, I))/Imax * plotH;
+        d += (first ? 'M' : 'L') + px.toFixed(2) + ',' + py.toFixed(2);
+        first = false;
+      }
+      const tr = document.createElementNS('http://www.w3.org/2000/svg','path');
+      tr.setAttribute('class','trace');
+      tr.setAttribute('d', d);
+      if (color){ tr.setAttribute('stroke', color); }
+      else { tr.setAttribute('class','trace ' + klass); }
+      if (dashed) tr.setAttribute('stroke-dasharray','4 4');
+      svg.appendChild(tr);
+    }
+
+    if (dState.overlay){
+      PRESETS.forEach(p => plotIV(p.Vf, dState.n, null, p.color, false));
+      // legend
+      let lx = padL + 12, ly = padT + 14;
+      PRESETS.forEach((p,i) => {
+        const sw = document.createElementNS('http://www.w3.org/2000/svg','rect');
+        sw.setAttribute('x', lx); sw.setAttribute('y', ly + i*16 - 8);
+        sw.setAttribute('width',14); sw.setAttribute('height',3);
+        sw.setAttribute('fill', p.color);
+        svg.appendChild(sw);
+        const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+        t.setAttribute('x', lx + 20); t.setAttribute('y', ly + i*16);
+        t.setAttribute('class','label');
+        t.textContent = p.name + ' (Vf=' + p.Vf.toFixed(1) + ')';
+        svg.appendChild(t);
+      });
+    } else {
+      // exponential
+      plotIV(dState.Vf, dState.n, 'trace-1');
+      // piecewise linear approximation
+      const xVf = padL + (dState.Vf - Vmin)/(Vmax - Vmin) * plotW;
+      const lnPW = document.createElementNS('http://www.w3.org/2000/svg','path');
+      lnPW.setAttribute('class','trace trace-2');
+      lnPW.setAttribute('d',
+        `M ${padL} ${padT + plotH} L ${xVf} ${padT + plotH} L ${xVf} ${padT}`);
+      lnPW.setAttribute('stroke-dasharray','4 4');
+      svg.appendChild(lnPW);
+      // Vf vertical marker
+      const lnMk = document.createElementNS('http://www.w3.org/2000/svg','line');
+      lnMk.setAttribute('class','marker-line');
+      lnMk.setAttribute('x1',xVf); lnMk.setAttribute('x2',xVf);
+      lnMk.setAttribute('y1',padT); lnMk.setAttribute('y2',padT+plotH);
+      svg.appendChild(lnMk);
+      const lblVf = document.createElementNS('http://www.w3.org/2000/svg','text');
+      lblVf.setAttribute('class','label');
+      lblVf.setAttribute('fill','var(--warn)');
+      lblVf.setAttribute('x', xVf + 6); lblVf.setAttribute('y', padT + 14);
+      lblVf.textContent = 'Vf = ' + dState.Vf.toFixed(2) + ' V';
+      svg.appendChild(lblVf);
+    }
+  }
+
+  $('sVf').addEventListener('input', e => {
+    dState.Vf = parseFloat(e.target.value);
+    $('rVf').textContent = dState.Vf.toFixed(2) + ' V';
+    document.querySelectorAll('.preset-row .btn').forEach(b => b.classList.remove('active'));
+    drawDiode();
+  });
+  $('sN').addEventListener('input', e => {
+    dState.n = parseFloat(e.target.value);
+    $('rN').textContent = dState.n.toFixed(2);
+    drawDiode();
+  });
+  document.querySelectorAll('.preset-row .btn').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.preset-row .btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      const vf = parseFloat(b.dataset.vf);
+      dState.Vf = vf;
+      $('sVf').value = vf;
+      $('rVf').textContent = vf.toFixed(2) + ' V';
+      drawDiode();
+    });
+  });
+  $('overlayBtn').addEventListener('click', () => {
+    dState.overlay = !dState.overlay;
+    $('overlayBtn').textContent = dState.overlay ? 'Hide overlay' : 'Toggle overlay (all 5 presets)';
+    $('overlayBtn').classList.toggle('primary', dState.overlay);
+    drawDiode();
+  });
+
+  // ===================== ZENER TAB =====================
+  const zState = { Vin: 12, Vz: 5.1, Rs: 330, Iload: 0.010 };
+
+  function zenerOperating(Vin, Vz, Rs, Iload){
+    // If Vin < Vz: Zener off, V_out = Vin - Iload*Rs (clamped to >=0)
+    // If Vin >= Vz + Iload*Rs: Zener on, V_out = Vz, I_R = (Vin - Vz)/Rs, I_Z = I_R - Iload
+    const Vthresh = Vz + Iload * Rs;
+    if (Vin < Vthresh){
+      const Vout = Math.max(0, Vin - Iload * Rs);
+      const I_R = Vout > 0 ? Iload : 0;
+      return { Vout, I_R, I_Z: 0, P_Z: 0, regulating: false };
+    } else {
+      const I_R = (Vin - Vz) / Rs;
+      const I_Z = I_R - Iload;
+      return { Vout: Vz, I_R, I_Z, P_Z: Vz * I_Z, regulating: true };
+    }
+  }
+
+  function drawZenerSchem(){
+    const svg = $('zenerSchem');
+    svg.innerHTML = '';
+    const W = 880, H = 220;
+    // V_in (left) -- R_s -- node -- load + Zener to GND, V_out at node
+    const yMid = 100;
+    const xVin = 100, xRsL = 200, xRsR = 360, xNode = 440, xLoad = 600, xVout = 720;
+    // Wires
+    const segs = [
+      [xVin, yMid, xRsL, yMid],
+      [xRsR, yMid, xNode, yMid],
+      [xNode, yMid, xLoad, yMid],
+      [xLoad, yMid, xVout, yMid],
+      // GND rail
+      [xVin, 180, xVout, 180],
+      [xVin, yMid+30, xVin, 180],   // Vin- terminal
+      [xVout, yMid+30, xVout, 180]  // Vout- terminal
+    ];
+    segs.forEach(s => {
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('class','wire');
+      ln.setAttribute('x1',s[0]); ln.setAttribute('y1',s[1]);
+      ln.setAttribute('x2',s[2]); ln.setAttribute('y2',s[3]);
+      svg.appendChild(ln);
+    });
+    // V_in source (circle with +/-)
+    const cIn = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    cIn.setAttribute('cx',xVin); cIn.setAttribute('cy',yMid+15);
+    cIn.setAttribute('r',16); cIn.setAttribute('class','node');
+    svg.appendChild(cIn);
+    const tIn = document.createElementNS('http://www.w3.org/2000/svg','text');
+    tIn.setAttribute('x',xVin); tIn.setAttribute('y',yMid+10);
+    tIn.setAttribute('text-anchor','middle');
+    tIn.setAttribute('class','schem-text'); tIn.textContent = '+';
+    svg.appendChild(tIn);
+    const tIn2 = document.createElementNS('http://www.w3.org/2000/svg','text');
+    tIn2.setAttribute('x',xVin); tIn2.setAttribute('y',yMid+26);
+    tIn2.setAttribute('text-anchor','middle');
+    tIn2.setAttribute('class','schem-text'); tIn2.textContent = '−';
+    svg.appendChild(tIn2);
+    const lblVin = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lblVin.setAttribute('x',xVin); lblVin.setAttribute('y',yMid-22);
+    lblVin.setAttribute('text-anchor','middle');
+    lblVin.setAttribute('class','schem-text');
+    lblVin.textContent = 'V_in = ' + zState.Vin.toFixed(1) + ' V';
+    svg.appendChild(lblVin);
+
+    // R_series — zigzag
+    let d = `M ${xRsL} ${yMid}`;
+    const zigN = 6;
+    for (let i = 1; i <= zigN; i++){
+      const dx = (xRsR - xRsL) / zigN;
+      const dy = (i % 2 === 0) ? 0 : (i % 4 === 1 ? -10 : 10);
+      d += ` L ${xRsL + i*dx - dx/2} ${yMid + dy} L ${xRsL + i*dx} ${yMid}`;
+    }
+    d += ` L ${xRsR} ${yMid}`;
+    const rsPath = document.createElementNS('http://www.w3.org/2000/svg','path');
+    rsPath.setAttribute('class','wire');
+    rsPath.setAttribute('d',d);
+    svg.appendChild(rsPath);
+    const lblRs = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lblRs.setAttribute('x', (xRsL + xRsR)/2); lblRs.setAttribute('y', yMid - 22);
+    lblRs.setAttribute('text-anchor','middle');
+    lblRs.setAttribute('class','schem-text');
+    lblRs.textContent = 'R_s = ' + zState.Rs.toFixed(0) + ' Ω';
+    svg.appendChild(lblRs);
+
+    // Zener (vertical, between node and GND)
+    const zX = xNode, zYTop = yMid+10, zYBot = yMid+40;
+    const zenSeg = document.createElementNS('http://www.w3.org/2000/svg','line');
+    zenSeg.setAttribute('class','wire');
+    zenSeg.setAttribute('x1',zX); zenSeg.setAttribute('y1',yMid);
+    zenSeg.setAttribute('x2',zX); zenSeg.setAttribute('y2',zYTop);
+    svg.appendChild(zenSeg);
+    // triangle
+    const tri = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    tri.setAttribute('points', `${zX-10},${zYTop} ${zX+10},${zYTop} ${zX},${zYBot}`);
+    tri.setAttribute('fill','var(--accent2)');
+    tri.setAttribute('stroke','var(--fg)');
+    tri.setAttribute('stroke-width','1.5');
+    svg.appendChild(tri);
+    // Zener bar (with wings)
+    const zBar = document.createElementNS('http://www.w3.org/2000/svg','path');
+    zBar.setAttribute('d', `M ${zX-12} ${zYBot+3} L ${zX-6} ${zYBot} L ${zX+6} ${zYBot} L ${zX+12} ${zYBot-3}`);
+    zBar.setAttribute('class','wire');
+    zBar.setAttribute('fill','none');
+    svg.appendChild(zBar);
+    const zenSeg2 = document.createElementNS('http://www.w3.org/2000/svg','line');
+    zenSeg2.setAttribute('class','wire');
+    zenSeg2.setAttribute('x1',zX); zenSeg2.setAttribute('y1',zYBot);
+    zenSeg2.setAttribute('x2',zX); zenSeg2.setAttribute('y2',180);
+    svg.appendChild(zenSeg2);
+    const lblZ = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lblZ.setAttribute('x', zX + 18); lblZ.setAttribute('y', (zYTop+zYBot)/2 + 4);
+    lblZ.setAttribute('class','schem-text');
+    lblZ.textContent = 'V_z = ' + zState.Vz.toFixed(1) + ' V';
+    svg.appendChild(lblZ);
+
+    // Load (rectangle "R_load") between xLoad and GND
+    const lX = xLoad, lYTop = yMid+5, lYBot = yMid+50;
+    const loadBox = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    loadBox.setAttribute('x', lX-12); loadBox.setAttribute('y', lYTop);
+    loadBox.setAttribute('width',24); loadBox.setAttribute('height', lYBot-lYTop);
+    loadBox.setAttribute('class','node');
+    svg.appendChild(loadBox);
+    const loadStub1 = document.createElementNS('http://www.w3.org/2000/svg','line');
+    loadStub1.setAttribute('class','wire');
+    loadStub1.setAttribute('x1',lX); loadStub1.setAttribute('y1',yMid);
+    loadStub1.setAttribute('x2',lX); loadStub1.setAttribute('y2',lYTop);
+    svg.appendChild(loadStub1);
+    const loadStub2 = document.createElementNS('http://www.w3.org/2000/svg','line');
+    loadStub2.setAttribute('class','wire');
+    loadStub2.setAttribute('x1',lX); loadStub2.setAttribute('y1',lYBot);
+    loadStub2.setAttribute('x2',lX); loadStub2.setAttribute('y2',180);
+    svg.appendChild(loadStub2);
+    const lblL = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lblL.setAttribute('x', lX + 18); lblL.setAttribute('y', (lYTop+lYBot)/2 + 4);
+    lblL.setAttribute('class','schem-text');
+    lblL.textContent = 'I_load = ' + (zState.Iload*1000).toFixed(1) + ' mA';
+    svg.appendChild(lblL);
+
+    // V_out label
+    const lblVo = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lblVo.setAttribute('x', xVout + 4); lblVo.setAttribute('y', yMid - 6);
+    lblVo.setAttribute('class','schem-text');
+    lblVo.setAttribute('fill','var(--accent3)');
+    const op = zenerOperating(zState.Vin, zState.Vz, zState.Rs, zState.Iload);
+    lblVo.textContent = 'V_out = ' + op.Vout.toFixed(2) + ' V';
+    svg.appendChild(lblVo);
+
+    // GND symbol
+    const gx = xVout - 60, gy = 180;
+    const gnd1 = document.createElementNS('http://www.w3.org/2000/svg','line');
+    gnd1.setAttribute('class','wire');
+    gnd1.setAttribute('x1',gx-10); gnd1.setAttribute('x2',gx+10);
+    gnd1.setAttribute('y1',gy); gnd1.setAttribute('y2',gy);
+    svg.appendChild(gnd1);
+    const gnd2 = document.createElementNS('http://www.w3.org/2000/svg','line');
+    gnd2.setAttribute('class','wire');
+    gnd2.setAttribute('x1',gx-6); gnd2.setAttribute('x2',gx+6);
+    gnd2.setAttribute('y1',gy+5); gnd2.setAttribute('y2',gy+5);
+    svg.appendChild(gnd2);
+    const gnd3 = document.createElementNS('http://www.w3.org/2000/svg','line');
+    gnd3.setAttribute('class','wire');
+    gnd3.setAttribute('x1',gx-3); gnd3.setAttribute('x2',gx+3);
+    gnd3.setAttribute('y1',gy+10); gnd3.setAttribute('y2',gy+10);
+    svg.appendChild(gnd3);
+
+    // Status indicator
+    const stat = document.createElementNS('http://www.w3.org/2000/svg','text');
+    stat.setAttribute('x', 100); stat.setAttribute('y', 30);
+    stat.setAttribute('class','schem-text');
+    stat.setAttribute('fill', op.regulating ? 'var(--accent3)' : 'var(--warn)');
+    stat.textContent = op.regulating ? 'Regulating (Zener conducting)' : 'Below V_z — no regulation';
+    svg.appendChild(stat);
+
+    // Update readout
+    $('zReadout').textContent =
+      `V_out = ${op.Vout.toFixed(2)} V · I_R = ${(op.I_R*1000).toFixed(1)} mA ` +
+      `· I_Z = ${(op.I_Z*1000).toFixed(1)} mA · P_Z = ${(op.P_Z*1000).toFixed(0)} mW`;
+  }
+
+  function drawZenerCurve(){
+    const svg = $('zenerCurve');
+    svg.innerHTML = '';
+    const W = 880, H = 280;
+    const padL = 64, padR = 24, padT = 14, padB = 36;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+    const Vmin = 0, Vmax = 30;
+    const VoMax = Math.max(zState.Vz * 1.5, 10);
+    const IzMax = Math.max(50, (zState.Vin - zState.Vz)/zState.Rs * 1000 * 1.2);
+
+    // grid
+    for (let v = 0; v <= 30; v += 5){
+      const x = padL + (v - Vmin)/(Vmax - Vmin) * plotW;
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('class','grid-line');
+      ln.setAttribute('x1',x); ln.setAttribute('x2',x);
+      ln.setAttribute('y1',padT); ln.setAttribute('y2',padT+plotH);
+      svg.appendChild(ln);
+      const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('class','axis-label');
+      lbl.setAttribute('x',x); lbl.setAttribute('y',H-padB+14);
+      lbl.setAttribute('text-anchor','middle');
+      lbl.textContent = v + ' V';
+      svg.appendChild(lbl);
+    }
+    // y labels (Vout on left, Iz scaled)
+    for (let i = 0; i <= 5; i++){
+      const y = padT + plotH * i / 5;
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('class','grid-line');
+      ln.setAttribute('x1',padL); ln.setAttribute('x2',W-padR);
+      ln.setAttribute('y1',y); ln.setAttribute('y2',y);
+      svg.appendChild(ln);
+      const vv = VoMax * (1 - i/5);
+      const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('class','axis-label');
+      lbl.setAttribute('x',padL-6); lbl.setAttribute('y',y+3);
+      lbl.setAttribute('text-anchor','end');
+      lbl.setAttribute('fill','var(--accent)');
+      lbl.textContent = vv.toFixed(1) + ' V';
+      svg.appendChild(lbl);
+      const iz = IzMax * (1 - i/5);
+      const lbl2 = document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl2.setAttribute('class','axis-label');
+      lbl2.setAttribute('x',W-padR+6); lbl2.setAttribute('y',y+3);
+      lbl2.setAttribute('text-anchor','start');
+      lbl2.setAttribute('fill','var(--accent2)');
+      lbl2.textContent = iz.toFixed(0) + ' mA';
+      svg.appendChild(lbl2);
+    }
+    // axes
+    ['x','y'].forEach(axis => {
+      const ax = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ax.setAttribute('class','axis');
+      if (axis === 'x'){
+        ax.setAttribute('x1',padL); ax.setAttribute('x2',W-padR);
+        ax.setAttribute('y1',padT+plotH); ax.setAttribute('y2',padT+plotH);
+      } else {
+        ax.setAttribute('x1',padL); ax.setAttribute('x2',padL);
+        ax.setAttribute('y1',padT); ax.setAttribute('y2',padT+plotH);
+      }
+      svg.appendChild(ax);
+    });
+    const xlab = document.createElementNS('http://www.w3.org/2000/svg','text');
+    xlab.setAttribute('class','axis-label');
+    xlab.setAttribute('x',(padL+(W-padR))/2); xlab.setAttribute('y',H-4);
+    xlab.setAttribute('text-anchor','middle');
+    xlab.textContent = 'V_in (V)';
+    svg.appendChild(xlab);
+
+    // sweep Vin 0..30 and plot V_out + I_Z
+    let dVo = '', dIz = '';
+    const N = 200;
+    let first = true;
+    for (let i = 0; i <= N; i++){
+      const Vin = Vmin + (Vmax - Vmin) * i / N;
+      const op = zenerOperating(Vin, zState.Vz, zState.Rs, zState.Iload);
+      const px = padL + (Vin - Vmin)/(Vmax - Vmin) * plotW;
+      const pyV = padT + plotH - Math.max(0, Math.min(VoMax, op.Vout))/VoMax * plotH;
+      const pyI = padT + plotH - Math.max(0, Math.min(IzMax, op.I_Z*1000))/IzMax * plotH;
+      dVo += (first ? 'M' : 'L') + px.toFixed(2) + ',' + pyV.toFixed(2);
+      dIz += (first ? 'M' : 'L') + px.toFixed(2) + ',' + pyI.toFixed(2);
+      first = false;
+    }
+    const trVo = document.createElementNS('http://www.w3.org/2000/svg','path');
+    trVo.setAttribute('class','trace trace-1');
+    trVo.setAttribute('d', dVo);
+    svg.appendChild(trVo);
+    const trIz = document.createElementNS('http://www.w3.org/2000/svg','path');
+    trIz.setAttribute('class','trace trace-2');
+    trIz.setAttribute('d', dIz);
+    svg.appendChild(trIz);
+
+    // operating point marker
+    const op = zenerOperating(zState.Vin, zState.Vz, zState.Rs, zState.Iload);
+    const opX = padL + (zState.Vin - Vmin)/(Vmax - Vmin) * plotW;
+    const opY = padT + plotH - Math.max(0, Math.min(VoMax, op.Vout))/VoMax * plotH;
+    const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+    ln.setAttribute('class','marker-line');
+    ln.setAttribute('x1',opX); ln.setAttribute('x2',opX);
+    ln.setAttribute('y1',padT); ln.setAttribute('y2',padT+plotH);
+    svg.appendChild(ln);
+    const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('cx',opX); dot.setAttribute('cy',opY);
+    dot.setAttribute('r',6); dot.setAttribute('class','marker-dot');
+    svg.appendChild(dot);
+  }
+
+  $('szVin').addEventListener('input', e => {
+    zState.Vin = parseFloat(e.target.value);
+    $('zVin').textContent = zState.Vin.toFixed(1) + ' V';
+    drawZenerSchem(); drawZenerCurve();
+  });
+  $('szVz').addEventListener('input', e => {
+    zState.Vz = parseFloat(e.target.value);
+    $('zVz').textContent = zState.Vz.toFixed(1) + ' V';
+    drawZenerSchem(); drawZenerCurve();
+  });
+  $('szRs').addEventListener('input', e => {
+    zState.Rs = parseFloat(e.target.value);
+    $('zRs').textContent = zState.Rs.toFixed(0) + ' Ω';
+    drawZenerSchem(); drawZenerCurve();
+  });
+  $('szIl').addEventListener('input', e => {
+    zState.Iload = parseFloat(e.target.value) / 1000;
+    $('zIl').textContent = (zState.Iload*1000).toFixed(1) + ' mA';
+    drawZenerSchem(); drawZenerCurve();
+  });
+
+  // ===================== TRANSFORMER TAB =====================
+  const xState = { N1: 120, N2: 12, V1: 120, Rl: 8 };
+
+  function drawXfmr(){
+    const svg = $('xfmrSvg');
+    svg.innerHTML = '';
+    const W = 880, H = 320;
+    const yTop = 70, yBot = 230;
+    // Primary on left, core in middle, secondary on right
+    const xP1 = 100, xP2 = 100, xPCoil = 280, xCore = 360, xSCoil = 440, xS1 = 600, xS2 = 600;
+
+    // Primary source V_1
+    const cIn = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    cIn.setAttribute('cx',100); cIn.setAttribute('cy', (yTop+yBot)/2);
+    cIn.setAttribute('r',24); cIn.setAttribute('class','node');
+    svg.appendChild(cIn);
+    const ti = document.createElementNS('http://www.w3.org/2000/svg','text');
+    ti.setAttribute('x',100); ti.setAttribute('y',(yTop+yBot)/2 + 5);
+    ti.setAttribute('text-anchor','middle');
+    ti.setAttribute('class','schem-text');
+    ti.textContent = '~';
+    ti.setAttribute('font-size','22');
+    svg.appendChild(ti);
+    const lblIn = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lblIn.setAttribute('x',100); lblIn.setAttribute('y',yTop-12);
+    lblIn.setAttribute('text-anchor','middle');
+    lblIn.setAttribute('class','schem-text');
+    lblIn.setAttribute('fill','var(--accent3)');
+    lblIn.textContent = 'V₁ = ' + xState.V1.toFixed(0) + ' V';
+    svg.appendChild(lblIn);
+
+    // wires primary
+    const wires1 = [
+      [100, (yTop+yBot)/2 - 24, 100, yTop],
+      [100, yTop, 280, yTop],
+      [100, (yTop+yBot)/2 + 24, 100, yBot],
+      [100, yBot, 280, yBot]
+    ];
+    wires1.forEach(w => {
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('class','wire');
+      ln.setAttribute('x1',w[0]); ln.setAttribute('y1',w[1]);
+      ln.setAttribute('x2',w[2]); ln.setAttribute('y2',w[3]);
+      svg.appendChild(ln);
+    });
+
+    // Primary coil (vertical, between yTop and yBot at x=280)
+    const primaryX = 280;
+    const turnsToDraw = Math.min(8, Math.max(3, Math.round(Math.log10(xState.N1)*3)));
+    let dP = `M ${primaryX} ${yTop}`;
+    for (let k = 0; k < turnsToDraw; k++){
+      const y0 = yTop + k * (yBot - yTop) / turnsToDraw;
+      const y1 = yTop + (k+1) * (yBot - yTop) / turnsToDraw;
+      dP += ` A 14 ${(y1-y0)/2} 0 0 0 ${primaryX} ${y1}`;
+    }
+    const pPath = document.createElementNS('http://www.w3.org/2000/svg','path');
+    pPath.setAttribute('class','wire');
+    pPath.setAttribute('stroke-width','2.5');
+    pPath.setAttribute('d', dP);
+    svg.appendChild(pPath);
+    const lblN1 = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lblN1.setAttribute('x', primaryX - 36); lblN1.setAttribute('y', (yTop+yBot)/2);
+    lblN1.setAttribute('text-anchor','end');
+    lblN1.setAttribute('class','schem-text');
+    lblN1.textContent = 'N₁ = ' + xState.N1;
+    svg.appendChild(lblN1);
+    // dot marker
+    const dotP = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dotP.setAttribute('cx', primaryX + 18); dotP.setAttribute('cy', yTop + 10);
+    dotP.setAttribute('r', 4); dotP.setAttribute('fill','var(--warn)');
+    svg.appendChild(dotP);
+
+    // Core (two vertical bars)
+    [380, 420].forEach(cx => {
+      const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      r.setAttribute('x', cx); r.setAttribute('y', yTop - 10);
+      r.setAttribute('width', 6); r.setAttribute('height', yBot - yTop + 20);
+      r.setAttribute('fill','#555c66'); r.setAttribute('stroke','var(--line)');
+      svg.appendChild(r);
+    });
+    const lblCore = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lblCore.setAttribute('x',400); lblCore.setAttribute('y',yBot+22);
+    lblCore.setAttribute('text-anchor','middle');
+    lblCore.setAttribute('class','label-dim');
+    lblCore.textContent = 'Fe core';
+    svg.appendChild(lblCore);
+
+    // Secondary coil
+    const secX = 480;
+    const turns2 = Math.min(8, Math.max(2, Math.round(Math.log10(xState.N2+1)*3)));
+    let dS = `M ${secX} ${yTop}`;
+    for (let k = 0; k < turns2; k++){
+      const y0 = yTop + k * (yBot - yTop) / turns2;
+      const y1 = yTop + (k+1) * (yBot - yTop) / turns2;
+      dS += ` A 14 ${(y1-y0)/2} 0 0 1 ${secX} ${y1}`;
+    }
+    const sPath = document.createElementNS('http://www.w3.org/2000/svg','path');
+    sPath.setAttribute('class','wire');
+    sPath.setAttribute('stroke-width','2.5');
+    sPath.setAttribute('d', dS);
+    svg.appendChild(sPath);
+    const lblN2 = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lblN2.setAttribute('x', secX + 36); lblN2.setAttribute('y', (yTop+yBot)/2);
+    lblN2.setAttribute('class','schem-text');
+    lblN2.textContent = 'N₂ = ' + xState.N2;
+    svg.appendChild(lblN2);
+    const dotS = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dotS.setAttribute('cx', secX - 18); dotS.setAttribute('cy', yTop + 10);
+    dotS.setAttribute('r', 4); dotS.setAttribute('fill','var(--warn)');
+    svg.appendChild(dotS);
+
+    // wires secondary to load
+    const wires2 = [
+      [secX, yTop, 700, yTop],
+      [secX, yBot, 700, yBot],
+      [700, yTop, 700, (yTop+yBot)/2 - 24],
+      [700, yBot, 700, (yTop+yBot)/2 + 24]
+    ];
+    wires2.forEach(w => {
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('class','wire');
+      ln.setAttribute('x1',w[0]); ln.setAttribute('y1',w[1]);
+      ln.setAttribute('x2',w[2]); ln.setAttribute('y2',w[3]);
+      svg.appendChild(ln);
+    });
+    // Load box
+    const loadBox = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    loadBox.setAttribute('x', 680); loadBox.setAttribute('y', (yTop+yBot)/2 - 24);
+    loadBox.setAttribute('width', 40); loadBox.setAttribute('height', 48);
+    loadBox.setAttribute('class','node');
+    svg.appendChild(loadBox);
+    const lblLoad = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lblLoad.setAttribute('x', 700); lblLoad.setAttribute('y', (yTop+yBot)/2 + 4);
+    lblLoad.setAttribute('text-anchor','middle');
+    lblLoad.setAttribute('class','schem-text');
+    lblLoad.textContent = 'R_L';
+    svg.appendChild(lblLoad);
+
+    // Compute output values
+    const n = xState.N1 / xState.N2;
+    const V2 = xState.V1 / n;
+    const I2 = V2 / xState.Rl;
+    const I1 = I2 / n;
+    const Zpri = n * n * xState.Rl;
+
+    // Right-side labels (V2, I2)
+    const lblV2 = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lblV2.setAttribute('x', 750); lblV2.setAttribute('y', yTop - 12);
+    lblV2.setAttribute('class','schem-text');
+    lblV2.setAttribute('fill','var(--accent3)');
+    lblV2.textContent = 'V₂ = ' + V2.toFixed(2) + ' V';
+    svg.appendChild(lblV2);
+    const lblI2 = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lblI2.setAttribute('x', 750); lblI2.setAttribute('y', yTop + 6);
+    lblI2.setAttribute('class','schem-text');
+    lblI2.setAttribute('fill','var(--accent)');
+    lblI2.textContent = 'I₂ = ' + (I2 >= 1 ? I2.toFixed(2) + ' A' : (I2*1000).toFixed(1) + ' mA');
+    svg.appendChild(lblI2);
+    // Left-side I1
+    const lblI1 = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lblI1.setAttribute('x', 100); lblI1.setAttribute('y', yTop + 6);
+    lblI1.setAttribute('text-anchor','middle');
+    lblI1.setAttribute('class','schem-text');
+    lblI1.setAttribute('fill','var(--accent)');
+    lblI1.textContent = 'I₁ = ' + (I1 >= 1 ? I1.toFixed(2) + ' A' : (I1*1000).toFixed(1) + ' mA');
+    svg.appendChild(lblI1);
+    // Z_pri label between coils
+    const lblZ = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lblZ.setAttribute('x', 400); lblZ.setAttribute('y', 30);
+    lblZ.setAttribute('text-anchor','middle');
+    lblZ.setAttribute('class','schem-text');
+    lblZ.setAttribute('fill','var(--accent2)');
+    lblZ.textContent = 'n = N₁/N₂ = ' + n.toFixed(2) + '  →  Z_pri = n²·R_L = ' + (Zpri >= 1000 ? (Zpri/1000).toFixed(2) + ' kΩ' : Zpri.toFixed(1) + ' Ω');
+    svg.appendChild(lblZ);
+
+    // update readout
+    $('xReadout').textContent =
+      'n = ' + n.toFixed(2) +
+      ' · V₂ = ' + V2.toFixed(2) + ' V' +
+      ' · I₂ = ' + (I2 >= 1 ? I2.toFixed(2) + ' A' : (I2*1000).toFixed(1) + ' mA') +
+      ' · I₁ = ' + (I1 >= 1 ? I1.toFixed(2) + ' A' : (I1*1000).toFixed(1) + ' mA') +
+      ' · Z_pri = ' + (Zpri >= 1000 ? (Zpri/1000).toFixed(2) + ' kΩ' : Zpri.toFixed(1) + ' Ω');
+  }
+
+  $('sN1').addEventListener('input', e => { xState.N1 = parseInt(e.target.value,10); $('rN1').textContent = xState.N1; drawXfmr(); });
+  $('sN2').addEventListener('input', e => { xState.N2 = parseInt(e.target.value,10); $('rN2').textContent = xState.N2; drawXfmr(); });
+  $('sV1').addEventListener('input', e => { xState.V1 = parseFloat(e.target.value); $('rV1').textContent = xState.V1.toFixed(0) + ' V'; drawXfmr(); });
+  $('sRl').addEventListener('input', e => { xState.Rl = parseFloat(e.target.value); $('rRl').textContent = xState.Rl.toFixed(1) + ' Ω'; drawXfmr(); });
+
+  // Initial draws
+  drawDiode();
+  drawZenerSchem();
+  drawZenerCurve();
+  drawXfmr();
+</script>
+</body>
+</html>

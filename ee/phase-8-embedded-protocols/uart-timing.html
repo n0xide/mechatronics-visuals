@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UART Timing — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number],.control input[type=text]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0;flex-wrap:wrap}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>UART Timing</h1>
+  <p class="lede">No clock line means both sides must agree on baud rate. Watch a frame on the wire and see how a ±2.5% drift accumulates across 10 bit cells before the receiver samples the wrong one.</p>
+
+  <p>UART is the oldest serial protocol still on every MCU. It is asynchronous: transmitter just starts shouting bits at the agreed-upon rate, receiver oversamples (typically 16×) to find the falling start-bit edge, then samples each bit cell at its midpoint. If clocks drift enough, the midpoint moves off the bit; that's a framing error.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Byte to send (0–255 or 'A'): <span class="readout" id="byteRead">0x41 'A'</span></label>
+      <input id="byteInput" type="text" value="A" maxlength="3">
+    </div>
+    <div class="control">
+      <label>Baud rate: <span class="readout" id="baudRead">9600</span></label>
+      <select id="baudSel">
+        <option value="9600" selected>9600</option>
+        <option value="19200">19200</option>
+        <option value="38400">38400</option>
+        <option value="57600">57600</option>
+        <option value="115200">115200</option>
+        <option value="921600">921600</option>
+        <option value="1000000">1 Mbaud</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Parity: <span class="readout" id="parityRead">none</span></label>
+      <select id="paritySel">
+        <option value="none" selected>none</option>
+        <option value="even">even</option>
+        <option value="odd">odd</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Stop bits: <span class="readout" id="stopRead">1</span></label>
+      <select id="stopSel">
+        <option value="1" selected>1</option>
+        <option value="2">2</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Bit duration: <span class="readout" id="bitTimeRead">104.2 µs</span></label>
+    </div>
+    <div class="control">
+      <button class="btn primary" id="playBtn">▶ animate frame</button>
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>UART frame on TX line</h3>
+    <svg id="framePlot" viewBox="0 0 900 220" width="100%"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>TX line</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>sample point (mid-bit)</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>start/stop boundary</span>
+    </div>
+  </div>
+
+  <h2>Baud tolerance ±2.5%</h2>
+  <p>The receiver locks on the start-bit falling edge, then samples every bit at the middle of the bit cell using its own clock. If the receiver clock is N% fast or slow, the sample point drifts by N% of a bit per bit. With ±2.5% tolerance and 10 bits per frame, drift can reach ~25% — still inside the bit cell. Beyond ±4–5%, the stop bit gets misread.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>RX clock error: <span class="readout" id="errRead">+0.0 %</span></label>
+      <input id="errInput" type="range" min="-5" max="5" step="0.1" value="2.5">
+    </div>
+  </section>
+  <div class="figure">
+    <h3>Sample point drift across bits</h3>
+    <svg id="driftPlot" viewBox="0 0 900 220" width="100%"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>TX line</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>ideal sample (center)</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>actual sample (drifted)</span>
+    </div>
+  </div>
+
+  <h2>TTL UART vs RS-232 voltage levels</h2>
+  <div class="figure">
+    <svg viewBox="0 0 900 240" width="100%">
+      <text x="20" y="22" class="label" style="font-weight:600">TTL UART (3.3V)</text>
+      <line x1="20" y1="40" x2="280" y2="40" class="grid-line"/>
+      <line x1="20" y1="100" x2="280" y2="100" class="grid-line"/>
+      <line x1="20" y1="40" x2="20" y2="120" class="axis"/>
+      <text x="14" y="44" class="axis-label" text-anchor="end">3.3</text>
+      <text x="14" y="74" class="axis-label" text-anchor="end">1.5</text>
+      <text x="14" y="104" class="axis-label" text-anchor="end">0.0</text>
+      <line x1="20" y1="70" x2="280" y2="70" stroke="var(--fg-dim)" stroke-dasharray="3 3"/>
+      <text x="284" y="74" class="label-dim">~Vt thresh</text>
+      <rect x="40" y="40" width="220" height="20" fill="var(--accent)" opacity="0.4"/>
+      <text x="150" y="55" class="label" text-anchor="middle">HIGH = idle / mark / "1"</text>
+      <rect x="40" y="84" width="220" height="16" fill="var(--warn)" opacity="0.4"/>
+      <text x="150" y="96" class="label" text-anchor="middle">LOW = start / "0"</text>
+
+      <text x="320" y="22" class="label" style="font-weight:600">TTL UART (5V)</text>
+      <line x1="320" y1="40" x2="580" y2="40" class="grid-line"/>
+      <line x1="320" y1="100" x2="580" y2="100" class="grid-line"/>
+      <line x1="320" y1="40" x2="320" y2="120" class="axis"/>
+      <text x="314" y="44" class="axis-label" text-anchor="end">5.0</text>
+      <text x="314" y="74" class="axis-label" text-anchor="end">2.4</text>
+      <text x="314" y="104" class="axis-label" text-anchor="end">0.0</text>
+      <line x1="320" y1="65" x2="580" y2="65" stroke="var(--fg-dim)" stroke-dasharray="3 3"/>
+      <text x="584" y="69" class="label-dim">~Vt thresh</text>
+      <rect x="340" y="40" width="220" height="20" fill="var(--accent)" opacity="0.4"/>
+      <text x="450" y="55" class="label" text-anchor="middle">HIGH = "1"</text>
+      <rect x="340" y="84" width="220" height="16" fill="var(--warn)" opacity="0.4"/>
+      <text x="450" y="96" class="label" text-anchor="middle">LOW = "0"</text>
+
+      <text x="620" y="22" class="label" style="font-weight:600">RS-232 (±12V)</text>
+      <line x1="620" y1="40" x2="880" y2="40" class="grid-line"/>
+      <line x1="620" y1="160" x2="880" y2="160" class="grid-line"/>
+      <line x1="620" y1="100" x2="880" y2="100" stroke="var(--fg-dim)"/>
+      <line x1="620" y1="40" x2="620" y2="180" class="axis"/>
+      <text x="614" y="44" class="axis-label" text-anchor="end">+12</text>
+      <text x="614" y="104" class="axis-label" text-anchor="end">0</text>
+      <text x="614" y="164" class="axis-label" text-anchor="end">−12</text>
+      <rect x="640" y="40" width="220" height="40" fill="var(--warn)" opacity="0.4"/>
+      <text x="750" y="65" class="label" text-anchor="middle">+3 to +15 V = "0"</text>
+      <rect x="640" y="120" width="220" height="40" fill="var(--accent)" opacity="0.4"/>
+      <text x="750" y="145" class="label" text-anchor="middle">−3 to −15 V = "1" (idle)</text>
+
+      <text x="20" y="200" class="label">Direct MCU → RS-232: cannot connect. Use MAX232/MAX3232 to translate, or USB-UART bridge (CH340/CP2102).</text>
+      <text x="20" y="220" class="label-dim">Note: RS-232 polarity is inverted vs TTL. Idle = negative voltage = logical "1".</text>
+    </svg>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Start bit is the sync</b> — line idles HIGH; the falling edge tells the receiver "begin sampling". No clock wire is shared, so this edge is the only sync per byte.</li>
+    <li><b>LSB first</b> — UART transmits bit 0 (least significant) first. ASCII 'A' (0x41 = 01000001) goes out as 1, 0, 0, 0, 0, 0, 1, 0.</li>
+    <li><b>Bit time = 1/baud</b> — at 9600 baud, one bit cell is ~104 µs; at 115200, ~8.7 µs. The receiver samples at the midpoint.</li>
+    <li><b>±2.5% spec, ~5% practical</b> — the receiver re-syncs every frame on the start bit, so error only needs to stay within half a bit by the end of frame (~10 bits). Cheap RC oscillators on AVRs can fail this; that's why crystal-clocked devices are more reliable.</li>
+    <li><b>RS-232 is not TTL</b> — same protocol, different voltages and polarity (RS-232 inverts: idle is negative). Wiring a TTL pin straight to an RS-232 port damages both sides.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>Frame</b> — 1 start + 8 data (LSB-first) + opt. parity + 1 or 2 stop.</li>
+        <li><b>Idle</b> — line HIGH; falling edge = start.</li>
+        <li><b>Rates</b> — 9600 / 115200 / 1M / 3M baud.</li>
+        <li><b>Tolerance</b> — ±2.5% baud both sides.</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>WIRING DECISION</h3>
+      <ul>
+        <li><b>CROSS TX↔RX</b> — TX of A → RX of B, RX of A ← TX of B.</li>
+        <li><b>GND must be shared</b> — single-ended needs reference.</li>
+        <li><b>Null-modem</b> — cable that swaps TX/RX for DTE↔DTE.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Voltage mismatch</b> — TTL 3.3/5 V ≠ RS-232 ±5–15 V; never mix without MAX232 or USB-UART bridge.</li>
+        <li><b>RS-232 polarity inverted</b> — idle is negative.</li>
+        <li><b>RC oscillator drift</b> — cheap MCUs miss ±2.5% over temp; use crystal.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 8 — Embedded Interface Protocols</a> ·
+    Topic: UART Timing
+  </footer>
+</main>
+<script>
+  function parseByte(s){
+    s = s.trim();
+    if(s.length===1) return s.charCodeAt(0);
+    if(s.startsWith('0x')||s.startsWith('0X')) return parseInt(s,16)&0xFF;
+    let n = parseInt(s,10);
+    if(!isNaN(n)) return n&0xFF;
+    return s.charCodeAt(0)&0xFF;
+  }
+
+  function bitsForByte(b, parity){
+    let bits=[];
+    bits.push({label:'start',v:0,kind:'start'});
+    let ones=0;
+    for(let i=0;i<8;i++){
+      const bit=(b>>i)&1;
+      ones += bit;
+      bits.push({label:'D'+i,v:bit,kind:'data'});
+    }
+    if(parity==='even') bits.push({label:'P',v:(ones%2),kind:'parity'});
+    if(parity==='odd')  bits.push({label:'P',v:1-(ones%2),kind:'parity'});
+    return bits;
+  }
+
+  function drawFrame(){
+    const txt=document.getElementById('byteInput').value||'A';
+    const byte=parseByte(txt);
+    const baud=parseInt(document.getElementById('baudSel').value);
+    const parity=document.getElementById('paritySel').value;
+    const stop=parseInt(document.getElementById('stopSel').value);
+    const bitTime=1/baud;
+    document.getElementById('byteRead').textContent='0x'+byte.toString(16).toUpperCase().padStart(2,'0')+
+      (byte>=32&&byte<127 ? " '"+String.fromCharCode(byte)+"'" : '');
+    document.getElementById('baudRead').textContent=baud.toLocaleString();
+    document.getElementById('parityRead').textContent=parity;
+    document.getElementById('stopRead').textContent=stop;
+    document.getElementById('bitTimeRead').textContent=(bitTime*1e6).toFixed(1)+" µs";
+
+    const bits=bitsForByte(byte, parity);
+    // append stop bits (HIGH)
+    for(let i=0;i<stop;i++) bits.push({label:'stop',v:1,kind:'stop'});
+    // idle before/after
+    const total = bits.length + 2;
+
+    const svg=document.getElementById('framePlot');
+    const W=900, H=220, mL=40, mR=40, mT=40, mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const cellW = pw/total;
+    const yHi = mT+20, yLo = mT+ph-30;
+
+    let s='';
+    // grid
+    for(let i=0;i<=total;i++){
+      const x=mL+i*cellW;
+      s+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" class="grid-line"/>`;
+    }
+    s+=`<text x="${mL-6}" y="${yHi+4}" class="axis-label" text-anchor="end">HIGH</text>`;
+    s+=`<text x="${mL-6}" y="${yLo+4}" class="axis-label" text-anchor="end">LOW</text>`;
+
+    // build waveform: idle HIGH, then bits, then idle HIGH
+    let prevY = yHi;
+    let prevX = mL;
+    let path = `M${prevX},${prevY}`;
+    // first idle cell
+    path += ` L${mL+cellW},${yHi}`;
+    prevX = mL+cellW;
+
+    for(let i=0;i<bits.length;i++){
+      const b=bits[i];
+      const x0 = mL + (i+1)*cellW;
+      const x1 = mL + (i+2)*cellW;
+      const y = b.v===1 ? yHi : yLo;
+      // vertical edge from prevY to y at x0
+      path += ` L${x0},${prevY} L${x0},${y} L${x1},${y}`;
+      prevY = y;
+
+      // label
+      const cx = (x0+x1)/2;
+      const cls = b.kind==='start'?'fill:var(--warn)' :
+                  b.kind==='stop' ?'fill:var(--warn)' :
+                  b.kind==='parity'?'fill:var(--accent2)':'fill:var(--fg)';
+      s+=`<text x="${cx}" y="${mT-8}" class="label" text-anchor="middle" style="${cls}">${b.label}</text>`;
+      s+=`<text x="${cx}" y="${mT-22}" class="label-dim" text-anchor="middle">${b.v}</text>`;
+      // sample tick mid-bit (skip start)
+      if(b.kind!=='start'){
+        s+=`<line x1="${cx}" y1="${y-6}" x2="${cx}" y2="${y+6}" stroke="var(--accent3)" stroke-width="2"/>`;
+        s+=`<circle cx="${cx}" cy="${y}" r="3" fill="var(--accent3)"/>`;
+      }
+      // start bit marker
+      if(b.kind==='start'){
+        s+=`<line x1="${x0}" y1="${mT}" x2="${x0}" y2="${mT+ph}" stroke="var(--warn)" stroke-dasharray="4 3"/>`;
+        s+=`<text x="${x0+3}" y="${mT+ph+16}" class="label-dim" style="fill:var(--warn)">START edge</text>`;
+      }
+    }
+    // trailing idle
+    path += ` L${mL+pw},${yHi}`;
+
+    s+=`<path d="${path}" class="trace trace-1" stroke-width="2"/>`;
+
+    // bit time annotation under first data bit
+    const xa = mL+cellW;
+    const xb = mL+2*cellW;
+    s+=`<line x1="${xa}" y1="${mT+ph+22}" x2="${xb}" y2="${mT+ph+22}" stroke="var(--fg-dim)"/>`;
+    s+=`<line x1="${xa}" y1="${mT+ph+18}" x2="${xa}" y2="${mT+ph+26}" stroke="var(--fg-dim)"/>`;
+    s+=`<line x1="${xb}" y1="${mT+ph+18}" x2="${xb}" y2="${mT+ph+26}" stroke="var(--fg-dim)"/>`;
+    s+=`<text x="${(xa+xb)/2}" y="${mT+ph+36}" class="label-dim" text-anchor="middle">1 bit = ${(bitTime*1e6).toFixed(1)} µs</text>`;
+
+    svg.innerHTML=s;
+  }
+
+  function drawDrift(){
+    const err = parseFloat(document.getElementById('errInput').value)/100;
+    document.getElementById('errRead').textContent=(err*100).toFixed(1)+" %";
+
+    const svg=document.getElementById('driftPlot');
+    const W=900, H=220, mL=40, mR=40, mT=40, mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    // 10 cells: start + 8 data + stop
+    const cells=10;
+    const cellW = pw/cells;
+    const yHi = mT+20, yLo = mT+ph-30;
+
+    // example pattern: 0,1,0,1,0,1,1,0 for data + start LOW + stop HIGH
+    const pattern=[0, 0,1,0,1,0,1,1,0, 1];
+
+    let s='';
+    // grid
+    for(let i=0;i<=cells;i++){
+      const x=mL+i*cellW;
+      s+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" class="grid-line"/>`;
+    }
+    // waveform
+    let path = `M${mL},${pattern[0]===1?yHi:yLo}`;
+    let prevY = pattern[0]===1?yHi:yLo;
+    for(let i=0;i<cells;i++){
+      const x0 = mL + i*cellW;
+      const x1 = mL + (i+1)*cellW;
+      const y = pattern[i]===1?yHi:yLo;
+      path += ` L${x0},${prevY} L${x0},${y} L${x1},${y}`;
+      prevY = y;
+      const cx = (x0+x1)/2;
+      const lbl = i===0?'start':(i===9?'stop':'D'+(i-1));
+      s+=`<text x="${cx}" y="${mT-8}" class="label" text-anchor="middle">${lbl}</text>`;
+      // ideal sample (center of cell)
+      s+=`<circle cx="${cx}" cy="${y}" r="3" fill="var(--accent3)"/>`;
+      // drifted sample: receiver clock runs at (1+err); after N bits, samples at cell-center + N*err
+      // sample position within cell = 0.5 + i*err (drift accumulates)
+      const sampleFrac = 0.5 + i*err;
+      const sx = x0 + sampleFrac*cellW;
+      let actualY;
+      // if sample falls within current cell, y stays; if drifted past cell, value still equals current bit unless drift > 0.5
+      let drifted;
+      if(sampleFrac<0 || sampleFrac>1){
+        // sample falls in neighbor cell — wrong value
+        const neighbor = sampleFrac<0 ? Math.max(0,i-1) : Math.min(cells-1,i+1);
+        actualY = pattern[neighbor]===1?yHi:yLo;
+        drifted = true;
+      } else {
+        actualY = y;
+        drifted = false;
+      }
+      const sxClamped = Math.max(mL, Math.min(mL+pw, sx));
+      s+=`<line x1="${sxClamped}" y1="${actualY-8}" x2="${sxClamped}" y2="${actualY+8}" stroke="var(--warn)" stroke-width="2"/>`;
+      s+=`<circle cx="${sxClamped}" cy="${actualY}" r="3" fill="var(--warn)"/>`;
+      if(drifted){
+        s+=`<text x="${sxClamped}" y="${mT+ph+18}" class="label" text-anchor="middle" style="fill:var(--warn)">✕ wrong cell</text>`;
+      }
+    }
+    s+=`<path d="${path}" class="trace trace-1" stroke-width="2"/>`;
+    const finalDrift = (9*err*100).toFixed(1);
+    s+=`<text x="${mL+pw-8}" y="${H-8}" class="label-dim" text-anchor="end">drift at stop bit: ${finalDrift}% of a cell</text>`;
+    svg.innerHTML=s;
+  }
+
+  ['byteInput','baudSel','paritySel','stopSel'].forEach(id=>
+    document.getElementById(id).addEventListener('input',drawFrame));
+  document.getElementById('errInput').addEventListener('input',drawDrift);
+
+  document.getElementById('playBtn').addEventListener('click',()=>{
+    // simple flash animation: redraw and pulse colors
+    const svg=document.getElementById('framePlot');
+    svg.style.transition='opacity 0.25s';
+    svg.style.opacity='0.2';
+    setTimeout(()=>{drawFrame();svg.style.opacity='1';},250);
+  });
+
+  drawFrame();
+  drawDrift();
+</script>
+</body>
+</html>

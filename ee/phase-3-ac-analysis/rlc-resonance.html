@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RLC Resonance — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:720px){.split{grid-template-columns:1fr}}
+  .stats{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--fg)}
+  .stats .v{color:var(--accent)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>RLC Resonance — Series &amp; Parallel</h1>
+  <p class="lede">Every RLC circuit has a special frequency f₀ = 1/(2π√LC) where the inductor's and capacitor's reactances cancel. In series, that means minimum impedance and maximum current — a sharp dip. In parallel, maximum impedance — a sharp peak. R sets the sharpness (Q). At resonance the L and C voltages can each be Q times the source.</p>
+
+  <h3>What this teaches</h3>
+  <p>Resonance is the cancellation point. Q = ω₀L/R is the quality factor — how undamped the circuit is. Bandwidth BW = f₀/Q is the −3 dB width of the peak/dip. Voltage magnification in series resonance: |V_L| = |V_C| = Q · |V_source| while the source only sees R. This is how crystal radios and antenna matching networks deliver "free" voltage gain.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>R (Ω) — <span class="readout" id="rR">10</span> &nbsp;(lower R = higher Q)</label>
+      <input type="range" id="sR" min="0.5" max="500" step="0.5" value="10">
+    </div>
+    <div class="control">
+      <label>L (mH) — <span class="readout" id="rL">10</span></label>
+      <input type="range" id="sL" min="0.1" max="100" step="0.1" value="10">
+    </div>
+    <div class="control">
+      <label>C (µF) — <span class="readout" id="rC">1.0</span></label>
+      <input type="range" id="sC" min="0.01" max="10" step="0.01" value="1">
+    </div>
+    <div class="control" style="grid-column:1/-1">
+      <label>Source frequency (for phasor inset) — <span class="readout" id="rF">f = f₀</span></label>
+      <input type="range" id="sF" min="0" max="1000" step="1" value="500">
+      <div style="font-size:12px;color:var(--fg-dim);margin-top:4px">
+        Sweep the slider to see how the phasor diagram changes off-resonance. Cursor sits on both plots.
+      </div>
+    </div>
+  </section>
+
+  <div class="figure">
+    <div class="split">
+      <div>
+        <h3 style="margin-top:0;color:var(--accent)">Series RLC — |Z| (V-shape, min at f₀)</h3>
+        <svg id="serSvg" viewBox="0 0 360 260" width="100%"></svg>
+        <div class="stats" id="statsSer"></div>
+      </div>
+      <div>
+        <h3 style="margin-top:0;color:var(--accent2)">Parallel RLC — |Z| (peak at f₀)</h3>
+        <svg id="parSvg" viewBox="0 0 360 260" width="100%"></svg>
+        <div class="stats" id="statsPar"></div>
+      </div>
+    </div>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>|Z|</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>−3 dB / half-power line</span>
+      <span><span class="swatch" style="background:var(--fg-dim)"></span>f₀ marker</span>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3 style="margin-top:0">Series-RLC phasor diagram at chosen frequency</h3>
+    <p style="font-size:12px;color:var(--fg-dim);margin-top:0">Current I is the reference (along +Re). V_R is in phase, V_L leads by 90°, V_C lags by 90°. At resonance V_L and V_C are equal-and-opposite and cancel — V_source = V_R alone, and yet V_L = V_C = Q · V_source is sitting across each reactive element.</p>
+    <svg id="phasorSvg" viewBox="0 0 720 320" width="100%"></svg>
+    <div class="stats" id="phasorStats" style="margin-top:6px"></div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Series and parallel mirror each other</b> — same f₀, opposite shape. Series is a notch on the impedance and a peak on the current; parallel is the opposite. They're duals.</li>
+    <li><b>Lower R → sharper response → higher Q</b> — and a narrower bandwidth. Try R=1 Ω vs R=100 Ω with L and C fixed and watch the −3dB markers slide in or out.</li>
+    <li><b>f₀ depends only on L·C product</b> — push C down, f₀ shoots up (1/√LC). R doesn't move the centerline.</li>
+    <li><b>Voltage magnification is real and dangerous</b> — at Q=20 with a 5V source, you have 100V across the cap. This is exactly why high-Q resonant circuits need rated parts and why tuned-circuit accidents kill people.</li>
+    <li><b>Off resonance, the L and C phasors no longer cancel</b> — drag the source-frequency slider away from f₀ and watch V_L (or V_C) dominate. The net reactive voltage rotates the source phasor away from V_R.</li>
+    <li><b>At exactly f₀ in series, the circuit looks purely resistive</b> — current and source-voltage phasors are colinear (PF=1). This is the matching condition used by antenna tuners.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>f₀</dt><dd><span class="eq">f₀ = 1 / (2π√LC)</span></dd>
+        <dt>Q</dt><dd><span class="eq">Q = ω₀L/R = (1/R)√(L/C)</span></dd>
+        <dt>BW</dt><dd><span class="eq">BW = f₀ / Q</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>Series</b> — min |Z| = R at f₀ (notch).</li>
+        <li><b>Parallel</b> — max |Z| ≈ R·Q² at f₀ (peak).</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>V_L = V_C = Q·V_src</b> — voltage magnification can blow caps; rate parts for Q·V_src.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 3 — AC Circuit Analysis</a> ·
+    Topic: RLC Resonance
+  </footer>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const sR=$('sR'), sL=$('sL'), sC=$('sC'), sF=$('sF');
+  const rR=$('rR'), rL=$('rL'), rC=$('rC'), rF=$('rF');
+  const serSvg=$('serSvg'), parSvg=$('parSvg'), phasorSvg=$('phasorSvg');
+  const statsSer=$('statsSer'), statsPar=$('statsPar'), phasorStats=$('phasorStats');
+
+  // Plot box for each |Z| plot
+  const PW=360, PH=260;
+  const PL_=44, PR=14, PT=18, PB=36;
+  const PPW = PW-PL_-PR, PPH = PH-PT-PB;
+
+  // We'll auto-range the freq axis around f₀, ±2.5 decades
+  function buildStatic(svg, decadesAround){
+    // Static parts will be redrawn per-call (axis labels depend on f0).
+  }
+
+  function drawPlot(svg, statsEl, f0, ZAtMin, ZAtPeak, mode, R, L, C, BW){
+    // mode: 'series' or 'parallel'
+    // x: log f from f0/100 to f0*100
+    const fLo = f0/100, fHi = f0*100;
+    const decades = Math.log10(fHi/fLo);
+    function xOf(f){ return PL_ + Math.log10(f/fLo)/decades*PPW; }
+
+    // y: log |Z|. For series: min ≈ R, max ≈ |Z| at edges (≈ ωL or 1/ωC, big).
+    // For parallel: peak ≈ R·Q² (or just compute), edges go to 0 (since L is short at LF, C short at HF -> 0)
+    // We'll auto-pick Y range by sampling.
+    const N=300;
+    let pts = [];
+    for (let i=0;i<=N;i++){
+      const f = fLo * Math.pow(10, i/N*decades);
+      const w = 2*Math.PI*f;
+      let zMag;
+      if (mode==='series'){
+        const X = w*L - 1/(w*C);
+        zMag = Math.hypot(R, X);
+      } else {
+        // parallel: Y = 1/R + j(wC - 1/(wL)); Z = 1/Y
+        const Bre = 1/R;
+        const Bim = w*C - 1/(w*L);
+        const Ymag2 = Bre*Bre + Bim*Bim;
+        zMag = 1/Math.sqrt(Ymag2);
+      }
+      pts.push([f, zMag]);
+    }
+    const zmins = pts.map(p=>p[1]).filter(v=>v>0);
+    let zMin = Math.min(...zmins), zMax = Math.max(...zmins);
+    // pad
+    const logMin = Math.floor(Math.log10(zMin));
+    const logMax = Math.ceil(Math.log10(zMax));
+    const ydecs = Math.max(1, logMax - logMin);
+
+    function yOf(z){
+      if (z<=0) z=Math.pow(10,logMin);
+      return PT + (logMax - Math.log10(z))/ydecs*PPH;
+    }
+
+    let s='';
+    // vertical grid (5 ticks log-spaced)
+    for (let k=0;k<=5;k++){
+      const f = fLo*Math.pow(10, k/5*decades);
+      const x = xOf(f);
+      s += `<line x1="${x}" y1="${PT}" x2="${x}" y2="${PT+PPH}" class="grid-line"/>`;
+      const lab = f<1?f.toFixed(2):f<1000?f.toFixed(0):f<1e6?(f/1000).toFixed(1)+'k':(f/1e6).toFixed(1)+'M';
+      s += `<text x="${x}" y="${PH-22}" class="axis-label" text-anchor="middle">${lab}</text>`;
+    }
+    // horizontal grid (per decade)
+    for (let k=0;k<=ydecs;k++){
+      const z = Math.pow(10, logMax - k);
+      const y = yOf(z);
+      s += `<line x1="${PL_}" y1="${y}" x2="${PL_+PPW}" y2="${y}" class="grid-line"/>`;
+      const lab = z>=1000?(z/1000).toFixed(0)+'k':z>=1?z.toFixed(0):z.toFixed(2);
+      s += `<text x="${PL_-4}" y="${y+4}" class="axis-label" text-anchor="end">${lab}</text>`;
+    }
+    // axes
+    s += `<line x1="${PL_}" y1="${PT}" x2="${PL_}" y2="${PT+PPH}" class="axis"/>`;
+    s += `<line x1="${PL_}" y1="${PT+PPH}" x2="${PL_+PPW}" y2="${PT+PPH}" class="axis"/>`;
+    s += `<text x="${PL_+PPW/2}" y="${PH-6}" class="axis-label" text-anchor="middle">f (Hz, log)</text>`;
+    s += `<text x="12" y="${PT+PPH/2}" class="axis-label" text-anchor="middle" transform="rotate(-90 12 ${PT+PPH/2})">|Z| (Ω, log)</text>`;
+
+    // -3dB line
+    // Series: zMin*sqrt(2); Parallel: zMax/sqrt(2)
+    let y3dB;
+    if (mode==='series'){ y3dB = yOf(R*Math.SQRT2); }
+    else { y3dB = yOf((Math.max(...zmins))/Math.SQRT2); }
+    s += `<line x1="${PL_}" y1="${y3dB}" x2="${PL_+PPW}" y2="${y3dB}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="5,3"/>`;
+    s += `<text x="${PL_+4}" y="${y3dB-3}" class="axis-label" fill="var(--warn)">−3dB</text>`;
+
+    // BW markers: f1, f2 = f0 ± BW/2
+    const f1 = f0 - BW/2;
+    const f2 = f0 + BW/2;
+    if (f1>fLo){ const xb1 = xOf(f1); s += `<line x1="${xb1}" y1="${PT}" x2="${xb1}" y2="${PT+PPH}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>`; }
+    if (f2<fHi){ const xb2 = xOf(f2); s += `<line x1="${xb2}" y1="${PT}" x2="${xb2}" y2="${PT+PPH}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>`; }
+
+    // f0 line
+    const xf0 = xOf(f0);
+    s += `<line x1="${xf0}" y1="${PT}" x2="${xf0}" y2="${PT+PPH}" stroke="var(--fg-dim)" stroke-width="1" stroke-dasharray="2,3"/>`;
+    s += `<text x="${xf0+3}" y="${PT+10}" class="axis-label">f₀</text>`;
+
+    // trace
+    let path='';
+    for (let i=0;i<pts.length;i++){
+      const [f,z]=pts[i];
+      path += (i===0?'M':'L') + xOf(f).toFixed(1) + ' ' + yOf(z).toFixed(1) + ' ';
+    }
+    s += `<path d="${path}" stroke="var(--accent)" stroke-width="2.5" fill="none"/>`;
+
+    // cursor (chosen freq)
+    const fCur = +sF.value;
+    // sF=0..1000 → log freq fLo..fHi (in this plot's range)
+    const fSel = fLo * Math.pow(10, fCur/1000 * decades);
+    const xc = xOf(fSel);
+    s += `<line x1="${xc}" y1="${PT}" x2="${xc}" y2="${PT+PPH}" stroke="var(--fg-bright)" stroke-width="1" opacity="0.6"/>`;
+
+    svg.innerHTML = s;
+
+    // stats text
+    const Q = (mode==='series') ? (2*Math.PI*f0*L)/R : R*Math.sqrt(C/L);
+    const f1c = f0 - BW/2, f2c = f0 + BW/2;
+    statsEl.innerHTML = `f₀ = <span class="v">${f0.toFixed(1)} Hz</span> ·
+      Q = <span class="v">${Q.toFixed(2)}</span> ·
+      BW = <span class="v">${BW.toFixed(1)} Hz</span> ·
+      f₁..f₂ = <span class="v">${f1c.toFixed(1)} – ${f2c.toFixed(1)} Hz</span>`;
+  }
+
+  function drawPhasor(f, f0, R, L, C, Vs){
+    // Series RLC at frequency f. I = Vs / Z. V_R = I·R, V_L = I·jωL, V_C = I/(jωC).
+    // We'll show phasors with I along +Re.
+    const w = 2*Math.PI*f;
+    const XL = w*L, XC = 1/(w*C);
+    const X = XL - XC;
+    const Zmag = Math.hypot(R, X);
+    const Zang = Math.atan2(X, R); // ∠Z
+    const Imag = Vs / Zmag;
+    // With I along +Re (we choose), source V leads I by Zang (or lags if negative)
+    // V_R magnitude = I*R, in phase with I (along +Re)
+    const VR = Imag * R;
+    const VL_mag = Imag * XL;
+    const VC_mag = Imag * XC;
+    const Vs_mag = Vs;
+    const Vs_ang = Zang;  // angle of source rel. to I
+
+    // Layout: two panels side-by-side in 720x320 svg
+    const W=720, H=320;
+    // Left: just phasors stacked from origin
+    const cx1=180, cy1=160;
+    const cx2=540, cy2=160;
+    const maxV = Math.max(VR, VL_mag, VC_mag, Vs_mag, 1);
+    const scale = 100/maxV;
+
+    function arrow(x0,y0,x1,y1,color,label,dashed){
+      const dx=x1-x0, dy=y1-y0;
+      const len=Math.hypot(dx,dy)||1;
+      const ux=dx/len, uy=dy/len;
+      const hx = x1 - 8*ux, hy = y1 - 8*uy;
+      const px = -uy, py = ux;
+      const a = `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${color}" stroke-width="2"${dashed?' stroke-dasharray="4,3"':''}/>`;
+      const head = `<polygon points="${x1},${y1} ${hx+px*4},${hy+py*4} ${hx-px*4},${hy-py*4}" fill="${color}"/>`;
+      const lab = label ? `<text x="${x1+5}" y="${y1-3}" class="label" fill="${color}">${label}</text>` : '';
+      return a+head+lab;
+    }
+
+    let s='';
+    // Left panel: individual phasors from origin
+    s += `<text x="${cx1}" y="20" class="label" text-anchor="middle">Voltages across each element</text>`;
+    s += `<circle cx="${cx1}" cy="${cy1}" r="2" fill="var(--fg)"/>`;
+    s += `<line x1="${cx1-140}" y1="${cy1}" x2="${cx1+140}" y2="${cy1}" class="grid-line"/>`;
+    s += `<line x1="${cx1}" y1="${cy1-140}" x2="${cx1}" y2="${cy1+140}" class="grid-line"/>`;
+    s += `<text x="${cx1+140}" y="${cy1-4}" class="axis-label" text-anchor="end">Re (I direction)</text>`;
+    s += `<text x="${cx1+4}" y="${cy1-130}" class="axis-label">Im</text>`;
+    // V_R along +Re
+    s += arrow(cx1, cy1, cx1 + VR*scale, cy1, 'var(--accent)', `V_R=${VR.toFixed(2)}V`);
+    // V_L along +Im (up)
+    s += arrow(cx1, cy1, cx1, cy1 - VL_mag*scale, 'var(--accent2)', `V_L=${VL_mag.toFixed(2)}V`);
+    // V_C along -Im (down)
+    s += arrow(cx1, cy1, cx1, cy1 + VC_mag*scale, 'var(--accent3)', `V_C=${VC_mag.toFixed(2)}V`);
+
+    // Right panel: tip-to-tail sum showing V_source
+    s += `<text x="${cx2}" y="20" class="label" text-anchor="middle">Tip-to-tail: V_R + V_L + V_C = V_source</text>`;
+    s += `<circle cx="${cx2}" cy="${cy2}" r="2" fill="var(--fg)"/>`;
+    s += `<line x1="${cx2-140}" y1="${cy2}" x2="${cx2+140}" y2="${cy2}" class="grid-line"/>`;
+    s += `<line x1="${cx2}" y1="${cy2-140}" x2="${cx2}" y2="${cy2+140}" class="grid-line"/>`;
+    let px=cx2, py=cy2;
+    // V_R
+    let nx = px + VR*scale, ny = py;
+    s += arrow(px,py,nx,ny,'var(--accent)','V_R');
+    px=nx; py=ny;
+    // V_L (up)
+    nx = px; ny = py - VL_mag*scale;
+    s += arrow(px,py,nx,ny,'var(--accent2)','V_L');
+    px=nx; py=ny;
+    // V_C (down)
+    nx = px; ny = py + VC_mag*scale;
+    s += arrow(px,py,nx,ny,'var(--accent3)','V_C');
+    px=nx; py=ny;
+    // V_source = from origin to current tip
+    s += arrow(cx2,cy2,px,py,'var(--warn)',`V_s=${Vs.toFixed(2)}V`, true);
+
+    phasorSvg.innerHTML = s;
+
+    // stats
+    const Q = (2*Math.PI*f0*L)/R;
+    const VLatF0 = Q * Vs;
+    phasorStats.innerHTML = `f = <span class="v">${f.toFixed(1)} Hz</span>
+      (f/f₀ = <span class="v">${(f/f0).toFixed(3)}</span>) ·
+      |Z| = <span class="v">${Zmag.toFixed(2)} Ω</span> ·
+      ∠Z = <span class="v">${(Zang*180/Math.PI).toFixed(1)}°</span> ·
+      |I| = <span class="v">${Imag.toFixed(3)} A</span> ·
+      V_L=V_C at resonance = <span class="v">Q·V_s = ${VLatF0.toFixed(2)} V</span>`;
+  }
+
+  function draw(){
+    const R = +sR.value;
+    const L = (+sL.value) * 1e-3;
+    const C = (+sC.value) * 1e-6;
+    rR.textContent = R.toFixed(1);
+    rL.textContent = (+sL.value).toFixed(1);
+    rC.textContent = (+sC.value).toFixed(2);
+    const f0 = 1/(2*Math.PI*Math.sqrt(L*C));
+    const Q_ser = (2*Math.PI*f0*L)/R;
+    const BW = f0 / Q_ser;
+    // For parallel: Q_par = R*sqrt(C/L), but BW concept similar
+    // We'll use the same BW for the marker on parallel plot
+    drawPlot(serSvg, statsSer, f0, R, R, 'series', R, L, C, BW);
+    const Q_par = R*Math.sqrt(C/L);
+    const BW_par = f0 / Q_par;
+    drawPlot(parSvg, statsPar, f0, R, R, 'parallel', R, L, C, BW_par);
+
+    // chosen freq for phasor
+    const fLo = f0/100, fHi = f0*100;
+    const decades = Math.log10(fHi/fLo);
+    const fSel = fLo * Math.pow(10, (+sF.value)/1000 * decades);
+    rF.textContent = `${fSel.toFixed(1)} Hz (ratio ${(fSel/f0).toFixed(3)}×f₀)`;
+    drawPhasor(fSel, f0, R, L, C, 5);  // Vs = 5V default
+  }
+
+  for (const el of [sR,sL,sC,sF]) el.addEventListener('input', draw);
+  draw();
+})();
+</script>
+</body>
+</html>

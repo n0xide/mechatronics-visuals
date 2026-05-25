@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jacobian — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto;margin:0 auto;cursor:crosshair}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  .matrix{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 14px;margin:8px 0;
+    font:12px ui-monospace,Menlo,monospace;color:var(--fg);white-space:pre;overflow-x:auto}
+  .metric{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:8px 12px;font:12px ui-monospace,monospace}
+  .metric b{color:var(--fg-bright);font-size:14px}
+  .metric.warn{border-color:var(--warn)}
+  .metric.warn b{color:var(--warn)}
+  .metrics{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin:12px 0}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .toggle-row{display:flex;flex-wrap:wrap;gap:14px;margin:6px 0 0}
+  .toggle-row label{display:flex;align-items:center;gap:6px;font:12px ui-monospace,monospace;color:var(--fg-dim);cursor:pointer}
+</style>
+</head>
+<body>
+<main>
+  <h1>Jacobian — joint vs Cartesian velocity</h1>
+  <p class="lede">The Jacobian J maps joint velocities θ̇ to end-effector velocity ẋ: <code>ẋ = J · θ̇</code>.
+  Drag the green tool velocity arrow; the inverse-Jacobian solves for the joint velocities required to make
+  that happen. Near full extension <code>det(J) → 0</code> and joint velocities blow up. The pink shading
+  marks the singularity zone.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>L₁ (m)</label>
+      <input type="range" id="l1" min="0.4" max="1.2" step="0.05" value="0.8">
+      <span class="readout" id="l1RO">0.80</span>
+    </div>
+    <div class="control">
+      <label>L₂ (m)</label>
+      <input type="range" id="l2" min="0.2" max="1.0" step="0.05" value="0.6">
+      <span class="readout" id="l2RO">0.60</span>
+    </div>
+    <div class="control">
+      <label>θ₁ (deg)</label>
+      <input type="range" id="t1" min="-180" max="180" step="1" value="30">
+      <span class="readout" id="t1RO">30</span>
+    </div>
+    <div class="control">
+      <label>θ₂ (deg)</label>
+      <input type="range" id="t2" min="-179" max="179" step="1" value="60">
+      <span class="readout" id="t2RO">60</span>
+    </div>
+    <div class="control">
+      <label>Desired |ẋ| (m/s)</label>
+      <input type="range" id="vmag" min="0.1" max="2.0" step="0.05" value="0.5">
+      <span class="readout" id="vmagRO">0.50</span>
+    </div>
+    <div class="control">
+      <label>Tool velocity direction (deg)</label>
+      <input type="range" id="vang" min="0" max="359" step="1" value="0">
+      <span class="readout" id="vangRO">0</span>
+    </div>
+    <div class="control" style="grid-column:1/-1">
+      <label>Test paths</label>
+      <div class="toggle-row">
+        <button class="btn" id="extend">Sweep θ₂ toward full extension (watch J blow up)</button>
+        <button class="btn" id="cardinal">Cycle ẋ direction at fixed pose</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="armSvg" viewBox="0 0 880 480" width="100%" height="480"></svg>
+  </div>
+
+  <h2>Jacobian at this pose</h2>
+  <div class="matrix" id="jacMat"></div>
+
+  <h2>Joint velocities required</h2>
+  <div class="metrics" id="metrics"></div>
+
+  <h2>The math</h2>
+  <p>For a 2-link planar arm, the Jacobian relating <code>[θ̇₁, θ̇₂]ᵀ</code> to <code>[ẋ, ẏ]ᵀ</code> is:</p>
+  <div class="matrix">J = [ −L₁ sin θ₁ − L₂ sin(θ₁+θ₂)     −L₂ sin(θ₁+θ₂) ]
+    [  L₁ cos θ₁ + L₂ cos(θ₁+θ₂)      L₂ cos(θ₁+θ₂) ]
+
+det(J) = L₁ · L₂ · sin(θ₂)</div>
+  <p>When <code>θ₂ → 0</code> (full extension) or <code>θ₂ → ±π</code> (full fold), <code>det J → 0</code> and
+  the matrix is singular. Inverting it produces joint velocities that diverge for any non-radial ẋ. In
+  practice you either avoid the singularity in planning, or use the damped pseudo-inverse:
+  <code>J⁺ = (JᵀJ + λ²I)⁻¹ Jᵀ</code>, which trades accuracy for stability.</p>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Joint velocities ARE finite when J is non-singular.</b> Pick a tool velocity, read off θ̇₁, θ̇₂. Both are bounded.</li>
+    <li><b>θ₂ near 0° → singularity.</b> Slide θ₂ to ±5° and watch the required θ̇ explode. Same near ±180°.</li>
+    <li><b>Direction matters at singularity.</b> Even at θ₂ = 0, motion along the arm's length (radial) is still feasible — the loss of rank kills only tangential motion. The "blow-up" is direction-dependent.</li>
+    <li><b>The Jacobian is also the force map.</b> By duality, joint torques τ = Jᵀ · F_tool. Near singularity, tiny joint torques produce huge tool forces in the lost direction — a benefit for impedance control but a hazard for safety.</li>
+    <li><b>Condition number κ(J)</b> measures "near-singularity." Large κ = bad. Most planners throttle Cartesian speed by 1/κ near the boundary.</li>
+    <li><b>For a 6-DOF arm, J is 6×6.</b> Wrist singularities (alignment of two wrist axes) and elbow singularities (full extension) are common. MoveIt 2 detects them via Jacobian singular-value decomposition.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>JACOBIAN ESSENTIALS</h3>
+      <dl>
+        <dt>Velocity</dt><dd><span class="eq">ẋ = J(θ) · θ̇</span></dd>
+        <dt>Inverse</dt><dd><span class="eq">θ̇ = J⁻¹ · ẋ  (square, full rank)</span></dd>
+        <dt>Pseudo-inverse</dt><dd><span class="eq">θ̇ = J⁺ · ẋ  (rect., min-norm)</span></dd>
+        <dt>Damped</dt><dd><span class="eq">θ̇ = (JᵀJ + λ²I)⁻¹ Jᵀ · ẋ</span></dd>
+        <dt>Static force</dt><dd><span class="eq">τ = Jᵀ · F</span></dd>
+        <dt>Determinant (2-link)</dt><dd><span class="eq">det J = L₁ L₂ sin θ₂</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SINGULARITY TYPES (6-DOF ARM)</h3>
+      <ul>
+        <li><b>Boundary singularity</b> — arm fully extended; lost direction is radial outward.</li>
+        <li><b>Interior singularity</b> — wrist axes align (joints 4 and 6 colinear); lost direction is rotation about that axis.</li>
+        <li><b>Shoulder singularity</b> — wrist on top of shoulder axis; joint 1 spins freely.</li>
+        <li><b>Manipulability index</b> — <span class="eq">w = √det(JJᵀ)</span> → 0 at singularity.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li><b>Computing J⁻¹ near singularity</b> — numerically explodes. Always use damped pseudo-inverse for Cartesian control.</li>
+        <li><b>Ignoring direction</b> — at a singularity some directions are still reachable. Don't blanket-stop.</li>
+        <li><b>Confusing analytical vs geometric J</b> — geometric uses ω; analytical uses Euler-angle rates (problems with own gimbal lock).</li>
+        <li><b>Forgetting τ = JᵀF</b> — joint torques to hold a payload depend on pose. Far from base = high shoulder torque.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 8 — Robotics &amp; Mechatronics Systems</a> ·
+    Topic: Jacobian, singularity, damped pseudo-inverse
+  </footer>
+</main>
+<script>
+const svg = document.getElementById('armSvg');
+function ns(tag, attrs={}, parent){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+let L1=0.8,L2=0.6,t1=30,t2=60,vmag=0.5,vang=0;
+let extendTimer=null, cardTimer=null;
+
+const W=880,H=480,CX=W/2,CY=H*0.6;
+const scale=180;
+function px(x,y){ return [CX+x*scale, CY-y*scale]; }
+
+function jacobian(th1,th2){
+  const s1=Math.sin(th1),c1=Math.cos(th1);
+  const s12=Math.sin(th1+th2),c12=Math.cos(th1+th2);
+  return [[-L1*s1-L2*s12, -L2*s12],
+          [ L1*c1+L2*c12,  L2*c12]];
+}
+function det2(J){ return J[0][0]*J[1][1]-J[0][1]*J[1][0]; }
+function inv2(J){
+  const D = det2(J);
+  if(Math.abs(D)<1e-9) return null;
+  return [[ J[1][1]/D, -J[0][1]/D],
+          [-J[1][0]/D,  J[0][0]/D]];
+}
+function dampedInv(J, lambda){
+  // (JtJ + l^2 I)^-1 Jt
+  const Jt=[[J[0][0],J[1][0]],[J[0][1],J[1][1]]];
+  const JtJ=[
+    [Jt[0][0]*J[0][0]+Jt[0][1]*J[1][0], Jt[0][0]*J[0][1]+Jt[0][1]*J[1][1]],
+    [Jt[1][0]*J[0][0]+Jt[1][1]*J[1][0], Jt[1][0]*J[0][1]+Jt[1][1]*J[1][1]]
+  ];
+  JtJ[0][0]+=lambda*lambda; JtJ[1][1]+=lambda*lambda;
+  const D=JtJ[0][0]*JtJ[1][1]-JtJ[0][1]*JtJ[1][0];
+  const inv=[[JtJ[1][1]/D, -JtJ[0][1]/D],[-JtJ[1][0]/D, JtJ[0][0]/D]];
+  return [
+    [inv[0][0]*Jt[0][0]+inv[0][1]*Jt[1][0], inv[0][0]*Jt[0][1]+inv[0][1]*Jt[1][1]],
+    [inv[1][0]*Jt[0][0]+inv[1][1]*Jt[1][0], inv[1][0]*Jt[0][1]+inv[1][1]*Jt[1][1]]
+  ];
+}
+
+function draw(){
+  clear(svg);
+  // grid
+  for(let gx=-2;gx<=2;gx+=0.25){
+    const [x1,y1]=px(gx,-1.5),[x2,y2]=px(gx,1.5);
+    ns('line',{x1,y1,x2,y2,stroke:'#222831','stroke-width': (gx%1===0)?1:0.5},svg);
+  }
+  for(let gy=-1.5;gy<=1.5;gy+=0.25){
+    const [x1,y1]=px(-2.2,gy),[x2,y2]=px(2.2,gy);
+    ns('line',{x1,y1,x2,y2,stroke:'#222831','stroke-width': (gy%1===0)?1:0.5},svg);
+  }
+  const [bx,by]=px(0,0);
+  // singularity ring (near outer)
+  ns('circle',{cx:bx,cy:by,r:(L1+L2)*scale,fill:'none',stroke:'#ff7b72','stroke-width':2,opacity:0.3,'stroke-dasharray':'4 3'},svg);
+  ns('circle',{cx:bx,cy:by,r:(L1+L2-0.04)*scale,fill:'none',stroke:'#ff7b72','stroke-width':8,opacity:0.18},svg);
+
+  const th1=t1*Math.PI/180, th2=t2*Math.PI/180;
+  const elb=[L1*Math.cos(th1),L1*Math.sin(th1)];
+  const tip=[elb[0]+L2*Math.cos(th1+th2),elb[1]+L2*Math.sin(th1+th2)];
+  const [eX,eY]=px(elb[0],elb[1]);
+  const [tX,tY]=px(tip[0],tip[1]);
+
+  ns('line',{x1:bx,y1:by,x2:eX,y2:eY,stroke:'#5ec8ff','stroke-width':7,'stroke-linecap':'round'},svg);
+  ns('line',{x1:eX,y1:eY,x2:tX,y2:tY,stroke:'#ffb86c','stroke-width':7,'stroke-linecap':'round'},svg);
+  ns('circle',{cx:bx,cy:by,r:9,fill:'#1d232c',stroke:'#dde3ec','stroke-width':2},svg);
+  ns('circle',{cx:eX,cy:eY,r:7,fill:'#1d232c',stroke:'#dde3ec','stroke-width':2},svg);
+
+  // Jacobian
+  const J = jacobian(th1,th2);
+  const D = det2(J);
+  // desired vel
+  const va = vang*Math.PI/180;
+  const xdot = [vmag*Math.cos(va), vmag*Math.sin(va)];
+  const Jinv = inv2(J);
+  const thdotIdeal = Jinv ? [Jinv[0][0]*xdot[0]+Jinv[0][1]*xdot[1], Jinv[1][0]*xdot[0]+Jinv[1][1]*xdot[1]] : [NaN,NaN];
+  // damped
+  const Jd = dampedInv(J, 0.05);
+  const thdotDamp = [Jd[0][0]*xdot[0]+Jd[0][1]*xdot[1], Jd[1][0]*xdot[0]+Jd[1][1]*xdot[1]];
+
+  // draw desired velocity arrow
+  const vlen=70;
+  const vx=tX+vlen*Math.cos(va),vy=tY-vlen*Math.sin(va);
+  ns('line',{x1:tX,y1:tY,x2:vx,y2:vy,stroke:'#a3e635','stroke-width':3},svg);
+  // arrowhead
+  const ahx=vx, ahy=vy;
+  const ang2=va; const a1=ang2+Math.PI-0.4, a2=ang2+Math.PI+0.4;
+  ns('polygon',{points:`${ahx},${ahy} ${ahx+12*Math.cos(a1)},${ahy-12*Math.sin(a1)} ${ahx+12*Math.cos(a2)},${ahy-12*Math.sin(a2)}`,fill:'#a3e635'},svg);
+
+  // Joint velocity indicators (curved arrows at joints, sized by required θ̇)
+  function jointSpeedArc(cx,cy,thdot,color){
+    const r=20+Math.min(40,Math.abs(thdot)*8);
+    const speed=Math.min(Math.abs(thdot)*0.3,Math.PI*1.5);
+    const dir=Math.sign(thdot);
+    const a0=0, a1=dir*speed;
+    const x0=cx+r,y0=cy;
+    const x1=cx+r*Math.cos(a1),y1=cy-r*Math.sin(a1);
+    const large=Math.abs(a1)>Math.PI?1:0;
+    const sweep=dir>0?0:1;
+    ns('path',{d:`M ${x0},${y0} A ${r},${r} 0 ${large} ${sweep} ${x1},${y1}`,fill:'none',stroke:color,'stroke-width':2.5,opacity:0.85},svg);
+  }
+  const td = isFinite(thdotIdeal[0])?thdotIdeal:thdotDamp;
+  jointSpeedArc(bx,by, td[0], '#5ec8ff');
+  jointSpeedArc(eX,eY, td[1], '#ffb86c');
+
+  ns('text',{x:tX+14,y:tY-8,fill:'#a3e635',font:'12px ui-monospace'},svg).textContent='ẋ='+vmag.toFixed(2)+' m/s @'+vang.toFixed(0)+'°';
+
+  // Jacobian matrix display
+  function fmt(v){ return v.toFixed(3).padStart(8); }
+  document.getElementById('jacMat').textContent =
+`pose: θ₁=${t1.toFixed(0)}°, θ₂=${t2.toFixed(0)}°
+
+J = [ ${fmt(J[0][0])}  ${fmt(J[0][1])} ]
+    [ ${fmt(J[1][0])}  ${fmt(J[1][1])} ]
+
+det(J) = ${D.toFixed(4)} = L₁·L₂·sin(θ₂) = ${(L1*L2*Math.sin(th2)).toFixed(4)}`;
+
+  const m=document.getElementById('metrics'); m.innerHTML='';
+  function metric(label,val,warn){
+    const d=document.createElement('div');d.className='metric'+(warn?' warn':'');
+    d.innerHTML='<div style="color:var(--fg-dim)">'+label+'</div><b>'+val+'</b>';
+    m.appendChild(d);
+  }
+  const nearSing = Math.abs(D)<0.05;
+  const cond = (function(){
+    // condition number ~ ratio of singular values via 2x2 SVD via eigenvals of JtJ
+    const a=J[0][0],b=J[0][1],c=J[1][0],d2=J[1][1];
+    const A=a*a+c*c, B=a*b+c*d2, C=b*b+d2*d2;
+    const tr=A+C, det=A*C-B*B;
+    const disc=Math.sqrt(Math.max(0,tr*tr/4-det));
+    const e1=tr/2+disc, e2=tr/2-disc;
+    if(e2<=0) return Infinity;
+    return Math.sqrt(e1/e2);
+  })();
+  metric('det(J)', D.toFixed(4), nearSing);
+  metric('cond number κ', cond>1000?'> 1000':cond.toFixed(1), cond>30);
+  metric('θ̇₁ (exact J⁻¹)', isFinite(thdotIdeal[0])?thdotIdeal[0].toFixed(3)+' rad/s':'∞', nearSing);
+  metric('θ̇₂ (exact J⁻¹)', isFinite(thdotIdeal[1])?thdotIdeal[1].toFixed(3)+' rad/s':'∞', nearSing);
+  metric('θ̇₁ (damped J⁺)', thdotDamp[0].toFixed(3)+' rad/s');
+  metric('θ̇₂ (damped J⁺)', thdotDamp[1].toFixed(3)+' rad/s');
+}
+
+['l1','l2','t1','t2','vmag','vang'].forEach(id=>{
+  document.getElementById(id).oninput = e=>{
+    const v = parseFloat(e.target.value);
+    if(id==='l1') L1=v; else if(id==='l2') L2=v;
+    else if(id==='t1') t1=v; else if(id==='t2') t2=v;
+    else if(id==='vmag') vmag=v; else vang=v;
+    document.getElementById(id+'RO').textContent = (id==='l1'||id==='l2'||id==='vmag')?v.toFixed(2):v.toFixed(0);
+    draw();
+  };
+});
+document.getElementById('extend').onclick = ()=>{
+  if(extendTimer){ clearInterval(extendTimer); extendTimer=null; return; }
+  let p=0;
+  extendTimer=setInterval(()=>{
+    p+=0.02;
+    t2 = 90*Math.cos(p) * Math.exp(-p*0.1) + 5*Math.sin(p*0.3);
+    if(p>5) t2 = 90*Math.exp(-(p-5)*0.5);  // approach 0
+    document.getElementById('t2').value=t2;
+    document.getElementById('t2RO').textContent=t2.toFixed(0);
+    draw();
+    if(p>9){ clearInterval(extendTimer); extendTimer=null; }
+  },40);
+};
+document.getElementById('cardinal').onclick = ()=>{
+  if(cardTimer){ clearInterval(cardTimer); cardTimer=null; return; }
+  let p=0;
+  cardTimer=setInterval(()=>{
+    p+=4;
+    vang = p%360;
+    document.getElementById('vang').value=vang;
+    document.getElementById('vangRO').textContent=vang.toFixed(0);
+    draw();
+    if(p>720){ clearInterval(cardTimer); cardTimer=null; }
+  },35);
+};
+draw();
+</script>
+</body>
+</html>

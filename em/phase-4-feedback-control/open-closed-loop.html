@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open-loop vs closed-loop — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .block{fill:#1f3a4a;stroke:#5ec8ff;stroke-width:1.5;rx:4}
+  .block-plant{fill:#3a2a1f;stroke:#ffb86c;stroke-width:1.5;rx:4}
+  .sum-node{fill:#0e1116;stroke:#dde3ec;stroke-width:1.5}
+  .arrow-head{fill:#dde3ec}
+</style>
+</head>
+<body>
+<main>
+  <h1>Open-loop vs closed-loop control</h1>
+  <p class="lede">An open-loop controller assumes the plant behaves exactly as modelled — no measurement, no correction.
+  A closed-loop controller measures the output and subtracts setpoint from measurement to compute an error, then
+  drives the actuator to shrink that error. Add a disturbance below and watch what happens.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Disturbance magnitude</label>
+      <input type="range" id="disturb" min="0" max="0.6" step="0.02" value="0.25">
+      <span class="readout" id="disturbRO">0.25</span>
+    </div>
+    <div class="control">
+      <label>Disturbance start time (s)</label>
+      <input type="range" id="dstart" min="1" max="8" step="0.5" value="4">
+      <span class="readout" id="dstartRO">4.0 s</span>
+    </div>
+    <div class="control">
+      <label>Plant gain mismatch (% of nominal)</label>
+      <input type="range" id="mismatch" min="50" max="150" step="2" value="100">
+      <span class="readout" id="mismatchRO">100 %</span>
+    </div>
+    <div class="control">
+      <label>Closed-loop P gain Kp</label>
+      <input type="range" id="kp" min="0.5" max="8" step="0.1" value="3">
+      <span class="readout" id="kpRO">3.0</span>
+    </div>
+    <div class="control">
+      <label>Setpoint r</label>
+      <input type="range" id="sp" min="0.2" max="1.5" step="0.05" value="1">
+      <span class="readout" id="spRO">1.00</span>
+    </div>
+  </section>
+
+  <h2>Block diagrams</h2>
+  <div class="figure">
+    <svg id="diagSvg" viewBox="0 0 880 360" width="100%" height="360"></svg>
+  </div>
+
+  <h2>Step response — same setpoint, same plant, with disturbance</h2>
+  <div class="figure">
+    <svg id="plotSvg" viewBox="0 0 880 320" width="100%" height="320"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#ffb86c"></span>Open-loop output</span>
+      <span><span class="swatch" style="background:#5ec8ff"></span>Closed-loop output</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Setpoint r</span>
+      <span><span class="swatch" style="background:#ff7b72"></span>Disturbance load (right axis)</span>
+    </div>
+  </div>
+
+  <div id="errSummary" class="figure" style="padding:14px 18px;font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>
+
+  <h2>Stepper vs servo — the canonical hobby example</h2>
+  <table>
+    <thead><tr><th>Aspect</th><th>Stepper (open-loop position)</th><th>Servo (closed-loop position)</th></tr></thead>
+    <tbody>
+      <tr><td>Position feedback</td><td>None — counts pulses sent</td><td>Encoder (incremental or absolute)</td></tr>
+      <tr><td>Behaviour on missed step</td><td>Permanently lost — error grows forever</td><td>Detected by encoder, corrected</td></tr>
+      <tr><td>Behaviour under load spike</td><td>Stalls silently, may skip steps</td><td>Increases current until torque limit hit</td></tr>
+      <tr><td>Cost / complexity</td><td>Cheap; simple step+direction interface</td><td>Higher cost; needs encoder + control loop</td></tr>
+      <tr><td>Typical use</td><td>3D printers, low-load CNC, simple linear stages</td><td>Robot arms, CNC machining centres, drones</td></tr>
+    </tbody>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Open-loop has no idea anything went wrong.</b> The orange trace shifts by the entire disturbance amount and stays there forever, because there is no measurement to compare against.</li>
+    <li><b>Closed-loop sees the error and shrinks it.</b> The blue trace dips momentarily when the disturbance hits, then the controller fights it back toward the setpoint. With P-only control there is a small residual offset (covered in the I-control visual).</li>
+    <li><b>Plant gain mismatch is fatal for open-loop.</b> Slide "plant gain mismatch" away from 100 % — open-loop never reaches the setpoint, but closed-loop barely cares, because it's driven by error, not by a model.</li>
+    <li><b>Higher Kp shrinks the disturbance dip faster.</b> But push it too far and the closed-loop trace will start to oscillate or overshoot — that's the next visual.</li>
+    <li><b>Open-loop wins when the plant is perfectly known and untouched by disturbances.</b> Lasers steering galvos in clean rooms, microwave-oven magnetrons, and steppers in benign loads can run open-loop forever.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>BLOCK-DIAGRAM ALGEBRA</h3>
+      <dl>
+        <dt>Open-loop</dt><dd><span class="eq">y = G · u</span><span class="eq-note">no feedback</span></dd>
+        <dt>Closed-loop</dt><dd><span class="eq">y = (G·C / (1 + G·C)) · r</span></dd>
+        <dt>Tracking error</dt><dd><span class="eq">e = r − y</span></dd>
+        <dt>Disturbance rejection</dt><dd><span class="eq">y/d = G / (1 + G·C)</span><span class="eq-note">small for large loop gain</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>WHEN TO USE WHICH</h3>
+      <ul>
+        <li><b>Open-loop</b> — plant is known, repeatable, disturbance-free, cheap actuator</li>
+        <li><b>Closed-loop</b> — disturbances, varying load, precision matters, anything safety-critical</li>
+        <li><b>Hybrid (feed-forward + feedback)</b> — most real motion control; covered in feed-forward visual</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Stepper with skipped steps</b> drifts forever and you only find out at the end of the job</li>
+        <li><b>Open-loop thermal control</b> on a heater works until ambient changes, then the part is over-baked</li>
+        <li><b>Closed-loop with bad sensor</b> chases noise; controller now reduces accuracy</li>
+        <li><b>Loop gain too high</b> turns disturbance rejection into oscillation</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 4 — Feedback Control</a> ·
+    Topic: open-loop vs closed-loop, disturbance rejection, plant uncertainty
+  </footer>
+</main>
+<script>
+const diagSvg = document.getElementById('diagSvg');
+const plotSvg = document.getElementById('plotSvg');
+
+function ns(tag, attrs={}, parent){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+let disturb = 0.25, dstart = 4, mismatch = 1.0, kp = 3.0, sp = 1.0;
+
+function drawBlock(svg, x, y, w, h, label, sub, cls){
+  ns('rect',{x,y,width:w,height:h,class:cls||'block'},svg);
+  ns('text',{x:x+w/2,y:y+h/2-2,class:'label','text-anchor':'middle',fill:'#fff','font-weight':'600'},svg).textContent=label;
+  if(sub) ns('text',{x:x+w/2,y:y+h/2+14,class:'label-dim','text-anchor':'middle'},svg).textContent=sub;
+}
+function arrow(svg, x1, y1, x2, y2, label, lblOffset){
+  ns('line',{x1,y1,x2:x2-6,y2,class:'wire'},svg);
+  const head = `M ${x2},${y2} L ${x2-8},${y2-4} L ${x2-8},${y2+4} Z`;
+  ns('path',{d:head,fill:'#dde3ec'},svg);
+  if(label){
+    ns('text',{x:(x1+x2)/2,y:y1+(lblOffset||-8),class:'label-dim','text-anchor':'middle'},svg).textContent=label;
+  }
+}
+
+function drawDiagram(){
+  clear(diagSvg);
+  // Open-loop
+  ns('text',{x:20,y:24,class:'label',fill:'#ffb86c','font-weight':'600'},diagSvg).textContent='Open-loop  (stepper without encoder)';
+  arrow(diagSvg, 20, 70, 100, 70, 'r (setpoint)');
+  drawBlock(diagSvg, 100, 50, 130, 40, 'Controller', 'u = K · r', 'block');
+  arrow(diagSvg, 230, 70, 360, 70, 'u');
+  drawBlock(diagSvg, 360, 50, 130, 40, 'Plant G', 'motor + load', 'block-plant');
+  arrow(diagSvg, 490, 70, 620, 70, 'y (open-loop output)');
+  // Disturbance into plant
+  ns('line',{x1:420,y1:20,x2:420,y2:50,class:'wire',stroke:'#ff7b72'},diagSvg);
+  ns('text',{x:430,y:22,class:'label',fill:'#ff7b72'},diagSvg).textContent='d (disturbance)';
+
+  // Closed-loop
+  ns('text',{x:20,y:194,class:'label',fill:'#5ec8ff','font-weight':'600'},diagSvg).textContent='Closed-loop  (servo with encoder)';
+  arrow(diagSvg, 20, 240, 82, 240, 'r');
+  // sum
+  ns('circle',{cx:96,cy:240,r:14,class:'sum-node'},diagSvg);
+  ns('line',{x1:96,y1:230,x2:96,y2:250,stroke:'#dde3ec'},diagSvg);
+  ns('line',{x1:86,y1:240,x2:106,y2:240,stroke:'#dde3ec'},diagSvg);
+  ns('text',{x:84,y:228,class:'label-dim'},diagSvg).textContent='+';
+  ns('text',{x:84,y:262,class:'label-dim'},diagSvg).textContent='−';
+  arrow(diagSvg, 110, 240, 200, 240, 'e = r − y');
+  drawBlock(diagSvg, 200, 220, 130, 40, 'Controller C', 'PID', 'block');
+  arrow(diagSvg, 330, 240, 430, 240, 'u');
+  drawBlock(diagSvg, 430, 220, 130, 40, 'Plant G', 'motor + load', 'block-plant');
+  arrow(diagSvg, 560, 240, 740, 240, 'y (closed-loop output)');
+  // Disturbance into plant
+  ns('line',{x1:495,y1:185,x2:495,y2:220,class:'wire',stroke:'#ff7b72'},diagSvg);
+  ns('text',{x:505,y:188,class:'label',fill:'#ff7b72'},diagSvg).textContent='d (disturbance)';
+  // Feedback path
+  ns('line',{x1:700,y1:240,x2:700,y2:320,class:'wire'},diagSvg);
+  ns('line',{x1:700,y1:320,x2:96,y2:320,class:'wire'},diagSvg);
+  ns('line',{x1:96,y1:320,x2:96,y2:254,class:'wire'},diagSvg);
+  // Sensor block on the feedback
+  drawBlock(diagSvg, 350, 300, 120, 36, 'Sensor', 'encoder', 'block');
+  ns('text',{x:600,y:312,class:'label-dim'},diagSvg).textContent='feedback';
+}
+
+// Simulator: first-order plant tau·dy/dt + y = K · u, with constant K_actual = mismatch.
+// Open-loop: u = sp / K_nominal (assumes K=1); output = K_actual * u
+// Closed-loop: u = kp * (sp - y_meas)
+function simulate(){
+  const T = 12, dt = 0.01;
+  const N = Math.floor(T/dt);
+  const tau = 0.6;
+  const K_nom = 1.0;
+  const K_act = mismatch;
+  let yOL = 0, yCL = 0;
+  const series = {t:[], yOL:[], yCL:[], r:[], d:[]};
+  for(let i=0;i<N;i++){
+    const t = i*dt;
+    const d = (t >= dstart) ? disturb : 0;
+    const uOL = sp / K_nom;
+    const uCL = kp * (sp - yCL);
+    // dy/dt = (K_act*u - y)/tau + d (disturbance enters at plant output)
+    yOL += dt * ((K_act*uOL - yOL)/tau) + dt*d/tau;
+    yCL += dt * ((K_act*uCL - yCL)/tau) + dt*d/tau;
+    series.t.push(t); series.yOL.push(yOL); series.yCL.push(yCL);
+    series.r.push(sp); series.d.push(d);
+  }
+  return series;
+}
+
+function drawPlot(){
+  clear(plotSvg);
+  const W=880, H=320;
+  const PAD_L = 60, PAD_R = 60, PAD_T = 20, PAD_B = 40;
+  const tMax = 12;
+  const yMax = Math.max(2.0, sp*1.5);
+
+  // grid
+  for(let i=0;i<=10;i++){
+    const yy = PAD_T + i/10*(H-PAD_T-PAD_B);
+    ns('line',{x1:PAD_L,y1:yy,x2:W-PAD_R,y2:yy,stroke:'#222831'},plotSvg);
+  }
+  // axes
+  ns('line',{x1:PAD_L,y1:H-PAD_B,x2:W-PAD_R,y2:H-PAD_B,stroke:'#8f99a8'},plotSvg);
+  ns('line',{x1:PAD_L,y1:PAD_T,x2:PAD_L,y2:H-PAD_B,stroke:'#8f99a8'},plotSvg);
+  // ticks
+  for(let i=0;i<=12;i++){
+    const x = PAD_L + i/12*(W-PAD_L-PAD_R);
+    ns('line',{x1:x,y1:H-PAD_B,x2:x,y2:H-PAD_B+5,stroke:'#8f99a8'},plotSvg);
+    ns('text',{x,y:H-PAD_B+18,class:'label-dim','text-anchor':'middle'},plotSvg).textContent=i+'s';
+  }
+  for(let i=0;i<=4;i++){
+    const y = H-PAD_B - i/4*(H-PAD_T-PAD_B);
+    const v = (i/4*yMax).toFixed(2);
+    ns('text',{x:PAD_L-6,y:y+4,class:'label-dim','text-anchor':'end'},plotSvg).textContent=v;
+  }
+  ns('text',{x:PAD_L-40,y:PAD_T+12,class:'label-dim'},plotSvg).textContent='y';
+  ns('text',{x:W-PAD_R+8,y:PAD_T+12,class:'label-dim',fill:'#ff7b72'},plotSvg).textContent='d';
+  ns('text',{x:W-PAD_R,y:H-12,class:'label-dim','text-anchor':'end'},plotSvg).textContent='t (s)';
+
+  function xPx(t){ return PAD_L + t/tMax*(W-PAD_L-PAD_R); }
+  function yPx(y){ return H-PAD_B - y/yMax*(H-PAD_T-PAD_B); }
+  function dPx(d){ return H-PAD_B - d/0.8*(H-PAD_T-PAD_B); }
+
+  const s = simulate();
+
+  // Setpoint
+  ns('line',{x1:xPx(0),y1:yPx(sp),x2:xPx(tMax),y2:yPx(sp),
+    stroke:'#a3e635','stroke-width':1.5,'stroke-dasharray':'5 4',opacity:0.85},plotSvg);
+
+  // Disturbance trace (right axis scaling)
+  let pd = '';
+  for(let i=0;i<s.t.length;i++){
+    if(i===0) pd = `M ${xPx(s.t[i])},${dPx(s.d[i])}`;
+    else pd += ` L ${xPx(s.t[i])},${dPx(s.d[i])}`;
+  }
+  ns('path',{d:pd,fill:'none',stroke:'#ff7b72','stroke-width':1.5,opacity:0.6,'stroke-dasharray':'2 3'},plotSvg);
+
+  // Open-loop
+  let pOL = '';
+  for(let i=0;i<s.t.length;i++){
+    if(i===0) pOL = `M ${xPx(s.t[i])},${yPx(s.yOL[i])}`;
+    else pOL += ` L ${xPx(s.t[i])},${yPx(s.yOL[i])}`;
+  }
+  ns('path',{d:pOL,fill:'none',stroke:'#ffb86c','stroke-width':2.5},plotSvg);
+  // Closed-loop
+  let pCL = '';
+  for(let i=0;i<s.t.length;i++){
+    if(i===0) pCL = `M ${xPx(s.t[i])},${yPx(s.yCL[i])}`;
+    else pCL += ` L ${xPx(s.t[i])},${yPx(s.yCL[i])}`;
+  }
+  ns('path',{d:pCL,fill:'none',stroke:'#5ec8ff','stroke-width':2.5},plotSvg);
+
+  // Steady-state error labels
+  const yOLfinal = s.yOL[s.yOL.length-1];
+  const yCLfinal = s.yCL[s.yCL.length-1];
+  document.getElementById('errSummary').innerHTML =
+    `<b>Setpoint r = ${sp.toFixed(2)}</b><br>` +
+    `<span style="color:#ffb86c">Open-loop final y = ${yOLfinal.toFixed(3)}, error = ${(sp-yOLfinal).toFixed(3)} (${((sp-yOLfinal)/sp*100).toFixed(1)} %)</span><br>` +
+    `<span style="color:#5ec8ff">Closed-loop final y = ${yCLfinal.toFixed(3)}, error = ${(sp-yCLfinal).toFixed(3)} (${((sp-yCLfinal)/sp*100).toFixed(1)} %)  &nbsp;&nbsp; residual P-only error = d / (1 + Kp·K_act)</span>`;
+}
+
+function refresh(){ drawDiagram(); drawPlot(); }
+
+document.getElementById('disturb').oninput = e=>{ disturb=parseFloat(e.target.value); document.getElementById('disturbRO').textContent=disturb.toFixed(2); refresh(); };
+document.getElementById('dstart').oninput = e=>{ dstart=parseFloat(e.target.value); document.getElementById('dstartRO').textContent=dstart.toFixed(1)+' s'; refresh(); };
+document.getElementById('mismatch').oninput = e=>{ mismatch=parseFloat(e.target.value)/100; document.getElementById('mismatchRO').textContent=(mismatch*100).toFixed(0)+' %'; refresh(); };
+document.getElementById('kp').oninput = e=>{ kp=parseFloat(e.target.value); document.getElementById('kpRO').textContent=kp.toFixed(1); refresh(); };
+document.getElementById('sp').oninput = e=>{ sp=parseFloat(e.target.value); document.getElementById('spRO').textContent=sp.toFixed(2); refresh(); };
+
+refresh();
+</script>
+</body>
+</html>

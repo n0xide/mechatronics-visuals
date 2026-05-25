@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Free vibration — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  /* Common SVG conventions */
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Free vibration — mass-spring-damper decay</h1>
+  <p class="lede">Pluck the mass and let go. The system oscillates at its damped natural frequency
+  while energy drains into the damper. Slide m, k, and c to see the three damping regimes
+  (underdamped, critically damped, overdamped) and watch the decay envelope change shape.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Mass m (kg)</label>
+      <input type="range" id="mass" min="0.1" max="10" step="0.1" value="1">
+      <span class="readout" id="massRO">1.0 kg</span>
+    </div>
+    <div class="control">
+      <label>Spring k (N/m)</label>
+      <input type="range" id="spring" min="10" max="1000" step="10" value="200">
+      <span class="readout" id="springRO">200 N/m</span>
+    </div>
+    <div class="control">
+      <label>Damping c (N·s/m)</label>
+      <input type="range" id="damp" min="0" max="60" step="0.5" value="4">
+      <span class="readout" id="dampRO">4.0 N·s/m</span>
+    </div>
+    <div class="control">
+      <label>Initial displacement x₀ (m)</label>
+      <input type="range" id="x0" min="0.05" max="0.5" step="0.01" value="0.2">
+      <span class="readout" id="x0RO">0.20 m</span>
+    </div>
+    <div class="control">
+      <label>Animation</label>
+      <div style="display:flex;gap:6px">
+        <button class="btn primary" id="btnPlay">Play</button>
+        <button class="btn" id="btnReset">Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="msdSvg" viewBox="0 0 880 220" width="100%" height="220"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>Mass</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>Spring</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Damper</span>
+    </div>
+  </div>
+
+  <div class="figure">
+    <svg id="plotSvg" viewBox="0 0 880 280" width="100%" height="280"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>x(t) — displacement</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Decay envelope ± x₀·e^(−ζωnt)</span>
+    </div>
+  </div>
+
+  <div id="paramSummary" class="figure" style="padding:14px 18px;font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>
+
+  <h2>Damping regimes</h2>
+  <table>
+    <thead><tr><th>ζ</th><th>Regime</th><th>Behavior</th><th>Typical use</th></tr></thead>
+    <tbody>
+      <tr><td>0</td><td>Undamped</td><td>Pure sinusoid, never decays</td><td>Idealized (impossible in reality)</td></tr>
+      <tr><td>0 &lt; ζ &lt; 1</td><td>Underdamped</td><td>Oscillates while decaying</td><td>Suspensions, instrument bobbing, plucked strings</td></tr>
+      <tr><td>ζ = 1</td><td>Critically damped</td><td>Fastest non-overshooting return</td><td>Servos, door closers, control systems</td></tr>
+      <tr><td>ζ &gt; 1</td><td>Overdamped</td><td>Slow exponential return</td><td>Recoil dampers, low-pass mechanical filters</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Logarithmic decrement</h2>
+  <p>For an underdamped system, measure the ratio of two successive peaks: <code>δ = ln(x₁/x₂)</code>.
+  Then <code>ζ = δ / √(4π² + δ²) ≈ δ/(2π)</code> for small ζ. This lets you back out the damping
+  ratio of a real system from a free-decay measurement.</p>
+  <div id="decrementSummary" class="figure" style="padding:14px 18px;font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>ωn depends only on m and k.</b> The damper changes how fast oscillation dies, not the natural frequency. ωd = ωn√(1-ζ²) only diverges from ωn for high damping.</li>
+    <li><b>Critical damping is the speed-record holder for non-overshoot.</b> Anything less overshoots; anything more is slower.</li>
+    <li><b>Doubling k raises ωn by √2.</b> Frequency scales as the square root of stiffness — twice the spring, only 41% higher frequency.</li>
+    <li><b>Quadrupling mass halves ωn.</b> Same square-root relationship in reverse: adding mass is a strong frequency-shifter.</li>
+    <li><b>Logarithmic decrement is the diagnostic trick.</b> Strike a structure, count successive peak ratios, get ζ. You don't need to know m or k.</li>
+    <li><b>Real systems almost always have ζ in the 0.005–0.1 range</b> unless deliberately damped. PETG, aluminum, steel are all "underdamped" by default.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Nat. freq</dt><dd><span class="eq">ω_n = √(k / m)</span></dd>
+        <dt>Damping ratio</dt><dd><span class="eq">ζ = c / (2√(mk))</span></dd>
+        <dt>Damped freq</dt><dd><span class="eq">ω_d = ω_n √(1 − ζ²)</span></dd>
+        <dt>Log decrement</dt><dd><span class="eq">δ = 2πζ / √(1 − ζ²)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>DAMPING REGIMES</h3>
+      <table>
+        <thead><tr><th>ζ</th><th>Behaviour</th></tr></thead>
+        <tbody>
+          <tr><td>&lt; 1</td><td>Underdamped — oscillates, decays</td></tr>
+          <tr><td>= 1</td><td>Critical — no overshoot, fastest return</td></tr>
+          <tr><td>&gt; 1</td><td>Overdamped — slow exponential</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li>Use <b>effective mass &amp; stiffness for the mode of interest</b> — not total mass</li>
+        <li><b>Pendulum</b> ω_n = √(g/L) valid only for <b>small angles</b> (sin θ ≈ θ)</li>
+        <li>Doubling k → ω_n × √2 (not 2×); same for halving m</li>
+        <li>Real materials default to ζ ≈ 0.005–0.1 — assume underdamped unless designed otherwise</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 8 — Dynamics</a> ·
+    Topic: Free vibration, mass-spring-damper, damping ratio
+  </footer>
+</main>
+<script>
+const msdSvg = document.getElementById('msdSvg');
+const plotSvg = document.getElementById('plotSvg');
+function ns(tag, attrs={}, parent){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+let m = 1, k = 200, c = 4, x0 = 0.2;
+let playing = true;
+let simT = 0;
+let lastT = 0;
+let xCur = x0;
+
+function params(){
+  const wn = Math.sqrt(k/m);
+  const zeta = c / (2*Math.sqrt(m*k));
+  const wd = wn * Math.sqrt(Math.max(0, 1 - zeta*zeta));
+  return {wn, zeta, wd};
+}
+
+function xOfT(t){
+  // Solution depends on regime
+  const {wn, zeta} = params();
+  if(Math.abs(zeta - 1) < 0.005){
+    // Critically damped: x(t) = (x0 + (v0 + ωn x0) t) e^(-ωn t), v0 = 0
+    return (x0 + wn*x0*t) * Math.exp(-wn*t);
+  } else if(zeta < 1){
+    // Underdamped: x = x0 e^(-ζωnt) cos(ωd t)  + (ζ/√(1-ζ²)) x0 e^(-ζωnt) sin(ωd t)
+    const wd = wn * Math.sqrt(1 - zeta*zeta);
+    return x0 * Math.exp(-zeta*wn*t) * (Math.cos(wd*t) + zeta/Math.sqrt(1-zeta*zeta) * Math.sin(wd*t));
+  } else {
+    // Overdamped: roots s1, s2
+    const r = wn * Math.sqrt(zeta*zeta - 1);
+    const s1 = -zeta*wn + r;
+    const s2 = -zeta*wn - r;
+    // With v0 = 0: A1 + A2 = x0, s1 A1 + s2 A2 = 0 → A1 = -s2 x0/(s1-s2), A2 = s1 x0/(s1-s2)
+    const A1 = -s2*x0/(s1-s2);
+    const A2 = s1*x0/(s1-s2);
+    return A1*Math.exp(s1*t) + A2*Math.exp(s2*t);
+  }
+}
+
+function drawMSD(){
+  clear(msdSvg);
+  const wallX = 80, wallY = 60, wallH = 100;
+  // Wall
+  ns('rect',{x:wallX-12,y:wallY,width:8,height:wallH,fill:'#3a4a5a'},msdSvg);
+  for(let i=0;i<5;i++){
+    ns('line',{x1:wallX-12,y1:wallY+i*25,x2:wallX-22,y2:wallY+i*25+10,stroke:'#8f99a8','stroke-width':1.5},msdSvg);
+  }
+  // Spring (zig-zag)
+  const cx = wallX + 100 + xCur*200;  // displacement scaled
+  const massSize = 50;
+  const massX = cx - massSize/2, massY = wallY + 25;
+  // Spring path: wallX -> massX, oscillating
+  const sx0 = wallX, sx1 = massX;
+  const N = 10;
+  let path = `M ${sx0},${wallY+50}`;
+  for(let i=0;i<=N;i++){
+    const xx = sx0 + (sx1-sx0)*i/N;
+    const yy = wallY+50 + ((i%2)?-8:8) * (i>0 && i<N ? 1 : 0);
+    path += ` L ${xx},${yy}`;
+  }
+  ns('path',{d:path,fill:'none',stroke:'#ffb86c','stroke-width':2},msdSvg);
+  // Damper (cylinder + piston)
+  const dy = wallY+90;
+  ns('rect',{x:wallX+10,y:dy-8,width:60,height:16,fill:'none',stroke:'#a3e635','stroke-width':1.5},msdSvg);
+  ns('line',{x1:wallX+40,y1:dy,x2:massX,y2:dy,stroke:'#a3e635','stroke-width':2},msdSvg);
+  ns('rect',{x:wallX+30,y:dy-6,width:12,height:12,fill:'#a3e635',opacity:0.6},msdSvg);  // piston
+  // Mass
+  ns('rect',{x:massX,y:massY,width:massSize,height:massSize,fill:'#1f3a4a',stroke:'#5ec8ff','stroke-width':2,rx:4},msdSvg);
+  ns('text',{x:massX+massSize/2,y:massY+30,class:'label','text-anchor':'middle',fill:'#5ec8ff'},msdSvg).textContent='m';
+  // Position label
+  ns('line',{x1:wallX+100,y1:wallY+wallH+15,x2:cx,y2:wallY+wallH+15,stroke:'#5ec8ff','stroke-width':1,'stroke-dasharray':'3 3'},msdSvg);
+  ns('text',{x:(wallX+100+cx)/2,y:wallY+wallH+30,class:'label-dim','text-anchor':'middle'},msdSvg).textContent=`x = ${xCur.toFixed(3)} m`;
+
+  // Parameter readouts
+  const {wn, zeta, wd} = params();
+  ns('text',{x:500,y:60,class:'label',fill:'#dde3ec','font-weight':'600'},msdSvg).textContent='System parameters';
+  ns('text',{x:500,y:82,class:'label'},msdSvg).textContent=`ωn = √(k/m) = ${wn.toFixed(3)} rad/s`;
+  ns('text',{x:500,y:104,class:'label'},msdSvg).textContent=`fn = ${(wn/(2*Math.PI)).toFixed(3)} Hz`;
+  ns('text',{x:500,y:126,class:'label'},msdSvg).textContent=`c_cr = 2√(mk) = ${(2*Math.sqrt(m*k)).toFixed(2)} N·s/m`;
+  let regime = '', col = '#5ec8ff';
+  if(Math.abs(zeta-1) < 0.005){ regime='critically damped (fastest non-overshoot)'; col='#a3e635'; }
+  else if(zeta < 1){ regime='underdamped (oscillates while decaying)'; col='#5ec8ff'; }
+  else { regime='overdamped (slow exponential return)'; col='#ffb86c'; }
+  ns('text',{x:500,y:152,class:'label',fill:col},msdSvg).textContent=`ζ = c/c_cr = ${zeta.toFixed(3)}`;
+  ns('text',{x:500,y:172,class:'label-dim'},msdSvg).textContent=regime;
+  if(zeta < 1){
+    ns('text',{x:500,y:194,class:'label-dim'},msdSvg).textContent=`ωd = ωn√(1-ζ²) = ${wd.toFixed(3)} rad/s`;
+  }
+
+  // Update summary
+  document.getElementById('paramSummary').innerHTML =
+    `<b>ωn = ${wn.toFixed(3)} rad/s (${(wn/(2*Math.PI)).toFixed(3)} Hz),  ζ = ${zeta.toFixed(3)},  c_cr = ${(2*Math.sqrt(m*k)).toFixed(2)} N·s/m</b><br>` +
+    `<span style="color:var(--fg-dim)">Regime: ${regime}</span>`;
+}
+
+function drawPlot(){
+  clear(plotSvg);
+  const W=880, H=280;
+  const PAD_L = 60, PAD_R = 20, PAD_T = 30, PAD_B = 40;
+  const tMax = 8;  // seconds
+  const yMax = x0 * 1.3;
+
+  // Axes
+  ns('line',{x1:PAD_L,y1:H-PAD_B,x2:W-PAD_R,y2:H-PAD_B,stroke:'#8f99a8','stroke-width':1},plotSvg);
+  ns('line',{x1:PAD_L,y1:PAD_T,x2:PAD_L,y2:H-PAD_B,stroke:'#8f99a8','stroke-width':1},plotSvg);
+  // Zero line
+  const y0 = PAD_T + (H-PAD_B-PAD_T)/2;
+  ns('line',{x1:PAD_L,y1:y0,x2:W-PAD_R,y2:y0,stroke:'#2a313c','stroke-width':1},plotSvg);
+  // X ticks
+  for(let i=0;i<=8;i++){
+    const x = PAD_L + i/8 * (W-PAD_L-PAD_R);
+    ns('line',{x1:x,y1:H-PAD_B,x2:x,y2:H-PAD_B+5,stroke:'#8f99a8'},plotSvg);
+    ns('text',{x,y:H-PAD_B+18,class:'label-dim','text-anchor':'middle'},plotSvg).textContent=i + 's';
+  }
+  ns('text',{x:W-PAD_R,y:H-12,class:'label-dim','text-anchor':'end'},plotSvg).textContent='t (s)';
+  // Y label
+  ns('text',{x:14,y:y0-90,class:'label-dim'},plotSvg).textContent='+x₀';
+  ns('text',{x:14,y:y0,class:'label-dim'},plotSvg).textContent='0';
+  ns('text',{x:14,y:y0+90,class:'label-dim'},plotSvg).textContent='−x₀';
+
+  function xPx(t){ return PAD_L + (t/tMax) * (W-PAD_L-PAD_R); }
+  function yPx(x){ return y0 - (x/yMax) * 90; }
+
+  const {wn, zeta} = params();
+
+  // Decay envelope
+  if(zeta < 1){
+    let pE = `M ${xPx(0)},${yPx(x0)}`;
+    for(let i=1;i<=400;i++){
+      const t = i/400*tMax;
+      const env = x0 * Math.exp(-zeta*wn*t);
+      pE += ` L ${xPx(t)},${yPx(env)}`;
+    }
+    ns('path',{d:pE,fill:'none',stroke:'#a3e635','stroke-width':1.5,'stroke-dasharray':'4 3',opacity:0.6},plotSvg);
+    let pE2 = `M ${xPx(0)},${yPx(-x0)}`;
+    for(let i=1;i<=400;i++){
+      const t = i/400*tMax;
+      const env = -x0 * Math.exp(-zeta*wn*t);
+      pE2 += ` L ${xPx(t)},${yPx(env)}`;
+    }
+    ns('path',{d:pE2,fill:'none',stroke:'#a3e635','stroke-width':1.5,'stroke-dasharray':'4 3',opacity:0.6},plotSvg);
+  }
+
+  // x(t) curve
+  let pX = '';
+  for(let i=0;i<=600;i++){
+    const t = i/600*tMax;
+    const xv = xOfT(t);
+    if(i===0) pX = `M ${xPx(t)},${yPx(xv)}`;
+    else pX += ` L ${xPx(t)},${yPx(xv)}`;
+  }
+  ns('path',{d:pX,fill:'none',stroke:'#5ec8ff','stroke-width':2},plotSvg);
+
+  // Time cursor
+  const tCur = simT;
+  if(tCur >= 0 && tCur <= tMax){
+    ns('line',{x1:xPx(tCur),y1:PAD_T,x2:xPx(tCur),y2:H-PAD_B,stroke:'#fff','stroke-width':1,'stroke-dasharray':'4 4',opacity:0.4},plotSvg);
+    ns('circle',{cx:xPx(tCur),cy:yPx(xCur),r:5,fill:'#fff'},plotSvg);
+  }
+
+  // Decrement display: find first two peaks (only for underdamped)
+  if(zeta > 0 && zeta < 1){
+    const wd = wn * Math.sqrt(1 - zeta*zeta);
+    const Tperiod = 2*Math.PI/wd;
+    const x1Val = xOfT(0);
+    const x2Val = xOfT(Tperiod);
+    if(x1Val > 0 && x2Val > 0){
+      const delta = Math.log(Math.abs(x1Val/x2Val));
+      const zetaEst = delta / Math.sqrt(4*Math.PI*Math.PI + delta*delta);
+      document.getElementById('decrementSummary').innerHTML =
+        `<b>Logarithmic decrement δ = ln(x₁/x₂) = ln(${x1Val.toFixed(4)} / ${x2Val.toFixed(4)}) = ${delta.toFixed(4)}</b><br>` +
+        `<span style="color:var(--fg-dim)">Estimated ζ = δ/√(4π² + δ²) = ${zetaEst.toFixed(4)} &nbsp; (actual ζ = ${zeta.toFixed(4)}; matches because the formula is exact for free vibration)</span><br>` +
+        `<span style="color:var(--fg-dim)">Damped period T_d = 2π/ωd = ${Tperiod.toFixed(3)} s, damped freq f_d = ${(1/Tperiod).toFixed(3)} Hz</span>`;
+    }
+  } else {
+    document.getElementById('decrementSummary').innerHTML =
+      `<span style="color:var(--fg-dim)">Logarithmic decrement is only defined for underdamped systems (oscillating peaks). Decrease c to get underdamped behavior.</span>`;
+  }
+}
+
+// Controls
+document.getElementById('mass').oninput = e=>{
+  m = parseFloat(e.target.value);
+  document.getElementById('massRO').textContent = m.toFixed(2) + ' kg';
+  simT = 0; xCur = x0;
+  drawMSD(); drawPlot();
+};
+document.getElementById('spring').oninput = e=>{
+  k = parseFloat(e.target.value);
+  document.getElementById('springRO').textContent = k.toFixed(0) + ' N/m';
+  simT = 0; xCur = x0;
+  drawMSD(); drawPlot();
+};
+document.getElementById('damp').oninput = e=>{
+  c = parseFloat(e.target.value);
+  document.getElementById('dampRO').textContent = c.toFixed(1) + ' N·s/m';
+  simT = 0; xCur = x0;
+  drawMSD(); drawPlot();
+};
+document.getElementById('x0').oninput = e=>{
+  x0 = parseFloat(e.target.value);
+  document.getElementById('x0RO').textContent = x0.toFixed(2) + ' m';
+  simT = 0; xCur = x0;
+  drawMSD(); drawPlot();
+};
+document.getElementById('btnPlay').onclick = ()=>{
+  playing = !playing;
+  document.getElementById('btnPlay').textContent = playing ? 'Pause' : 'Play';
+};
+document.getElementById('btnReset').onclick = ()=>{ simT = 0; xCur = x0; drawMSD(); drawPlot(); };
+
+function animate(t){
+  if(playing){
+    const dt = lastT ? Math.min(0.05,(t-lastT)/1000) : 0;
+    simT += dt;
+    if(simT > 8) simT = 0;
+    xCur = xOfT(simT);
+    drawMSD();
+    drawPlot();
+  }
+  lastT = t;
+  requestAnimationFrame(animate);
+}
+drawMSD();
+drawPlot();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

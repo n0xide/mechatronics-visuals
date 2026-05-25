@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Op-Amp Configurations — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0;flex-wrap:wrap}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .formula{font:14px ui-monospace,monospace;color:var(--accent2);
+    background:var(--bg-elev2);border:1px solid var(--line);
+    padding:8px 12px;border-radius:4px;margin:8px 0}
+  .formula b{color:var(--fg-bright)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Op-Amp Configurations</h1>
+  <p class="lede">Seven canonical op-amp circuits, each with live schematic, gain formula, and transfer or time-domain response.</p>
+
+  <p>Almost every analog signal-conditioning task you'll encounter — boosting a microphone, buffering a DAC, summing two voltages, threshold detection, sensor difference measurement — maps to one of these seven shapes. Memorize the formulas; the rest is component selection.</p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="inv">Inverting</div>
+    <div class="tab" data-tab="ninv">Non-inverting</div>
+    <div class="tab" data-tab="buf">Buffer</div>
+    <div class="tab" data-tab="diff">Difference</div>
+    <div class="tab" data-tab="int">Integrator</div>
+    <div class="tab" data-tab="der">Differentiator</div>
+    <div class="tab" data-tab="cmp">Comparator</div>
+  </div>
+
+  <!-- INVERTING -->
+  <div class="tab-panel active" id="tab-inv">
+    <div class="formula">Av = <b>−Rf / Rin</b> &nbsp;·&nbsp; Rin_circuit = Rin &nbsp;·&nbsp; virtual ground at − input</div>
+    <section class="controls">
+      <div class="control">
+        <label>Rin: <span class="readout" id="invRinRead">1.0 kΩ</span></label>
+        <input id="invRin" type="range" min="100" max="100000" step="100" value="1000">
+      </div>
+      <div class="control">
+        <label>Rf: <span class="readout" id="invRfRead">10 kΩ</span></label>
+        <input id="invRf" type="range" min="100" max="1000000" step="100" value="10000">
+      </div>
+    </section>
+    <div class="figure">
+      <svg viewBox="0 0 600 260" width="100%">
+        <!-- Vin -->
+        <line x1="40" y1="160" x2="100" y2="160" class="wire"/>
+        <circle cx="40" cy="160" r="3" fill="var(--accent)"/>
+        <text x="30" y="164" class="label" text-anchor="end" style="fill:var(--accent)">Vin</text>
+        <!-- Rin -->
+        <rect x="100" y="150" width="60" height="20" class="wire" fill="var(--bg-elev2)"/>
+        <text x="130" y="142" class="label" text-anchor="middle">Rin</text>
+        <text x="130" y="186" class="label-dim" text-anchor="middle" id="invRinLbl">1.0 kΩ</text>
+        <!-- to - input -->
+        <line x1="160" y1="160" x2="240" y2="160" class="wire"/>
+        <!-- Rf feedback -->
+        <line x1="200" y1="160" x2="200" y2="80" class="wire"/>
+        <line x1="200" y1="80" x2="400" y2="80" class="wire"/>
+        <line x1="400" y1="80" x2="400" y2="150" class="wire"/>
+        <rect x="290" y="70" width="60" height="20" class="wire" fill="var(--bg-elev2)"/>
+        <text x="320" y="64" class="label" text-anchor="middle">Rf</text>
+        <text x="320" y="106" class="label-dim" text-anchor="middle" id="invRfLbl">10 kΩ</text>
+        <!-- op-amp -->
+        <polygon points="240,130 240,190 300,160" fill="none" stroke="var(--fg)" stroke-width="1.5"/>
+        <text x="250" y="146" class="label">−</text>
+        <text x="250" y="184" class="label">+</text>
+        <line x1="240" y1="180" x2="220" y2="180" class="wire"/>
+        <line x1="220" y1="180" x2="220" y2="210" class="wire"/>
+        <line x1="200" y1="210" x2="240" y2="210" class="wire" stroke-width="2"/>
+        <line x1="210" y1="216" x2="230" y2="216" class="wire"/>
+        <!-- Vout -->
+        <line x1="300" y1="160" x2="460" y2="160" class="wire"/>
+        <circle cx="460" cy="160" r="3" fill="var(--accent2)"/>
+        <text x="470" y="164" class="label" style="fill:var(--accent2)">Vout</text>
+        <!-- virtual ground marker -->
+        <circle cx="200" cy="160" r="3" fill="var(--accent3)"/>
+        <text x="200" y="240" class="label-dim" text-anchor="middle" style="fill:var(--accent3)">virtual ground</text>
+        <!-- gain readout -->
+        <g transform="translate(450,30)">
+          <text x="0" y="14" class="label">Av = <tspan style="fill:var(--accent2);font-weight:600" id="invAv">−10.0</tspan></text>
+          <text x="0" y="30" class="label-dim">= <tspan id="invAvDb">20.0 dB</tspan></text>
+        </g>
+      </svg>
+      <h3>Transfer function</h3>
+      <svg id="invPlot" viewBox="0 0 600 200" width="100%"></svg>
+    </div>
+  </div>
+
+  <!-- NON-INVERTING -->
+  <div class="tab-panel" id="tab-ninv">
+    <div class="formula">Av = <b>1 + Rf / Rg</b> &nbsp;·&nbsp; Rin_circuit ≈ ∞ (gate-style input)</div>
+    <section class="controls">
+      <div class="control">
+        <label>Rg: <span class="readout" id="ninvRgRead">1.0 kΩ</span></label>
+        <input id="ninvRg" type="range" min="100" max="100000" step="100" value="1000">
+      </div>
+      <div class="control">
+        <label>Rf: <span class="readout" id="ninvRfRead">9.0 kΩ</span></label>
+        <input id="ninvRf" type="range" min="0" max="1000000" step="100" value="9000">
+      </div>
+    </section>
+    <div class="figure">
+      <svg viewBox="0 0 600 260" width="100%">
+        <!-- Vin to + -->
+        <line x1="40" y1="180" x2="240" y2="180" class="wire"/>
+        <circle cx="40" cy="180" r="3" fill="var(--accent)"/>
+        <text x="30" y="184" class="label" text-anchor="end" style="fill:var(--accent)">Vin</text>
+        <!-- op-amp -->
+        <polygon points="240,130 240,190 300,160" fill="none" stroke="var(--fg)" stroke-width="1.5"/>
+        <text x="250" y="146" class="label">−</text>
+        <text x="250" y="184" class="label">+</text>
+        <!-- Vout -->
+        <line x1="300" y1="160" x2="460" y2="160" class="wire"/>
+        <circle cx="460" cy="160" r="3" fill="var(--accent2)"/>
+        <text x="470" y="164" class="label" style="fill:var(--accent2)">Vout</text>
+        <!-- feedback -->
+        <line x1="400" y1="160" x2="400" y2="220" class="wire"/>
+        <line x1="400" y1="220" x2="200" y2="220" class="wire"/>
+        <line x1="200" y1="220" x2="200" y2="140" class="wire"/>
+        <line x1="200" y1="140" x2="240" y2="140" class="wire"/>
+        <rect x="290" y="210" width="60" height="20" class="wire" fill="var(--bg-elev2)"/>
+        <text x="320" y="204" class="label" text-anchor="middle">Rf</text>
+        <text x="320" y="246" class="label-dim" text-anchor="middle" id="ninvRfLbl">9.0 kΩ</text>
+        <!-- Rg to ground -->
+        <line x1="200" y1="140" x2="160" y2="140" class="wire"/>
+        <line x1="160" y1="140" x2="160" y2="90" class="wire"/>
+        <rect x="150" y="80" width="20" height="60" class="wire" fill="var(--bg-elev2)"/>
+        <text x="180" y="110" class="label">Rg</text>
+        <text x="180" y="86" class="label-dim" id="ninvRgLbl">1.0 kΩ</text>
+        <line x1="160" y1="60" x2="160" y2="40" class="wire"/>
+        <line x1="140" y1="40" x2="180" y2="40" class="wire" stroke-width="2"/>
+        <text x="190" y="44" class="label-dim">GND</text>
+        <g transform="translate(450,30)">
+          <text x="0" y="14" class="label">Av = <tspan style="fill:var(--accent2);font-weight:600" id="ninvAv">+10.0</tspan></text>
+          <text x="0" y="30" class="label-dim">= <tspan id="ninvAvDb">20.0 dB</tspan></text>
+        </g>
+      </svg>
+      <h3>Transfer function</h3>
+      <svg id="ninvPlot" viewBox="0 0 600 200" width="100%"></svg>
+    </div>
+  </div>
+
+  <!-- BUFFER -->
+  <div class="tab-panel" id="tab-buf">
+    <div class="formula">Av = <b>1</b> &nbsp;·&nbsp; Rin = ∞, Rout = 0 (ideal) &nbsp;·&nbsp; no external R required</div>
+    <p style="color:var(--fg-dim);font-size:13px">Use case: a high-impedance sensor (10 MΩ) drives a 1 kΩ ADC input — direct connection collapses the signal. Insert a buffer; load is now ∞ to the sensor, ~0 from ADC's perspective.</p>
+    <div class="figure">
+      <svg viewBox="0 0 600 240" width="100%">
+        <line x1="40" y1="160" x2="240" y2="160" class="wire"/>
+        <circle cx="40" cy="160" r="3" fill="var(--accent)"/>
+        <text x="30" y="164" class="label" text-anchor="end" style="fill:var(--accent)">Vin</text>
+        <polygon points="240,130 240,190 300,160" fill="none" stroke="var(--fg)" stroke-width="1.5"/>
+        <text x="250" y="146" class="label">−</text>
+        <text x="250" y="184" class="label">+</text>
+        <!-- direct feedback -->
+        <line x1="300" y1="160" x2="350" y2="160" class="wire"/>
+        <line x1="350" y1="160" x2="350" y2="100" class="wire"/>
+        <line x1="350" y1="100" x2="220" y2="100" class="wire"/>
+        <line x1="220" y1="100" x2="220" y2="140" class="wire"/>
+        <line x1="220" y1="140" x2="240" y2="140" class="wire"/>
+        <!-- Vout -->
+        <line x1="350" y1="160" x2="460" y2="160" class="wire"/>
+        <circle cx="460" cy="160" r="3" fill="var(--accent2)"/>
+        <text x="470" y="164" class="label" style="fill:var(--accent2)">Vout = Vin</text>
+        <g transform="translate(450,30)">
+          <text x="0" y="14" class="label">Av = <tspan style="fill:var(--accent2);font-weight:600">+1.0</tspan></text>
+          <text x="0" y="30" class="label-dim">= 0 dB</text>
+        </g>
+      </svg>
+      <h3>Transfer function — perfect unity</h3>
+      <svg id="bufPlot" viewBox="0 0 600 180" width="100%"></svg>
+    </div>
+  </div>
+
+  <!-- DIFFERENCE -->
+  <div class="tab-panel" id="tab-diff">
+    <div class="formula">Vout = <b>(Rf/Rin) · (V2 − V1)</b> &nbsp;·&nbsp; needs matched resistors (R1=R2, R3=R4)</div>
+    <section class="controls">
+      <div class="control">
+        <label>V1 (inverting input): <span class="readout" id="diffV1Read">1.0 V</span></label>
+        <input id="diffV1" type="range" min="-5" max="5" step="0.05" value="1.0">
+      </div>
+      <div class="control">
+        <label>V2 (non-inverting input): <span class="readout" id="diffV2Read">2.0 V</span></label>
+        <input id="diffV2" type="range" min="-5" max="5" step="0.05" value="2.0">
+      </div>
+      <div class="control">
+        <label>Rin: <span class="readout" id="diffRinRead">1.0 kΩ</span></label>
+        <input id="diffRin" type="range" min="100" max="100000" step="100" value="1000">
+      </div>
+      <div class="control">
+        <label>Rf: <span class="readout" id="diffRfRead">10 kΩ</span></label>
+        <input id="diffRf" type="range" min="100" max="1000000" step="100" value="10000">
+      </div>
+    </section>
+    <div class="figure">
+      <svg viewBox="0 0 600 280" width="100%">
+        <!-- V1 to Rin to - -->
+        <circle cx="40" cy="140" r="3" fill="var(--accent)"/>
+        <text x="30" y="144" class="label" text-anchor="end" style="fill:var(--accent)">V1</text>
+        <line x1="40" y1="140" x2="100" y2="140" class="wire"/>
+        <rect x="100" y="130" width="60" height="20" class="wire" fill="var(--bg-elev2)"/>
+        <text x="130" y="122" class="label" text-anchor="middle">Rin</text>
+        <line x1="160" y1="140" x2="240" y2="140" class="wire"/>
+        <!-- Rf -->
+        <line x1="200" y1="140" x2="200" y2="80" class="wire"/>
+        <line x1="200" y1="80" x2="400" y2="80" class="wire"/>
+        <line x1="400" y1="80" x2="400" y2="150" class="wire"/>
+        <rect x="290" y="70" width="60" height="20" class="wire" fill="var(--bg-elev2)"/>
+        <text x="320" y="64" class="label" text-anchor="middle">Rf</text>
+        <!-- V2 to R2 to + -->
+        <circle cx="40" cy="200" r="3" fill="var(--accent)"/>
+        <text x="30" y="204" class="label" text-anchor="end" style="fill:var(--accent)">V2</text>
+        <line x1="40" y1="200" x2="100" y2="200" class="wire"/>
+        <rect x="100" y="190" width="60" height="20" class="wire" fill="var(--bg-elev2)"/>
+        <text x="130" y="226" class="label" text-anchor="middle">R2=Rin</text>
+        <line x1="160" y1="200" x2="240" y2="200" class="wire"/>
+        <!-- R4 to ground from + node -->
+        <line x1="200" y1="200" x2="200" y2="240" class="wire"/>
+        <rect x="190" y="240" width="20" height="40" class="wire" fill="var(--bg-elev2)"/>
+        <text x="220" y="266" class="label">R4=Rf</text>
+        <!-- op-amp -->
+        <polygon points="240,130 240,210 300,170" fill="none" stroke="var(--fg)" stroke-width="1.5"/>
+        <text x="250" y="146" class="label">−</text>
+        <text x="250" y="204" class="label">+</text>
+        <!-- Vout -->
+        <line x1="300" y1="170" x2="460" y2="170" class="wire"/>
+        <circle cx="460" cy="170" r="3" fill="var(--accent2)"/>
+        <text x="470" y="174" class="label" style="fill:var(--accent2)">Vout</text>
+        <g transform="translate(440,20)">
+          <rect x="0" y="0" width="160" height="50" fill="var(--bg-elev2)" stroke="var(--line)"/>
+          <text x="10" y="20" class="label">Vout = <tspan style="fill:var(--accent2);font-weight:600" id="diffVout">10.0 V</tspan></text>
+          <text x="10" y="40" class="label-dim">= (V2−V1)·(Rf/Rin)</text>
+        </g>
+      </svg>
+      <h3>Output vs common-mode shift (V1=V2+offset, both move together)</h3>
+      <svg id="diffPlot" viewBox="0 0 600 200" width="100%"></svg>
+    </div>
+  </div>
+
+  <!-- INTEGRATOR -->
+  <div class="tab-panel" id="tab-int">
+    <div class="formula">Vout = <b>−(1/RC)·∫Vin dt</b> &nbsp;·&nbsp; ramp output for DC input</div>
+    <section class="controls">
+      <div class="control">
+        <label>R: <span class="readout" id="intRRead">10 kΩ</span></label>
+        <input id="intR" type="range" min="1000" max="1000000" step="1000" value="10000">
+      </div>
+      <div class="control">
+        <label>C: <span class="readout" id="intCRead">100 nF</span></label>
+        <input id="intC" type="range" min="1" max="10000" step="1" value="100">
+      </div>
+      <div class="control">
+        <label>Input: <span class="readout" id="intInRead">square</span></label>
+        <select id="intIn">
+          <option value="square" selected>square wave</option>
+          <option value="dc">DC step</option>
+          <option value="sine">sine wave</option>
+        </select>
+      </div>
+    </section>
+    <div class="figure">
+      <p style="color:var(--fg-dim);font-size:12px">τ = RC = <span class="readout" id="intTauRead">1.0 ms</span>. Time-constant determines integration speed.</p>
+      <svg id="intPlot" viewBox="0 0 600 280" width="100%"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>Vin</span>
+        <span><span class="swatch" style="background:var(--accent2)"></span>Vout (integral)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIFFERENTIATOR -->
+  <div class="tab-panel" id="tab-der">
+    <div class="formula">Vout = <b>−RC · (dVin/dt)</b> &nbsp;·&nbsp; pulse output for ramp input &nbsp;·&nbsp; noisy in practice</div>
+    <section class="controls">
+      <div class="control">
+        <label>R: <span class="readout" id="derRRead">10 kΩ</span></label>
+        <input id="derR" type="range" min="1000" max="1000000" step="1000" value="10000">
+      </div>
+      <div class="control">
+        <label>C: <span class="readout" id="derCRead">100 nF</span></label>
+        <input id="derC" type="range" min="1" max="10000" step="1" value="100">
+      </div>
+      <div class="control">
+        <label>Input: <span class="readout" id="derInRead">triangle</span></label>
+        <select id="derIn">
+          <option value="triangle" selected>triangle wave</option>
+          <option value="ramp">ramp</option>
+          <option value="sine">sine wave</option>
+        </select>
+      </div>
+    </section>
+    <div class="figure">
+      <p style="color:var(--fg-dim);font-size:12px">τ = RC = <span class="readout" id="derTauRead">1.0 ms</span>. Big τ → amplifies noise. Add series R at input to limit high-frequency gain.</p>
+      <svg id="derPlot" viewBox="0 0 600 280" width="100%"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>Vin</span>
+        <span><span class="swatch" style="background:var(--accent2)"></span>Vout (derivative)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPARATOR -->
+  <div class="tab-panel" id="tab-cmp">
+    <div class="formula">Vout = <b>Vsat if V+ > V−, −Vsat otherwise</b> &nbsp;·&nbsp; no negative feedback &nbsp;·&nbsp; Schmitt adds hysteresis</div>
+    <section class="controls">
+      <div class="control">
+        <label>Threshold (V−): <span class="readout" id="cmpThRead">0.0 V</span></label>
+        <input id="cmpTh" type="range" min="-5" max="5" step="0.05" value="0">
+      </div>
+      <div class="control">
+        <label>Schmitt hysteresis: <span class="readout" id="cmpHysRead">disabled</span></label>
+        <select id="cmpHysMode">
+          <option value="off" selected>off (plain comparator)</option>
+          <option value="on">on (Schmitt trigger)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>R_hys / R_in ratio: <span class="readout" id="cmpRatioRead">10</span></label>
+        <input id="cmpRatio" type="range" min="2" max="100" step="1" value="10">
+        <small style="color:var(--fg-dim);font-size:11px">larger → narrower hysteresis</small>
+      </div>
+    </section>
+    <div class="figure">
+      <h3>Transfer (input sweep vs output)</h3>
+      <svg id="cmpPlot" viewBox="0 0 600 240" width="100%"></svg>
+      <p style="color:var(--fg-dim);font-size:12px;margin-top:8px">
+        Hysteresis window: <span class="readout" id="cmpWindow">0 V</span>.
+        Schmitt triggers prevent chatter: once the output flips, the threshold moves *away* from the new input, so noise smaller than the window cannot cause re-toggling.
+      </p>
+      <h3>Time-domain response on a noisy signal</h3>
+      <svg id="cmpTimePlot" viewBox="0 0 600 240" width="100%"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>noisy input</span>
+        <span><span class="swatch" style="background:var(--accent2)"></span>output</span>
+        <span><span class="swatch" style="background:var(--accent3)"></span>thresholds</span>
+      </div>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Inverting vs non-inverting</b> — same closed-loop gain math (1/β), but inverting has finite Rin and a virtual ground, non-inverting has near-infinite Rin and no inversion. Choose by input impedance need.</li>
+    <li><b>Buffer is the cheapest impedance fix</b> — when a load is too low for a source, drop in a unity-gain follower. Costs one op-amp and zero design effort.</li>
+    <li><b>Difference amp needs matched resistors</b> — CMRR (common-mode rejection ratio) is limited by resistor matching. 1% resistors give ~40 dB CMRR; for &gt;80 dB you need an instrumentation amplifier IC (matched on-chip).</li>
+    <li><b>Integrators saturate from offset</b> — any DC input offset is integrated forever. Real integrators add a large R parallel to C to cap DC gain.</li>
+    <li><b>Differentiators amplify noise</b> — gain rises with frequency. Series R at input rolls off high-frequency noise; pure differentiators are rarely used outside textbook problems.</li>
+    <li><b>Plain comparator chatters on noise</b> — without hysteresis, a noisy signal crossing the threshold toggles the output many times. Add positive feedback (Schmitt) and the output stays clean.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Inverting</dt><dd><span class="eq">Av = −Rf / Rin</span></dd>
+        <dt>Non-inv</dt><dd><span class="eq">Av = 1 + Rf / Rg</span></dd>
+        <dt>Buffer</dt><dd><span class="eq">Av = 1</span></dd>
+        <dt>Integrator</dt><dd><span class="eq">V_out = −(1/RC) ∫V_in dt</span></dd>
+        <dt>Diff</dt><dd><span class="eq">Av = Rf / Rin · (V+ − V−)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>Inverting</b> — virtual ground at the − input.</li>
+        <li><b>Non-inverting</b> — R_in ≈ infinite (no current at +).</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Integrator drifts on offset</b> — add a bleeder R across C.</li>
+        <li><b>Differentiator amplifies HF noise</b> — add series R at input.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 4 — Semiconductor Devices</a> ·
+    Topic: Op-Amp Configurations
+  </footer>
+</main>
+<script>
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.addEventListener('click',()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('tab-'+t.dataset.tab).classList.add('active');
+      redraw(t.dataset.tab);
+    });
+  });
+
+  function fmtR(r){
+    if(r>=1e6) return (r/1e6).toFixed(2)+" MΩ";
+    if(r>=1e3) return (r/1e3).toFixed(2)+" kΩ";
+    return r.toFixed(0)+" Ω";
+  }
+  function fmtC(c){
+    if(c>=1e-3) return (c*1000).toFixed(2)+" mF";
+    if(c>=1e-6) return (c*1e6).toFixed(2)+" µF";
+    if(c>=1e-9) return (c*1e9).toFixed(0)+" nF";
+    return (c*1e12).toFixed(0)+" pF";
+  }
+  function fmtTime(t){
+    if(t>=1) return t.toFixed(2)+" s";
+    if(t>=1e-3) return (t*1e3).toFixed(2)+" ms";
+    if(t>=1e-6) return (t*1e6).toFixed(2)+" µs";
+    return (t*1e9).toFixed(2)+" ns";
+  }
+
+  function buildTransferPlot(svgId, fn, opts={}){
+    const Vsupply=opts.Vsupply||12;
+    const VinRange=opts.VinRange||5;
+    const svg=document.getElementById(svgId);
+    const vb=svg.getAttribute('viewBox').split(' ').map(Number);
+    const W=vb[2], H=vb[3], mL=60,mR=30,mT=20,mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const xs=v=>mL+((v+VinRange)/(2*VinRange))*pw;
+    const ys=v=>mT+ph/2 - (v/Vsupply)*(ph/2);
+    let s='';
+    for(let i=-5;i<=5;i++){
+      const x=xs(i*VinRange/5);
+      s+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" class="grid-line"/>`;
+      s+=`<text x="${x}" y="${H-mB+16}" class="axis-label" text-anchor="middle">${(i*VinRange/5).toFixed(1)}</text>`;
+    }
+    for(let i=-4;i<=4;i++){
+      const y=ys(i*Vsupply/4);
+      s+=`<line x1="${mL}" y1="${y}" x2="${mL+pw}" y2="${y}" class="grid-line"/>`;
+      s+=`<text x="${mL-6}" y="${y+3}" class="axis-label" text-anchor="end">${(i*Vsupply/4).toFixed(1)}</text>`;
+    }
+    s+=`<text x="${W/2}" y="${H-4}" class="axis-label" text-anchor="middle">Vin (V)</text>`;
+    s+=`<text x="${mL-44}" y="${mT+ph/2}" class="axis-label" text-anchor="middle" transform="rotate(-90,${mL-44},${mT+ph/2})">Vout (V)</text>`;
+    // y=0
+    s+=`<line x1="${mL}" y1="${ys(0)}" x2="${mL+pw}" y2="${ys(0)}" stroke="var(--fg-dim)" stroke-width="1"/>`;
+    let path='';
+    for(let k=0;k<=200;k++){
+      const v=-VinRange+k/200*2*VinRange;
+      const out=Math.max(-Vsupply, Math.min(Vsupply, fn(v)));
+      path+=(k===0?'M':'L')+xs(v)+','+ys(out)+' ';
+    }
+    s+=`<path d="${path}" class="trace trace-2"/>`;
+    svg.innerHTML=s;
+  }
+
+  // === INVERTING ===
+  function updateInv(){
+    const Rin=parseFloat(document.getElementById('invRin').value);
+    const Rf=parseFloat(document.getElementById('invRf').value);
+    const Av=-Rf/Rin;
+    document.getElementById('invRinRead').textContent=fmtR(Rin);
+    document.getElementById('invRinLbl').textContent=fmtR(Rin);
+    document.getElementById('invRfRead').textContent=fmtR(Rf);
+    document.getElementById('invRfLbl').textContent=fmtR(Rf);
+    document.getElementById('invAv').textContent=Av.toFixed(2);
+    document.getElementById('invAvDb').textContent=(20*Math.log10(Math.abs(Av))).toFixed(1)+" dB";
+    buildTransferPlot('invPlot', v=>Av*v);
+  }
+  ['invRin','invRf'].forEach(id=>document.getElementById(id).addEventListener('input',updateInv));
+
+  // === NON-INVERTING ===
+  function updateNinv(){
+    const Rg=parseFloat(document.getElementById('ninvRg').value);
+    const Rf=parseFloat(document.getElementById('ninvRf').value);
+    const Av=1+Rf/Rg;
+    document.getElementById('ninvRgRead').textContent=fmtR(Rg);
+    document.getElementById('ninvRgLbl').textContent=fmtR(Rg);
+    document.getElementById('ninvRfRead').textContent=fmtR(Rf);
+    document.getElementById('ninvRfLbl').textContent=fmtR(Rf);
+    document.getElementById('ninvAv').textContent="+"+Av.toFixed(2);
+    document.getElementById('ninvAvDb').textContent=(20*Math.log10(Av)).toFixed(1)+" dB";
+    buildTransferPlot('ninvPlot', v=>Av*v);
+  }
+  ['ninvRg','ninvRf'].forEach(id=>document.getElementById(id).addEventListener('input',updateNinv));
+
+  // === BUFFER ===
+  function updateBuf(){
+    buildTransferPlot('bufPlot', v=>v, {Vsupply:6, VinRange:5});
+  }
+
+  // === DIFFERENCE ===
+  function updateDiff(){
+    const V1=parseFloat(document.getElementById('diffV1').value);
+    const V2=parseFloat(document.getElementById('diffV2').value);
+    const Rin=parseFloat(document.getElementById('diffRin').value);
+    const Rf=parseFloat(document.getElementById('diffRf').value);
+    const Av=Rf/Rin;
+    const Vout=Av*(V2-V1);
+    document.getElementById('diffV1Read').textContent=V1.toFixed(2)+" V";
+    document.getElementById('diffV2Read').textContent=V2.toFixed(2)+" V";
+    document.getElementById('diffRinRead').textContent=fmtR(Rin);
+    document.getElementById('diffRfRead').textContent=fmtR(Rf);
+    document.getElementById('diffVout').textContent=Vout.toFixed(2)+" V";
+
+    // CMRR plot: hold V2-V1 constant, sweep CM
+    const svg=document.getElementById('diffPlot');
+    const W=600,H=200,mL=60,mR=30,mT=20,mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const cmMax=5;
+    const xs=v=>mL+((v+cmMax)/(2*cmMax))*pw;
+    const ymax=Math.max(2,Math.abs(Vout)*1.5);
+    const ys=v=>mT+ph/2-(v/ymax)*(ph/2);
+    let s='';
+    for(let i=-5;i<=5;i++){
+      const x=xs(i*cmMax/5);
+      s+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" class="grid-line"/>`;
+      s+=`<text x="${x}" y="${H-mB+16}" class="axis-label" text-anchor="middle">${(i*cmMax/5).toFixed(1)}</text>`;
+    }
+    for(let i=-3;i<=3;i++){
+      const y=ys(i*ymax/3);
+      s+=`<line x1="${mL}" y1="${y}" x2="${mL+pw}" y2="${y}" class="grid-line"/>`;
+      s+=`<text x="${mL-6}" y="${y+3}" class="axis-label" text-anchor="end">${(i*ymax/3).toFixed(1)}</text>`;
+    }
+    s+=`<text x="${W/2}" y="${H-4}" class="axis-label" text-anchor="middle">common-mode shift (V)</text>`;
+    s+=`<text x="${mL-44}" y="${mT+ph/2}" class="axis-label" text-anchor="middle" transform="rotate(-90,${mL-44},${mT+ph/2})">Vout (V)</text>`;
+    s+=`<line x1="${mL}" y1="${ys(0)}" x2="${mL+pw}" y2="${ys(0)}" stroke="var(--fg-dim)"/>`;
+    s+=`<line x1="${mL}" y1="${ys(Vout)}" x2="${mL+pw}" y2="${ys(Vout)}" class="trace trace-2"/>`;
+    s+=`<text x="${mL+pw-8}" y="${ys(Vout)-4}" class="label-dim" text-anchor="end" style="fill:var(--accent2)">Vout = ${Vout.toFixed(2)} V (ideal — rejects CM)</text>`;
+    svg.innerHTML=s;
+  }
+  ['diffV1','diffV2','diffRin','diffRf'].forEach(id=>
+    document.getElementById(id).addEventListener('input',updateDiff));
+
+  // === INTEGRATOR ===
+  function updateInt(){
+    const R=parseFloat(document.getElementById('intR').value);
+    const C=parseFloat(document.getElementById('intC').value)*1e-9;
+    const mode=document.getElementById('intIn').value;
+    const tau=R*C;
+    document.getElementById('intRRead').textContent=fmtR(R);
+    document.getElementById('intCRead').textContent=fmtC(C);
+    document.getElementById('intInRead').textContent=mode;
+    document.getElementById('intTauRead').textContent=fmtTime(tau);
+
+    const svg=document.getElementById('intPlot');
+    const W=600,H=280,mL=60,mR=30,mT=20,mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const tMax=10*tau;
+    const xs=t=>mL+(t/tMax)*pw;
+    const Vmax=2;
+    const ys=v=>mT+ph/2-(v/Vmax)*(ph/2);
+    let s='';
+    for(let i=0;i<=10;i++){
+      const x=mL+i/10*pw;
+      s+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" class="grid-line"/>`;
+    }
+    for(let i=-2;i<=2;i++){
+      const y=ys(i*Vmax/2);
+      s+=`<line x1="${mL}" y1="${y}" x2="${mL+pw}" y2="${y}" class="grid-line"/>`;
+      s+=`<text x="${mL-6}" y="${y+3}" class="axis-label" text-anchor="end">${(i*Vmax/2).toFixed(1)}</text>`;
+    }
+    s+=`<text x="${W/2}" y="${H-4}" class="axis-label" text-anchor="middle">time (10·τ shown)</text>`;
+    s+=`<line x1="${mL}" y1="${ys(0)}" x2="${mL+pw}" y2="${ys(0)}" stroke="var(--fg-dim)"/>`;
+
+    const N=400;
+    const dt=tMax/N;
+    let pin='', pout='', integral=0;
+    for(let k=0;k<=N;k++){
+      const t=k*dt;
+      let vin;
+      const T=tMax/3;
+      if(mode==='dc') vin=1;
+      else if(mode==='square') vin=(Math.floor(t/T*2)%2===0)?1:-1;
+      else vin=Math.sin(2*Math.PI*t/T);
+      integral += -(1/tau)*vin*dt;
+      integral = Math.max(-Vmax, Math.min(Vmax, integral));
+      const x=xs(t);
+      pin+=(k===0?'M':'L')+x+','+ys(vin)+' ';
+      pout+=(k===0?'M':'L')+x+','+ys(integral)+' ';
+    }
+    s+=`<path d="${pin}" class="trace trace-1"/>`;
+    s+=`<path d="${pout}" class="trace trace-2"/>`;
+    svg.innerHTML=s;
+  }
+  ['intR','intC','intIn'].forEach(id=>
+    document.getElementById(id).addEventListener('input',updateInt));
+
+  // === DIFFERENTIATOR ===
+  function updateDer(){
+    const R=parseFloat(document.getElementById('derR').value);
+    const C=parseFloat(document.getElementById('derC').value)*1e-9;
+    const mode=document.getElementById('derIn').value;
+    const tau=R*C;
+    document.getElementById('derRRead').textContent=fmtR(R);
+    document.getElementById('derCRead').textContent=fmtC(C);
+    document.getElementById('derInRead').textContent=mode;
+    document.getElementById('derTauRead').textContent=fmtTime(tau);
+
+    const svg=document.getElementById('derPlot');
+    const W=600,H=280,mL=60,mR=30,mT=20,mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const tMax=10*tau;
+    const xs=t=>mL+(t/tMax)*pw;
+    const Vmax=3;
+    const ys=v=>mT+ph/2-(v/Vmax)*(ph/2);
+    let s='';
+    for(let i=0;i<=10;i++){
+      const x=mL+i/10*pw;
+      s+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" class="grid-line"/>`;
+    }
+    for(let i=-3;i<=3;i++){
+      const y=ys(i*Vmax/3);
+      s+=`<line x1="${mL}" y1="${y}" x2="${mL+pw}" y2="${y}" class="grid-line"/>`;
+      s+=`<text x="${mL-6}" y="${y+3}" class="axis-label" text-anchor="end">${(i*Vmax/3).toFixed(1)}</text>`;
+    }
+    s+=`<text x="${W/2}" y="${H-4}" class="axis-label" text-anchor="middle">time (10·τ shown)</text>`;
+    s+=`<line x1="${mL}" y1="${ys(0)}" x2="${mL+pw}" y2="${ys(0)}" stroke="var(--fg-dim)"/>`;
+
+    const N=400;
+    const dt=tMax/N;
+    let pin='', pout='', prev=0;
+    for(let k=0;k<=N;k++){
+      const t=k*dt;
+      let vin;
+      const T=tMax/3;
+      if(mode==='ramp') vin=Math.min(1, t/T);
+      else if(mode==='triangle'){
+        const ph=((t/T)%1);
+        vin = ph<0.5 ? -1+4*ph : 1-4*(ph-0.5);
+      } else vin=Math.sin(2*Math.PI*t/T);
+      const dvdt=(vin-prev)/dt;
+      prev=vin;
+      const vout = -tau*dvdt;
+      const cl=Math.max(-Vmax, Math.min(Vmax, vout));
+      const x=xs(t);
+      pin+=(k===0?'M':'L')+x+','+ys(vin)+' ';
+      pout+=(k===0?'M':'L')+x+','+ys(cl)+' ';
+    }
+    s+=`<path d="${pin}" class="trace trace-1"/>`;
+    s+=`<path d="${pout}" class="trace trace-2"/>`;
+    svg.innerHTML=s;
+  }
+  ['derR','derC','derIn'].forEach(id=>
+    document.getElementById(id).addEventListener('input',updateDer));
+
+  // === COMPARATOR ===
+  function updateCmp(){
+    const Th=parseFloat(document.getElementById('cmpTh').value);
+    const hys=document.getElementById('cmpHysMode').value==='on';
+    const ratio=parseFloat(document.getElementById('cmpRatio').value);
+    const Vsat=5;
+    const Vhys = hys ? Vsat/ratio : 0;
+    const ThLow = Th - Vhys/2;
+    const ThHigh = Th + Vhys/2;
+    document.getElementById('cmpThRead').textContent=Th.toFixed(2)+" V";
+    document.getElementById('cmpHysRead').textContent=hys?'enabled':'disabled';
+    document.getElementById('cmpRatioRead').textContent=ratio.toFixed(0);
+    document.getElementById('cmpWindow').textContent=(2*Vhys).toFixed(3)+" V";
+
+    // Transfer plot — sweep up then down to show hysteresis loop
+    const svg=document.getElementById('cmpPlot');
+    const W=600,H=240,mL=60,mR=30,mT=20,mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const VinR=5;
+    const xs=v=>mL+((v+VinR)/(2*VinR))*pw;
+    const ys=v=>mT+ph/2-(v/(Vsat*1.2))*(ph/2);
+    let s='';
+    for(let i=-5;i<=5;i++){
+      const x=xs(i*VinR/5);
+      s+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" class="grid-line"/>`;
+      s+=`<text x="${x}" y="${H-mB+16}" class="axis-label" text-anchor="middle">${(i*VinR/5).toFixed(1)}</text>`;
+    }
+    for(let i=-4;i<=4;i++){
+      const y=ys(i*Vsat/4);
+      s+=`<line x1="${mL}" y1="${y}" x2="${mL+pw}" y2="${y}" class="grid-line"/>`;
+      s+=`<text x="${mL-6}" y="${y+3}" class="axis-label" text-anchor="end">${(i*Vsat/4).toFixed(1)}</text>`;
+    }
+    s+=`<text x="${W/2}" y="${H-4}" class="axis-label" text-anchor="middle">Vin (V)</text>`;
+    s+=`<text x="${mL-44}" y="${mT+ph/2}" class="axis-label" text-anchor="middle" transform="rotate(-90,${mL-44},${mT+ph/2})">Vout (V)</text>`;
+    s+=`<line x1="${mL}" y1="${ys(0)}" x2="${mL+pw}" y2="${ys(0)}" stroke="var(--fg-dim)"/>`;
+
+    // Threshold guide
+    s+=`<line x1="${xs(ThLow)}" y1="${mT}" x2="${xs(ThLow)}" y2="${mT+ph}" stroke="var(--accent3)" stroke-dasharray="3 3" opacity="0.7"/>`;
+    s+=`<line x1="${xs(ThHigh)}" y1="${mT}" x2="${xs(ThHigh)}" y2="${mT+ph}" stroke="var(--accent3)" stroke-dasharray="3 3" opacity="0.7"/>`;
+
+    // Sweep up: low→high transition at ThHigh
+    let pUp=`M${xs(-VinR)},${ys(-Vsat)} L${xs(ThHigh)},${ys(-Vsat)} L${xs(ThHigh)},${ys(Vsat)} L${xs(VinR)},${ys(Vsat)}`;
+    // Sweep down: high→low transition at ThLow
+    let pDn=`M${xs(VinR)},${ys(Vsat)} L${xs(ThLow)},${ys(Vsat)} L${xs(ThLow)},${ys(-Vsat)} L${xs(-VinR)},${ys(-Vsat)}`;
+    s+=`<path d="${pUp}" class="trace" stroke="var(--accent2)" stroke-width="2"/>`;
+    if(hys) s+=`<path d="${pDn}" class="trace" stroke="var(--accent)" stroke-width="2" opacity="0.85"/>`;
+    if(hys) {
+      s+=`<text x="${mL+pw-8}" y="${mT+14}" class="label-dim" text-anchor="end" style="fill:var(--accent2)">→ sweep up</text>`;
+      s+=`<text x="${mL+pw-8}" y="${mT+28}" class="label-dim" text-anchor="end" style="fill:var(--accent)">← sweep down</text>`;
+    }
+    svg.innerHTML=s;
+
+    // Time-domain on a noisy crossing
+    const svg2=document.getElementById('cmpTimePlot');
+    const W2=600,H2=240;
+    const xs2=t=>mL+(t/1)*(W2-mL-mR);
+    const ph2=H2-mT-mB;
+    const ys2=v=>mT+ph2/2-(v/(Vsat*1.2))*(ph2/2);
+    let t='';
+    // grid
+    for(let i=0;i<=10;i++){
+      const x=mL+i/10*(W2-mL-mR);
+      t+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph2}" class="grid-line"/>`;
+    }
+    for(let i=-4;i<=4;i++){
+      const y=ys2(i*Vsat/4);
+      t+=`<line x1="${mL}" y1="${y}" x2="${mL+W2-mL-mR}" y2="${y}" class="grid-line"/>`;
+      t+=`<text x="${mL-6}" y="${y+3}" class="axis-label" text-anchor="end">${(i*Vsat/4).toFixed(1)}</text>`;
+    }
+    // threshold lines
+    t+=`<line x1="${mL}" y1="${ys2(ThLow)}" x2="${mL+W2-mL-mR}" y2="${ys2(ThLow)}" stroke="var(--accent3)" stroke-dasharray="3 3" opacity="0.7"/>`;
+    t+=`<line x1="${mL}" y1="${ys2(ThHigh)}" x2="${mL+W2-mL-mR}" y2="${ys2(ThHigh)}" stroke="var(--accent3)" stroke-dasharray="3 3" opacity="0.7"/>`;
+
+    // noisy ramp: slow ramp + noise
+    const N=500;
+    let pIn='', pOut='', state=-Vsat;
+    let prevN=0;
+    for(let k=0;k<=N;k++){
+      const tk=k/N;
+      const ramp = -VinR + 2*VinR*tk;
+      // pseudo-random low-pass noise based on threshold and seed
+      prevN = 0.85*prevN + 0.15*(Math.sin(k*0.97)*0.6+Math.sin(k*0.31)*0.4);
+      const noise = prevN*0.5;
+      const vin = ramp + noise;
+      // hysteretic decision
+      if(hys){
+        if(state<0 && vin>ThHigh) state=Vsat;
+        if(state>0 && vin<ThLow) state=-Vsat;
+      } else {
+        state = vin>Th ? Vsat : -Vsat;
+      }
+      pIn += (k===0?'M':'L')+xs2(tk)+','+ys2(vin)+' ';
+      pOut += (k===0?'M':'L')+xs2(tk)+','+ys2(state)+' ';
+    }
+    t+=`<path d="${pIn}" class="trace trace-1" stroke-width="1.2"/>`;
+    t+=`<path d="${pOut}" class="trace trace-2"/>`;
+    t+=`<text x="${W2/2}" y="${H2-4}" class="axis-label" text-anchor="middle">time (rising input + noise)</text>`;
+    svg2.innerHTML=t;
+  }
+  ['cmpTh','cmpHysMode','cmpRatio'].forEach(id=>
+    document.getElementById(id).addEventListener('input',updateCmp));
+
+  function redraw(tab){
+    if(tab==='inv') updateInv();
+    if(tab==='ninv') updateNinv();
+    if(tab==='buf') updateBuf();
+    if(tab==='diff') updateDiff();
+    if(tab==='int') updateInt();
+    if(tab==='der') updateDer();
+    if(tab==='cmp') updateCmp();
+  }
+  updateInv();
+  updateNinv();
+  updateBuf();
+  updateDiff();
+  updateInt();
+  updateDer();
+  updateCmp();
+</script>
+</body>
+</html>

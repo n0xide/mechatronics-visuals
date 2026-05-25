@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boost Converter — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px;margin:12px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px}
+  .stat .lbl{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 16px ui-monospace,monospace;color:var(--accent);margin-top:4px}
+  .phase{display:inline-block;padding:3px 10px;border-radius:4px;
+    font:11px ui-monospace,monospace;margin-right:8px}
+  .phase.on{background:rgba(163,230,53,0.18);color:var(--accent3);
+    border:1px solid var(--accent3)}
+  .phase.off{background:rgba(255,184,108,0.18);color:var(--accent2);
+    border:1px solid var(--accent2)}
+  .warning{background:rgba(255,123,114,0.10);border-left:3px solid var(--warn);
+    padding:10px 14px;margin:12px 0;font-size:13px;color:var(--fg)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Boost Converter — Step-Up DC/DC</h1>
+  <p class="lede">Inductor stores energy from V_in then dumps it through a diode at higher voltage. V_out = V_in / (1-D).</p>
+
+  <p>A boost converter takes a lower DC voltage and raises it. Unlike buck — where the inductor passes filtered DC — boost <b>pumps</b> the output: while the switch is ON, the inductor stores energy from V_in (output is supplied by C_out alone); while OFF, the inductor's collapsing field flings current through the diode into the load. There is no way to get V_out < V_in (the diode prevents it). Boost cannot regulate at D=1 (output collapses), so a minimum input voltage is required. Watch for the <b>right-half-plane zero</b>: stepping D up causes V_out to dip momentarily before rising — this is a fundamental control limit.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>V_in: <span class="readout" id="vinRead">3.7 V</span></label>
+      <input id="vin" type="range" min="0.7" max="12" step="0.05" value="3.7">
+    </div>
+    <div class="control">
+      <label>V_out target: <span class="readout" id="voutRead">5.0 V</span></label>
+      <input id="vout" type="range" min="1" max="24" step="0.1" value="5">
+    </div>
+    <div class="control">
+      <label>L — inductance: <span class="readout" id="lRead">4.7 µH</span></label>
+      <input id="lval" type="range" min="1" max="100" step="0.1" value="4.7">
+    </div>
+    <div class="control">
+      <label>f_sw — switching freq: <span class="readout" id="fRead">1200 kHz</span></label>
+      <input id="fsw" type="range" min="100" max="2400" step="20" value="1200">
+    </div>
+    <div class="control">
+      <label>I_out — load: <span class="readout" id="ioRead">0.50 A</span></label>
+      <input id="iout" type="range" min="0.01" max="2" step="0.01" value="0.5">
+    </div>
+    <div class="control">
+      <label>V_ref (FB pin): <span class="readout" id="vrefRead">0.5 V</span></label>
+      <input id="vref" type="range" min="0.3" max="1.25" step="0.01" value="0.5">
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Topology — non-synchronous boost (TPS61023-style)</h3>
+    <svg viewBox="0 0 720 260" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <!-- V_in source -->
+      <text x="20" y="35" class="label" text-anchor="start">V_in</text>
+      <line x1="40" y1="50" x2="40" y2="220" class="wire"/>
+      <line x1="40" y1="50" x2="80" y2="50" class="wire"/>
+      <line x1="40" y1="220" x2="680" y2="220" class="wire"/>
+      <line x1="670" y1="215" x2="670" y2="230" stroke="var(--fg)" stroke-width="2"/>
+      <line x1="662" y1="230" x2="678" y2="230" stroke="var(--fg)" stroke-width="2"/>
+      <line x1="666" y1="235" x2="674" y2="235" stroke="var(--fg)" stroke-width="2"/>
+
+      <!-- Inductor (input side) -->
+      <line x1="80" y1="50" x2="120" y2="50" class="wire"/>
+      <path d="M 120 50 q 10 -15 20 0 q 10 -15 20 0 q 10 -15 20 0 q 10 -15 20 0 q 10 -15 20 0" stroke="var(--fg)" stroke-width="1.8" fill="none"/>
+      <text x="160" y="35" class="label" text-anchor="middle">L</text>
+      <line x1="220" y1="50" x2="320" y2="50" class="wire"/>
+      <circle cx="320" cy="50" r="3" fill="var(--accent2)"/>
+      <text x="305" y="40" class="label" fill="var(--accent2)">SW</text>
+
+      <!-- Low-side switch (to GND) -->
+      <line x1="320" y1="50" x2="320" y2="140" class="wire"/>
+      <rect id="swfet" x="295" y="140" width="50" height="40" fill="var(--bg-elev2)" stroke="var(--accent3)" stroke-width="2"/>
+      <text x="320" y="165" class="label" text-anchor="middle">Q</text>
+      <line x1="320" y1="180" x2="320" y2="220" class="wire"/>
+      <line x1="345" y1="160" x2="370" y2="160" class="wire"/>
+      <text x="378" y="164" class="label-dim" font-size="10">PWM</text>
+
+      <!-- Diode (forward to V_out) -->
+      <line x1="320" y1="50" x2="380" y2="50" class="wire"/>
+      <polygon id="diode" points="380,40 380,60 410,50" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="2"/>
+      <line x1="410" y1="40" x2="410" y2="60" stroke="var(--accent)" stroke-width="2"/>
+      <text x="395" y="78" class="label" text-anchor="middle">D</text>
+      <line x1="410" y1="50" x2="500" y2="50" class="wire"/>
+      <circle cx="500" cy="50" r="3" fill="var(--accent)"/>
+
+      <!-- C_out -->
+      <line x1="500" y1="50" x2="500" y2="120" class="wire"/>
+      <line x1="485" y1="120" x2="515" y2="120" stroke="var(--fg)" stroke-width="2"/>
+      <line x1="485" y1="128" x2="515" y2="128" stroke="var(--fg)" stroke-width="2"/>
+      <line x1="500" y1="128" x2="500" y2="220" class="wire"/>
+      <text x="525" y="128" class="label">C_out</text>
+
+      <!-- Output / feedback divider -->
+      <line x1="500" y1="50" x2="670" y2="50" class="wire"/>
+      <circle cx="670" cy="50" r="3" fill="var(--accent)"/>
+      <text x="685" y="48" class="label" fill="var(--accent)">V_out</text>
+      <text x="685" y="65" class="label-dim" id="voutAnnot">5.0 V</text>
+
+      <!-- R1 -->
+      <line x1="600" y1="50" x2="600" y2="100" class="wire"/>
+      <rect x="592" y="100" width="16" height="36" fill="var(--bg-elev2)" stroke="var(--fg)" stroke-width="1.5"/>
+      <text x="620" y="122" class="label">R1</text>
+      <line x1="600" y1="136" x2="600" y2="155" class="wire"/>
+      <circle cx="600" cy="155" r="3" fill="var(--accent2)"/>
+      <text x="615" y="153" class="label" fill="var(--accent2)">FB</text>
+      <!-- R2 -->
+      <line x1="600" y1="155" x2="600" y2="175" class="wire"/>
+      <rect x="592" y="175" width="16" height="36" fill="var(--bg-elev2)" stroke="var(--fg)" stroke-width="1.5"/>
+      <text x="620" y="200" class="label">R2</text>
+      <line x1="600" y1="211" x2="600" y2="220" class="wire"/>
+
+      <!-- Arrows for ON / OFF current paths -->
+      <g id="onArrows" opacity="0"></g>
+      <g id="offArrows" opacity="0"></g>
+
+      <!-- Phase indicator -->
+      <text x="430" y="200" class="label" id="phaseTxt">SW ON</text>
+    </svg>
+    <div class="legend">
+      <span><span class="phase on">ON</span>Q closed: V_in → L → GND. L charges. C_out supplies load alone.</span>
+      <span><span class="phase off">OFF</span>Q open: L drives current through D → V_out. L discharges into C_out + load.</span>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Inductor current and switch node — one period</h3>
+    <svg id="wfSvg" viewBox="0 0 720 280" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <!-- I_L axis -->
+      <line x1="60" y1="20" x2="60" y2="140" class="axis"/>
+      <line x1="60" y1="140" x2="700" y2="140" class="axis"/>
+      <text x="60" y="14" class="axis-label" text-anchor="middle">I_L</text>
+      <polyline id="ilTrace" class="trace trace-1" points=""/>
+      <text x="55" y="30" class="label-dim" text-anchor="end" id="ipkLbl">I_pk</text>
+
+      <!-- V_SW axis -->
+      <line x1="60" y1="170" x2="60" y2="260" class="axis"/>
+      <line x1="60" y1="260" x2="700" y2="260" class="axis"/>
+      <text x="60" y="164" class="axis-label" text-anchor="middle">V_SW</text>
+      <polyline id="vswTrace" class="trace trace-2" points=""/>
+      <text x="55" y="178" class="label-dim" text-anchor="end" id="vswHi">V_out</text>
+      <text x="55" y="258" class="label-dim" text-anchor="end">0</text>
+
+      <!-- D marker -->
+      <line id="dLine1" x1="365" y1="20" x2="365" y2="260" stroke="var(--accent2)" stroke-dasharray="2,3"/>
+      <text id="dLabel" x="365" y="278" class="label-dim" fill="var(--accent2)" text-anchor="middle">D·T</text>
+      <text x="60" y="278" class="label-dim" text-anchor="middle">0</text>
+      <text x="700" y="278" class="label-dim" text-anchor="middle">T</text>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>I_L — inductor current (continuous in CCM)</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>V_SW — switch node voltage (0 when ON, V_out when OFF)</span>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>RHP zero — step duty cycle up, watch V_out</h3>
+    <svg id="rhpSvg" viewBox="0 0 720 200" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <line x1="60" y1="20" x2="60" y2="170" class="axis"/>
+      <line x1="60" y1="170" x2="700" y2="170" class="axis"/>
+      <text x="60" y="14" class="axis-label" text-anchor="middle">V_out</text>
+      <text x="705" y="185" class="axis-label">t</text>
+      <line x1="300" y1="20" x2="300" y2="180" stroke="var(--fg-dim)" stroke-dasharray="2,3"/>
+      <text x="300" y="195" class="label-dim" text-anchor="middle">D steps up</text>
+      <polyline points="60,80 295,80 305,120 380,75 700,55" class="trace trace-4"/>
+      <text x="200" y="68" class="label-dim">old V_out</text>
+      <text x="350" y="142" class="label-dim" fill="var(--warn)">↓ dips first!</text>
+      <text x="550" y="42" class="label-dim" fill="var(--accent3)">then rises to new V_out</text>
+    </svg>
+    <p style="font-size:12px;color:var(--fg-dim);margin-top:8px">
+      <b>Why:</b> raising D shortens the OFF time → less time for L to deliver to output → C_out discharges → V_out drops. Only once I_L grows larger does V_out rise. This non-minimum-phase behavior limits feedback bandwidth on boost converters.
+    </p>
+  </div>
+
+  <div class="figure">
+    <h3>Computed values</h3>
+    <div class="stat-grid">
+      <div class="stat"><div class="lbl">Duty Cycle D</div><div class="val" id="statD">26%</div></div>
+      <div class="stat"><div class="lbl">V_out / V_in</div><div class="val" id="statRatio">1.35×</div></div>
+      <div class="stat"><div class="lbl">I_L avg (input current)</div><div class="val" id="statIL">0.68 A</div></div>
+      <div class="stat"><div class="lbl">ΔI_L (ripple)</div><div class="val" id="statRipple">0.55 A</div></div>
+      <div class="stat"><div class="lbl">I_pk</div><div class="val" id="statIpk">0.96 A</div></div>
+      <div class="stat"><div class="lbl">R1/R2 ratio (for V_out)</div><div class="val" id="statDiv">9.0</div></div>
+    </div>
+    <p style="margin-top:12px;font-size:12px;color:var(--fg-dim)">
+      <code>D = 1 - V_in/V_out</code> · <code>I_L = I_out/(1-D)</code> · <code>ΔI_L = V_in·D/(f·L)</code> · <code>R1/R2 = V_out/V_ref − 1</code>
+    </p>
+  </div>
+
+  <div class="warning" id="warnBox" style="display:none">
+    <b>V_out ≤ V_in:</b> a boost cannot regulate below its input. The diode forward-biases and V_out will just sit at V_in − V_D regardless of duty cycle.
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>The diode is essential</b> — without it, when Q opens, the inductor current would have nowhere to go (voltage spike, blown switch). The diode + C_out provide the path; the diode prevents reverse current.</li>
+    <li><b>Input current ≠ output current</b> — average inductor current is I_out/(1-D), always higher than I_out. A 3.7 V → 12 V boost at 0.5 A draws ~1.62 A from V_in. Sizing wires and the inductor saturation rating is critical.</li>
+    <li><b>You can't fully turn it on</b> — D→1 means the switch never opens, so the inductor never delivers energy to the output. Real ICs cap D around 90% and impose a minimum V_in (e.g., TPS61023 needs ≥0.5 V to start, ≥0.8 V to maintain).</li>
+    <li><b>RHP zero limits speed</b> — control loop bandwidth on a boost is typically &lt;1/10 of f_sw. If you want fast transient response, use a buck-boost or pre-buck topology.</li>
+    <li><b>Feedback divider sets V_out</b> — the IC servos FB pin to V_ref by driving D. With V_ref = 0.5 V and V_out = 5 V, the divider must be 1:9 (R1=90 kΩ, R2=10 kΩ). Pick total resistance to keep divider quiescent current at ~5 µA.</li>
+    <li><b>PFM at light load</b> — to keep efficiency high when I_out is tiny, the IC drops out of continuous switching and pulses periodically. Output ripple goes up but average current draw plummets.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Duty</dt><dd><span class="eq">D = 1 − V_in / V_out</span></dd>
+        <dt>I_L avg</dt><dd><span class="eq">I_L = I_out / (1 − D)</span></dd>
+        <dt>Divider</dt><dd><span class="eq">V_out = V_ref·(1 + R1/R2)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>D → 1 is unbounded</b> — if V_in dips too low, you can't reach V_out.</li>
+        <li><b>RHP zero</b> — limits loop BW; output dips before it rises.</li>
+        <li><b>Input ripple low</b> — good for battery sources.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>BW above RHP zero</b> — keep crossover well below f_RHP ≈ f_sw/D for stability.</li>
+        <li><b>Output ripple &gt; input ripple</b> — diode conducts pulses into C_out; needs low-ESR caps.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 6 — Power Electronics</a> ·
+    Topic: Boost Converter
+  </footer>
+</main>
+<script>
+  const vinEl=document.getElementById('vin');
+  const voutEl=document.getElementById('vout');
+  const lEl=document.getElementById('lval');
+  const fEl=document.getElementById('fsw');
+  const ioEl=document.getElementById('iout');
+  const vrefEl=document.getElementById('vref');
+
+  const ilTrace=document.getElementById('ilTrace');
+  const vswTrace=document.getElementById('vswTrace');
+  const dLine1=document.getElementById('dLine1');
+  const dLabel=document.getElementById('dLabel');
+  const warnBox=document.getElementById('warnBox');
+
+  function fmtSI(v, unit, decimals=2){
+    const abs=Math.abs(v);
+    if(abs>=1e6) return (v/1e6).toFixed(decimals)+' M'+unit;
+    if(abs>=1e3) return (v/1e3).toFixed(decimals)+' k'+unit;
+    if(abs>=1) return v.toFixed(decimals)+' '+unit;
+    if(abs>=1e-3) return (v*1e3).toFixed(decimals)+' m'+unit;
+    if(abs>=1e-6) return (v*1e6).toFixed(decimals)+' µ'+unit;
+    return (v*1e9).toFixed(decimals)+' n'+unit;
+  }
+
+  function update(){
+    const Vin=parseFloat(vinEl.value);
+    let Vout=parseFloat(voutEl.value);
+    const L=parseFloat(lEl.value)*1e-6;
+    const f=parseFloat(fEl.value)*1e3;
+    const Io=parseFloat(ioEl.value);
+    const Vref=parseFloat(vrefEl.value);
+
+    const cannotBoost = Vout <= Vin;
+    warnBox.style.display = cannotBoost ? 'block':'none';
+    if(cannotBoost) Vout = Vin*1.05;
+
+    const D = 1 - Vin/Vout;
+    const T = 1/f;
+    const IL_avg = Io/(1-D);
+    const dIL = Vin*D/(f*L);
+    const Ipk = IL_avg + dIL/2;
+    const Ivly = IL_avg - dIL/2;
+    const divRatio = Vout/Vref - 1;
+
+    document.getElementById('vinRead').textContent = Vin.toFixed(2)+' V';
+    document.getElementById('voutRead').textContent = Vout.toFixed(1)+' V';
+    document.getElementById('lRead').textContent = (L*1e6).toFixed(1)+' µH';
+    document.getElementById('fRead').textContent = (f/1e3).toFixed(0)+' kHz';
+    document.getElementById('ioRead').textContent = Io.toFixed(2)+' A';
+    document.getElementById('vrefRead').textContent = Vref.toFixed(2)+' V';
+    document.getElementById('voutAnnot').textContent = Vout.toFixed(1)+' V';
+
+    document.getElementById('statD').textContent = (D*100).toFixed(1)+'%';
+    document.getElementById('statRatio').textContent = (Vout/Vin).toFixed(2)+'×';
+    document.getElementById('statIL').textContent = fmtSI(IL_avg,'A');
+    document.getElementById('statRipple').textContent = fmtSI(dIL,'A');
+    document.getElementById('statIpk').textContent = fmtSI(Ipk,'A');
+    document.getElementById('statDiv').textContent = divRatio.toFixed(2)+'  (e.g. R1='+(divRatio*10).toFixed(1)+'kΩ, R2=10kΩ)';
+
+    // Waveforms
+    const xLeft=60, xRight=700, xRange=xRight-xLeft;
+    const xD = xLeft + D*xRange;
+
+    // I_L: top y=20 (max), bottom y=140 (zero)
+    const yILtop=30, yILbot=140;
+    const yILmax = Math.max(Ipk*1.2, 0.01);
+    const yIL = (i) => yILbot - (i/yILmax)*(yILbot-yILtop);
+
+    const ilPts = `${xLeft},${yIL(Ivly)} ${xD},${yIL(Ipk)} ${xRight},${yIL(Ivly)}`;
+    ilTrace.setAttribute('points', ilPts);
+    document.getElementById('ipkLbl').setAttribute('y', yIL(Ipk)+3);
+    document.getElementById('ipkLbl').textContent = `${Ipk.toFixed(2)}A`;
+
+    // V_SW: 0 when ON (Q closed = SW pulled to ground), V_out when OFF
+    const yVtop=180, yVbot=260;
+    const vswON = yVbot;  // 0V
+    const vswOFF = yVtop; // V_out
+    const vswPts = `${xLeft},${vswON} ${xD-1},${vswON} ${xD+1},${vswOFF} ${xRight},${vswOFF}`;
+    vswTrace.setAttribute('points', vswPts);
+    document.getElementById('vswHi').textContent = `V_out=${Vout.toFixed(1)}V`;
+
+    // D line and label
+    dLine1.setAttribute('x1', xD);
+    dLine1.setAttribute('x2', xD);
+    dLabel.setAttribute('x', xD);
+    dLabel.textContent = `D·T (${(D*100).toFixed(0)}%)`;
+  }
+
+  [vinEl,voutEl,lEl,fEl,ioEl,vrefEl].forEach(el=>el.addEventListener('input',update));
+
+  // Animate switch state
+  let phase=0;
+  setInterval(()=>{
+    phase=(phase+0.05)%1;
+    const Vin=parseFloat(vinEl.value);
+    const Vout=parseFloat(voutEl.value);
+    const D = Vout<=Vin ? 0.1 : 1 - Vin/Vout;
+    const isOn = phase < D;
+    document.getElementById('swfet').setAttribute('fill', isOn?'rgba(163,230,53,0.35)':'var(--bg-elev2)');
+    document.getElementById('diode').setAttribute('fill', isOn?'var(--bg-elev2)':'rgba(94,200,255,0.35)');
+    document.getElementById('phaseTxt').textContent = isOn ? 'Q ON — L charging' : 'Q OFF — L → C_out via D';
+  }, 100);
+
+  update();
+</script>
+</body>
+</html>

@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LDOs and Voltage References — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .bar{stroke:var(--line);stroke-width:1}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>LDOs and Voltage References</h1>
+  <p class="lede">Two panels — first how an LDO holds Vout regulated while Vin droops; second how Zener, band-gap, and buried-Zener references compare on tempco and use case.</p>
+
+  <p>Linear regulators answer a different question than switching converters. They burn the difference between Vin and Vout as heat — inefficient, but quiet and cheap. A "low-dropout" (LDO) variant uses a PMOS pass element so Vin only needs to exceed Vout by ~200 mV instead of the 2 V a classic 7805 demands. References go further: instead of just regulating, they aim for a precise, stable absolute voltage trimmed at the factory.</p>
+
+  <h2>Panel 1 — LDO operation</h2>
+
+  <section class="controls">
+    <div class="control">
+      <label>Vin: <span class="readout" id="vinRead">5.0 V</span></label>
+      <input id="vinSlide" type="range" min="0" max="12" step="0.05" value="5.0">
+    </div>
+    <div class="control">
+      <label>Vout (set): <span class="readout" id="voutRead">3.3 V</span></label>
+      <input id="voutSlide" type="range" min="1.2" max="5.0" step="0.05" value="3.3">
+    </div>
+    <div class="control">
+      <label>V_dropout: <span class="readout" id="vdoRead">0.20 V</span></label>
+      <input id="vdoSlide" type="range" min="0.05" max="2.0" step="0.05" value="0.20">
+    </div>
+    <div class="control">
+      <label>Iload: <span class="readout" id="iloadRead">100 mA</span></label>
+      <input id="iloadSlide" type="range" min="1" max="1000" step="1" value="100">
+    </div>
+    <div class="control">
+      <label>Iq (quiescent): <span class="readout" id="iqRead">50 µA</span></label>
+      <input id="iqSlide" type="range" min="1" max="500" step="1" value="50">
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Internal architecture — PMOS pass + feedback amp</h3>
+    <svg viewBox="0 0 920 320" width="100%">
+      <!-- Vin input -->
+      <circle cx="40" cy="80" r="3" fill="var(--accent)"/>
+      <text x="32" y="84" class="label" text-anchor="end" style="fill:var(--accent)">Vin</text>
+      <line x1="40" y1="80" x2="220" y2="80" class="wire"/>
+      <text x="120" y="74" class="label-dim" text-anchor="middle" id="vinLbl">5.0 V</text>
+
+      <!-- PMOS pass element symbol -->
+      <g transform="translate(220,40)">
+        <line x1="0" y1="40" x2="20" y2="40" class="wire"/>
+        <text x="-4" y="44" class="label" text-anchor="end" style="fill:var(--accent2)">PMOS</text>
+        <line x1="20" y1="25" x2="20" y2="55" stroke="var(--fg)" stroke-width="3"/>
+        <line x1="20" y1="25" x2="40" y2="25" class="wire"/>
+        <line x1="20" y1="40" x2="40" y2="40" class="wire"/>
+        <line x1="20" y1="55" x2="40" y2="55" class="wire"/>
+        <line x1="40" y1="25" x2="40" y2="0" class="wire"/>
+        <line x1="40" y1="55" x2="40" y2="80" class="wire"/>
+        <polygon points="32,40 22,35 22,45" fill="var(--fg)"/>
+        <text x="-4" y="-6" class="label" text-anchor="end">S→Vin</text>
+        <text x="48" y="-2" class="label">D→Vout</text>
+        <text x="48" y="42" class="label-dim">G</text>
+      </g>
+      <line x1="220" y1="120" x2="120" y2="120" class="wire"/>
+      <!-- gate driven by amp output -->
+      <line x1="120" y1="120" x2="120" y2="180" class="wire"/>
+
+      <!-- pass to Vout rail -->
+      <line x1="260" y1="120" x2="780" y2="120" class="wire"/>
+      <circle cx="780" cy="120" r="3" fill="var(--accent3)"/>
+      <text x="788" y="124" class="label" style="fill:var(--accent3)">Vout</text>
+      <text x="700" y="114" class="label-dim" text-anchor="middle" id="voutLbl">3.30 V</text>
+
+      <!-- Feedback divider -->
+      <line x1="600" y1="120" x2="600" y2="160" class="wire"/>
+      <rect x="590" y="160" width="20" height="40" class="wire" fill="var(--bg-elev2)"/>
+      <text x="620" y="184" class="label">R1</text>
+      <line x1="600" y1="200" x2="600" y2="220" class="wire"/>
+      <circle cx="600" cy="220" r="3" fill="var(--accent)"/>
+      <text x="620" y="224" class="label" style="fill:var(--accent)">Vfb</text>
+      <line x1="600" y1="220" x2="600" y2="240" class="wire"/>
+      <rect x="590" y="240" width="20" height="40" class="wire" fill="var(--bg-elev2)"/>
+      <text x="620" y="264" class="label">R2</text>
+      <line x1="600" y1="280" x2="600" y2="300" class="wire" stroke-width="2"/>
+      <line x1="580" y1="300" x2="620" y2="300" class="wire" stroke-width="2"/>
+
+      <!-- error amp -->
+      <g transform="translate(120,180)">
+        <polygon points="0,0 0,60 60,30" fill="none" stroke="var(--fg)" stroke-width="1.5"/>
+        <text x="10" y="16" class="label">−</text>
+        <text x="10" y="54" class="label">+</text>
+        <line x1="60" y1="30" x2="120" y2="30" class="wire"/>
+        <line x1="120" y1="30" x2="120" y2="-60" class="wire"/>
+        <text x="80" y="22" class="label-dim">error</text>
+      </g>
+      <!-- - input from feedback -->
+      <line x1="120" y1="190" x2="100" y2="190" class="wire"/>
+      <line x1="100" y1="190" x2="100" y2="220" class="wire"/>
+      <line x1="100" y1="220" x2="600" y2="220" class="wire" stroke-dasharray="3 3"/>
+      <!-- + input from reference -->
+      <line x1="120" y1="230" x2="60" y2="230" class="wire"/>
+      <text x="50" y="234" class="label" text-anchor="end" style="fill:var(--accent2)">Vref</text>
+
+      <!-- output cap -->
+      <line x1="700" y1="120" x2="700" y2="240" class="wire"/>
+      <line x1="685" y1="240" x2="715" y2="240" class="wire" stroke-width="2"/>
+      <line x1="685" y1="248" x2="715" y2="248" class="wire" stroke-width="2"/>
+      <line x1="700" y1="248" x2="700" y2="280" class="wire"/>
+      <line x1="680" y1="280" x2="720" y2="280" class="wire" stroke-width="2"/>
+      <text x="730" y="244" class="label">Cout</text>
+
+      <!-- annotations -->
+      <text x="40" y="260" class="label-dim">When Vin drops below Vout + V_do, the PMOS hits</text>
+      <text x="40" y="278" class="label-dim">its on-resistance floor and Vout starts to droop.</text>
+      <text x="40" y="296" class="label-dim">Feedback amp tries to pull gate harder but cannot.</text>
+    </svg>
+
+    <h3>Vout response as Vin droops (Iload constant)</h3>
+    <svg id="ldoPlot" viewBox="0 0 600 280" width="100%"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>Vin (sweep)</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>Vout (target)</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>actual Vout</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>dropout boundary Vin = Vout + V_do</span>
+    </div>
+    <p style="color:var(--fg-dim);font-size:12px;margin-top:8px">
+      Headroom: Vin − Vout = <span class="readout" id="headroomOut">1.7 V</span>.
+      Dissipation: P_diss = (Vin − Vout) × Iload + Vin × Iq = <span class="readout" id="pdissOut">170 mW</span>.
+      Efficiency: <span class="readout" id="effOut">66%</span> &nbsp; (drops linearly as Vin grows — LDOs are terrible from a 12 V rail to 3.3 V).
+    </p>
+
+    <h3>PSRR vs frequency</h3>
+    <svg id="psrrPlot" viewBox="0 0 600 240" width="100%"></svg>
+    <p style="color:var(--fg-dim);font-size:12px;margin-top:8px">
+      PSRR (power supply rejection ratio) measures how much of Vin's ripple appears at Vout.
+      Typical LDO: 60–80 dB at low frequency, rolls off above the feedback bandwidth (~10–100 kHz).
+      That's why an LDO downstream of a switching converter scrubs the 100 kHz–1 MHz switching noise — but only partially.
+    </p>
+  </div>
+
+  <h2>Panel 2 — Voltage references compared</h2>
+
+  <p style="color:var(--fg-dim);font-size:13px">A reference's job is to produce a precise voltage independent of Vin and temperature. Tempco (ppm/°C) is the master figure of merit: 100 ppm/°C of 2.5 V = 250 µV/°C, which over a 50°C swing means 12.5 mV total drift — fine for 8-bit ADC, dreadful for 16-bit.</p>
+
+  <div class="figure">
+    <h3>Tempco comparison (lower is better)</h3>
+    <svg viewBox="0 0 600 320" width="100%">
+      <!-- bars -->
+      <g id="tempcoBars"></g>
+      <!-- y-axis scale -->
+      <text x="40" y="40" class="label-dim">Tempco (ppm/°C, log)</text>
+    </svg>
+  </div>
+
+  <div class="figure">
+    <h3>Family-by-family characteristics</h3>
+    <table>
+      <tr>
+        <th>Type</th><th>Tempco</th><th>Init. accuracy</th><th>Noise (typ.)</th><th>Typical use</th>
+      </tr>
+      <tr>
+        <td>Zener diode (raw)</td>
+        <td>50–200 ppm/°C</td>
+        <td>±5%</td>
+        <td>high</td>
+        <td>quick &amp; dirty, hobby</td>
+      </tr>
+      <tr>
+        <td>Band-gap (LM4040, REF3033)</td>
+        <td>10–50 ppm/°C</td>
+        <td>±0.1–0.5%</td>
+        <td>medium</td>
+        <td>ADC ref, 10–14 bit precision</td>
+      </tr>
+      <tr>
+        <td>Buried Zener (LM399 / LTZ1000)</td>
+        <td>0.05–2 ppm/°C</td>
+        <td>±0.1%</td>
+        <td>very low</td>
+        <td>metrology, 18+ bit ADC, voltage stds</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="figure">
+    <h3>Topologies side-by-side</h3>
+    <svg viewBox="0 0 920 280" width="100%">
+      <!-- Zener panel -->
+      <text x="160" y="22" class="label" text-anchor="middle" style="font-weight:600;fill:var(--accent)">Zener (LM399 — heated buried zener)</text>
+      <g transform="translate(60,60)">
+        <line x1="0" y1="0" x2="200" y2="0" class="wire"/>
+        <text x="0" y="-6" class="label-dim">Vin</text>
+        <rect x="60" y="-10" width="60" height="20" class="wire" fill="var(--bg-elev2)"/>
+        <text x="90" y="-16" class="label-dim" text-anchor="middle">Rseries</text>
+        <line x1="200" y1="0" x2="200" y2="60" class="wire"/>
+        <!-- zener symbol -->
+        <polygon points="186,60 214,60 200,80" fill="var(--bg-elev2)" stroke="var(--fg)" stroke-width="1.5"/>
+        <line x1="180" y1="80" x2="220" y2="80" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="180" y1="80" x2="180" y2="86" stroke="var(--fg)" stroke-width="1.5"/>
+        <line x1="220" y1="80" x2="220" y2="74" stroke="var(--fg)" stroke-width="1.5"/>
+        <text x="234" y="74" class="label">6.95 V</text>
+        <line x1="200" y1="80" x2="200" y2="120" class="wire"/>
+        <line x1="180" y1="120" x2="220" y2="120" class="wire" stroke-width="2"/>
+        <!-- output node before zener -->
+        <circle cx="200" cy="60" r="3" fill="var(--accent2)"/>
+        <text x="210" y="56" class="label" style="fill:var(--accent2)">Vref</text>
+        <!-- heater symbol -->
+        <rect x="100" y="130" width="120" height="40" stroke="var(--warn)" fill="none" stroke-dasharray="4 4"/>
+        <text x="160" y="156" class="label-dim" text-anchor="middle" style="fill:var(--warn)">internal heater (90°C)</text>
+        <text x="160" y="200" class="label-dim" text-anchor="middle">simple, current-set</text>
+        <text x="160" y="216" class="label-dim" text-anchor="middle">tempco 0.5 ppm/°C</text>
+      </g>
+
+      <!-- Band-gap panel -->
+      <text x="640" y="22" class="label" text-anchor="middle" style="font-weight:600;fill:var(--accent3)">Band-gap (LM4040 — shunt; REF3033 — series)</text>
+      <g transform="translate(540,60)">
+        <line x1="0" y1="0" x2="200" y2="0" class="wire"/>
+        <text x="0" y="-6" class="label-dim">Vin</text>
+        <rect x="60" y="-10" width="60" height="20" class="wire" fill="var(--bg-elev2)"/>
+        <text x="90" y="-16" class="label-dim" text-anchor="middle">Rseries</text>
+        <line x1="200" y1="0" x2="200" y2="40" class="wire"/>
+        <!-- box symbol -->
+        <rect x="180" y="40" width="40" height="60" class="wire" fill="var(--bg-elev2)"/>
+        <text x="200" y="74" class="label" text-anchor="middle" style="font-size:10px">LM4040</text>
+        <line x1="200" y1="100" x2="200" y2="140" class="wire"/>
+        <line x1="180" y1="140" x2="220" y2="140" class="wire" stroke-width="2"/>
+        <circle cx="200" cy="40" r="3" fill="var(--accent2)"/>
+        <text x="210" y="44" class="label" style="fill:var(--accent2)">Vref</text>
+        <!-- internal mini-schematic -->
+        <text x="100" y="170" class="label-dim" text-anchor="middle">two BJTs at different J densities</text>
+        <text x="100" y="186" class="label-dim" text-anchor="middle">→ ΔVbe with +T coefficient</text>
+        <text x="100" y="202" class="label-dim" text-anchor="middle">summed with Vbe (−T coef)</text>
+        <text x="100" y="218" class="label-dim" text-anchor="middle" style="fill:var(--accent3)">net: ~1.25 V, T-flat at trim</text>
+      </g>
+    </svg>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>LDO efficiency = Vout/Vin</b> — going 12 V to 3.3 V at 1 A in an LDO burns 8.7 W as heat. Use a switcher first to get close, then LDO to clean. The LDO's PSRR rejects switcher ripple.</li>
+    <li><b>Dropout sets the minimum input</b> — once Vin falls below Vout + V_do, the regulator drops out of regulation and Vout follows Vin minus V_do (roughly). Battery-powered designs run with very little headroom near end-of-life.</li>
+    <li><b>Quiescent current matters in standby</b> — for a coin-cell sensor sleeping 99% of the time, an LDO with 1 µA Iq lasts years where one with 100 µA Iq lasts weeks.</li>
+    <li><b>PSRR rolls off with frequency</b> — at DC an LDO has 80 dB rejection; at 1 MHz maybe 20 dB. Pair with a small LC filter for the worst switching harmonics if it matters.</li>
+    <li><b>References have ~3 tiers</b> — Zener (cheap, drift), band-gap (most ADC refs you'll meet), buried-zener (instrumentation, voltage standards). Match your reference's tempco and noise to the ADC's effective number of bits.</li>
+    <li><b>Initial accuracy vs tempco are separate specs</b> — a 2.5 V reference can be ±0.5% from part to part *and* drift 50 ppm/°C in any single part. Calibration handles the first; only physics handles the second.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>V_in ≥ V_out + V_do</b> — dropout typ. 200 mV for LDO.</li>
+        <li><b>Iq matters</b> for battery standby — µA vs mA = years vs weeks.</li>
+        <li><b>PSRR drops with f</b> — 80 dB at DC, 20 dB at 1 MHz.</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>DECISION</h3>
+      <ul>
+        <li><b>LDO</b> — low noise, V_in close to V_out.</li>
+        <li><b>Switcher</b> — high efficiency, large step-down.</li>
+        <li><b>Band-gap</b> — most common reference, ~1.25 V base.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Output cap ESR window</b> — too low can cause instability on older LDOs; check datasheet stability range.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 4 — Semiconductor Devices</a> ·
+    Topic: LDOs &amp; Voltage References
+  </footer>
+</main>
+<script>
+  function fmtP(p){
+    if(Math.abs(p)<1e-3) return (p*1e6).toFixed(1)+" µW";
+    if(Math.abs(p)<1) return (p*1e3).toFixed(1)+" mW";
+    return p.toFixed(2)+" W";
+  }
+  function fmtI(i){
+    if(Math.abs(i)<1e-3) return (i*1e6).toFixed(1)+" µA";
+    if(Math.abs(i)<1) return (i*1e3).toFixed(2)+" mA";
+    return i.toFixed(3)+" A";
+  }
+
+  function updateLDO(){
+    const Vin=parseFloat(document.getElementById('vinSlide').value);
+    const Vout_target=parseFloat(document.getElementById('voutSlide').value);
+    const Vdo=parseFloat(document.getElementById('vdoSlide').value);
+    const Iload=parseFloat(document.getElementById('iloadSlide').value)/1000;
+    const Iq=parseFloat(document.getElementById('iqSlide').value)*1e-6;
+    document.getElementById('vinRead').textContent=Vin.toFixed(2)+" V";
+    document.getElementById('vinLbl').textContent=Vin.toFixed(2)+" V";
+    document.getElementById('voutRead').textContent=Vout_target.toFixed(2)+" V";
+    document.getElementById('vdoRead').textContent=Vdo.toFixed(2)+" V";
+    document.getElementById('iloadRead').textContent=(Iload*1000).toFixed(0)+" mA";
+    document.getElementById('iqRead').textContent=(Iq*1e6).toFixed(0)+" µA";
+    // Actual Vout: regulated if Vin > Vout+Vdo; else Vin - Vdo (drops out)
+    const Vout_actual = Vin >= Vout_target + Vdo ? Vout_target : Math.max(0, Vin - Vdo);
+    document.getElementById('voutLbl').textContent=Vout_actual.toFixed(2)+" V";
+    const headroom = Vin - Vout_actual;
+    const Pdiss = headroom*Iload + Vin*Iq;
+    const Pload = Vout_actual*Iload;
+    const eff = (Pload + Pdiss) > 0 ? Pload/(Pload+Pdiss) : 0;
+    document.getElementById('headroomOut').textContent=headroom.toFixed(2)+" V";
+    document.getElementById('pdissOut').textContent=fmtP(Pdiss);
+    document.getElementById('effOut').textContent=(eff*100).toFixed(0)+"%";
+
+    // LDO sweep plot
+    const svg=document.getElementById('ldoPlot');
+    const W=600,H=280,mL=60,mR=30,mT=20,mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const VinMax=12;
+    const xs=v=>mL+(v/VinMax)*pw;
+    const ys=v=>mT+ph-(v/VinMax)*ph;
+    let s='';
+    for(let i=0;i<=12;i++){
+      const x=xs(i);
+      s+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" class="grid-line"/>`;
+      s+=`<text x="${x}" y="${H-mB+16}" class="axis-label" text-anchor="middle">${i}</text>`;
+    }
+    for(let i=0;i<=12;i++){
+      const y=ys(i);
+      s+=`<line x1="${mL}" y1="${y}" x2="${mL+pw}" y2="${y}" class="grid-line"/>`;
+      if(i%2===0) s+=`<text x="${mL-6}" y="${y+3}" class="axis-label" text-anchor="end">${i}</text>`;
+    }
+    s+=`<text x="${W/2}" y="${H-4}" class="axis-label" text-anchor="middle">Vin (V)</text>`;
+    s+=`<text x="${mL-44}" y="${mT+ph/2}" class="axis-label" text-anchor="middle" transform="rotate(-90,${mL-44},${mT+ph/2})">Voltage (V)</text>`;
+
+    // Vin diagonal
+    s+=`<line x1="${xs(0)}" y1="${ys(0)}" x2="${xs(VinMax)}" y2="${ys(VinMax)}" class="trace trace-1" stroke-dasharray="2 4"/>`;
+    // Vout target line
+    s+=`<line x1="${xs(0)}" y1="${ys(Vout_target)}" x2="${xs(VinMax)}" y2="${ys(Vout_target)}" class="trace trace-3" stroke-dasharray="3 3"/>`;
+    // dropout boundary
+    s+=`<line x1="${xs(Vout_target+Vdo)}" y1="${mT}" x2="${xs(Vout_target+Vdo)}" y2="${mT+ph}" stroke="var(--warn)" stroke-dasharray="3 3"/>`;
+    s+=`<text x="${xs(Vout_target+Vdo)+4}" y="${mT+14}" class="label-dim" style="fill:var(--warn)">Vin = Vout + V_do</text>`;
+    // actual Vout curve
+    let p='';
+    for(let k=0;k<=200;k++){
+      const Vin_k=k/200*VinMax;
+      const V_actual = Vin_k >= Vout_target + Vdo ? Vout_target : Math.max(0, Vin_k - Vdo);
+      p+=(k===0?'M':'L')+xs(Vin_k)+','+ys(V_actual)+' ';
+    }
+    s+=`<path d="${p}" class="trace trace-2"/>`;
+    // current operating point
+    s+=`<circle cx="${xs(Vin)}" cy="${ys(Vout_actual)}" r="5" fill="var(--accent3)"/>`;
+    svg.innerHTML=s;
+
+    // PSRR plot
+    drawPSRR();
+  }
+  function drawPSRR(){
+    const svg=document.getElementById('psrrPlot');
+    const W=600,H=240,mL=60,mR=30,mT=20,mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const fMin=1, fMax=7; // 10..10M Hz
+    const xs=lf=>mL+((lf-fMin)/(fMax-fMin))*pw;
+    const yMin=0,yMax=90;
+    const ys=v=>mT+ph-((v-yMin)/(yMax-yMin))*ph;
+    let s='';
+    for(let i=fMin;i<=fMax;i++){
+      const x=xs(i);
+      s+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" class="grid-line"/>`;
+      s+=`<text x="${x}" y="${H-mB+16}" class="axis-label" text-anchor="middle">10^${i}</text>`;
+    }
+    for(let v=0;v<=90;v+=15){
+      const y=ys(v);
+      s+=`<line x1="${mL}" y1="${y}" x2="${mL+pw}" y2="${y}" class="grid-line"/>`;
+      s+=`<text x="${mL-6}" y="${y+3}" class="axis-label" text-anchor="end">${v}</text>`;
+    }
+    s+=`<text x="${W/2}" y="${H-4}" class="axis-label" text-anchor="middle">Frequency (Hz, log)</text>`;
+    s+=`<text x="${mL-44}" y="${mT+ph/2}" class="axis-label" text-anchor="middle" transform="rotate(-90,${mL-44},${mT+ph/2})">PSRR (dB)</text>`;
+    // Typical LDO PSRR: 80 dB DC, drops ~20 dB/decade above 1 kHz
+    let p='';
+    for(let k=0;k<=200;k++){
+      const lf=fMin+k/200*(fMax-fMin);
+      const f=Math.pow(10,lf);
+      const psrr = f<1000 ? 80 : 80 - 20*Math.log10(f/1000);
+      p+=(k===0?'M':'L')+xs(lf)+','+ys(Math.max(yMin,Math.min(yMax,psrr)))+' ';
+    }
+    s+=`<path d="${p}" class="trace trace-1"/>`;
+    s+=`<text x="${xs(fMin+0.5)}" y="${ys(85)}" class="label-dim" style="fill:var(--accent)">typical LDO</text>`;
+    // switching converter typical
+    let p2='';
+    for(let k=0;k<=200;k++){
+      const lf=fMin+k/200*(fMax-fMin);
+      const f=Math.pow(10,lf);
+      const psrr = f<100 ? 50 : 50 - 20*Math.log10(f/100);
+      p2+=(k===0?'M':'L')+xs(lf)+','+ys(Math.max(yMin,Math.min(yMax,psrr)))+' ';
+    }
+    s+=`<path d="${p2}" class="trace trace-2"/>`;
+    s+=`<text x="${xs(fMin+0.5)}" y="${ys(55)}" class="label-dim" style="fill:var(--accent2)">switcher (for contrast)</text>`;
+    svg.innerHTML=s;
+  }
+  ['vinSlide','voutSlide','vdoSlide','iloadSlide','iqSlide'].forEach(id=>
+    document.getElementById(id).addEventListener('input',updateLDO));
+
+  // Tempco bars
+  function drawTempco(){
+    const svg=document.querySelector('#tempcoBars').parentElement;
+    const bars=[
+      {name:'Zener (raw 1N4733)', ppm:200, color:'var(--warn)', use:'hobby / low precision'},
+      {name:'TL431 (programmable shunt)', ppm:50, color:'var(--accent2)', use:'PSU feedback'},
+      {name:'LM4040 (band-gap shunt)', ppm:25, color:'var(--accent3)', use:'10-12 bit ADC'},
+      {name:'REF3033 (band-gap series)', ppm:15, color:'var(--accent)', use:'14 bit ADC'},
+      {name:'LTZ1000 (buried zener)', ppm:0.05, color:'#c8a8ff', use:'18+ bit, metrology'},
+    ];
+    const W=600,H=320,mL=200,mR=120,mT=40,mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const logMin=Math.log10(0.01), logMax=Math.log10(500);
+    const xs=v=>mL+((Math.log10(Math.max(0.01,v))-logMin)/(logMax-logMin))*pw;
+    let s='';
+    // axis tick marks at 0.1, 1, 10, 100
+    for(const t of [0.01,0.1,1,10,100,500]){
+      const x=xs(t);
+      s+=`<line x1="${x}" y1="${mT-4}" x2="${x}" y2="${mT+ph+4}" stroke="var(--line)"/>`;
+      s+=`<text x="${x}" y="${mT+ph+20}" class="axis-label" text-anchor="middle">${t}</text>`;
+    }
+    s+=`<text x="${W/2}" y="${H-4}" class="axis-label" text-anchor="middle">Tempco (ppm/°C, log)</text>`;
+    bars.forEach((b,i)=>{
+      const y=mT+i*(ph/bars.length)+8;
+      const h=(ph/bars.length)-16;
+      s+=`<text x="${mL-10}" y="${y+h/2+4}" class="label" text-anchor="end">${b.name}</text>`;
+      s+=`<rect x="${mL}" y="${y}" width="${xs(b.ppm)-mL}" height="${h}" fill="${b.color}" opacity="0.7" stroke="${b.color}"/>`;
+      s+=`<text x="${xs(b.ppm)+6}" y="${y+h/2+4}" class="label-dim">${b.ppm} ppm — ${b.use}</text>`;
+    });
+    document.getElementById('tempcoBars').innerHTML=s;
+  }
+  updateLDO();
+  drawTempco();
+</script>
+</body>
+</html>

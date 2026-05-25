@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motor Protection — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:10px;margin:12px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px}
+  .stat .lbl{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 16px ui-monospace,monospace;color:var(--accent);margin-top:4px}
+  .stat.fault .val{color:var(--warn)}
+  .stat.ok .val{color:var(--accent3)}
+  .fault-led{display:flex;align-items:center;gap:10px;padding:8px 12px;
+    background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;
+    font:12px ui-monospace,monospace;color:var(--fg-dim)}
+  .fault-led .dot{width:14px;height:14px;border-radius:50%;background:#333;
+    border:1px solid var(--line)}
+  .fault-led.tripped{color:var(--warn);border-color:var(--warn);background:rgba(255,123,114,0.08)}
+  .fault-led.tripped .dot{background:var(--warn);box-shadow:0 0 12px var(--warn)}
+  .fault-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:8px;margin:12px 0}
+  .scenario-buttons{display:flex;flex-wrap:wrap;gap:6px}
+  .scenario-btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:12px ui-monospace,monospace;cursor:pointer}
+  .scenario-btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Motor Protection — OCP, OTP, UVLO, Stall, Inrush</h1>
+  <p class="lede">Smoke is expensive. Build five protection loops into every motor drive: overcurrent, overtemperature, undervoltage, stall, and inrush. Most modern driver ICs do four of them for you — your firmware does the fifth.</p>
+
+  <p>A modern motor-driver IC (DRV8316, TMC2209, BTN8982) handles overcurrent (OCP), overtemperature (OTW/OTSD), undervoltage lockout (UVLO), and gate-supply faults internally — when one trips, the driver pulls a nFAULT pin low and you read a status register over SPI/UART. Your firmware adds the two protections the IC can't see: <b>stall detection</b> (mechanically jammed motor — current high, position not moving, back-EMF low) and <b>inrush limiting</b> (huge startup current as the empty bus caps charge through your bridge). Pick a scenario below to watch each trip — and a chip's response (latch off, retry, fold back). For an arm joint at 5 A peak you set OCP at 1.5–2× peak with a 2 µs blanking window; OTSD at 150 °C junction; UVLO at 8.5 V on a 12 V bus; stall after 100 ms of zero motion at &gt; 80% torque command; inrush via slow-start cap or precharge resistor.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Scenario</label>
+      <div class="scenario-buttons">
+        <button class="scenario-btn active" data-scn="normal">Normal run</button>
+        <button class="scenario-btn" data-scn="stall">Stall (jam)</button>
+        <button class="scenario-btn" data-scn="short">Short circuit</button>
+        <button class="scenario-btn" data-scn="overtemp">Overtemp</button>
+        <button class="scenario-btn" data-scn="brownout">Brownout (UV)</button>
+        <button class="scenario-btn" data-scn="inrush">Cold start (inrush)</button>
+      </div>
+    </div>
+    <div class="control">
+      <label>OCP threshold: <span class="readout" id="ocpRead">10.0 A</span></label>
+      <input id="ocp" type="range" min="2" max="40" step="0.5" value="10">
+    </div>
+    <div class="control">
+      <label>OTSD threshold: <span class="readout" id="otpRead">150 °C</span></label>
+      <input id="otp" type="range" min="80" max="175" step="1" value="150">
+    </div>
+    <div class="control">
+      <label>UVLO threshold: <span class="readout" id="uvRead">8.5 V</span></label>
+      <input id="uv" type="range" min="4" max="30" step="0.5" value="8.5">
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Live traces — I_motor, V_bus, T_junction</h3>
+    <svg viewBox="0 0 700 280" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <line x1="50" y1="20" x2="50" y2="260" class="axis"/>
+      <line x1="50" y1="260" x2="680" y2="260" class="axis"/>
+      <text x="685" y="270" class="axis-label">t (s)</text>
+
+      <!-- I -->
+      <text x="40" y="40" class="axis-label" text-anchor="end" fill="var(--accent)">I</text>
+      <line id="ocpLine" x1="50" y1="60" x2="680" y2="60" stroke="var(--warn)" stroke-dasharray="4,3"/>
+      <text x="60" y="56" class="axis-label" fill="var(--warn)">OCP</text>
+      <polyline id="iTrace" class="trace trace-1" points=""/>
+
+      <!-- V -->
+      <text x="40" y="135" class="axis-label" text-anchor="end" fill="var(--accent2)">V</text>
+      <line id="uvLine" x1="50" y1="160" x2="680" y2="160" stroke="var(--warn)" stroke-dasharray="4,3"/>
+      <text x="60" y="156" class="axis-label" fill="var(--warn)">UVLO</text>
+      <polyline id="vTrace" class="trace trace-2" points=""/>
+
+      <!-- T -->
+      <text x="40" y="225" class="axis-label" text-anchor="end" fill="var(--accent3)">T°C</text>
+      <line id="otpLine" x1="50" y1="200" x2="680" y2="200" stroke="var(--warn)" stroke-dasharray="4,3"/>
+      <text x="60" y="196" class="axis-label" fill="var(--warn)">OTSD</text>
+      <polyline id="tTrace" class="trace trace-3" points=""/>
+
+      <line id="nowLine" x1="50" y1="20" x2="50" y2="260" stroke="var(--accent2)" stroke-dasharray="3,3"/>
+    </svg>
+  </div>
+
+  <div class="figure">
+    <h3>Protection status</h3>
+    <div class="fault-grid">
+      <div class="fault-led" id="ledOcp"><div class="dot"></div><span>OCP — Overcurrent</span></div>
+      <div class="fault-led" id="ledOtp"><div class="dot"></div><span>OTSD — Overtemp shutdown</span></div>
+      <div class="fault-led" id="ledOtw"><div class="dot"></div><span>OTW — Overtemp warning</span></div>
+      <div class="fault-led" id="ledUv"><div class="dot"></div><span>UVLO — Undervoltage</span></div>
+      <div class="fault-led" id="ledStall"><div class="dot"></div><span>STALL — Motor jammed</span></div>
+      <div class="fault-led" id="ledInrush"><div class="dot"></div><span>INRUSH — Bus charging</span></div>
+    </div>
+    <div class="stat-grid" style="margin-top:14px">
+      <div class="stat"><div class="lbl">I_motor</div><div class="val" id="statI">3.0 A</div></div>
+      <div class="stat"><div class="lbl">V_bus</div><div class="val" id="statV">12.0 V</div></div>
+      <div class="stat"><div class="lbl">T_junction</div><div class="val" id="statT">75 °C</div></div>
+      <div class="stat"><div class="lbl">nFAULT pin</div><div class="val" id="statFault">HIGH (ok)</div></div>
+      <div class="stat"><div class="lbl">Driver state</div><div class="val" id="statState">RUN</div></div>
+      <div class="stat"><div class="lbl">Action</div><div class="val" id="statAction">—</div></div>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Stall detection — back-EMF vs commanded torque</h3>
+    <p style="color:var(--fg-dim);font-size:13px">Firmware sees motor not moving (encoder Δ≈0) but current is high. Cross-check with back-EMF: if i·R explains the whole voltage and there's no v_BEMF, rotor is stuck. Trip after ~100 ms.</p>
+    <svg viewBox="0 0 700 180" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <line x1="50" y1="20" x2="50" y2="160" class="axis"/>
+      <line x1="50" y1="160" x2="680" y2="160" class="axis"/>
+      <text x="685" y="170" class="axis-label">t</text>
+      <text x="40" y="30" class="axis-label" text-anchor="end">ω</text>
+      <polyline id="omegaTrace" class="trace trace-1" points=""/>
+      <polyline id="bemfTrace" class="trace trace-2" points=""/>
+      <polyline id="cmdTrace" class="trace trace-3" stroke-dasharray="3,3" points=""/>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>Encoder ω</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>Back-EMF (~K_e·ω)</span>
+      <span><span class="swatch" style="background:var(--accent3);height:1px;border:1px dashed var(--accent3)"></span>Commanded torque</span>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Overcurrent trips in microseconds</b> — modern drivers fold back the FET gate within 1–2 µs of sensing &gt; OCP via the shunt amp. Most use cycle-by-cycle limiting (fold-back at PWM-cycle boundary) before they go to latch-off. A short circuit through the H-bridge → die without OCP, because R_ds(on) is milliohms.</li>
+    <li><b>Overtemperature has two thresholds</b> — OTW (warning, ~130 °C) raises a flag but keeps running so firmware can derate. OTSD (shutdown, ~150 °C) kills the gate drive. T_J is read from a built-in diode; the IC reports °C via SPI.</li>
+    <li><b>UVLO protects the gate driver, not the motor</b> — when V_supply sags, gate drive amplitude drops; FET R_ds(on) climbs nonlinearly with low V_gs → FET heats → cascade fail. UVLO disables outputs below 8 V on a 12 V part; re-enables with hysteresis (typ 1 V).</li>
+    <li><b>Stall detection is firmware</b> — IC can't tell "motor stopped because of jam" from "motor stopped because commanded zero." You need an encoder + a commanded-torque comparison. Heuristic: if |i_q| &gt; 0.8·i_q_max for &gt; 100 ms AND |ω| &lt; 0.05·ω_max, raise stall. TMC StallGuard does this in silicon for stepper BLDC.</li>
+    <li><b>Inrush is the brutal first 10 ms</b> — cold bus caps look like a short to the supply. A 100 µF cap charging from 0→12 V at 1 µs ramp draws hundreds of amps for nanoseconds. Use a precharge resistor + relay (industrial), an NTC inrush limiter (consumer), or a soft-start cap on the driver enable (3D printer).</li>
+    <li><b>Auto-retry vs latch-off</b> — DRV8316 default: latch-off → clear via nSLEEP toggle. Trinamic default: cycle-by-cycle limiting with retry. Pick latch-off for safety-critical, retry for hobby ESC where shaft might just be stuck for a moment.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>SETTING THRESHOLDS</h3>
+      <dl>
+        <dt>OCP</dt><dd><span class="eq">I_OCP = 1.5–2× I_peak_motor</span></dd>
+        <dt>OTW / OTSD</dt><dd><span class="eq">OTW = 130 °C, OTSD = 150 °C</span></dd>
+        <dt>UVLO</dt><dd><span class="eq">V_UV = 0.7–0.85 × V_nominal</span></dd>
+        <dt>Stall</dt><dd><span class="eq">|i_q|&gt;0.8·max AND |ω|&lt;0.05·max for 100 ms</span></dd>
+        <dt>Inrush</dt><dd><span class="eq">I_inrush ≈ V_bus/R_NTC during charge</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>FIVE LOOPS, WHO OWNS</h3>
+      <table>
+        <tr><th>Protection</th><th>Owner</th></tr>
+        <tr><td>OCP (cycle-by-cycle)</td><td>Driver IC</td></tr>
+        <tr><td>OTW / OTSD</td><td>Driver IC</td></tr>
+        <tr><td>UVLO (gate)</td><td>Driver IC</td></tr>
+        <tr><td>Reverse polarity</td><td>Hardware (P-FET)</td></tr>
+        <tr><td>Stall</td><td>Firmware + encoder</td></tr>
+        <tr><td>Inrush</td><td>NTC / precharge / soft-EN</td></tr>
+        <tr><td>E-stop</td><td>Independent contactor</td></tr>
+      </table>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>nFAULT never polled</b> — driver tripped, firmware blindly retries setpoints. Always check nFAULT after every command.</li>
+        <li><b>OCP set too low</b> — normal startup transient trips it on every power-on. Set after measuring actual peak with scope.</li>
+        <li><b>UVLO too tight</b> — battery-droop during accel falsely trips. Pick hysteresis ≥ 1 V.</li>
+        <li><b>No inrush limiter</b> — first power-up arcs the connector, weld contacts on relay, sometimes wakes the bench supply protection.</li>
+        <li><b>Stall detect without encoder</b> — current-only stall always misfires during normal accel. Need ω feedback.</li>
+        <li><b>Auto-retry into a real fault</b> — driver oscillates trip → retry → trip, parts cook over minutes.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 3 — Motor Control</a> ·
+    Topic: Motor Protection (OCP/OTP/UVLO/Stall/Inrush)
+  </footer>
+</main>
+<script>
+  const ocpEl=document.getElementById('ocp');
+  const otpEl=document.getElementById('otp');
+  const uvEl=document.getElementById('uv');
+  const scenBtns=document.querySelectorAll('.scenario-btn');
+  let scenario='normal';
+
+  scenBtns.forEach(b=>b.addEventListener('click',()=>{
+    scenBtns.forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    scenario=b.dataset.scn;
+  }));
+
+  // Sim state: t=0..1 normalized, samples
+  const N=600;
+  let buf={i:[],v:[],t:[],omega:[],bemf:[],cmd:[]};
+  let nowFrac=0;
+
+  function buildScenarios(){
+    const ocp=parseFloat(ocpEl.value);
+    const uv=parseFloat(uvEl.value);
+    buf={i:[],v:[],t:[],omega:[],bemf:[],cmd:[]};
+    for(let i=0;i<=N;i++){
+      const t=i/N; // 0..1 represents 2 s
+      let I=0, V=12, Tj=25, om=0, bemf=0, cmd=0;
+      switch(scenario){
+        case 'normal':
+          I = 3 + Math.sin(t*40)*0.5;
+          V = 12 + Math.sin(t*5)*0.3;
+          Tj = 25 + 50*Math.min(1, t*2);
+          om = Math.min(1, t*2)*1.0;
+          bemf = om*5;
+          cmd = 0.5;
+          break;
+        case 'stall':
+          I = t<0.3 ? 3 + Math.sin(t*30) : Math.min(ocp*1.15, 12+t*15);
+          V = 12;
+          Tj = 25 + 60*Math.min(1,t*2) + (t>0.3?(t-0.3)*120:0);
+          om = t<0.3 ? Math.min(1,t*3)*1.0 : Math.max(0, 1.0-(t-0.3)*5);
+          bemf = om*5;
+          cmd = t<0.3?0.5:0.9;
+          break;
+        case 'short':
+          I = t<0.5 ? 3 : Math.min(ocp*1.3, 50);
+          V = 12 - (t>0.5?(t-0.5)*5:0);
+          Tj = 25 + 50*Math.min(1,t*2) + (t>0.5?(t-0.5)*200:0);
+          om = t<0.5?1:0;
+          bemf = om*5;
+          cmd = 0.5;
+          break;
+        case 'overtemp':
+          I = 4 + Math.sin(t*30)*0.5 + (t>0.4?t*5:0);
+          V = 12;
+          Tj = 25 + 200*t;
+          om = 1.0;
+          bemf = 5;
+          cmd = 0.7;
+          break;
+        case 'brownout':
+          I = 3 + Math.sin(t*30)*0.3;
+          V = 12 - t*8;
+          Tj = 25 + 40*Math.min(1,t*2);
+          om = Math.max(0, 1 - t*0.5);
+          bemf = om*5;
+          cmd = 0.5;
+          break;
+        case 'inrush':
+          I = t<0.05 ? ocp*2.5*Math.exp(-t/0.02) : 1 + Math.sin(t*20)*0.3;
+          V = t<0.05 ? 12*(1-Math.exp(-t/0.02)) : 12;
+          Tj = 25 + 30*Math.min(1, t*4);
+          om = t<0.1 ? 0 : Math.min(1,(t-0.1)*4);
+          bemf = om*5;
+          cmd = 0.3;
+          break;
+      }
+      buf.i.push(I);
+      buf.v.push(V);
+      buf.t.push(Tj);
+      buf.omega.push(om);
+      buf.bemf.push(bemf);
+      buf.cmd.push(cmd);
+    }
+  }
+
+  function refresh(){
+    const ocp=parseFloat(ocpEl.value);
+    const otp=parseFloat(otpEl.value);
+    const uv=parseFloat(uvEl.value);
+    document.getElementById('ocpRead').textContent=ocp.toFixed(1)+' A';
+    document.getElementById('otpRead').textContent=otp.toFixed(0)+' °C';
+    document.getElementById('uvRead').textContent=uv.toFixed(1)+' V';
+
+    // y scales:
+    // Current trace: y range 20..100, mapped 0..max(ocp*1.5, 15)
+    const Imax = Math.max(ocp*1.5, 15);
+    const iY = (val)=> 110 - (val/Imax)*90 + 20;
+    // V: y 130..170 → V range 0..max(15,V_max)
+    const Vmax = 30;
+    const vY = (val)=> 180 - (val/Vmax)*45 + 20;
+    // T: y 200..250 → T range 0..200
+    const Tmax = 200;
+    const tY = (val)=> 250 - (val/Tmax)*50;
+
+    const xL=50, xR=680, xRange=xR-xL;
+
+    // OCP line
+    document.getElementById('ocpLine').setAttribute('y1', iY(ocp));
+    document.getElementById('ocpLine').setAttribute('y2', iY(ocp));
+    document.getElementById('uvLine').setAttribute('y1', vY(uv));
+    document.getElementById('uvLine').setAttribute('y2', vY(uv));
+    document.getElementById('otpLine').setAttribute('y1', tY(otp));
+    document.getElementById('otpLine').setAttribute('y2', tY(otp));
+
+    // Traces
+    let ip=[], vp=[], tp=[];
+    for(let k=0;k<=N;k++){
+      const x = xL + k/N*xRange;
+      ip.push(`${x},${iY(buf.i[k])}`);
+      vp.push(`${x},${vY(buf.v[k])}`);
+      tp.push(`${x},${tY(buf.t[k])}`);
+    }
+    document.getElementById('iTrace').setAttribute('points', ip.join(' '));
+    document.getElementById('vTrace').setAttribute('points', vp.join(' '));
+    document.getElementById('tTrace').setAttribute('points', tp.join(' '));
+
+    // Stall sub-figure
+    let op=[], bp=[], cp=[];
+    for(let k=0;k<=N;k++){
+      const x = xL + k/N*xRange;
+      const y=(v,scale)=>160 - v*scale;
+      op.push(`${x},${y(buf.omega[k], 100)}`);
+      bp.push(`${x},${y(buf.bemf[k]/5*1, 100)}`);
+      cp.push(`${x},${y(buf.cmd[k], 130)}`);
+    }
+    document.getElementById('omegaTrace').setAttribute('points', op.join(' '));
+    document.getElementById('bemfTrace').setAttribute('points', bp.join(' '));
+    document.getElementById('cmdTrace').setAttribute('points', cp.join(' '));
+
+    // Now-line and stat values: use sample at midpoint of scenario (interesting frame)
+    const nowIdx = Math.floor(nowFrac*N);
+    const xNow = xL + nowFrac*xRange;
+    document.getElementById('nowLine').setAttribute('x1', xNow);
+    document.getElementById('nowLine').setAttribute('x2', xNow);
+
+    const I=buf.i[nowIdx], V=buf.v[nowIdx], Tj=buf.t[nowIdx];
+    document.getElementById('statI').textContent=I.toFixed(2)+' A';
+    document.getElementById('statV').textContent=V.toFixed(2)+' V';
+    document.getElementById('statT').textContent=Tj.toFixed(0)+' °C';
+
+    // Faults
+    const fOcp = I > ocp;
+    const fOtsd = Tj > otp;
+    const fOtw = !fOtsd && Tj > otp - 20;
+    const fUv = V < uv;
+    const fStall = scenario==='stall' && nowFrac>0.35;
+    const fInrush = scenario==='inrush' && nowFrac<0.08;
+    setLed('ledOcp', fOcp);
+    setLed('ledOtp', fOtsd);
+    setLed('ledOtw', fOtw);
+    setLed('ledUv', fUv);
+    setLed('ledStall', fStall);
+    setLed('ledInrush', fInrush);
+
+    const anyFault = fOcp || fOtsd || fUv || fStall;
+    document.getElementById('statFault').textContent = anyFault ? 'LOW (fault)' : 'HIGH (ok)';
+    document.getElementById('statFault').style.color = anyFault ? 'var(--warn)' : 'var(--accent3)';
+
+    let state='RUN', action='—';
+    if(fInrush){state='SOFT-START';action='precharge cap';}
+    else if(fOcp){state='LATCH-OFF';action='clear nSLEEP';}
+    else if(fOtsd){state='OTSD shut';action='cool to <130°C';}
+    else if(fUv){state='UVLO';action='restore V_bus';}
+    else if(fStall){state='STALL trip';action='back off cmd, retry';}
+    else if(fOtw){state='DERATE';action='reduce duty 50%';}
+    document.getElementById('statState').textContent = state;
+    document.getElementById('statAction').textContent = action;
+  }
+
+  function setLed(id, on){
+    const el=document.getElementById(id);
+    if(on) el.classList.add('tripped'); else el.classList.remove('tripped');
+  }
+
+  scenBtns.forEach(b=>b.addEventListener('click',()=>{buildScenarios();refresh();}));
+  [ocpEl,otpEl,uvEl].forEach(el=>el.addEventListener('input',()=>{buildScenarios();refresh();}));
+
+  // Animate now line
+  buildScenarios();
+  setInterval(()=>{
+    nowFrac = (nowFrac + 0.005) % 1;
+    refresh();
+  }, 50);
+</script>
+</body>
+</html>

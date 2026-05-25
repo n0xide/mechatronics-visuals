@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hardness scales — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .mat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+    gap:8px;margin:14px 0}
+  .mat-card{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px;cursor:pointer;text-align:center;
+    font:13px ui-monospace,monospace;transition:0.15s}
+  .mat-card:hover{border-color:var(--accent);color:var(--fg-bright)}
+  .mat-card.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .recommend{background:var(--bg-elev2);border:1px solid var(--accent);
+    border-radius:8px;padding:16px;margin:14px 0}
+  .recommend h3{margin:0 0 8px;color:var(--accent)}
+  .scale-name{font:600 18px ui-monospace,monospace;color:var(--accent2)}
+  .scale-desc{color:var(--fg-dim);font-size:13px;margin:6px 0}
+  .indenter-row{display:flex;gap:16px;align-items:center;margin-top:8px}
+  .indenter-row svg{flex-shrink:0}
+  .warn-box{background:rgba(255,123,114,0.08);border:1px solid var(--warn);
+    border-radius:6px;padding:10px 12px;margin:10px 0;color:var(--warn);
+    font:12px ui-monospace,monospace}
+  .calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+  .calc-out{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px;font:13px ui-monospace,monospace}
+  .calc-out .v{font:600 16px ui-monospace,monospace;color:var(--accent);display:block;margin-top:4px}
+  .indenter-bg{fill:var(--bg-elev2)}
+  .indenter-spec{fill:#e8edf5;stroke:var(--accent);stroke-width:1.5}
+  .indenter-mat{fill:var(--fg-dim);fill-opacity:0.3;stroke:var(--fg-dim);stroke-width:1}
+  .indenter-imp{fill:var(--bg);stroke:var(--accent2);stroke-width:1.5}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Hardness scales: pick the right one</h1>
+  <p class="lede">Hardness isn't one number — it's six different ones depending on the indenter and load.
+  Pick a material class below and the right scale lights up, with the indenter geometry shown to scale.
+  The "UTS ≈ 3.45·HB" shortcut works for steels and lies about everything else.</p>
+
+  <h2>1. Pick the material class</h2>
+  <div class="mat-grid" id="matGrid">
+    <div class="mat-card" data-mat="hard_steel">Hardened steel<br><span class="label-dim">(tool, bearing)</span></div>
+    <div class="mat-card" data-mat="mild_steel">Mild steel<br><span class="label-dim">(A36, 1018)</span></div>
+    <div class="mat-card" data-mat="aluminum">Aluminum<br><span class="label-dim">(6061, 7075)</span></div>
+    <div class="mat-card" data-mat="brass">Brass<br><span class="label-dim">(360, copper)</span></div>
+    <div class="mat-card" data-mat="rigid_poly">Rigid polymer<br><span class="label-dim">(ABS, PC)</span></div>
+    <div class="mat-card" data-mat="soft_poly">Soft polymer<br><span class="label-dim">(TPU, rubber)</span></div>
+  </div>
+
+  <div class="recommend" id="recBox">
+    <h3>Recommended scale</h3>
+    <div class="scale-name" id="scaleName">—</div>
+    <div class="scale-desc" id="scaleDesc">Pick a material above.</div>
+    <div class="indenter-row" id="indenterRow"></div>
+  </div>
+
+  <h2>2. UTS estimation (for steels only)</h2>
+  <p>For steels with HB roughly 100–400, ultimate tensile strength follows
+    <code>UTS [MPa] ≈ 3.45 × HB</code> with about ±10% error. Outside that range or for non-ferrous, this lies.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label for="hbInput">Brinell HB</label>
+      <input type="range" id="hbInput" min="50" max="600" value="200" step="1">
+      <span class="readout" id="hbOut">HB 200</span>
+    </div>
+    <div class="control">
+      <label for="appliedMat">Apply this HB to material class</label>
+      <select id="appliedMat">
+        <option value="steel" selected>Steel (rule is valid)</option>
+        <option value="aluminum">Aluminum (rule lies)</option>
+        <option value="brass">Brass (rule lies)</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="calc-grid">
+    <div class="calc-out">
+      Estimated UTS via 3.45·HB
+      <span class="v" id="utsOut">— MPa</span>
+    </div>
+    <div class="calc-out">
+      Approximate HRC / HRB conversion
+      <span class="v" id="hrConvOut">—</span>
+    </div>
+  </div>
+  <div id="warnSlot"></div>
+
+  <h2>3. All six scales at a glance</h2>
+  <table>
+    <thead><tr><th>Scale</th><th>Indenter</th><th>Load</th><th>Range</th><th>Best for</th></tr></thead>
+    <tbody>
+      <tr><td>Brinell HB</td><td>10 mm steel/WC ball</td><td>500–3000 kgf</td><td>~50–650 HB</td><td>castings, forgings, mild steel, large surface</td></tr>
+      <tr><td>Rockwell HRC</td><td>diamond cone (120°)</td><td>150 kgf</td><td>~20–70 HRC</td><td>hardened steel, tool steel, bearing races</td></tr>
+      <tr><td>Rockwell HRB</td><td>1/16″ steel ball</td><td>100 kgf</td><td>~30–100 HRB</td><td>soft steel, brass, soft aluminum</td></tr>
+      <tr><td>Vickers HV</td><td>diamond pyramid (136°)</td><td>1 g – 100 kgf</td><td>any (universal)</td><td>thin films, microhardness, research; any thickness</td></tr>
+      <tr><td>Shore A</td><td>truncated cone (35°)</td><td>spring-loaded 822 g</td><td>~10–100 A</td><td>rubbers, TPU, gaskets, soft polymers</td></tr>
+      <tr><td>Shore D</td><td>sharp cone (30°)</td><td>spring-loaded 4536 g</td><td>~20–100 D</td><td>rigid plastics, ABS (~75D), PETG</td></tr>
+    </tbody>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Indenter geometry tells you the use case.</b> Sharp diamond = hard material + small impression. Large ball = soft material, big visible impression, averages over surface defects.</li>
+    <li><b>Rockwell is fast and direct-reading.</b> Depth-of-penetration is measured under load; no microscope needed. Why HRC dominates the shop floor.</li>
+    <li><b>Vickers is the universal scale.</b> Same indenter and formula at any load → micro to macro. Slow because you measure the impression diagonals under a microscope.</li>
+    <li><b>Shore is for polymers</b> because metal scales would just punch through. Shore A and D overlap (~Shore A 95 ≈ Shore D 45) — use A for soft, D for rigid.</li>
+    <li><b>The 3.45·HB rule is a steel-only crutch.</b> Aluminum work-hardens differently; brass is too soft. The same HB value means a different UTS for each metal.</li>
+    <li><b>Don't measure thin coatings on Brinell.</b> The 10 mm ball averages through the substrate. Use Vickers microhardness for thin layers (anodize, electroplate).</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>SCALE → USE</h3>
+      <table>
+        <tr><th>scale</th><th>best for</th></tr>
+        <tr><td>HRC</td><td>hardened steel &gt; 50</td></tr>
+        <tr><td>HRB</td><td>soft steel, Al</td></tr>
+        <tr><td>HB</td><td>bulk material, castings</td></tr>
+        <tr><td>HV</td><td>thin films, micro</td></tr>
+        <tr><td>Shore A</td><td>soft polymers, TPU</td></tr>
+        <tr><td>Shore D</td><td>hard polymers, ABS</td></tr>
+      </table>
+    </div>
+    <div class="cheat-card formulas">
+      <h3>STRENGTH ESTIMATE</h3>
+      <dl>
+        <dt>steels only</dt><dd><span class="eq">UTS (MPa) ≈ 3.45 · HB</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>3.45·HB rule</b> — STEELS only; not Al, not brass.</li>
+        <li><b>thin specimen</b> — use HV, not HB (ball averages substrate).</li>
+        <li><b>Shore A vs D</b> — overlap zone; don't mix scales.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 2 — Materials Science</a> ·
+    Topic: Hardness scales (HRC, HRB, HB, HV, Shore A/D)
+  </footer>
+</main>
+<script>
+const MAT_SCALES = {
+  hard_steel: {scale:"HRC", name:"Rockwell C (HRC)",
+    desc:"Diamond cone, 150 kgf. The hardened-steel default — tool steel, bearings, gauge blocks. Reads ~20–70 HRC. Beyond 70 use Vickers HV.",
+    indenter:"cone"},
+  mild_steel: {scale:"HB",  name:"Brinell (HB)",
+    desc:"10 mm hardened-steel or tungsten-carbide ball, 3000 kgf. Mild steel and castings. Reads ~100–300 HB. UTS ≈ 3.45·HB is reliable here.",
+    indenter:"ball"},
+  aluminum:   {scale:"HB or HRB",  name:"Brinell (HB) or Rockwell B (HRB)",
+    desc:"10 mm ball, 500 kgf for Brinell on aluminum. HRB for fast shop measurements. Typical 6061-T6: HB 95, HRB 60. UTS rule does NOT apply.",
+    indenter:"ball"},
+  brass:      {scale:"HRB", name:"Rockwell B (HRB)",
+    desc:"1/16″ steel ball, 100 kgf. Soft copper alloys and brass. 360 brass ≈ HRB 60. Note: brass work-hardens — same alloy in different temper reads differently.",
+    indenter:"ball"},
+  rigid_poly: {scale:"Shore D",  name:"Shore D",
+    desc:"Spring-loaded sharp 30° cone, 4536 g. For rigid polymers and hard rubbers. ABS ≈ 75D, PETG ≈ 80D, hard rubber ≈ 60D.",
+    indenter:"shoreD"},
+  soft_poly:  {scale:"Shore A",  name:"Shore A",
+    desc:"Spring-loaded truncated 35° cone, 822 g. For elastomers and soft plastics. TPU 95A = firm flexible, gasket rubber ~70A, soft erasers ~30A.",
+    indenter:"shoreA"},
+};
+
+const INDENTERS = {
+  cone: () => {
+    // Diamond cone, 120 degrees, used for HRC
+    return `<svg viewBox="0 0 220 140" width="220" height="140">
+      <rect class="indenter-bg" x="0" y="0" width="220" height="140" rx="6"/>
+      <!-- Sample material (bottom) -->
+      <rect class="indenter-mat" x="20" y="92" width="180" height="40"/>
+      <!-- Diamond cone indenter -->
+      <polygon class="indenter-spec" points="80,20 140,20 110,95"/>
+      <!-- Tip apex -->
+      <circle class="indenter-spec" cx="110" cy="95" r="2"/>
+      <!-- Impression in material -->
+      <polygon class="indenter-imp" points="98,95 122,95 110,108"/>
+      <!-- Labels -->
+      <text class="label-dim" x="110" y="14" text-anchor="middle">diamond cone 120°</text>
+      <text class="label" x="200" y="106" text-anchor="end">sample</text>
+      <line stroke="#8f99a8" stroke-width="1" x1="160" y1="20" x2="160" y2="60"/>
+      <text class="label-dim" x="166" y="42">HRC</text>
+    </svg>`;
+  },
+  ball: () => {
+    // Steel ball indenter, for HB and HRB
+    return `<svg viewBox="0 0 220 140" width="220" height="140">
+      <rect class="indenter-bg" x="0" y="0" width="220" height="140" rx="6"/>
+      <!-- Sample -->
+      <rect class="indenter-mat" x="20" y="92" width="180" height="40"/>
+      <!-- Ball -->
+      <circle class="indenter-spec" cx="110" cy="65" r="30"/>
+      <!-- Spherical impression -->
+      <path class="indenter-imp" d="M85,95 A30 30 0 0 0 135 95 L135 95 A20 7 0 0 1 85 95 Z"/>
+      <text class="label-dim" x="110" y="14" text-anchor="middle">spherical ball (10 mm or 1/16″)</text>
+      <text class="label" x="200" y="106" text-anchor="end">sample</text>
+      <line stroke="#8f99a8" stroke-width="1" x1="148" y1="50" x2="170" y2="40"/>
+      <text class="label-dim" x="172" y="42">HB / HRB</text>
+    </svg>`;
+  },
+  pyramid: () => {
+    return `<svg viewBox="0 0 220 140" width="220" height="140">
+      <rect class="indenter-bg" x="0" y="0" width="220" height="140" rx="6"/>
+      <rect class="indenter-mat" x="20" y="92" width="180" height="40"/>
+      <!-- Square-based pyramid (front view) -->
+      <polygon class="indenter-spec" points="85,20 135,20 110,95"/>
+      <!-- Pyramid side edges (showing 3D) -->
+      <line class="indenter-spec" x1="92" y1="20" x2="110" y2="95"/>
+      <line class="indenter-spec" x1="128" y1="20" x2="110" y2="95"/>
+      <!-- Square impression -->
+      <polygon class="indenter-imp" points="100,95 120,95 115,103 105,103"/>
+      <line class="indenter-imp" x1="100" y1="95" x2="115" y2="103"/>
+      <line class="indenter-imp" x1="120" y1="95" x2="105" y2="103"/>
+      <text class="label-dim" x="110" y="14" text-anchor="middle">diamond pyramid 136°</text>
+      <text class="label" x="200" y="106" text-anchor="end">sample</text>
+      <line stroke="#8f99a8" stroke-width="1" x1="148" y1="40" x2="170" y2="40"/>
+      <text class="label-dim" x="172" y="42">HV</text>
+    </svg>`;
+  },
+  shoreA: () => {
+    return `<svg viewBox="0 0 220 140" width="220" height="140">
+      <rect class="indenter-bg" x="0" y="0" width="220" height="140" rx="6"/>
+      <rect class="indenter-mat" x="20" y="92" width="180" height="40" fill="#a3e635" fill-opacity="0.15" stroke="#a3e635"/>
+      <!-- Truncated cone -->
+      <polygon class="indenter-spec" points="95,20 125,20 116,95 104,95"/>
+      <text class="label-dim" x="110" y="14" text-anchor="middle">truncated cone 35°</text>
+      <text class="label" x="200" y="106" text-anchor="end" fill="#a3e635">rubber/TPU</text>
+      <line stroke="#8f99a8" stroke-width="1" x1="135" y1="50" x2="170" y2="40"/>
+      <text class="label-dim" x="172" y="42">Shore A</text>
+    </svg>`;
+  },
+  shoreD: () => {
+    return `<svg viewBox="0 0 220 140" width="220" height="140">
+      <rect class="indenter-bg" x="0" y="0" width="220" height="140" rx="6"/>
+      <rect class="indenter-mat" x="20" y="92" width="180" height="40" fill="#ffb86c" fill-opacity="0.15" stroke="#ffb86c"/>
+      <!-- Sharp cone with rounded tip -->
+      <polygon class="indenter-spec" points="98,20 122,20 112,93 108,93"/>
+      <circle class="indenter-spec" cx="110" cy="94" r="2"/>
+      <text class="label-dim" x="110" y="14" text-anchor="middle">sharp cone 30° + tip radius</text>
+      <text class="label" x="200" y="106" text-anchor="end" fill="#ffb86c">rigid plastic</text>
+      <line stroke="#8f99a8" stroke-width="1" x1="135" y1="40" x2="170" y2="40"/>
+      <text class="label-dim" x="172" y="42">Shore D</text>
+    </svg>`;
+  },
+};
+
+let currentMat = null;
+
+function showRec(matKey){
+  currentMat = matKey;
+  const rec = MAT_SCALES[matKey];
+  if (!rec){
+    document.getElementById("scaleName").textContent = "—";
+    document.getElementById("scaleDesc").textContent = "Pick a material above.";
+    document.getElementById("indenterRow").innerHTML = "";
+    return;
+  }
+  document.getElementById("scaleName").textContent = rec.name;
+  document.getElementById("scaleDesc").textContent = rec.desc;
+  const indenterFn = INDENTERS[rec.indenter];
+  document.getElementById("indenterRow").innerHTML =
+    indenterFn() +
+    `<div style="flex:1"><b style="color:var(--fg-bright);font:14px ui-monospace,monospace">${rec.scale}</b>` +
+    `<div style="color:var(--fg-dim);font-size:12px;margin-top:4px">Indenter geometry shown left.</div></div>`;
+}
+
+for (const card of document.querySelectorAll(".mat-card")){
+  card.addEventListener("click", () => {
+    document.querySelectorAll(".mat-card").forEach(c=>c.classList.remove("active"));
+    card.classList.add("active");
+    showRec(card.getAttribute("data-mat"));
+  });
+}
+
+// Calculator
+function calc(){
+  const HB = +document.getElementById("hbInput").value;
+  const mat = document.getElementById("appliedMat").value;
+  document.getElementById("hbOut").textContent = "HB "+HB;
+
+  // 3.45 rule
+  const utsSteel = 3.45 * HB;
+  // For non-steel, give "actual" approximate UTS that would match a real material at that HB
+  // Aluminum: roughly UTS ≈ 3.4 × HB but in lower HB range, and the actual measurement is wrong at high HB
+  // For warning purposes, just always report 3.45·HB as the *rule's output* and show the warning
+  document.getElementById("utsOut").textContent = utsSteel.toFixed(0) + " MPa";
+
+  // Conversion: rough HB→HRC and HB→HRB
+  // HB→HRC (valid HB ~250+): HRC ≈ (HB − 100)/10 (rough); better empirical:
+  // HRC ≈ 88.6 − 6404/HB (approx); use simpler form
+  let hrc = null, hrb = null;
+  if (HB >= 240) {
+    // Empirical formula: HRC ≈ 88.6 - (6404/HB) — gives HRC=21 at HB=240, ~58 at HB=600 — too high
+    // Use simpler tabular fit
+    if (HB <= 280) hrc = 25 + (HB-240)*0.25;
+    else if (HB <= 380) hrc = 35 + (HB-280)*0.13;
+    else if (HB <= 500) hrc = 48 + (HB-380)*0.075;
+    else hrc = 57 + (HB-500)*0.06;
+  }
+  if (HB <= 240) {
+    // HB to HRB: rough; HB 100 → HRB 56, HB 240 → HRB 100
+    hrb = 56 + (HB-100)*0.31;
+    if (hrb < 0) hrb = 0;
+    if (hrb > 100) hrb = 100;
+  }
+  let convText = "";
+  if (hrc != null) convText += `HRC ≈ ${hrc.toFixed(0)}`;
+  if (hrc != null && hrb != null) convText += "  /  ";
+  if (hrb != null) convText += `HRB ≈ ${hrb.toFixed(0)}`;
+  if (!convText) convText = "out of conversion range";
+  document.getElementById("hrConvOut").textContent = convText;
+
+  // Warning box
+  const warn = document.getElementById("warnSlot");
+  if (mat === "aluminum"){
+    warn.innerHTML = `<div class="warn-box">⚠ The 3.45 rule is calibrated for steels. For 6061-T6 (true UTS ≈ 310 MPa, HB ≈ 95), the rule gives ${(3.45*95).toFixed(0)} MPa — coincidentally close, but only in this narrow range. Above HB 120, the rule over-predicts aluminum UTS by 20%+. Use a tensile test or vendor datasheet.</div>`;
+  } else if (mat === "brass"){
+    warn.innerHTML = `<div class="warn-box">⚠ The 3.45 rule is steel-only. 360 brass (HB ≈ 60, true UTS ≈ 380 MPa) reads ${(3.45*60).toFixed(0)} MPa by the rule — off by nearly 2×. Brass work-hardens; same alloy in different temper has wildly different HB-to-UTS relationships.</div>`;
+  } else {
+    warn.innerHTML = "";
+  }
+}
+document.getElementById("hbInput").addEventListener("input", calc);
+document.getElementById("appliedMat").addEventListener("change", calc);
+calc();
+</script>
+</body>
+</html>

@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motion profiles — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto;margin:0 auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .metric{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:8px 12px;font:12px ui-monospace,monospace}
+  .metric b{color:var(--fg-bright);font-size:14px}
+  .metrics{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin:12px 0}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Motion profiles — trapezoidal vs S-curve</h1>
+  <p class="lede">A point-to-point move with limits on velocity, acceleration, and jerk. Trapezoidal honours
+  v_max and a_max only — jerk is impulsive at each corner (infinite for one sample). S-curve respects a jerk
+  ceiling: acceleration ramps in and out of the cruise. Vibration in a stiff servo system tracks jerk closely,
+  not acceleration — switching to S-curve is usually a free upgrade in settling quality.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Distance Δp (m)</label>
+      <input type="range" id="dist" min="0.05" max="1.0" step="0.01" value="0.5">
+      <span class="readout" id="distRO">0.50</span>
+    </div>
+    <div class="control">
+      <label>Max velocity v_max (m/s)</label>
+      <input type="range" id="vmax" min="0.05" max="2.0" step="0.05" value="0.8">
+      <span class="readout" id="vmaxRO">0.80</span>
+    </div>
+    <div class="control">
+      <label>Max acceleration a_max (m/s²)</label>
+      <input type="range" id="amax" min="0.2" max="20" step="0.1" value="4.0">
+      <span class="readout" id="amaxRO">4.0</span>
+    </div>
+    <div class="control">
+      <label>Max jerk j_max (m/s³) — S-curve only</label>
+      <input type="range" id="jmax" min="2" max="200" step="1" value="40">
+      <span class="readout" id="jmaxRO">40</span>
+    </div>
+    <div class="control">
+      <label>Plant time constant τ (s) — settling sim</label>
+      <input type="range" id="tau" min="0.005" max="0.2" step="0.005" value="0.04">
+      <span class="readout" id="tauRO">0.04</span>
+    </div>
+    <div class="control">
+      <label>Plant damping ζ</label>
+      <input type="range" id="zeta" min="0.05" max="1.5" step="0.05" value="0.4">
+      <span class="readout" id="zetaRO">0.40</span>
+    </div>
+  </section>
+
+  <h2>Profile (trapezoidal vs S-curve overlay)</h2>
+  <div class="figure">
+    <svg id="profSvg" viewBox="0 0 880 420" width="100%" height="420"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>Trapezoidal</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>S-curve</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Plant response (servo following the command)</span>
+    </div>
+  </div>
+
+  <h2>Motion metrics</h2>
+  <div class="metrics" id="metrics"></div>
+
+  <h2>How each profile is computed</h2>
+  <p><b>Trapezoidal:</b> the controller commands a = +a_max until velocity reaches v_max (or until the
+  midpoint, whichever first — "triangular" if the move is short), holds at v_max, then ramps with a = −a_max
+  to a stop. Three segments. Position is parabolic on the ramps, linear in the middle. Jerk is impulsive
+  (Dirac spikes at the three corners), which is what excites mechanical resonances.</p>
+  <p><b>S-curve:</b> seven segments. Jerk steps between +j_max, 0, −j_max, 0, +j_max, 0, −j_max. Acceleration
+  is piecewise linear (smooth ramps), velocity is piecewise quadratic (no kinks), position is piecewise
+  cubic. The move takes a bit longer but the servo settles much faster — net throughput is often higher.</p>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Acceleration corners on trapezoidal cause the plant to overshoot.</b> Watch the green trace ring after each corner.</li>
+    <li><b>S-curve plant response settles cleaner</b> with the same v_max and a_max — at the cost of slightly longer total time.</li>
+    <li><b>Shrink the distance below the "triangular" threshold</b> (where v_max never reached): both profiles degrade gracefully into shorter shapes.</li>
+    <li><b>Increase ζ (damping)</b> on the plant and the difference shrinks — both profiles settle quickly. Stiff, lightly-damped servos benefit most from S-curve.</li>
+    <li><b>Jerk limit is the new bottleneck on S-curve.</b> Raise j_max and the profile starts to look trapezoidal again. Lower it and the move stretches in time.</li>
+    <li><b>For ultra-smooth moves</b> (vision-guided, scanning): drop accel and jerk hard; the plant response becomes nearly identical to the command.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>TRAPEZOIDAL (TRIANGULAR FALLBACK)</h3>
+      <dl>
+        <dt>Cruise reached?</dt><dd><span class="eq">Δp &gt; v_max² / a_max</span></dd>
+        <dt>Ramp time</dt><dd><span class="eq">t_a = v_max / a_max</span></dd>
+        <dt>Cruise time</dt><dd><span class="eq">t_c = Δp/v_max − v_max/a_max</span></dd>
+        <dt>Total time</dt><dd><span class="eq">T = t_a + t_c + t_a</span></dd>
+        <dt>If triangular</dt><dd><span class="eq">T = 2·√(Δp/a_max)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card formulas">
+      <h3>S-CURVE TIMING</h3>
+      <dl>
+        <dt>Jerk time</dt><dd><span class="eq">t_j = a_max / j_max</span></dd>
+        <dt>Constant-accel time</dt><dd><span class="eq">t_a = v_max/a_max − t_j</span></dd>
+        <dt>Cruise time</dt><dd><span class="eq">t_c = Δp/v_max − v_max/a_max − t_j</span></dd>
+        <dt>Total time</dt><dd><span class="eq">T = 4 t_j + 2 t_a + t_c</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>PICK A PROFILE</h3>
+      <ul>
+        <li><b>Trapezoidal</b> — quick, simple. OK when servos are well-damped or motion is slow.</li>
+        <li><b>S-curve</b> — default for industrial / precision servos. Smoothness > extra ~10% move time.</li>
+        <li><b>Quintic / cubic spline</b> — for chained waypoints with C¹ or C² continuity.</li>
+        <li><b>Input shaping (ZV, ZVD)</b> — alternative: filter the command at resonance frequencies. Use when you can't tune jerk.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 8 — Robotics &amp; Mechatronics Systems</a> ·
+    Topic: motion profiles, trapezoidal, S-curve, jerk limiting, settling
+  </footer>
+</main>
+<script>
+const svg=document.getElementById('profSvg');
+function ns(tag, attrs={}, parent){
+  const e=document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k,attrs[k]);
+  parent.appendChild(e); return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+let dist=0.5, vmax=0.8, amax=4.0, jmax=40, tauP=0.04, zeta=0.4;
+
+function profileTrap(){
+  // returns array of {t,p,v,a,j}
+  let ta = vmax/amax;
+  let tc = dist/vmax - vmax/amax;
+  let triangular = tc < 0;
+  if(triangular){
+    ta = Math.sqrt(dist/amax);
+    tc = 0;
+    vmax = amax*ta;
+  }
+  const T = 2*ta + tc;
+  const samples=300;
+  const arr=[];
+  for(let i=0;i<=samples;i++){
+    const t = i*T/samples;
+    let a=0,v=0,p=0;
+    if(t<ta){ a=amax; v=amax*t; p=0.5*amax*t*t; }
+    else if(t<ta+tc){ a=0; v=vmax; p=0.5*amax*ta*ta + vmax*(t-ta); }
+    else {
+      const dt=t-(ta+tc); a=-amax; v=vmax-amax*dt;
+      p=0.5*amax*ta*ta + vmax*tc + vmax*dt - 0.5*amax*dt*dt;
+    }
+    arr.push({t,p,v,a,j:0});
+  }
+  return {arr, T, kind:'trap'};
+}
+
+function profileScurve(){
+  // 7-segment jerk-limited. Adjust if not possible to reach amax or vmax.
+  let tj = amax/jmax;
+  let ta = vmax/amax - tj;
+  if(ta<0){ ta=0; tj=Math.sqrt(vmax/jmax); amax = jmax*tj; }
+  let tc = dist/vmax - vmax/amax - tj;
+  if(tc<0){
+    // triangular accel: cannot reach vmax. find ta such that displacement matches.
+    // distance fully = (amax)(ta+tj)^2 → reach v = amax(ta+tj); equal accel/decel triangles
+    // simplified: assume can still reach amax
+    tc=0;
+    // recompute time so total dist hits Δp
+    // d = amax*(ta+tj)^2  (assuming full a profile both sides + tc=0 ⇒ )
+    // approximate: ta+tj such that 2*(integral of v) = Δp
+    // v_top = amax*(ta+tj); d = v_top * (ta+tj)
+    const x = Math.sqrt(dist/amax);
+    if(x < tj){
+      // can't even reach amax; pure jerk-only
+      tj = Math.cbrt(dist/(2*jmax));
+      ta=0; tc=0;
+    } else {
+      ta = x - tj;
+    }
+  }
+  const T = 4*tj + 2*ta + tc;
+  const samples=400;
+  const arr=[];
+  // segment endpoints
+  const seg=[tj, tj+ta, 2*tj+ta, 2*tj+ta+tc, 3*tj+ta+tc, 3*tj+2*ta+tc, 4*tj+2*ta+tc];
+  function eval_(t){
+    // step through, integrating
+    let v=0,p=0,a=0,j=0;
+    // Use closed-form per segment:
+    let tt=t;
+    let s0=0, v_at_s0=0, a_at_s0=0, p_at_s0=0;
+    function advance(dur, jSeg){
+      const dt=dur;
+      const pNext = p_at_s0 + v_at_s0*dt + 0.5*a_at_s0*dt*dt + (jSeg/6)*dt*dt*dt;
+      const vNext = v_at_s0 + a_at_s0*dt + 0.5*jSeg*dt*dt;
+      const aNext = a_at_s0 + jSeg*dt;
+      p_at_s0=pNext; v_at_s0=vNext; a_at_s0=aNext;
+    }
+    const segs=[
+      {dur:tj, j:+jmax},
+      {dur:ta, j:0},
+      {dur:tj, j:-jmax},
+      {dur:tc, j:0},
+      {dur:tj, j:-jmax},
+      {dur:ta, j:0},
+      {dur:tj, j:+jmax}
+    ];
+    let acc=0;
+    for(let i=0;i<segs.length;i++){
+      const s=segs[i];
+      if(t < acc + s.dur + 1e-12){
+        const dt=t-acc;
+        const pCur = p_at_s0 + v_at_s0*dt + 0.5*a_at_s0*dt*dt + (s.j/6)*dt*dt*dt;
+        const vCur = v_at_s0 + a_at_s0*dt + 0.5*s.j*dt*dt;
+        const aCur = a_at_s0 + s.j*dt;
+        return {p:pCur,v:vCur,a:aCur,j:s.j};
+      }
+      advance(s.dur, s.j);
+      acc+=s.dur;
+    }
+    return {p:p_at_s0,v:0,a:0,j:0};
+  }
+  for(let i=0;i<=samples;i++){
+    const t=i*T/samples;
+    const r=eval_(t);
+    arr.push({t,p:r.p,v:r.v,a:r.a,j:r.j});
+  }
+  return {arr, T, kind:'scurve'};
+}
+
+// simulate second-order plant tracking command position via critically-stable feedback;
+// here we use: pdot = (p_cmd_dot)*1 with output = p convolved with 2nd-order system
+function simulatePlant(profile){
+  // continuous 2nd-order: y'' + 2ζωₙ y' + ωₙ² y = ωₙ² u
+  // ωₙ = 1/τ
+  const wn = 1/tauP;
+  const dt = 0.001;
+  const T = profile.T + 0.5;
+  const N = Math.floor(T/dt);
+  let y=0, dy=0;
+  const out=[];
+  let idxC=0;
+  for(let i=0;i<N;i++){
+    const t=i*dt;
+    // find command at t (linear interp)
+    while(idxC < profile.arr.length-1 && profile.arr[idxC+1].t < t) idxC++;
+    let u;
+    if(idxC >= profile.arr.length-1) u = dist;
+    else {
+      const a=profile.arr[idxC], b=profile.arr[idxC+1];
+      const al=(t-a.t)/(b.t-a.t); u = a.p+al*(b.p-a.p);
+    }
+    const ddy = wn*wn*(u-y) - 2*zeta*wn*dy;
+    dy += ddy*dt; y+=dy*dt;
+    out.push({t, p:y});
+  }
+  return out;
+}
+
+function draw(){
+  clear(svg);
+  const W=880,H=420;
+  const PADL=60,PADR=20,PADT=18,PADB=30;
+  const trap = profileTrap();
+  const scu = profileScurve();
+  const Tmax = Math.max(trap.T, scu.T) * 1.15;
+
+  // plot area for pos, vel, accel side-by-side stacked
+  const rows=3;
+  const rowH=(H-PADT-PADB)/rows;
+  function rowY(r, y01){ return PADT + r*rowH + (1-y01)*(rowH-8); }
+
+  // grid for each row
+  for(let r=0;r<rows;r++){
+    const y0=PADT+r*rowH, y1=PADT+(r+1)*rowH;
+    ns('line',{x1:PADL,y1:y0,x2:W-PADR,y2:y0,stroke:'#2a313c'},svg);
+    ns('line',{x1:PADL,y1:y1,x2:W-PADR,y2:y1,stroke:'#2a313c'},svg);
+    for(let i=0;i<=10;i++){
+      const x=PADL+i/10*(W-PADL-PADR);
+      ns('line',{x1:x,y1:y0,x2:x,y2:y1,stroke:'#222831'},svg);
+    }
+    // mid line
+    ns('line',{x1:PADL,y1:rowY(r,0.5),x2:W-PADR,y2:rowY(r,0.5),stroke:'#1d232c'},svg);
+  }
+  // row labels
+  ns('text',{x:8,y:rowY(0,0.5),fill:'#5ec8ff',font:'12px ui-monospace'},svg).textContent='pos';
+  ns('text',{x:8,y:rowY(1,0.5),fill:'#ffb86c',font:'12px ui-monospace'},svg).textContent='vel';
+  ns('text',{x:8,y:rowY(2,0.5),fill:'#ff7b72',font:'12px ui-monospace'},svg).textContent='accel';
+
+  // axis labels
+  for(let i=0;i<=5;i++){
+    const x=PADL+i/5*(W-PADL-PADR);
+    const tval=i*Tmax/5;
+    ns('text',{x,y:H-PADB+18,fill:'#8f99a8',font:'10px ui-monospace','text-anchor':'middle'},svg).textContent=tval.toFixed(2)+'s';
+  }
+
+  // scales
+  function pScale(p){ return p/dist; }
+  // velocity scale: use max of both profiles or vmax
+  const vScale_max = Math.max(vmax*1.2, 0.001);
+  function vScale(v){ return (v/vScale_max + 1)*0.5; }
+  const aScale_max = Math.max(amax*1.5, 0.001);
+  function aScale(a){ return (a/aScale_max + 1)*0.5; }
+
+  function plot(profile,color,width=2){
+    const segs=[
+      {row:0, key:'p', scale:pScale},
+      {row:1, key:'v', scale:vScale},
+      {row:2, key:'a', scale:aScale}
+    ];
+    segs.forEach(s=>{
+      let d='';
+      profile.arr.forEach((pt,i)=>{
+        const x=PADL+(pt.t/Tmax)*(W-PADL-PADR);
+        const y=rowY(s.row, s.scale(pt[s.key]));
+        d += (i===0?'M ':' L ')+x+','+y;
+      });
+      ns('path',{d,fill:'none',stroke:color,'stroke-width':width,opacity:0.9},svg);
+    });
+  }
+
+  plot(trap,'#5ec8ff',2);
+  plot(scu,'#ffb86c',2);
+
+  // plant response on position row
+  function plotPlant(profile,color){
+    const sim = simulatePlant(profile);
+    let d='';
+    sim.forEach((pt,i)=>{
+      const x=PADL+(pt.t/Tmax)*(W-PADL-PADR);
+      const y=rowY(0, pScale(pt.p));
+      d += (i===0?'M ':' L ')+x+','+y;
+    });
+    ns('path',{d,fill:'none',stroke:color,'stroke-width':1.5,opacity:0.7,'stroke-dasharray':'3 3'},svg);
+  }
+  plotPlant(trap,'#a3e635');
+  plotPlant(scu,'#a3e635');
+
+  // metrics
+  const m=document.getElementById('metrics'); m.innerHTML='';
+  function metric(label,val){
+    const d=document.createElement('div');d.className='metric';
+    d.innerHTML='<div style="color:var(--fg-dim)">'+label+'</div><b>'+val+'</b>';
+    m.appendChild(d);
+  }
+  metric('Trapezoidal T', trap.T.toFixed(3)+' s');
+  metric('S-curve T', scu.T.toFixed(3)+' s');
+  metric('Time penalty (S/trap)', ((scu.T/trap.T-1)*100).toFixed(1)+' %');
+  metric('Cruise reached (trap)?', (vmax*vmax/amax < dist)?'yes':'no');
+  metric('Peak |a| trap', trap.arr.reduce((m_,p)=>Math.max(m_,Math.abs(p.a)),0).toFixed(2)+' m/s²');
+  metric('Peak |a| S', scu.arr.reduce((m_,p)=>Math.max(m_,Math.abs(p.a)),0).toFixed(2)+' m/s²');
+}
+
+['dist','vmax','amax','jmax','tau','zeta'].forEach(id=>{
+  document.getElementById(id).oninput = e=>{
+    const v=parseFloat(e.target.value);
+    if(id==='dist') dist=v;
+    else if(id==='vmax') vmax=v;
+    else if(id==='amax') amax=v;
+    else if(id==='jmax') jmax=v;
+    else if(id==='tau') tauP=v;
+    else zeta=v;
+    document.getElementById(id+'RO').textContent = (id==='dist'||id==='tau'||id==='zeta')?v.toFixed(2):v.toFixed(id==='jmax'?0:1);
+    draw();
+  };
+});
+draw();
+</script>
+</body>
+</html>

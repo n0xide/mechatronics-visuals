@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feed-forward control — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .block{fill:#1f3a4a;stroke:#5ec8ff;stroke-width:1.5;rx:4}
+  .block-plant{fill:#3a2a1f;stroke:#ffb86c;stroke-width:1.5;rx:4}
+  .block-ff{fill:#2a3a1f;stroke:#a3e635;stroke-width:1.5;rx:4}
+  .sum-node{fill:#0e1116;stroke:#dde3ec;stroke-width:1.5}
+  .wire{stroke:#dde3ec;stroke-width:1.5;fill:none}
+  .wire-ff{stroke:#a3e635;stroke-width:1.5;fill:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>Feed-forward — pre-emptive control</h1>
+  <p class="lede">If you already know what torque is needed to hold a robot arm against gravity at a given pose,
+  why force a PID controller to figure it out from scratch by accumulating error? Feed-forward injects the
+  model-known control action directly, so the PID only has to clean up the leftover modelling error.
+  Example: a 6-DOF arm joint moving against gravity — without FF, the integrator has to wind up to hold each pose.</p>
+
+  <h2>Block diagram</h2>
+  <div class="figure">
+    <svg id="diagSvg" viewBox="0 0 880 280" width="100%" height="280"></svg>
+    <p style="font-size:12px;color:var(--fg-dim);margin-top:8px">
+      Feed-forward path (green) computes the expected control effort from the setpoint without waiting for error.
+      Feedback PID (blue) corrects the residual.
+    </p>
+  </div>
+
+  <h2>Robot arm gravity compensation</h2>
+  <p>One-link arm of length <code>L</code>, mass <code>m</code>, pivot at the shoulder. Joint angle θ measured
+  from the horizontal. Gravity torque <code>τ_g = m·g·L·cos(θ)</code>. The motor must supply this just to hold
+  position. With FF on, the controller adds <code>τ_FF = m·g·L·cos(θ_setpoint)</code>. PID only sees inertia
+  and disturbance.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Setpoint angle θ_sp (°)</label>
+      <input type="range" id="theta" min="-80" max="80" step="1" value="45">
+      <span class="readout" id="thetaRO">45 °</span>
+    </div>
+    <div class="control">
+      <label>Mass m (kg)</label>
+      <input type="range" id="m" min="0.2" max="3" step="0.05" value="1">
+      <span class="readout" id="mRO">1.00 kg</span>
+    </div>
+    <div class="control">
+      <label>Link length L (m)</label>
+      <input type="range" id="L" min="0.1" max="0.6" step="0.01" value="0.3">
+      <span class="readout" id="LRO">0.30 m</span>
+    </div>
+    <div class="control">
+      <label>Kp</label>
+      <input type="range" id="kp" min="0" max="80" step="1" value="20">
+      <span class="readout" id="kpRO">20</span>
+    </div>
+    <div class="control">
+      <label>Ki</label>
+      <input type="range" id="ki" min="0" max="30" step="0.5" value="6">
+      <span class="readout" id="kiRO">6.0</span>
+    </div>
+    <div class="control">
+      <label>Kd</label>
+      <input type="range" id="kd" min="0" max="5" step="0.05" value="1">
+      <span class="readout" id="kdRO">1.00</span>
+    </div>
+    <div class="control">
+      <label>Feed-forward</label>
+      <select id="ffmode">
+        <option value="off">Off — pure PID</option>
+        <option value="grav" selected>Gravity comp τ_FF = m·g·L·cos(θ_sp)</option>
+        <option value="velocity">Velocity FF (for trajectory)</option>
+        <option value="both">Both gravity + velocity</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Motion type</label>
+      <select id="motion">
+        <option value="step" selected>Step setpoint (hold pose)</option>
+        <option value="ramp">Ramp setpoint (trajectory)</option>
+      </select>
+    </div>
+  </section>
+
+  <h2>Joint angle response</h2>
+  <div class="figure">
+    <svg id="plotSvg" viewBox="0 0 880 320" width="100%" height="320"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>θ(t)</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Setpoint θ_sp</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>τ_PID (right axis)</span>
+      <span><span class="swatch" style="background:#a3e635;opacity:0.7"></span>τ_FF (right axis)</span>
+    </div>
+  </div>
+
+  <div id="summary" class="figure" style="padding:14px 18px;font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>
+
+  <h2>Common feed-forward terms</h2>
+  <table>
+    <thead><tr><th>FF source</th><th>Formula</th><th>Typical use</th></tr></thead>
+    <tbody>
+      <tr><td>Gravity</td><td>τ_FF = m·g·L·cos(θ)</td><td>Robot arm joints, anything horizontal</td></tr>
+      <tr><td>Friction (Coulomb)</td><td>τ_FF = sign(v)·τ_friction</td><td>Joints with stiction breakaway</td></tr>
+      <tr><td>Friction (viscous)</td><td>τ_FF = b·v</td><td>High-speed lubricated joints</td></tr>
+      <tr><td>Velocity (trajectory)</td><td>u_FF = K_v·v_setpoint</td><td>Tracking moving setpoints — no lag</td></tr>
+      <tr><td>Acceleration (inertial)</td><td>τ_FF = J·α_setpoint</td><td>Aggressive trajectories, CNC, 3D printer</td></tr>
+      <tr><td>Inverse dynamics (full)</td><td>τ_FF = M(q)·q̈ + C(q,q̇)·q̇ + g(q)</td><td>High-performance multi-DOF arms (computed torque control)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>FF off + low Ki: huge steady-state droop.</b> Without integral wind-up the arm sags below the setpoint because no controller term knows about gravity. Pure Kp can't hold up a load — the residual is τ_g / Kp.</li>
+    <li><b>FF off + high Ki: it eventually works.</b> But the integrator has to slowly wind up to carry the gravity load. That's exactly what FF replaces — and it does it instantly, at the setpoint.</li>
+    <li><b>FF on: PID torque drops to zero in steady state.</b> Watch the orange (PID) trace — once the arm is at the setpoint, the PID has nothing left to do. The model is carrying the load.</li>
+    <li><b>For ramp motions, gravity FF alone isn't enough.</b> Switch to "ramp" motion + velocity FF and the arm tracks without lagging behind. Without velocity FF, the controller must build up a velocity error to drive velocity — always 1 step behind.</li>
+    <li><b>FF needs a model.</b> Wrong mass, wrong link length → wrong FF → leftover error for PID. FF + PID is symbiotic: FF handles what you know, PID handles what you don't.</li>
+    <li><b>FF reduces integral windup.</b> Less work for I means less wind-up risk and snappier disturbance rejection.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Combined</dt><dd><span class="eq">u = u_FF(r) + u_PID(r − y)</span></dd>
+        <dt>Gravity (1 link)</dt><dd><span class="eq">τ_g = m·g·L·cos(θ)</span></dd>
+        <dt>Velocity FF</dt><dd><span class="eq">u_v = K_v · v_sp</span></dd>
+        <dt>Acceleration FF</dt><dd><span class="eq">u_a = J · a_sp</span></dd>
+        <dt>Inverse-dyn FF (multi-DOF)</dt><dd><span class="eq">τ = M(q)·q̈_sp + C(q,q̇)·q̇_sp + g(q)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>WHY ADD FF</h3>
+      <ul>
+        <li><b>Reaches setpoint faster</b> — no error needs to build up first</li>
+        <li><b>Less integral windup</b> — I doesn't carry the steady load</li>
+        <li><b>Better trajectory tracking</b> — velocity FF kills tracking lag</li>
+        <li><b>Lower Kp possible</b> — more stable loop, less noise amplification</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li><b>FF without PID</b> = open-loop — disturbances ignored</li>
+        <li><b>Wrong model</b> → FF pushes the wrong way → fight with PID</li>
+        <li><b>Mass/inertia changes</b> (gripper picks up payload) → recompute FF online or use adaptive ID</li>
+        <li><b>Discontinuous FF</b> (Coulomb friction sign flip) → jitter at velocity = 0</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 4 — Feedback Control</a> ·
+    Topic: feed-forward, gravity compensation, velocity FF, computed-torque control
+  </footer>
+</main>
+<script>
+function ns(tag, attrs={}, parent){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+function drawBlock(svg, x, y, w, h, label, sub, cls){
+  ns('rect',{x,y,width:w,height:h,class:cls||'block'},svg);
+  ns('text',{x:x+w/2,y:y+h/2-2,class:'label','text-anchor':'middle',fill:'#fff','font-weight':'600'},svg).textContent=label;
+  if(sub) ns('text',{x:x+w/2,y:y+h/2+14,class:'label-dim','text-anchor':'middle'},svg).textContent=sub;
+}
+function arrow(svg, x1, y1, x2, y2, color){
+  const c = color || '#dde3ec';
+  ns('line',{x1,y1,x2:x2-6,y2,stroke:c,'stroke-width':1.5,fill:'none'},svg);
+  ns('path',{d:`M ${x2},${y2} L ${x2-8},${y2-4} L ${x2-8},${y2+4} Z`,fill:c},svg);
+}
+
+function drawDiagram(){
+  const svg = document.getElementById('diagSvg');
+  clear(svg);
+  // r (setpoint) at left, branches up into FF and into sum
+  ns('text',{x:20,y:30,class:'label-dim'},svg).textContent='Hybrid: feedback PID + parallel feed-forward path';
+  // r
+  arrow(svg, 20, 140, 90, 140);
+  ns('text',{x:30,y:130,class:'label-dim'},svg).textContent='r';
+  // branch dot
+  ns('circle',{cx:90,cy:140,r:3,fill:'#dde3ec'},svg);
+  // up to FF
+  ns('line',{x1:90,y1:140,x2:90,y2:70,class:'wire-ff'},svg);
+  arrow(svg, 90, 70, 200, 70, '#a3e635');
+  drawBlock(svg, 200, 50, 150, 40, 'Feed-forward', 'F(r)', 'block-ff');
+  arrow(svg, 350, 70, 540, 70, '#a3e635');
+  // down to sum
+  arrow(svg, 90, 140, 165, 140);
+  // sum 1 (error)
+  ns('circle',{cx:175,cy:140,r:14,class:'sum-node'},svg);
+  ns('text',{x:165,y:130,class:'label-dim'},svg).textContent='+';
+  ns('text',{x:165,y:160,class:'label-dim'},svg).textContent='−';
+  arrow(svg, 189, 140, 250, 140);
+  drawBlock(svg, 250, 120, 100, 40, 'PID', 'C(s)');
+  arrow(svg, 350, 140, 540, 140);
+  // sum 2 (FF + PID -> u)
+  ns('circle',{cx:550,cy:140,r:14,class:'sum-node'},svg);
+  ns('line',{x1:540,y1:70,x2:540,y2:130,class:'wire-ff'},svg);
+  ns('line',{x1:540,y1:130,x2:550,y2:130,class:'wire-ff'},svg);
+  ns('text',{x:558,y:130,class:'label-dim'},svg).textContent='u';
+  arrow(svg, 564, 140, 640, 140);
+  drawBlock(svg, 640, 120, 140, 40, 'Plant G', 'arm joint', 'block-plant');
+  arrow(svg, 780, 140, 860, 140);
+  ns('text',{x:790,y:130,class:'label-dim'},svg).textContent='y';
+  // feedback wire
+  ns('line',{x1:825,y1:140,x2:825,y2:220,class:'wire'},svg);
+  ns('line',{x1:825,y1:220,x2:175,y2:220,class:'wire'},svg);
+  ns('line',{x1:175,y1:220,x2:175,y2:154,class:'wire'},svg);
+  ns('text',{x:500,y:212,class:'label-dim'},svg).textContent='measured y';
+}
+
+// Joint physics
+const g = 9.81;
+let theta = 45*Math.PI/180, mLink = 1.0, Llink = 0.3;
+let kp = 20, ki = 6, kd = 1.0;
+let ffmode = 'grav', motion = 'step';
+
+function simulate(){
+  const T = 5, dt = 0.002;
+  const N = Math.floor(T/dt);
+  const J = (1/3) * mLink * Llink*Llink;  // moment of inertia (rod about end)
+  const b = 0.05;  // viscous friction
+  let q = 0, qd = 0, I = 0, qPrev = 0;
+  const t = new Float32Array(N), th = new Float32Array(N), uPID = new Float32Array(N), uFF = new Float32Array(N), spArr = new Float32Array(N);
+  for(let i=0;i<N;i++){
+    const tt = i*dt;
+    // Setpoint
+    let qSP, qdSP = 0;
+    if(motion === 'step'){
+      qSP = tt > 0.2 ? theta : 0;
+      qdSP = 0;
+    } else {
+      // Ramp from 0 to theta over 3 s
+      const tRamp = 3.0;
+      if(tt < 0.2) { qSP = 0; qdSP = 0; }
+      else if(tt < 0.2 + tRamp){ qSP = theta * (tt - 0.2)/tRamp; qdSP = theta/tRamp; }
+      else { qSP = theta; qdSP = 0; }
+    }
+    const e = qSP - q;
+    I += ki * e * dt;
+    // Anti-windup clamp
+    if(I > 25) I = 25; if(I < -25) I = -25;
+    const dymeas = (q - qPrev)/dt;
+    const Pterm = kp * e;
+    const Dterm = -kd * dymeas;
+    const uPIDi = Pterm + I + Dterm;
+    // FF
+    let uFFi = 0;
+    if(ffmode === 'grav' || ffmode === 'both'){
+      uFFi += mLink * g * Llink * Math.cos(qSP);
+    }
+    if(ffmode === 'velocity' || ffmode === 'both'){
+      // Velocity FF: K_v * qdSP. K_v approx J/τ but for tracking just use J + viscous compensation
+      uFFi += b * qdSP + J * 0;  // accel = 0 in ramp interior; use viscous comp.
+    }
+    const u = uPIDi + uFFi;
+    // Dynamics: J·q̈ = u − m·g·L·cos(q) − b·q̇
+    const tauGrav = mLink * g * Llink * Math.cos(q);
+    const qdd = (u - tauGrav - b*qd) / J;
+    qd += qdd * dt;
+    q += qd * dt;
+    t[i] = tt; th[i] = q; uPID[i] = uPIDi; uFF[i] = uFFi; spArr[i] = qSP;
+    qPrev = q;
+  }
+  return {t, th, uPID, uFF, sp:spArr};
+}
+
+function drawPlot(){
+  const svg = document.getElementById('plotSvg');
+  clear(svg);
+  const W=880, H=320, PAD_L=60, PAD_R=60, PAD_T=20, PAD_B=40;
+  const tMax = 5;
+  const thMax = Math.max(Math.abs(theta), 0.2) * 1.4 * 180/Math.PI;
+  const thMin = Math.min(0, theta*180/Math.PI - 10);
+  const uMax = Math.max(15, mLink*g*Llink*1.5);
+
+  for(let i=0;i<=8;i++){
+    const yy = PAD_T + i/8*(H-PAD_T-PAD_B);
+    ns('line',{x1:PAD_L,y1:yy,x2:W-PAD_R,y2:yy,stroke:'#222831'},svg);
+  }
+  ns('line',{x1:PAD_L,y1:H-PAD_B,x2:W-PAD_R,y2:H-PAD_B,stroke:'#8f99a8'},svg);
+  ns('line',{x1:PAD_L,y1:PAD_T,x2:PAD_L,y2:H-PAD_B,stroke:'#8f99a8'},svg);
+
+  function xPx(t){ return PAD_L + t/tMax*(W-PAD_L-PAD_R); }
+  function yPx(yDeg){ return H-PAD_B - (yDeg-thMin)/(thMax-thMin)*(H-PAD_T-PAD_B); }
+  function uPx(u){ return H-PAD_B - (u+uMax)/(2*uMax)*(H-PAD_T-PAD_B); }
+
+  for(let i=0;i<=5;i++){
+    ns('text',{x:xPx(i),y:H-PAD_B+18,class:'label-dim','text-anchor':'middle'},svg).textContent=i+'s';
+  }
+  for(let i=0;i<=4;i++){
+    const yv = thMin + (thMax-thMin)*i/4;
+    ns('text',{x:PAD_L-6,y:yPx(yv)+4,class:'label-dim','text-anchor':'end'},svg).textContent=yv.toFixed(0)+'°';
+  }
+  for(let i=0;i<=4;i++){
+    const uv = -uMax + 2*uMax*i/4;
+    ns('text',{x:W-PAD_R+6,y:uPx(uv)+4,class:'label-dim',fill:'#ffb86c'},svg).textContent=uv.toFixed(1);
+  }
+  ns('text',{x:PAD_L-40,y:PAD_T+12,class:'label-dim'},svg).textContent='θ';
+  ns('text',{x:W-PAD_R+30,y:PAD_T+12,class:'label-dim',fill:'#ffb86c'},svg).textContent='τ';
+
+  const sim = simulate();
+  // setpoint
+  let psp = '';
+  for(let i=0;i<sim.t.length;i+=2){
+    if(i===0) psp = `M ${xPx(sim.t[i])},${yPx(sim.sp[i]*180/Math.PI)}`;
+    else psp += ` L ${xPx(sim.t[i])},${yPx(sim.sp[i]*180/Math.PI)}`;
+  }
+  ns('path',{d:psp,fill:'none',stroke:'#a3e635','stroke-width':1.5,'stroke-dasharray':'5 4',opacity:0.85},svg);
+
+  // FF torque
+  let pff = '';
+  for(let i=0;i<sim.t.length;i+=2){
+    if(i===0) pff = `M ${xPx(sim.t[i])},${uPx(sim.uFF[i])}`;
+    else pff += ` L ${xPx(sim.t[i])},${uPx(sim.uFF[i])}`;
+  }
+  ns('path',{d:pff,fill:'none',stroke:'#a3e635','stroke-width':1.5,opacity:0.55},svg);
+  // PID torque
+  let ppid = '';
+  for(let i=0;i<sim.t.length;i+=2){
+    if(i===0) ppid = `M ${xPx(sim.t[i])},${uPx(sim.uPID[i])}`;
+    else ppid += ` L ${xPx(sim.t[i])},${uPx(sim.uPID[i])}`;
+  }
+  ns('path',{d:ppid,fill:'none',stroke:'#ffb86c','stroke-width':1.5,opacity:0.85},svg);
+  // θ(t)
+  let pth = '';
+  for(let i=0;i<sim.t.length;i+=2){
+    if(i===0) pth = `M ${xPx(sim.t[i])},${yPx(sim.th[i]*180/Math.PI)}`;
+    else pth += ` L ${xPx(sim.t[i])},${yPx(sim.th[i]*180/Math.PI)}`;
+  }
+  ns('path',{d:pth,fill:'none',stroke:'#5ec8ff','stroke-width':2.5},svg);
+
+  // summary
+  const tauG = mLink*g*Llink*Math.cos(theta);
+  const finalTh = sim.th[sim.th.length-1]*180/Math.PI;
+  const finalPID = sim.uPID[sim.uPID.length-1];
+  const finalFF = sim.uFF[sim.uFF.length-1];
+  document.getElementById('summary').innerHTML =
+    `<b>Plant constants:</b> mass = ${mLink.toFixed(2)} kg, length = ${Llink.toFixed(2)} m, J = ⅓mL² = ${((1/3)*mLink*Llink*Llink).toFixed(4)} kg·m²<br>` +
+    `<b>Required holding torque at setpoint:</b> τ_g = m·g·L·cos(θ) = ${tauG.toFixed(3)} N·m<br>` +
+    `<span style="color:var(--accent3)">FF mode = <b>${ffmode}</b>: FF torque @ end = ${finalFF.toFixed(3)} N·m  →  PID torque @ end = ${finalPID.toFixed(3)} N·m (smaller is better)</span><br>` +
+    `<span style="color:var(--accent)">Final θ = ${finalTh.toFixed(2)}°  (setpoint = ${(theta*180/Math.PI).toFixed(1)}°)</span>`;
+}
+
+function refresh(){ drawDiagram(); drawPlot(); }
+
+document.getElementById('theta').oninput = e=>{ theta=parseFloat(e.target.value)*Math.PI/180; document.getElementById('thetaRO').textContent=e.target.value+' °'; refresh(); };
+document.getElementById('m').oninput = e=>{ mLink=parseFloat(e.target.value); document.getElementById('mRO').textContent=mLink.toFixed(2)+' kg'; refresh(); };
+document.getElementById('L').oninput = e=>{ Llink=parseFloat(e.target.value); document.getElementById('LRO').textContent=Llink.toFixed(2)+' m'; refresh(); };
+document.getElementById('kp').oninput = e=>{ kp=parseFloat(e.target.value); document.getElementById('kpRO').textContent=kp.toFixed(0); refresh(); };
+document.getElementById('ki').oninput = e=>{ ki=parseFloat(e.target.value); document.getElementById('kiRO').textContent=ki.toFixed(1); refresh(); };
+document.getElementById('kd').oninput = e=>{ kd=parseFloat(e.target.value); document.getElementById('kdRO').textContent=kd.toFixed(2); refresh(); };
+document.getElementById('ffmode').onchange = e=>{ ffmode=e.target.value; refresh(); };
+document.getElementById('motion').onchange = e=>{ motion=e.target.value; refresh(); };
+
+refresh();
+</script>
+</body>
+</html>

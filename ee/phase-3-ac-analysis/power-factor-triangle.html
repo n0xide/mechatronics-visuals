@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Power Factor & The Power Triangle — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .callout{background:var(--bg-elev2);border-left:3px solid var(--warn);
+    border-radius:4px;padding:12px 14px;margin:14px 0;font-size:13px}
+  .callout h4{margin:0 0 6px;font:600 12px ui-monospace,monospace;
+    color:var(--warn);text-transform:uppercase;letter-spacing:0.04em}
+  .callout p{margin:4px 0;color:var(--fg)}
+  .stat{display:inline-block;margin-right:14px;font-family:ui-monospace,monospace;font-size:13px}
+  .stat b{color:var(--fg-bright)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Power Factor & The Power Triangle</h1>
+  <p class="lede">When current lags (or leads) voltage, the supply has to push more amps than the load actually "uses." Real power P, reactive power Q, and apparent power S form a right triangle whose angle is the phase difference θ between V and I. Power factor PF = cos(θ) is the cosine of that angle — and the lever every utility engineer reaches for.</p>
+
+  <h3>What this teaches</h3>
+  <p>Hold V_rms·I_rms constant and rotate θ. Real power <code>P = VI·cos(θ)</code> shrinks, reactive power <code>Q = VI·sin(θ)</code> grows, but apparent power <code>S = VI</code> stays put. That's why an inductive motor on a 120 V / 10 A line might deliver only 700 W of useful work while the supply still bleeds 1200 VA. Drop a capacitor in parallel and its leading Q cancels the motor's lagging Q — the triangle collapses toward a flat horizontal line and PF marches toward 1.</p>
+
+  <h2>Panel 1 — The triangle</h2>
+  <section class="controls">
+    <div class="control">
+      <label>Phase angle θ (V vs. I) — <span class="readout" id="rTheta">45</span>°</label>
+      <input type="range" id="sTheta" min="0" max="90" step="0.5" value="45">
+    </div>
+    <div class="control">
+      <label>V_rms — <span class="readout" id="rVrms">120</span> V</label>
+      <input type="range" id="sVrms" min="12" max="240" step="1" value="120">
+    </div>
+    <div class="control">
+      <label>I_rms — <span class="readout" id="rIrms">10</span> A</label>
+      <input type="range" id="sIrms" min="0.5" max="30" step="0.1" value="10">
+    </div>
+    <div class="control" style="grid-column:1/-1">
+      <span class="stat">PF = cos(θ) = <span class="readout" id="oPF">0.707</span></span>
+      <span class="stat">P = <b><span class="readout" id="oP">848</span> W</b></span>
+      <span class="stat">Q = <b><span class="readout" id="oQ">848</span> VAR</b></span>
+      <span class="stat">S = <b><span class="readout" id="oS">1200</span> VA</b></span>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="triSvg" viewBox="0 0 720 360" width="100%"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>P — real power (W)</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>Q — reactive power (VAR)</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>S — apparent power (VA)</span>
+    </div>
+  </div>
+
+  <div class="callout">
+    <h4>Why supplies care</h4>
+    <p>An ideal resistive load at <span id="cVI1">120 V · 10 A</span> needs <b>1200 W</b> and pulls <b>10 A</b>. At PF=<span class="readout" id="cPF">0.707</span> the same wires must still pass <b><span class="readout" id="cIact">10.00</span> A</b> to deliver only <b><span class="readout" id="cPact">848</span> W</b> of useful power.</p>
+    <p>To deliver the <b>same 1200 W of real power</b> at this PF, the supply would need <b><span class="readout" id="cIneed">14.14</span> A</b> — <span class="readout" id="cPct">41.4</span>% more current, which costs <span class="readout" id="cLoss">100</span>% more I²R loss in the distribution wiring. Utilities bill industrial customers on apparent power (kVA-h) precisely to penalize this.</p>
+  </div>
+
+  <h2>Panel 2 — Power factor correction</h2>
+  <p class="lede">An inductive load (a motor) lags by θ_L. Adding a capacitor in parallel injects a leading reactive current that <i>subtracts</i> from the inductor's lag. Walk the capacitor up and the net Q falls; the triangle's vertical leg shrinks; PF climbs toward 1.0.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Load phase θ_L (inductive lag) — <span class="readout" id="rThL">60</span>°</label>
+      <input type="range" id="sThL" min="0" max="85" step="0.5" value="60">
+    </div>
+    <div class="control">
+      <label>Source V_rms — <span class="readout" id="rVs">240</span> V</label>
+      <input type="range" id="sVs" min="60" max="480" step="5" value="240">
+    </div>
+    <div class="control">
+      <label>Frequency f — <span class="readout" id="rF">60</span> Hz</label>
+      <input type="range" id="sF" min="50" max="60" step="10" value="60">
+    </div>
+    <div class="control">
+      <label>Load apparent power S_L — <span class="readout" id="rSL">5.0</span> kVA</label>
+      <input type="range" id="sSL" min="0.5" max="20" step="0.1" value="5">
+    </div>
+    <div class="control" style="grid-column:1/-1">
+      <label>Correction capacitor C — <span class="readout" id="rC">0</span> µF (target Q_c = <span class="readout" id="oQc">0</span> VAR)</label>
+      <input type="range" id="sC" min="0" max="600" step="0.5" value="0">
+    </div>
+    <div class="control" style="grid-column:1/-1">
+      <span class="stat">P_load = <b><span class="readout" id="oPL">2500</span> W</b></span>
+      <span class="stat">Q_load = <b><span class="readout" id="oQL">4330</span> VAR</b></span>
+      <span class="stat">Q_net = <b><span class="readout" id="oQN">4330</span> VAR</b></span>
+      <span class="stat">PF_before = <span class="readout" id="oPFb">0.500</span> → PF_after = <span class="readout" id="oPFa">0.500</span></span>
+      <span class="stat">I_line: <span class="readout" id="oIb">20.83</span> → <span class="readout" id="oIa">20.83</span> A</span>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="corrSvg" viewBox="0 0 720 360" width="100%"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>P (unchanged)</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>Q_load (inductive, lag)</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>Q_c (capacitor, lead, subtracts)</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>S_before (faded) → S_after (solid)</span>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>The triangle is just trig</b> — fix the hypotenuse S=VI; sweep θ and you trace a quarter-circle of (P, Q) points. At θ=0 the triangle collapses to a horizontal line (all real). At θ=90° it stands straight up (all reactive — no useful power despite the same current draw).</li>
+    <li><b>PF=cos(θ) is brutal near 90°</b> — at θ=60°, PF is already only 0.5. Cosine falls slowly near 0° and fast near 90°, so a "small" 30° phase shift costs you 13% of your real power; a 60° shift costs 50%.</li>
+    <li><b>Capacitor correction is Q subtraction</b> — a capacitor on AC produces Q_c = V²·ωC (leading). It doesn't generate real power; it just <i>cancels</i> the inductor's reactive demand so the supply sees a smaller triangle.</li>
+    <li><b>The "perfect" capacitor</b> — set Q_c = Q_load and net Q goes to zero. The triangle flattens to a horizontal line, PF=1, and the line current drops from S/V down to P/V. That's the savings.</li>
+    <li><b>Over-correction flips the sign</b> — push C past the match point and Q_net goes negative (the load now looks capacitive to the grid). PF re-degrades; the triangle re-grows pointing the other way. Utilities don't love this either — overcorrection causes voltage rise on long lines.</li>
+    <li><b>Resistors don't have a power triangle</b> — for a pure resistor θ=0, Q=0, S=P. The triangle degenerates. PF correction only matters when there's reactance in the load.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>P (real, W)</dt><dd><span class="eq">P = V_rms·I_rms·cos θ</span></dd>
+        <dt>Q (reac, VAR)</dt><dd><span class="eq">Q = V·I·sin θ</span></dd>
+        <dt>S (app, VA)</dt><dd><span class="eq">S = V·I = √(P² + Q²)</span></dd>
+        <dt>PF</dt><dd><span class="eq">PF = P/S = cos θ</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>PF = 1</b> — purely resistive (θ=0).</li>
+        <li><b>PF = 0</b> — purely reactive (θ=±90°, no real power).</li>
+        <li><b>Lag = inductive</b>, <b>lead = capacitive</b>.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Low PF wastes capacity</b> — wires/transformer must carry S amps to deliver only P watts. Utilities bill kVA-h.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 3 — AC Circuit Analysis</a> ·
+    Topic: Power Factor & Correction
+  </footer>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+
+  // ===== Panel 1: triangle =====
+  const sTheta=$('sTheta'), sVrms=$('sVrms'), sIrms=$('sIrms');
+  const rTheta=$('rTheta'), rVrms=$('rVrms'), rIrms=$('rIrms');
+  const oPF=$('oPF'), oP=$('oP'), oQ=$('oQ'), oS=$('oS');
+  const triSvg=$('triSvg');
+  const cVI1=$('cVI1'), cPF=$('cPF'), cIact=$('cIact'), cPact=$('cPact'),
+        cIneed=$('cIneed'), cPct=$('cPct'), cLoss=$('cLoss');
+
+  function drawTri(){
+    const theta = +sTheta.value;
+    const V = +sVrms.value, I = +sIrms.value;
+    const S = V*I;
+    const PF = Math.cos(theta*Math.PI/180);
+    const P = S*PF;
+    const Q = S*Math.sin(theta*Math.PI/180);
+    rTheta.textContent = theta.toFixed(1);
+    rVrms.textContent = V;
+    rIrms.textContent = I.toFixed(1);
+    oPF.textContent = PF.toFixed(3);
+    oP.textContent = P.toFixed(0);
+    oQ.textContent = Q.toFixed(0);
+    oS.textContent = S.toFixed(0);
+
+    // Geometry: triangle anchored at (originX, originY).
+    // P horizontal to the right, Q vertical up, S hypotenuse.
+    // Scale so S always fits a fixed box (S maps to PMAX pixels).
+    const W=720, H=360;
+    const originX=110, originY=290;
+    const PMAX_px = 480;       // max horizontal length for P leg when PF=1
+    const QMAX_px = 240;       // max vertical length for Q leg when PF=0
+    // S is fixed visually since we want geometry to show angle clearly
+    const Spx = 500;           // hypotenuse length in px
+    const Ppx = Spx*PF;
+    const Qpx = Spx*Math.sin(theta*Math.PI/180);
+
+    const xP = originX + Ppx;
+    const yP = originY;
+    const xQ = xP;
+    const yQ = originY - Qpx;
+
+    // arc for angle
+    const arcR = 50;
+    const x1 = originX + arcR;
+    const y1 = originY;
+    const x2 = originX + arcR*Math.cos(-theta*Math.PI/180);
+    const y2 = originY + arcR*Math.sin(-theta*Math.PI/180);
+
+    let s='';
+    // axes hint
+    s += `<line x1="${originX}" y1="${originY}" x2="${originX+PMAX_px+20}" y2="${originY}" stroke="var(--grid)" stroke-dasharray="3,3" stroke-width="1"/>`;
+    s += `<line x1="${originX}" y1="${originY}" x2="${originX}" y2="${originY-QMAX_px-20}" stroke="var(--grid)" stroke-dasharray="3,3" stroke-width="1"/>`;
+    s += `<text x="${originX+PMAX_px+24}" y="${originY+4}" class="axis-label">real axis (W)</text>`;
+    s += `<text x="${originX-6}" y="${originY-QMAX_px-24}" class="axis-label" text-anchor="end">reactive axis (VAR)</text>`;
+
+    // P leg
+    s += `<line x1="${originX}" y1="${originY}" x2="${xP}" y2="${yP}" stroke="var(--accent)" stroke-width="3"/>`;
+    s += `<text x="${(originX+xP)/2}" y="${originY+22}" class="label" fill="var(--accent)" text-anchor="middle">P = ${P.toFixed(0)} W</text>`;
+    // Q leg
+    s += `<line x1="${xP}" y1="${yP}" x2="${xQ}" y2="${yQ}" stroke="var(--accent2)" stroke-width="3"/>`;
+    s += `<text x="${xP+12}" y="${(yP+yQ)/2+4}" class="label" fill="var(--accent2)">Q = ${Q.toFixed(0)} VAR</text>`;
+    // S hypotenuse
+    s += `<line x1="${originX}" y1="${originY}" x2="${xQ}" y2="${yQ}" stroke="var(--warn)" stroke-width="3"/>`;
+    const midX = (originX+xQ)/2, midY=(originY+yQ)/2;
+    s += `<text x="${midX-12}" y="${midY-8}" class="label" fill="var(--warn)" text-anchor="end">S = ${S.toFixed(0)} VA</text>`;
+    // angle arc
+    const largeArc = 0;
+    s += `<path d="M ${x1} ${y1} A ${arcR} ${arcR} 0 ${largeArc} 0 ${x2} ${y2}" stroke="var(--fg-dim)" stroke-width="1.5" fill="none"/>`;
+    s += `<text x="${originX+arcR+18}" y="${originY-12}" class="label-dim">θ=${theta.toFixed(1)}°</text>`;
+    s += `<text x="${originX+arcR+18}" y="${originY+4}" class="label-dim">PF=${PF.toFixed(3)}</text>`;
+
+    // right-angle marker at corner (xP,yP)
+    const ra=8;
+    s += `<path d="M ${xP-ra} ${yP} L ${xP-ra} ${yP-ra} L ${xP} ${yP-ra}" stroke="var(--fg-dim)" stroke-width="1" fill="none"/>`;
+
+    // origin label
+    s += `<circle cx="${originX}" cy="${originY}" r="3" fill="var(--fg)"/>`;
+
+    triSvg.innerHTML = s;
+
+    // callout
+    cVI1.textContent = `${V} V · ${I.toFixed(1)} A`;
+    cPF.textContent = PF.toFixed(3);
+    cIact.textContent = I.toFixed(2);
+    cPact.textContent = P.toFixed(0);
+    // To deliver original "S as if resistive" P-target = S, current needed = S/(V·PF)
+    const Itarget = S/(V*Math.max(PF,1e-6));
+    cIneed.textContent = Itarget.toFixed(2);
+    const pct = (Itarget/I - 1)*100;
+    cPct.textContent = pct.toFixed(1);
+    // I²R loss ratio
+    const lossPct = (Math.pow(Itarget/I, 2) - 1)*100;
+    cLoss.textContent = lossPct.toFixed(0);
+  }
+
+  for (const el of [sTheta,sVrms,sIrms]) el.addEventListener('input', drawTri);
+  drawTri();
+
+  // ===== Panel 2: PF correction =====
+  const sThL=$('sThL'), sVs=$('sVs'), sF=$('sF'), sSL=$('sSL'), sC=$('sC');
+  const rThL=$('rThL'), rVs=$('rVs'), rF=$('rF'), rSL=$('rSL'), rC=$('rC');
+  const oQc=$('oQc'), oPL=$('oPL'), oQL=$('oQL'), oQN=$('oQN'),
+        oPFb=$('oPFb'), oPFa=$('oPFa'), oIb=$('oIb'), oIa=$('oIa');
+  const corrSvg=$('corrSvg');
+
+  function drawCorr(){
+    const thL = +sThL.value;
+    const V = +sVs.value;
+    const f = +sF.value;
+    const SL_kVA = +sSL.value;
+    const SL = SL_kVA*1000;
+    const C_uF = +sC.value;
+    const C = C_uF*1e-6;
+    rThL.textContent = thL.toFixed(1);
+    rVs.textContent = V;
+    rF.textContent = f;
+    rSL.textContent = SL_kVA.toFixed(1);
+    rC.textContent = C_uF.toFixed(1);
+
+    const PF_b = Math.cos(thL*Math.PI/180);
+    const PL = SL*PF_b;
+    const QL = SL*Math.sin(thL*Math.PI/180);
+    const w = 2*Math.PI*f;
+    const Qc = V*V*w*C;   // capacitor reactive power (positive number; subtracts from QL)
+    const Qnet = QL - Qc;
+    const Sa = Math.hypot(PL, Qnet);
+    const PF_a = PL/Math.max(Sa, 1e-9);
+    const Ib = SL/V;
+    const Ia = Sa/V;
+
+    oQc.textContent = Qc.toFixed(0);
+    oPL.textContent = PL.toFixed(0);
+    oQL.textContent = QL.toFixed(0);
+    oQN.textContent = Qnet.toFixed(0);
+    oPFb.textContent = PF_b.toFixed(3);
+    oPFa.textContent = PF_a.toFixed(3) + (Qnet < 0 ? ' (lead)' : ' (lag)');
+    oIb.textContent = Ib.toFixed(2);
+    oIa.textContent = Ia.toFixed(2);
+
+    // Drawing
+    const W=720, H=360;
+    const originX=120, originY=290;
+
+    // Use a fixed scale: largest of S_before, S_after maps to ~400 px
+    const maxLen = Math.max(SL, Sa, PL);
+    const scale = 420/Math.max(maxLen, 1);
+
+    const xPL = originX + PL*scale;
+    const yPL = originY;
+
+    // Before triangle (faded): P-leg, Q_L upward, S-before hypotenuse
+    const yQL_top = originY - QL*scale;
+
+    // After: P unchanged, Q_net (could be neg meaning downward = capacitive)
+    const yQnet = originY - Qnet*scale;
+
+    let s='';
+    // axes hint
+    s += `<line x1="${originX}" y1="${originY}" x2="${originX+520}" y2="${originY}" stroke="var(--grid)" stroke-dasharray="3,3"/>`;
+    s += `<line x1="${originX}" y1="${originY-260}" x2="${originX}" y2="${originY+50}" stroke="var(--grid)" stroke-dasharray="3,3"/>`;
+    s += `<text x="${originX+524}" y="${originY+4}" class="axis-label">P (W)</text>`;
+    s += `<text x="${originX-6}" y="${originY-262}" class="axis-label" text-anchor="end">Q (VAR, lag↑ lead↓)</text>`;
+
+    // BEFORE triangle (faded)
+    s += `<line x1="${originX}" y1="${originY}" x2="${xPL}" y2="${yPL}" stroke="var(--accent)" stroke-width="3" opacity="0.35"/>`;
+    s += `<line x1="${xPL}" y1="${yPL}" x2="${xPL}" y2="${yQL_top}" stroke="var(--accent2)" stroke-width="3" opacity="0.35"/>`;
+    s += `<line x1="${originX}" y1="${originY}" x2="${xPL}" y2="${yQL_top}" stroke="var(--warn)" stroke-width="2.5" stroke-dasharray="6,4" opacity="0.6"/>`;
+    s += `<text x="${xPL+10}" y="${yQL_top-6}" class="label-dim">S_before=${(SL/1000).toFixed(2)} kVA</text>`;
+
+    // Q_c arrow (downward from top of QL to top of Qnet)
+    if (Qc > 0){
+      // Show capacitor pulling top of vertical leg downward
+      const arrowX = xPL + 24;
+      const y1a = yQL_top, y2a = yQnet;
+      s += `<line x1="${arrowX}" y1="${y1a}" x2="${arrowX}" y2="${y2a}" stroke="var(--accent3)" stroke-width="3"/>`;
+      const ad = (y2a > y1a) ? 1 : -1; // downward (Qc subtracts), so ad=+1 if reducing
+      const tipY = y2a;
+      s += `<polygon points="${arrowX-4},${tipY-ad*8} ${arrowX+4},${tipY-ad*8} ${arrowX},${tipY}" fill="var(--accent3)"/>`;
+      s += `<text x="${arrowX+10}" y="${(y1a+y2a)/2+4}" class="label" fill="var(--accent3)">Q_c=${Qc.toFixed(0)}</text>`;
+    }
+
+    // AFTER triangle (solid)
+    s += `<line x1="${originX}" y1="${originY}" x2="${xPL}" y2="${yPL}" stroke="var(--accent)" stroke-width="4"/>`;
+    s += `<text x="${(originX+xPL)/2}" y="${originY+22}" class="label" fill="var(--accent)" text-anchor="middle">P = ${PL.toFixed(0)} W</text>`;
+    s += `<line x1="${xPL}" y1="${yPL}" x2="${xPL}" y2="${yQnet}" stroke="var(--accent2)" stroke-width="4"/>`;
+    s += `<text x="${xPL-10}" y="${(yPL+yQnet)/2+4}" class="label" fill="var(--accent2)" text-anchor="end">Q_net=${Qnet.toFixed(0)}</text>`;
+    s += `<line x1="${originX}" y1="${originY}" x2="${xPL}" y2="${yQnet}" stroke="var(--warn)" stroke-width="3"/>`;
+    s += `<text x="${(originX+xPL)/2-30}" y="${(originY+yQnet)/2-6}" class="label" fill="var(--warn)">S_after=${(Sa/1000).toFixed(2)} kVA</text>`;
+
+    // angle arc (after)
+    const thA = Math.atan2(-Qnet*scale, PL*scale) * 180/Math.PI; // SVG y inverted
+    // arc from horizontal (+x) sweeping to S vector
+    const arcR2 = 36;
+    const x1a = originX + arcR2;
+    const y1a2 = originY;
+    const x2a = originX + arcR2*Math.cos(-thA*Math.PI/180);
+    const y2a2 = originY + arcR2*Math.sin(-thA*Math.PI/180);
+    const sweep = (thA >= 0) ? 0 : 1;
+    s += `<path d="M ${x1a} ${y1a2} A ${arcR2} ${arcR2} 0 0 ${sweep} ${x2a} ${y2a2}" stroke="var(--fg-bright)" stroke-width="1.5" fill="none"/>`;
+    s += `<text x="${originX+arcR2+10}" y="${originY+(thA>=0?-12:18)}" class="label">θ'=${Math.abs(thA).toFixed(1)}° (${Qnet>=0?'lag':'lead'})</text>`;
+    s += `<text x="${originX+arcR2+10}" y="${originY+(thA>=0?4:34)}" class="label-dim">PF=${PF_a.toFixed(3)}</text>`;
+
+    // origin
+    s += `<circle cx="${originX}" cy="${originY}" r="3" fill="var(--fg)"/>`;
+
+    // Status text top-right: line current saved
+    const savedPct = (1 - Ia/Ib)*100;
+    const col = savedPct > 0 ? 'var(--accent3)' : 'var(--warn)';
+    s += `<text x="${W-20}" y="30" class="label" fill="${col}" text-anchor="end">Line current: ${Ib.toFixed(2)} A → ${Ia.toFixed(2)} A  (${savedPct>=0?'-':'+'}${Math.abs(savedPct).toFixed(1)}%)</text>`;
+
+    // Helper text: ideal C
+    const Cideal_uF = QL/(V*V*w) * 1e6;
+    s += `<text x="${W-20}" y="50" class="label-dim" text-anchor="end">Ideal C for PF=1: ${Cideal_uF.toFixed(1)} µF</text>`;
+
+    corrSvg.innerHTML = s;
+  }
+
+  for (const el of [sThL,sVs,sF,sSL,sC]) el.addEventListener('input', drawCorr);
+  drawCorr();
+})();
+</script>
+</body>
+</html>

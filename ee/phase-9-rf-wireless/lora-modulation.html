@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LoRa Chirp Spread Spectrum — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px;margin:12px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px}
+  .stat .lbl{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 16px ui-monospace,monospace;color:var(--accent);margin-top:4px}
+  .chirp-box{background:#0a0d12;border:1px solid var(--line);border-radius:6px;
+    height:200px;position:relative;overflow:hidden;margin:12px 0}
+  .chirp-line{position:absolute;left:0;right:0;height:2px;background:var(--accent);
+    box-shadow:0 0 8px var(--accent),0 0 16px rgba(94,200,255,0.4);
+    border-radius:2px;will-change:top}
+  .bw-label{position:absolute;color:var(--fg-dim);font:11px ui-monospace,monospace;padding:2px 6px}
+  .bw-label.top{top:4px;left:8px}
+  .bw-label.bot{bottom:4px;left:8px}
+  .bw-label.right{top:50%;right:8px;transform:translateY(-50%)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>LoRa — Chirp Spread Spectrum</h1>
+  <p class="lede">Each symbol is a frequency that sweeps linearly across the band. SF and BW trade range vs. data rate. The math is just exponents.</p>
+
+  <p>LoRa modulates data into <b>chirps</b> — sinusoids whose frequency ramps linearly from <code>f_c − BW/2</code> to <code>f_c + BW/2</code> over one symbol period. The data is encoded in the <i>starting</i> frequency: each symbol carries <code>SF</code> bits, so there are <code>2^SF</code> possible starting points within the band. Higher <code>SF</code> means more chips per symbol → more <b>processing gain</b> → better sensitivity, but a longer symbol time. Wider <code>BW</code> means faster data rate, but worse sensitivity (more noise gets in). The receiver de-chirps by mixing with a known down-chirp; this turns the spread signal into a narrow tone whose frequency reveals the data symbol.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Spreading factor SF: <span class="readout" id="sfRead">SF7</span></label>
+      <input id="sf" type="range" min="7" max="12" step="1" value="7">
+    </div>
+    <div class="control">
+      <label>Bandwidth: <span class="readout" id="bwRead">125 kHz</span></label>
+      <input id="bw" type="range" min="0" max="2" step="1" value="0">
+    </div>
+    <div class="control">
+      <label>Payload bytes: <span class="readout" id="plRead">20 B</span></label>
+      <input id="pl" type="range" min="1" max="222" step="1" value="20">
+    </div>
+    <div class="control">
+      <label>Coding rate: <span class="readout" id="crRead">4/5</span></label>
+      <input id="cr" type="range" min="1" max="4" step="1" value="1">
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Animated up-chirp — frequency vs. time</h3>
+    <div class="chirp-box" id="chirpBox">
+      <div class="chirp-line" id="chirpLine"></div>
+      <div class="bw-label top">f_c + BW/2</div>
+      <div class="bw-label bot">f_c − BW/2</div>
+      <div class="bw-label right" id="symTimeLbl">T_sym = 1.0 ms</div>
+    </div>
+    <p style="margin-top:8px;font-size:12px;color:var(--fg-dim)">
+      The line shows instantaneous frequency. It sweeps from the bottom of the band to the top, wraps, repeats. Higher SF → slower sweep (longer symbol). Wider BW → bigger vertical range (filled the same way regardless because we're plotting normalized).
+    </p>
+  </div>
+
+  <div class="figure">
+    <h3>Computed values</h3>
+    <div class="stat-grid">
+      <div class="stat"><div class="lbl">Bits per symbol</div><div class="val" id="bpsymStat">7</div></div>
+      <div class="stat"><div class="lbl">Chips per symbol</div><div class="val" id="chipStat">128</div></div>
+      <div class="stat"><div class="lbl">Symbol time T_sym</div><div class="val" id="tsymStat">1.024 ms</div></div>
+      <div class="stat"><div class="lbl">Chip rate</div><div class="val" id="cripsStat">125 kchip/s</div></div>
+      <div class="stat"><div class="lbl">Effective data rate</div><div class="val" id="drStat">5.47 kbps</div></div>
+      <div class="stat"><div class="lbl">Time on air (20 B)</div><div class="val" id="toaStat">56 ms</div></div>
+      <div class="stat"><div class="lbl">Processing gain</div><div class="val" id="pgStat">21 dB</div></div>
+      <div class="stat"><div class="lbl">Typical sensitivity</div><div class="val" id="sensStat">−123 dBm</div></div>
+    </div>
+    <p style="margin-top:8px;font-size:12px;color:var(--fg-dim)">
+      <code>T_sym = 2^SF / BW</code> · <code>R_b = SF · BW / 2^SF · CR_eff</code> · <code>PG ≈ 10·log10(2^SF)</code>
+    </p>
+  </div>
+
+  <h2>SF / BW / Range / DR / ToA trade-off matrix</h2>
+  <div class="figure" style="padding:6px 16px 16px">
+    <table id="tradeoffTable">
+      <thead>
+        <tr><th>SF</th><th>BW</th><th>Sensitivity</th><th>Data rate</th><th>ToA (20 B)</th><th>Processing gain</th><th>Typical range</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>SF7</td><td>500 kHz</td><td>−117 dBm</td><td>21.9 kbps</td><td>14 ms</td><td>+21 dB</td><td>~2 km LOS</td></tr>
+        <tr><td>SF7</td><td>125 kHz</td><td>−123 dBm</td><td>5.5 kbps</td><td>56 ms</td><td>+21 dB</td><td>~5 km LOS</td></tr>
+        <tr><td>SF9</td><td>125 kHz</td><td>−129 dBm</td><td>1.76 kbps</td><td>185 ms</td><td>+27 dB</td><td>~10 km LOS</td></tr>
+        <tr><td>SF10</td><td>125 kHz</td><td>−132 dBm</td><td>980 bps</td><td>370 ms</td><td>+30 dB</td><td>~12 km LOS</td></tr>
+        <tr><td>SF12</td><td>125 kHz</td><td>−137 dBm</td><td>290 bps</td><td>1.65 s</td><td>+36 dB</td><td>~20 km LOS, balloon to ground</td></tr>
+        <tr><td>SF12</td><td>500 kHz</td><td>−131 dBm</td><td>1.17 kbps</td><td>415 ms</td><td>+36 dB</td><td>~8 km LOS (wider BW lets in more noise)</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:4px;font-size:12px;color:var(--fg-dim)">
+      Each <b>SF step</b> = ~2.5 dB extra link budget and ~2× the airtime. Each <b>BW doubling</b> = +3 dB more noise floor (worse sensitivity) but 2× more bits/sec.
+    </p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Time-on-air explodes with SF</b> — SF7 sends 20 bytes in 56 ms; SF12 takes 1.6 seconds. LoRaWAN's 1% duty cycle in EU868 lets you transmit only 36 sec/hour total, so SF12 nodes get ~22 packets per hour max.</li>
+    <li><b>Processing gain comes from spreading</b> — 2^SF chips per symbol means the receiver integrates over 2^SF time slots. Coherent integration gives <code>+10·log10(2^SF)</code> dB SNR improvement → that's why SF12 can decode signals below the noise floor.</li>
+    <li><b>Wider BW = faster but deafer</b> — doubling BW lets in twice the thermal noise (+3 dB). So 500 kHz is 6 dB worse sensitivity than 125 kHz at the same SF. The trade-off is data rate.</li>
+    <li><b>The chirp is orthogonal to interference</b> — narrow-band interferers (FM, BLE collision, etc.) only corrupt a tiny slice of each chirp. The dechirper averages them out. CSS is famously robust against same-band CW interferers.</li>
+    <li><b>Range estimates are LOS only</b> — real-world urban range with SF12 is more like 3–5 km because of buildings and noise floor. The 20 km figure is for clear line-of-sight or balloon-to-ground links.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Sensitivity</dt><dd><span class="eq">−174 + 10·log(BW) + NF + SNR_th</span></dd>
+        <dt>Time on air</dt><dd><span class="eq">ToA ≈ (2^SF / BW) · N_symbols</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>SF7…SF12</b> — each +1 step = +6 dB sensitivity AND 2× ToA.</li>
+        <li><b>BW</b> — 125 / 250 / 500 kHz (wider = faster, deafer).</li>
+        <li><b>CR</b> — 4/5 … 4/8 (forward error correction overhead).</li>
+        <li><b>SF12 @ 125 kHz</b> — ≈ −137 dBm sensitivity.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>EU868 1% duty cycle</b> — only 36 s/hr airtime per node.</li>
+        <li><b>SF12 burn rate</b> — 20-byte payload @ 125 kHz ≈ 1.8 s; you get ~20 packets/hr.</li>
+        <li><b>SF mismatch</b> — gateway must demod the same SF as the node, else miss.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 9 — RF & Wireless</a> ·
+    Topic: LoRa modulation
+  </footer>
+</main>
+<script>
+  const bwValues=[125,250,500];
+  const crNum=[5,6,7,8]; // 4/5, 4/6, 4/7, 4/8
+  const sfEl=document.getElementById('sf');
+  const bwEl=document.getElementById('bw');
+  const plEl=document.getElementById('pl');
+  const crEl=document.getElementById('cr');
+
+  function update(){
+    const SF = +sfEl.value;
+    const BW = bwValues[+bwEl.value] * 1e3; // Hz
+    const PL = +plEl.value; // bytes
+    const CRn = crNum[+crEl.value - 1]; // 5,6,7,8
+    const CRfrac = 4 / CRn;
+
+    const chipsPerSym = Math.pow(2, SF);
+    const Tsym = chipsPerSym / BW; // seconds
+    const chipRate = BW; // chips/s
+    // payload symbol count (Semtech formula simplified, ignoring header/CRC switches)
+    // n_payload = 8 + max(ceil((8*PL - 4*SF + 28 + 16) / (4*(SF-2))) * (CR+4), 0)
+    const numer = 8*PL - 4*SF + 28 + 16;
+    const denom = 4*(SF-2);
+    const symPayload = 8 + Math.max(Math.ceil(numer/denom) * CRn, 0);
+    const symPreamble = 12.25; // 8 preamble + 4.25 sync overhead approx
+    const totalSyms = symPreamble + symPayload;
+    const ToA = totalSyms * Tsym;
+    // effective data rate (raw, no overhead)
+    const Rb = SF * (BW / chipsPerSym) * CRfrac;
+    const PG = 10*Math.log10(chipsPerSym);
+    // approximate sensitivity (typical SX127x): -174 + 10*log10(BW) + NF(6) + SNRmin(SF)
+    const snrMin = {7:-7.5, 8:-10, 9:-12.5, 10:-15, 11:-17.5, 12:-20}[SF];
+    const sens = -174 + 10*Math.log10(BW) + 6 + snrMin;
+
+    document.getElementById('sfRead').textContent = 'SF'+SF;
+    document.getElementById('bwRead').textContent = (BW/1e3).toFixed(0)+' kHz';
+    document.getElementById('plRead').textContent = PL+' B';
+    document.getElementById('crRead').textContent = '4/'+CRn;
+
+    document.getElementById('bpsymStat').textContent = SF;
+    document.getElementById('chipStat').textContent = chipsPerSym;
+    document.getElementById('tsymStat').textContent = Tsym>=1e-3 ? (Tsym*1e3).toFixed(2)+' ms' : (Tsym*1e6).toFixed(0)+' µs';
+    document.getElementById('cripsStat').textContent = (chipRate/1e3).toFixed(0)+' kchip/s';
+    document.getElementById('drStat').textContent = Rb>=1000 ? (Rb/1000).toFixed(2)+' kbps' : Rb.toFixed(0)+' bps';
+    document.getElementById('toaStat').textContent = ToA>=1 ? ToA.toFixed(2)+' s' : (ToA*1000).toFixed(1)+' ms';
+    document.getElementById('pgStat').textContent = '+'+PG.toFixed(1)+' dB';
+    document.getElementById('sensStat').textContent = sens.toFixed(0)+' dBm';
+
+    // Update animation timing
+    chirpAnim.Tsym = Tsym;
+    document.getElementById('symTimeLbl').textContent =
+      'T_sym = '+(Tsym>=1e-3?(Tsym*1e3).toFixed(2)+' ms':(Tsym*1e6).toFixed(0)+' µs');
+  }
+
+  // Animated chirp: a horizontal line sweeping vertically over duration Tsym
+  // We scale the visible animation to a constant 1.2 sec/symbol (real Tsym is too fast)
+  const chirpAnim = { Tsym: 0.001 };
+  const visualPeriodMs = 1200; // each loop takes 1.2s regardless of SF — visual proxy
+  const chirpLine = document.getElementById('chirpLine');
+  const chirpBox = document.getElementById('chirpBox');
+
+  let startT = performance.now();
+  function frame(now){
+    const t = ((now - startT) % visualPeriodMs) / visualPeriodMs; // 0..1
+    // chirp: linear sweep from bottom (frequency = -BW/2) to top (+BW/2)
+    const h = chirpBox.clientHeight;
+    const padding = 8;
+    const y = (1 - t) * (h - 2*padding - 2) + padding; // bottom = high y, top = low y
+    chirpLine.style.top = y + 'px';
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  [sfEl,bwEl,plEl,crEl].forEach(el=>el.addEventListener('input',update));
+  update();
+</script>
+</body>
+</html>

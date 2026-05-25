@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FDM filament comparison — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+    --good:#a3e635; --mid:#ffb86c; --bad:#ff7b72;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control select{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:12px;
+    font-family:ui-monospace,Menlo,monospace}
+  th,td{padding:6px 8px;border:1px solid var(--line);text-align:left}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600;
+    cursor:pointer;user-select:none;position:relative}
+  th:hover{background:var(--line)}
+  th.sorted::after{content:" ↓";color:var(--accent)}
+  th.sorted-asc::after{content:" ↑";color:var(--accent)}
+  td.good{background:rgba(163,230,53,0.18);color:var(--good)}
+  td.mid {background:rgba(255,184,108,0.18);color:var(--mid)}
+  td.bad {background:rgba(255,123,114,0.18);color:var(--bad)}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin:10px 0}
+  .legend .swatch{display:inline-block;width:14px;height:14px;
+    vertical-align:middle;margin-right:6px;border-radius:3px}
+
+  .usecase-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:8px;margin:14px 0}
+  .uc-card{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:12px;cursor:pointer;transition:0.15s;
+    font:13px ui-monospace,monospace}
+  .uc-card:hover{border-color:var(--accent);color:var(--fg-bright)}
+  .uc-card.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .uc-card .uc-title{font-weight:600;display:block;margin-bottom:4px}
+  .uc-card .uc-desc{font-size:11px;color:var(--fg-dim)}
+  .uc-card.active .uc-desc{color:var(--bg)}
+
+  .recommend{background:var(--bg-elev2);border:1px solid var(--accent);
+    border-radius:8px;padding:16px;margin:14px 0}
+  .recommend h3{margin:0 0 8px;color:var(--accent)}
+  .pick{display:flex;gap:24px;flex-wrap:wrap;margin-top:8px}
+  .pick-card{flex:1;min-width:200px;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:6px;padding:12px 14px}
+  .pick-card .role{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .pick-card .name{font:600 18px ui-monospace,monospace;color:var(--accent2);margin:4px 0}
+  .pick-card .why{font:12px ui-monospace,monospace;color:var(--fg-dim)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>FDM filament comparison</h1>
+  <p class="lede">Filament choice is a constraint puzzle: nozzle temp budget, bed warping, heat resistance
+  required by the use case, impact tolerance, UV exposure, moisture environment. Sort the grid by any
+  column, or use the use-case decision tree at the bottom to get a pick + alternate.</p>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:var(--good)"></span>good / easy</span>
+    <span><span class="swatch" style="background:var(--mid)"></span>okay / requires care</span>
+    <span><span class="swatch" style="background:var(--bad)"></span>poor / problematic</span>
+    <span style="margin-left:auto;color:var(--fg-dim)">click a column header to sort</span>
+  </div>
+
+  <table id="filamentTable">
+    <thead>
+      <tr>
+        <th data-key="name" data-numeric="false">Filament</th>
+        <th data-key="nozzle" data-numeric="true">Nozzle °C</th>
+        <th data-key="bed" data-numeric="true">Bed °C</th>
+        <th data-key="hdt" data-numeric="true">HDT (°C)</th>
+        <th data-key="uts" data-numeric="true">UTS (MPa)</th>
+        <th data-key="impact" data-numeric="true">Impact</th>
+        <th data-key="hygro" data-numeric="false">Hygro</th>
+        <th data-key="uv" data-numeric="false">UV</th>
+        <th data-key="diff" data-numeric="true">Print diff</th>
+        <th data-key="use" data-numeric="false">Typical use</th>
+      </tr>
+    </thead>
+    <tbody id="filamentBody"></tbody>
+  </table>
+
+  <h2>Decision tree: what's the use case?</h2>
+  <div class="usecase-grid" id="usecaseGrid">
+    <div class="uc-card" data-uc="hot_car">
+      <span class="uc-title">Hot car / dashboard</span>
+      <span class="uc-desc">75–80°C survivability, modest sun</span>
+    </div>
+    <div class="uc-card" data-uc="outdoor">
+      <span class="uc-title">Outdoor / UV exposed</span>
+      <span class="uc-desc">months in direct sun, weather</span>
+    </div>
+    <div class="uc-card" data-uc="impact">
+      <span class="uc-title">Impact / drop tested</span>
+      <span class="uc-desc">handheld, tools, drops</span>
+    </div>
+    <div class="uc-card" data-uc="indoor">
+      <span class="uc-title">Indoor low-temp</span>
+      <span class="uc-desc">display, prototype, room temp</span>
+    </div>
+    <div class="uc-card" data-uc="gasket">
+      <span class="uc-title">Gasket / seal</span>
+      <span class="uc-desc">soft, conforming, low Shore</span>
+    </div>
+    <div class="uc-card" data-uc="flexible">
+      <span class="uc-title">Flexible / bumper</span>
+      <span class="uc-desc">bends, absorbs shock</span>
+    </div>
+  </div>
+
+  <div class="recommend" id="recBox">
+    <h3>Recommendation</h3>
+    <div id="recBody" style="color:var(--fg-dim);font-size:13px">Pick a use case above.</div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>HDT is the real "hot car" gate.</b> PLA at HDT 55°C fails the dashboard test; PETG at 75°C is marginal; ASA at 98°C and PA12 at 100°C pass comfortably.</li>
+    <li><b>UV stability separates ASA from ABS.</b> They print similarly (both warp without enclosure), but ABS yellows and crazes in months; ASA holds for years. Outdoors → ASA, always.</li>
+    <li><b>Nylon is the toughest filament — and the most annoying.</b> PA12 absorbs water from the air aggressively; wet nylon prints poorly and the part's mechanical properties drop ~30%. Dry box mandatory.</li>
+    <li><b>TPU 95A bridges the rigid/flexible gap.</b> Stiff enough to print without slumping but flexible enough for gaskets, bumpers, cable strain relief. Print slow (≤30 mm/s) and direct-drive only.</li>
+    <li><b>PLA wins on print difficulty, loses on everything functional.</b> Use it for indoor display models and printer benchmarks; don't put it in your car or your hand luggage.</li>
+    <li><b>"Higher temp = harder to print" is not always true.</b> PA12 has lower bed/nozzle than ABS in many formulations — the issue is moisture, not heat. Always check filament humidity before blaming the slicer.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>FILAMENT QUICK-REF</h3>
+      <table>
+        <tr><th>mat</th><th>HDT</th><th>note</th></tr>
+        <tr><td>PLA</td><td>60°C</td><td>easy, brittle</td></tr>
+        <tr><td>PETG</td><td>80°C</td><td>tough, default</td></tr>
+        <tr><td>ASA</td><td>100°C</td><td>UV-stable outdoor</td></tr>
+        <tr><td>PA12</td><td>100°C</td><td>tough+fatigue, hygroscopic</td></tr>
+        <tr><td>ABS</td><td>100°C</td><td>warps, acetone-smooth</td></tr>
+        <tr><td>TPU</td><td>—</td><td>95A firm / 87A soft</td></tr>
+      </table>
+    </div>
+    <div class="cheat-card">
+      <h3>DECISION RULES</h3>
+      <ul>
+        <li><b>hot car</b> — PETG/ASA minimum.</li>
+        <li><b>outdoor / UV</b> — ASA.</li>
+        <li><b>impact / fatigue</b> — PA12.</li>
+        <li><b>flexible / gaskets</b> — TPU.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>PLA in hot car</b> — fails at ~60°C dashboard temps.</li>
+        <li><b>ASA without enclosure</b> — warps and cracks.</li>
+        <li><b>wet nylon</b> — must dry PA12 12–24h before printing.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 2 — Materials Science</a> ·
+    Topic: FDM filament selection (PLA, PETG, ASA, Nylon PA12, ABS, TPU)
+  </footer>
+</main>
+<script>
+// Filament dataset
+// Color rule of thumb:
+//   nozzle: <=220 good, 220-260 mid, >260 bad
+//   bed: <=60 good, 60-100 mid, >100 bad
+//   hdt: >=90 good, 70-90 mid, <70 bad
+//   uts: >=50 good, 35-50 mid, <35 bad
+//   impact (1-5 scale): >=4 good, 2-3 mid, <2 bad
+//   hygro: N good, mild mid, Y bad
+//   uv:    Y good, fair mid, N bad
+//   diff (1-5, lower=easier): <=2 good, 3 mid, >=4 bad
+
+const FILAMENTS = [
+  {name:"PLA",       nozzle:210, bed:55,  hdt:55,  uts:50, impact:2, hygro:"N",     uv:"fair", diff:1, use:"display, prototyping, indoor fixtures"},
+  {name:"PETG",      nozzle:240, bed:75,  hdt:75,  uts:55, impact:3, hygro:"mild",  uv:"fair", diff:2, use:"enclosures, structural, cyberdeck"},
+  {name:"ASA",       nozzle:250, bed:100, hdt:98,  uts:45, impact:3, hygro:"mild",  uv:"Y",    diff:4, use:"outdoor brackets, weatherproof"},
+  {name:"Nylon PA12",nozzle:255, bed:75,  hdt:100, uts:65, impact:5, hygro:"Y",     uv:"fair", diff:4, use:"gears, hinges, fatigue-loaded"},
+  {name:"ABS",       nozzle:245, bed:100, hdt:100, uts:40, impact:3, hygro:"mild",  uv:"N",    diff:4, use:"acetone-smoothed, automotive interior"},
+  {name:"TPU 95A",   nozzle:225, bed:50,  hdt:60,  uts:35, impact:5, hygro:"mild",  uv:"fair", diff:3, use:"gaskets, bumpers, flexible mounts"},
+];
+
+function colorClass(key, val){
+  switch(key){
+    case "nozzle": return val<=220?"good":val<=260?"mid":"bad";
+    case "bed":    return val<=60?"good":val<=100?"mid":"bad";
+    case "hdt":    return val>=90?"good":val>=70?"mid":"bad";
+    case "uts":    return val>=50?"good":val>=35?"mid":"bad";
+    case "impact": return val>=4?"good":val>=3?"mid":"bad";
+    case "hygro":  return val==="N"?"good":val==="mild"?"mid":"bad";
+    case "uv":     return val==="Y"?"good":val==="fair"?"mid":"bad";
+    case "diff":   return val<=2?"good":val<=3?"mid":"bad";
+    default: return "";
+  }
+}
+
+let sortKey = null, sortAsc = true;
+
+function render(){
+  const tbody = document.getElementById("filamentBody");
+  let data = FILAMENTS.slice();
+  if (sortKey){
+    data.sort((a,b)=>{
+      const x = a[sortKey], y = b[sortKey];
+      if (typeof x === "number") return sortAsc ? x-y : y-x;
+      return sortAsc ? String(x).localeCompare(String(y)) : String(y).localeCompare(String(x));
+    });
+  }
+  let rows = "";
+  for (const f of data){
+    rows += `<tr>
+      <td><b style="color:var(--fg-bright)">${f.name}</b></td>
+      <td class="${colorClass('nozzle',f.nozzle)}">${f.nozzle}</td>
+      <td class="${colorClass('bed',f.bed)}">${f.bed}</td>
+      <td class="${colorClass('hdt',f.hdt)}">${f.hdt}</td>
+      <td class="${colorClass('uts',f.uts)}">${f.uts}</td>
+      <td class="${colorClass('impact',f.impact)}">${"●".repeat(f.impact)}${"○".repeat(5-f.impact)}</td>
+      <td class="${colorClass('hygro',f.hygro)}">${f.hygro}</td>
+      <td class="${colorClass('uv',f.uv)}">${f.uv}</td>
+      <td class="${colorClass('diff',f.diff)}">${"●".repeat(f.diff)}${"○".repeat(5-f.diff)}</td>
+      <td style="font-size:11px;color:var(--fg-dim)">${f.use}</td>
+    </tr>`;
+  }
+  tbody.innerHTML = rows;
+
+  // Update header sorted indicator
+  for (const th of document.querySelectorAll("#filamentTable th")){
+    th.classList.remove("sorted","sorted-asc");
+    if (th.getAttribute("data-key") === sortKey){
+      th.classList.add(sortAsc ? "sorted-asc" : "sorted");
+    }
+  }
+}
+
+for (const th of document.querySelectorAll("#filamentTable th")){
+  th.addEventListener("click", () => {
+    const k = th.getAttribute("data-key");
+    if (sortKey === k){ sortAsc = !sortAsc; } else { sortKey = k; sortAsc = true; }
+    render();
+  });
+}
+
+// Use cases
+const USECASES = {
+  hot_car: {
+    pick:"ASA", pickWhy:"HDT 98°C survives 75°C dashboard with margin; UV stable for occasional sun. Print in enclosure.",
+    alt:"Nylon PA12", altWhy:"HDT 100°C, even tougher, but requires dry filament and care with bed adhesion."
+  },
+  outdoor: {
+    pick:"ASA", pickWhy:"Only common filament that is genuinely UV-stable for outdoor use. Holds color and surface for years.",
+    alt:"PETG (with UV coating)", altWhy:"PETG yellows after months in sun; acceptable for short-term outdoor with paint or UV-resistant coating."
+  },
+  impact: {
+    pick:"Nylon PA12", pickWhy:"Highest impact and fatigue resistance of common FDM filaments — bends before it breaks. Keep filament dry.",
+    alt:"TPU 95A", altWhy:"Absorbs more impact energy via flex; but too soft for structural geometry — use as a bumper insert."
+  },
+  indoor: {
+    pick:"PETG", pickWhy:"Best balance: easy print, tougher than PLA, won't fail at room temp or a warm desk. Cyberdeck-grade.",
+    alt:"PLA", altWhy:"Easiest possible print, great for display prototypes, but brittle and warps near hot electronics."
+  },
+  gasket: {
+    pick:"TPU 95A", pickWhy:"Shore 95A is firm but flexible — conforms to mating surfaces, retains shape under bolt compression.",
+    alt:"TPU 85A (softer)", altWhy:"Softer durometer for higher-conformance gaskets; harder to print, requires direct drive and slow speeds."
+  },
+  flexible: {
+    pick:"TPU 95A", pickWhy:"The default for bumpers, cable strain reliefs, and anything that needs to bend and recover.",
+    alt:"Nylon PA12 (thin sections)", altWhy:"PA12 in thin wall (1-2 mm) acts surprisingly flexible due to tough nylon chemistry; useful for living hinges."
+  },
+};
+
+for (const card of document.querySelectorAll(".uc-card")){
+  card.addEventListener("click", () => {
+    document.querySelectorAll(".uc-card").forEach(c=>c.classList.remove("active"));
+    card.classList.add("active");
+    const uc = USECASES[card.getAttribute("data-uc")];
+    if (uc){
+      document.getElementById("recBody").innerHTML =
+        `<div class="pick">
+          <div class="pick-card">
+            <span class="role">Primary pick</span>
+            <span class="name">${uc.pick}</span>
+            <span class="why">${uc.pickWhy}</span>
+          </div>
+          <div class="pick-card">
+            <span class="role">Alternate</span>
+            <span class="name">${uc.alt}</span>
+            <span class="why">${uc.altWhy}</span>
+          </div>
+        </div>`;
+    }
+  });
+}
+
+render();
+</script>
+</body>
+</html>

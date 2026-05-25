@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bus Selection — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace;vertical-align:top}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.good{color:var(--accent3)}
+  td.bad{color:var(--warn)}
+  td.mid{color:var(--accent2)}
+  td.bus-name{font-weight:bold;color:var(--accent)}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .scenario-card{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:12px;margin-top:10px}
+  .scenario-card.match{border-color:var(--accent3)}
+  .scenario-card h4{margin:0 0 6px;font:600 13px ui-monospace,monospace;color:var(--accent)}
+  .scenario-card .rec{font:600 12px ui-monospace,monospace;color:var(--accent3);
+    margin-top:6px}
+  .scenario-card .why{color:var(--fg-dim);font-size:12px;margin-top:4px}
+  .bus-row{cursor:pointer;transition:background 0.15s}
+  .bus-row:hover{background:var(--bg-elev2)}
+  .bus-row.selected{background:rgba(94,200,255,0.08);outline:1px solid var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Bus Selection — CAN-FD vs EtherCAT vs RS-485 vs SPI/UART</h1>
+  <p class="lede">Picking the bus is a one-time decision that shapes every node in your system. The wrong bus means rewiring at month six.</p>
+
+  <p>There is no universally "best" robotics bus. Each one optimizes a different axis: CAN-FD is the workhorse for distributed motor control because it's cheap, deterministic enough, and arbitration handles collisions for free. EtherCAT wins when you need sub-100-µs sync across many nodes and you can afford the master + slave silicon. RS-485 is the chainsaw — crude, robust, dirt cheap, perfect for daisy-chained smart servos but no arbitration so you need a polling master. SPI and UART are not really buses (they're point-to-point links), but you'll use them inside every node for the local sensors. Compare on six dimensions: bitrate, latency, determinism, topology, complexity, cost.</p>
+
+  <div class="figure">
+    <h3>Comparison matrix — click a row to see scenario fit</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Bus</th>
+          <th>Bitrate</th>
+          <th>Worst-case latency</th>
+          <th>Determinism</th>
+          <th>Topology</th>
+          <th>Nodes</th>
+          <th>Complexity</th>
+          <th>Cost / node</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="bus-row" data-bus="canfd">
+          <td class="bus-name">CAN-FD</td>
+          <td class="good">1 Mbps arb / 5–8 Mbps data</td>
+          <td class="mid">~100 µs (priority dep.)</td>
+          <td class="mid">Soft real-time</td>
+          <td class="good">Linear bus, 2-wire diff</td>
+          <td class="good">Up to ~64 practical</td>
+          <td class="good">Low — MCU peripheral</td>
+          <td class="good">~$1 transceiver</td>
+        </tr>
+        <tr class="bus-row" data-bus="ethercat">
+          <td class="bus-name">EtherCAT</td>
+          <td class="good">100 Mbps full-duplex</td>
+          <td class="good">&lt; 100 µs (1000-node DC sync)</td>
+          <td class="good">Hard real-time</td>
+          <td class="mid">Ring or line via slaves</td>
+          <td class="good">Up to 65535</td>
+          <td class="bad">High — master stack + slave ASIC</td>
+          <td class="bad">$5–20 slave IC + magnetics</td>
+        </tr>
+        <tr class="bus-row" data-bus="rs485">
+          <td class="bus-name">RS-485</td>
+          <td class="mid">Up to 10 Mbps (typ. 1 Mbps)</td>
+          <td class="bad">Polling-rate × N (no arb)</td>
+          <td class="bad">Master-managed only</td>
+          <td class="good">Daisy chain, 2-wire diff</td>
+          <td class="good">Up to 32 (32→256 with low-load tx)</td>
+          <td class="good">Trivial — UART + transceiver</td>
+          <td class="good">~$0.50 transceiver</td>
+        </tr>
+        <tr class="bus-row" data-bus="spi">
+          <td class="bus-name">SPI</td>
+          <td class="good">10–50 MHz typical</td>
+          <td class="good">µs-scale, deterministic</td>
+          <td class="good">Master-clocked, sync</td>
+          <td class="bad">Point-to-point + per-slave CS</td>
+          <td class="bad">~4 practical (CS line each)</td>
+          <td class="good">Low — MCU peripheral</td>
+          <td class="good">Free (in MCU)</td>
+        </tr>
+        <tr class="bus-row" data-bus="uart">
+          <td class="bus-name">UART</td>
+          <td class="mid">Up to ~5 Mbps (115200–1M typ.)</td>
+          <td class="mid">Char-time + buffering</td>
+          <td class="mid">No flow control std.</td>
+          <td class="bad">Strictly point-to-point</td>
+          <td class="bad">2 (TX/RX)</td>
+          <td class="good">Trivial</td>
+          <td class="good">Free</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Scenario fit</h2>
+  <p class="lede">Hover or click a bus above to highlight its best-fit scenarios.</p>
+  <div id="scenarios">
+    <div class="scenario-card" data-fits="canfd ethercat">
+      <h4>6-DOF arm, 6 joint controllers, 1 kHz commanded</h4>
+      <div>Need: deterministic enough, cheap, doesn't require a PhD to bring up.</div>
+      <div class="rec">→ CAN-FD (default), EtherCAT only if you've outgrown CAN's latency.</div>
+      <div class="why">Each joint runs its own fast loop locally; the bus only carries 1 kHz state/cmd. CAN-FD's 100 µs worst-case is fine. EtherCAT is overkill until you're synchronizing &gt;10 joints to &lt;10 µs.</div>
+    </div>
+    <div class="scenario-card" data-fits="rs485">
+      <h4>Hexapod with 24× LX-224HV daisy-chained servos</h4>
+      <div>Need: many cheap smart-servos, simple wiring, master sets schedule.</div>
+      <div class="rec">→ RS-485 half-duplex (the servo native protocol).</div>
+      <div class="why">No arbitration is fine because a single MCU master polls each servo at a fixed cadence. Total bus utilization caps your update rate (24 servos × ~500 µs each ≈ 80 Hz max).</div>
+    </div>
+    <div class="scenario-card" data-fits="ethercat">
+      <h4>CNC mill, 5 axes synchronized to &lt;1 µs</h4>
+      <div>Need: hard real-time, distributed-clock sync, industrial heritage.</div>
+      <div class="rec">→ EtherCAT (LinuxCNC + EtherLab master).</div>
+      <div class="why">Distributed Clocks gives sub-µs sync across all slaves — required so all axes start a coordinated motion segment exactly together. CAN-FD jitter (~100 µs) would show as surface marks on the finished part.</div>
+    </div>
+    <div class="scenario-card" data-fits="spi">
+      <h4>Encoder, IMU, ADC — sensors on a single PCB</h4>
+      <div>Need: fast, deterministic, very short distance (cm).</div>
+      <div class="rec">→ SPI from MCU to each sensor.</div>
+      <div class="why">SPI is point-to-point, master-clocked, full-duplex, 10–50 MHz. Perfect for &lt;30 cm runs. Each peripheral needs its own chip-select line, so plan GPIO budget.</div>
+    </div>
+    <div class="scenario-card" data-fits="uart">
+      <h4>Logging output to a serial terminal, or a GPS module</h4>
+      <div>Need: streaming text or simple framed messages to one other device.</div>
+      <div class="rec">→ UART (115200–921600 baud typical).</div>
+      <div class="why">Not a bus — just a wire. Anything more than 2 endpoints means switching to RS-485 (multi-drop) or CAN.</div>
+    </div>
+    <div class="scenario-card" data-fits="canfd">
+      <h4>Mobile robot — 4 wheel motors + IMU + LIDAR controller</h4>
+      <div>Need: handful of nodes, EMI-rich environment, &lt;200 µs latency.</div>
+      <div class="rec">→ CAN-FD.</div>
+      <div class="why">Differential signaling shrugs off motor noise; 64-byte FD payloads carry IMU packets in one frame; priority IDs ensure wheel commands beat LIDAR housekeeping.</div>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>"Bitrate" lies</b> — Ethernet/EtherCAT looks fastest at 100 Mbps, but for short small messages the bus overhead (preamble, headers, IFG) dominates and CAN-FD's smaller frames can finish a 10-byte message faster end-to-end. Compare <i>frame turnaround</i>, not raw bitrate.</li>
+    <li><b>Determinism comes from arbitration, not speed</b> — CAN's CSMA/CR (collision detection + resolution by priority) is what makes it real-time-ish. RS-485 has no arbitration, so it relies on a master scheduling everything — your determinism is only as good as the master's loop.</li>
+    <li><b>Topology dictates wiring cost</b> — daisy chain (RS-485, CAN linear) means one cable threading the chassis. Point-to-point (SPI) means one cable per peripheral — fine inside a PCB, terrible across joints.</li>
+    <li><b>Termination is a physical-layer trap on all differential buses</b> — CAN, RS-485, EtherCAT all need correct end-of-line termination (typically 120 Ω). Skip it and the bus appears to work at low speeds, then fails mysteriously when you push the data rate.</li>
+    <li><b>EtherCAT silicon is the gatekeeper</b> — every slave needs an ESC chip (LAN9252, ET1100, etc.). That hardware tax plus the proprietary master stack is why EtherCAT lives in industrial automation, not hobby builds. Pick CAN-FD until you can't.</li>
+    <li><b>SPI for sensors, CAN-FD for actuators, Ethernet for the host</b> — common modern split. Each subsystem uses the bus that fits its constraints.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card">
+      <h3>DECISION TREE</h3>
+      <ul>
+        <li><b>2 chips on one PCB?</b> → SPI or I²C.</li>
+        <li><b>2 boards, 1 link?</b> → UART (or USB if you need OS support).</li>
+        <li><b>Many smart-servos, 1 master?</b> → RS-485 daisy chain.</li>
+        <li><b>Distributed motor control, &lt;10 joints?</b> → CAN-FD.</li>
+        <li><b>Industrial sync, &gt;10 axes, sub-µs?</b> → EtherCAT.</li>
+        <li><b>Host ↔ host?</b> → Ethernet / Wi-Fi / DDS.</li>
+      </ul>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>PHYSICAL LAYER</h3>
+      <dl>
+        <dt>CAN-FD</dt><dd>Diff pair · 120 Ω each end · linear · max ~50 m at 1 Mbps</dd>
+        <dt>EtherCAT</dt><dd>Cat-5e · 100 m segment · ring or line</dd>
+        <dt>RS-485</dt><dd>Diff pair · 120 Ω each end · daisy · 1200 m at 100 kbps</dd>
+        <dt>SPI</dt><dd>Single-ended · &lt; 30 cm · 4 wires + CS each</dd>
+        <dt>UART</dt><dd>Single-ended · &lt; 1 m · TX/RX/GND only</dd>
+      </dl>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Confusing RS-232 and RS-485</b> — RS-232 is single-ended, point-to-point, ±12 V. RS-485 is differential, multi-drop, ±5 V common-mode tolerant.</li>
+        <li><b>Picking I²C for distributed sensors</b> — I²C max ~1 m, 7-bit address collisions are common. Always switch to CAN for cross-chassis.</li>
+        <li><b>Forgetting bus-load math</b> — CAN at 1 Mbps with 10-byte messages × 10 nodes × 1 kHz = ~80% loaded. Add anything and you start dropping deadlines.</li>
+        <li><b>Mixing 3.3 V and 5 V CAN transceivers</b> — they're electrically compatible <i>if both rails are present</i>; double-check with a transceiver datasheet, not vibes.</li>
+        <li><b>EtherCAT cable order matters</b> — slaves must be physically chained in the order the master expects; swapping cables silently breaks Distributed Clocks.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 7 — System Integration</a> ·
+    Topic: Bus Selection
+  </footer>
+</main>
+<script>
+  const rows=document.querySelectorAll('.bus-row');
+  const cards=document.querySelectorAll('.scenario-card');
+  rows.forEach(r=>{
+    r.addEventListener('click',()=>{
+      const bus=r.dataset.bus;
+      rows.forEach(x=>x.classList.toggle('selected',x===r));
+      cards.forEach(c=>{
+        const fits=c.dataset.fits.split(' ');
+        c.classList.toggle('match',fits.includes(bus));
+      });
+    });
+    r.addEventListener('mouseenter',()=>{
+      const bus=r.dataset.bus;
+      cards.forEach(c=>{
+        const fits=c.dataset.fits.split(' ');
+        c.classList.toggle('match',fits.includes(bus));
+      });
+    });
+  });
+</script>
+</body>
+</html>

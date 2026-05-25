@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gyroscopic effects & balancing — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  /* Common SVG conventions */
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Gyroscopic precession & rotor balancing</h1>
+  <p class="lede">Two ideas, same root cause — what spinning mass does in the presence of an unwanted
+  load. Top: a flywheel under applied torque precesses at Ω_p = T/(I·ω). Bottom: an off-center mass
+  on a rotating shaft creates a centrifugal force F = m·ω²·r that the bearings have to absorb every
+  revolution. Prop balance and gyro stabilization are two faces of the same coin.</p>
+
+  <h2>A. Gyroscopic precession</h2>
+  <p>Angular momentum vector H⃗ = I·ω⃗ along the spin axis. Apply an external torque T⃗ perpendicular
+  to H⃗ → H⃗ precesses around the torque axis at rate <code>Ω_p = T / (I·ω)</code>. A spinning top
+  doesn't fall because gravity's torque drives precession, not falling.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Flywheel inertia I (kg·m²)</label>
+      <input type="range" id="I" min="0.0001" max="0.01" step="0.0001" value="0.002">
+      <span class="readout" id="IRO">0.0020 kg·m²</span>
+    </div>
+    <div class="control">
+      <label>Spin rate ω (rad/s)</label>
+      <input type="range" id="omegaS" min="20" max="500" step="5" value="200">
+      <span class="readout" id="omegaSRO">200 rad/s</span>
+    </div>
+    <div class="control">
+      <label>Applied torque T (N·m)</label>
+      <input type="range" id="Tapp" min="0" max="2" step="0.01" value="0.5">
+      <span class="readout" id="TappRO">0.50 N·m</span>
+    </div>
+    <div class="control">
+      <label>Animation</label>
+      <div style="display:flex;gap:6px">
+        <button class="btn primary" id="btnPlayG">Play</button>
+        <button class="btn" id="btnResetG">Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="gyroSvg" viewBox="0 0 880 320" width="100%" height="320"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>Flywheel (spinning)</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>Applied torque T</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Spin axis / H vector</span>
+      <span><span class="swatch" style="background:#ff7b72"></span>Precession path</span>
+    </div>
+  </div>
+  <div id="gyroSummary" class="figure" style="padding:14px 18px;font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>
+
+  <h2>B. Rotor imbalance — static & dynamic</h2>
+  <p><b>Static imbalance:</b> an off-center mass on a spinning shaft generates a centrifugal force
+  <code>F = m·ω²·r</code> rotating with the shaft. Even a tiny mass at high RPM is a hammer-blow at
+  the bearing — twice per revolution, you transmit a force pulse to the structure.</p>
+  <p><b>Dynamic imbalance:</b> two equal masses 180° apart cancel statically but create a couple
+  if they're on different planes along the shaft. Two-plane balancing is required for long rotors.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Shaft speed (RPM)</label>
+      <input type="range" id="shaftRPM" min="500" max="15000" step="100" value="8000">
+      <span class="readout" id="shaftRPMRO">8000 RPM</span>
+    </div>
+    <div class="control">
+      <label>Imbalance mass m (g)</label>
+      <input type="range" id="imbalM" min="0.05" max="5" step="0.05" value="0.5">
+      <span class="readout" id="imbalMRO">0.50 g</span>
+    </div>
+    <div class="control">
+      <label>Offset radius r (mm)</label>
+      <input type="range" id="imbalR" min="1" max="50" step="0.5" value="5">
+      <span class="readout" id="imbalRRO">5.0 mm</span>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="balSvg" viewBox="0 0 880 280" width="100%" height="280"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>Shaft / disc</span>
+      <span><span class="swatch" style="background:#ff7b72"></span>Imbalance mass</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>Centrifugal force vector</span>
+    </div>
+  </div>
+  <div id="balSummary" class="figure" style="padding:14px 18px;font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>
+
+  <h3>Hobby propeller balancing</h3>
+  <p>At 8000 RPM (a typical quadcopter motor speed), even 0.1 g offset by 5 mm produces ≈ 0.35 N of
+  rotating force at the bearing — small in absolute terms, but cyclic at 133 Hz. Over a multi-minute
+  flight that's millions of load cycles into the bearing, the motor housing, and the IMU's
+  accelerometer. Hobbyists use a magnetic or two-rail balancer to bring the prop's heavy side to
+  neutral, often by sanding or taping correction mass on the light side. The math is the same as
+  industrial two-plane balancing; only the precision is different.</p>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Precession rate Ω_p = T/(I·ω).</b> Big I or big ω → tiny precession from a given torque. That's why fast-spinning rotors feel "stiff" to turn — they precess instead of yawing.</li>
+    <li><b>Direction rule (right-hand):</b> H⃗ × T⃗ direction → precession direction. Drone pilots feel this as pitch/roll coupling when they yaw.</li>
+    <li><b>Gyroscopic stiffness helps and hurts.</b> Helps for camera gimbal stability; hurts for fast intentional maneuvers — the motor has to fight the precession.</li>
+    <li><b>F = m·ω²·r is brutal at speed.</b> Doubling RPM quadruples force. Going from 4000 to 8000 RPM with the same imbalance makes the bearing see 4× the force.</li>
+    <li><b>The force rotates with the shaft.</b> The bearing sees the load at 1× shaft frequency — same as the rotation rate. Match this to mechanical resonance and you have a disaster.</li>
+    <li><b>Static balance ≠ dynamic balance.</b> A shaft can be statically balanced (CG on axis) yet still wobble because two off-axis masses on different planes create a rocking couple. Drones rarely need two-plane; long shafts (drive shafts, drum rotors) always do.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Ang. momentum</dt><dd><span class="eq">H = I · ω_spin</span></dd>
+        <dt>Precession</dt><dd><span class="eq">Ω_p = T / (I · ω_spin)</span></dd>
+        <dt>Centrifugal F</dt><dd><span class="eq">F = m · ω² · r</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>RIGHT-HAND RULE</h3>
+      <ul>
+        <li><b>spin axis × applied torque = precession axis</b></li>
+        <li>Torque direction by right-hand rule (curl fingers along T, thumb gives vector)</li>
+        <li>Higher ω_spin → slower precession for same T (gyro stiffness)</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Static balance ≠ dynamic balance</b> — long rotors need <b>two-plane</b> balancing</li>
+        <li>0.1 g imbalance at <b>8000 RPM</b> is a significant bearing force (F ∝ ω²)</li>
+        <li>Gyro stiffness <b>fights intentional</b> maneuvers — motors must overcome precession reaction</li>
+        <li>Force <b>rotates with the shaft</b> at 1× shaft freq — avoid matching mechanical resonance</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 8 — Dynamics</a> ·
+    Topic: Gyroscopic precession, static & dynamic balancing
+  </footer>
+</main>
+<script>
+const gyroSvg = document.getElementById('gyroSvg');
+const balSvg = document.getElementById('balSvg');
+function ns(tag, attrs={}, parent){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+// ---------- A. Gyroscopic precession ----------
+let I_fw = 0.002, omegaSpin = 200, Tapp = 0.5;
+let playG = true;
+let lastTG = 0;
+let precessionAng = 0;  // current azimuth of H vector
+let spinAng = 0;        // visual spin of disc marker
+
+function drawGyro(){
+  clear(gyroSvg);
+  const CX = 240, CY = 170;
+  // Base / pivot
+  ns('rect',{x:CX-40,y:CY+100,width:80,height:14,fill:'#3a4a5a',rx:2},gyroSvg);
+  ns('line',{x1:CX,y1:CY,x2:CX,y2:CY+100,stroke:'#dde3ec','stroke-width':2},gyroSvg);
+  ns('circle',{cx:CX,cy:CY+100,r:5,fill:'#0e1116',stroke:'#dde3ec','stroke-width':1.5},gyroSvg);
+
+  // Compute precession parameters
+  const Op = Tapp / (I_fw * omegaSpin);  // rad/s
+  // The spin axis is tilted away from vertical; precesses around vertical axis
+  const tilt = Math.PI/6;  // 30° tilt for visualization
+  // Disc orientation: spin axis at angle (precessionAng, tilt)
+  const ax = Math.cos(precessionAng) * Math.sin(tilt);
+  const ay = -Math.cos(tilt);  // upward
+  const az = Math.sin(precessionAng) * Math.sin(tilt);
+  // Project to 2D (simple): treat z as depth, use ortho projection ignoring z for x, with slight shear
+  const spinAxisX_screen = ax * 90 + az * 30;
+  const spinAxisY_screen = ay * 90;
+  const tipX = CX + spinAxisX_screen;
+  const tipY = CY + spinAxisY_screen;
+  // Draw spin axis line
+  ns('line',{x1:CX,y1:CY,x2:tipX,y2:tipY,stroke:'#a3e635','stroke-width':2},gyroSvg);
+  // H vector arrow head
+  ns('circle',{cx:tipX,cy:tipY,r:4,fill:'#a3e635'},gyroSvg);
+  ns('text',{x:tipX+8,y:tipY-4,class:'label',fill:'#a3e635'},gyroSvg).textContent=`H = I·ω`;
+
+  // Disk (ellipse perpendicular to spin axis)
+  // For simplicity: draw an ellipse with major axis perpendicular to projected spin axis
+  const diskR = 50;
+  // Perpendicular direction in screen: rotate the axis 90°
+  const len = Math.sqrt(spinAxisX_screen*spinAxisX_screen + spinAxisY_screen*spinAxisY_screen) || 1;
+  const ux = spinAxisX_screen/len, uy = spinAxisY_screen/len;
+  const pX = -uy, pY = ux;
+  // Center of disk = midpoint of spin axis line
+  const dcx = CX + spinAxisX_screen*0.5;
+  const dcy = CY + spinAxisY_screen*0.5;
+  // Ellipse minor axis = diskR * |cos(viewing angle to spin axis)| approximated
+  const minorR = diskR * Math.abs(Math.sin(tilt));
+  // Compute rotation angle of ellipse
+  const rotAng = Math.atan2(pY, pX) * 180 / Math.PI;
+  ns('ellipse',{cx:dcx,cy:dcy,rx:diskR,ry:minorR,fill:'#1f3a4a',stroke:'#5ec8ff','stroke-width':2,
+    transform:`rotate(${rotAng} ${dcx} ${dcy})`},gyroSvg);
+  // Spin marker on disc
+  const markX = dcx + diskR*0.7*Math.cos(spinAng);
+  const markY = dcy + minorR*0.7*Math.sin(spinAng);
+  // Apply rotation
+  const cosR = Math.cos(rotAng*Math.PI/180), sinR = Math.sin(rotAng*Math.PI/180);
+  const dx = markX - dcx, dy = markY - dcy;
+  const markXR = dcx + dx*cosR - dy*sinR;
+  const markYR = dcy + dx*sinR + dy*cosR;
+  ns('circle',{cx:markXR,cy:markYR,r:4,fill:'#a3e635'},gyroSvg);
+
+  // Applied torque arrow (in horizontal plane)
+  const Tlen = Tapp * 60 + 30;
+  ns('path',{d:`M ${CX-Tlen/2},${CY-100} L ${CX+Tlen/2},${CY-100}`,stroke:'#ffb86c','stroke-width':2.5,'marker-end':'url(#TarrG)'},gyroSvg);
+  const defs = ns('defs',{},gyroSvg);
+  const m = ns('marker',{id:'TarrG',viewBox:'0 0 10 10',refX:'8',refY:'5',markerWidth:'6',markerHeight:'6',orient:'auto'},defs);
+  ns('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:'#ffb86c'},m);
+  ns('text',{x:CX+Tlen/2+8,y:CY-96,class:'label',fill:'#ffb86c'},gyroSvg).textContent=`T = ${Tapp.toFixed(2)} N·m`;
+
+  // Precession path indicator (circle around vertical axis)
+  ns('ellipse',{cx:CX,cy:CY-87,rx:90,ry:20,fill:'none',stroke:'#ff7b72','stroke-width':1,'stroke-dasharray':'4 4',opacity:0.6},gyroSvg);
+  // Current tip position arrow on path
+  const phPathX = CX + 90 * Math.cos(precessionAng);
+  const phPathY = CY-87 + 20 * Math.sin(precessionAng);
+  ns('circle',{cx:phPathX,cy:phPathY,r:5,fill:'#ff7b72'},gyroSvg);
+
+  // Readouts panel
+  ns('text',{x:500,y:50,class:'label',fill:'#dde3ec','font-weight':'600'},gyroSvg).textContent='Precession';
+  ns('text',{x:500,y:78,class:'label'},gyroSvg).textContent=`I = ${I_fw.toFixed(4)} kg·m²`;
+  ns('text',{x:500,y:100,class:'label'},gyroSvg).textContent=`ω_spin = ${omegaSpin.toFixed(0)} rad/s`;
+  ns('text',{x:500,y:122,class:'label'},gyroSvg).textContent=`H = I·ω = ${(I_fw*omegaSpin).toFixed(4)} kg·m²/s`;
+  ns('text',{x:500,y:148,class:'label',fill:'#ffb86c'},gyroSvg).textContent=`T = ${Tapp.toFixed(2)} N·m`;
+  ns('text',{x:500,y:170,class:'label',fill:'#ff7b72'},gyroSvg).textContent=`Ω_p = T/(I·ω) = ${Op.toFixed(3)} rad/s`;
+  ns('text',{x:500,y:192,class:'label-dim'},gyroSvg).textContent=`≈ ${(Op/(2*Math.PI)*60).toFixed(2)} RPM (precession)`;
+  ns('text',{x:500,y:222,class:'label-dim'},gyroSvg).textContent=`Period of precession ≈ ${(2*Math.PI/Op).toFixed(2)} s/turn`;
+
+  document.getElementById('gyroSummary').innerHTML =
+    `<b>Ω_p = T / (I·ω_spin) = ${Tapp.toFixed(2)} / (${I_fw.toFixed(4)} × ${omegaSpin.toFixed(0)}) = ${Op.toFixed(3)} rad/s</b><br>` +
+    `<span style="color:var(--fg-dim)">A larger ω_spin makes precession slower for the same torque — that's gyroscopic stiffness. Camera-gimbal flywheels spin fast specifically to make involuntary hand shakes precess too slowly to matter.</span>`;
+}
+
+// ---------- B. Rotor imbalance ----------
+let shaftAng = 0;
+
+function drawBalance(){
+  clear(balSvg);
+  const rpm = parseFloat(document.getElementById('shaftRPM').value);
+  const mg = parseFloat(document.getElementById('imbalM').value);
+  const rmm = parseFloat(document.getElementById('imbalR').value);
+  const omega = 2*Math.PI*rpm/60;
+  const m = mg/1000;  // kg
+  const r = rmm/1000;  // m
+  const F = m * omega*omega * r;  // N
+
+  // Disc view (end-on)
+  const CX = 220, CY = 140;
+  const R = 90;
+  ns('circle',{cx:CX,cy:CY,r:R,fill:'#1d232c',stroke:'#5ec8ff','stroke-width':2},balSvg);
+  // Center
+  ns('circle',{cx:CX,cy:CY,r:6,fill:'#0e1116',stroke:'#dde3ec','stroke-width':1.5},balSvg);
+  ns('circle',{cx:CX,cy:CY,r:2,fill:'#dde3ec'},balSvg);
+
+  // Imbalance mass position
+  const massScale = R * 0.85 * (rmm/50);  // scale offset to fit
+  const mx = CX + massScale*Math.cos(shaftAng);
+  const my = CY + massScale*Math.sin(shaftAng);
+  // Mass dot (radius scales with mg)
+  const massR = 4 + 4*Math.sqrt(mg);
+  ns('circle',{cx:mx,cy:my,r:massR,fill:'#ff7b72',stroke:'#0e1116','stroke-width':1.5},balSvg);
+  ns('text',{x:mx+10,y:my+4,class:'label',fill:'#ff7b72'},balSvg).textContent=`m = ${mg.toFixed(2)} g`;
+
+  // Centrifugal force vector pointing outward from center
+  const fScale = Math.min(60, F * 8 + 20);
+  const fx = CX + (massScale + fScale)*Math.cos(shaftAng);
+  const fy = CY + (massScale + fScale)*Math.sin(shaftAng);
+  ns('line',{x1:mx,y1:my,x2:fx,y2:fy,stroke:'#ffb86c','stroke-width':2.5,'marker-end':'url(#FarrB)'},balSvg);
+  const defs = ns('defs',{},balSvg);
+  const m1 = ns('marker',{id:'FarrB',viewBox:'0 0 10 10',refX:'8',refY:'5',markerWidth:'6',markerHeight:'6',orient:'auto'},defs);
+  ns('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:'#ffb86c'},m1);
+
+  // Offset radius marker
+  ns('line',{x1:CX,y1:CY,x2:mx,y2:my,stroke:'#dde3ec','stroke-width':1,'stroke-dasharray':'3 3',opacity:0.6},balSvg);
+  ns('text',{x:(CX+mx)/2+6,y:(CY+my)/2-4,class:'label-dim'},balSvg).textContent=`r = ${rmm.toFixed(1)} mm`;
+
+  // Side view of shaft (showing axial position - just illustrative)
+  ns('text',{x:CX,y:CY+R+30,class:'label-dim','text-anchor':'middle'},balSvg).textContent='End view of disc on shaft';
+
+  // Numeric panel
+  ns('text',{x:480,y:50,class:'label',fill:'#dde3ec','font-weight':'600'},balSvg).textContent='Centrifugal load';
+  ns('text',{x:480,y:78,class:'label'},balSvg).textContent=`RPM = ${rpm.toFixed(0)} → ω = ${omega.toFixed(2)} rad/s (${(rpm/60).toFixed(1)} Hz)`;
+  ns('text',{x:480,y:100,class:'label'},balSvg).textContent=`m = ${m.toExponential(2)} kg, r = ${r.toExponential(2)} m`;
+  ns('text',{x:480,y:124,class:'label',fill:'#ffb86c'},balSvg).textContent=`F = m·ω²·r = ${F.toFixed(3)} N`;
+  ns('text',{x:480,y:148,class:'label-dim'},balSvg).textContent=`≈ ${(F/9.81*1000).toFixed(1)} grams-force at bearing`;
+  ns('text',{x:480,y:172,class:'label-dim'},balSvg).textContent=`Cyclic at ${(rpm/60).toFixed(1)} Hz — bearing sees this`;
+  ns('text',{x:480,y:192,class:'label-dim'},balSvg).textContent=`load every revolution`;
+
+  document.getElementById('balSummary').innerHTML =
+    `<b>F = m·ω²·r = ${m.toExponential(2)} kg × (${omega.toFixed(2)} rad/s)² × ${r.toExponential(2)} m = ${F.toFixed(3)} N</b><br>` +
+    `<span style="color:var(--fg-dim)">F scales with ω² — doubling RPM quadruples the bearing load. Cyclic frequency = shaft frequency (${(rpm/60).toFixed(1)} Hz here). Watch this load against the rotor support's natural frequency to avoid 1× resonance.</span>`;
+}
+
+// Controls
+document.getElementById('I').oninput = e=>{
+  I_fw = parseFloat(e.target.value);
+  document.getElementById('IRO').textContent = I_fw.toFixed(4) + ' kg·m²';
+  drawGyro();
+};
+document.getElementById('omegaS').oninput = e=>{
+  omegaSpin = parseFloat(e.target.value);
+  document.getElementById('omegaSRO').textContent = omegaSpin.toFixed(0) + ' rad/s';
+  drawGyro();
+};
+document.getElementById('Tapp').oninput = e=>{
+  Tapp = parseFloat(e.target.value);
+  document.getElementById('TappRO').textContent = Tapp.toFixed(2) + ' N·m';
+  drawGyro();
+};
+document.getElementById('btnPlayG').onclick = ()=>{
+  playG = !playG;
+  document.getElementById('btnPlayG').textContent = playG ? 'Pause' : 'Play';
+};
+document.getElementById('btnResetG').onclick = ()=>{ precessionAng = 0; spinAng = 0; drawGyro(); };
+
+document.getElementById('shaftRPM').oninput = e=>{
+  document.getElementById('shaftRPMRO').textContent = e.target.value + ' RPM';
+  drawBalance();
+};
+document.getElementById('imbalM').oninput = e=>{
+  document.getElementById('imbalMRO').textContent = parseFloat(e.target.value).toFixed(2) + ' g';
+  drawBalance();
+};
+document.getElementById('imbalR').oninput = e=>{
+  document.getElementById('imbalRRO').textContent = parseFloat(e.target.value).toFixed(1) + ' mm';
+  drawBalance();
+};
+
+function animate(t){
+  const dt = lastTG ? Math.min(0.05,(t-lastTG)/1000) : 0;
+  if(playG){
+    const Op = Tapp / (I_fw * omegaSpin);
+    precessionAng += Op * dt * 4;  // visual speed-up for clarity
+    if(precessionAng > 2*Math.PI) precessionAng -= 2*Math.PI;
+    spinAng += omegaSpin * dt * 0.1;  // visual scale
+    drawGyro();
+  }
+  // Balance animation always runs (shaft spins)
+  const rpmCur = parseFloat(document.getElementById('shaftRPM').value);
+  const omCur = 2*Math.PI*rpmCur/60;
+  shaftAng += omCur * dt * 0.05;  // visual scale
+  if(shaftAng > 2*Math.PI) shaftAng -= 2*Math.PI;
+  drawBalance();
+  lastTG = t;
+  requestAnimationFrame(animate);
+}
+drawGyro();
+drawBalance();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

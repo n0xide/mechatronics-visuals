@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rotational dynamics — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  /* Common SVG conventions */
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Rotational dynamics — ΣT = I·α</h1>
+  <p class="lede">Newton's second law in its rotational form. Pick a body (its inertia formula is plugged
+  in automatically), set the applied torque, and watch the disk spin up. The parallel-axis theorem panel
+  lets you slide the rotation axis away from the centroid and see I grow as m·d².</p>
+
+  <h2>1. Angular acceleration: α = T / I</h2>
+  <section class="controls">
+    <div class="control">
+      <label>Body preset</label>
+      <select id="bodyPreset">
+        <option value="solidDisk" selected>Solid disk (I = ½mr²)</option>
+        <option value="hollowCyl">Hollow cylinder (I = ½m(r_o²+r_i²))</option>
+        <option value="rodCenter">Thin rod about center (mL²/12)</option>
+        <option value="rodEnd">Thin rod about end (mL²/3)</option>
+        <option value="solidSphere">Solid sphere (2mr²/5)</option>
+        <option value="hollowSphere">Hollow sphere (2mr²/3)</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Mass m (kg)</label>
+      <input type="range" id="mass" min="0.1" max="10" step="0.1" value="2">
+      <span class="readout" id="massRO">2.0 kg</span>
+    </div>
+    <div class="control">
+      <label>Characteristic size (m): r or L</label>
+      <input type="range" id="size" min="0.02" max="1" step="0.01" value="0.2">
+      <span class="readout" id="sizeRO">0.20 m</span>
+    </div>
+    <div class="control">
+      <label>Applied torque T (N·m)</label>
+      <input type="range" id="torque" min="0" max="20" step="0.1" value="5">
+      <span class="readout" id="torqueRO">5.0 N·m</span>
+    </div>
+    <div class="control">
+      <label>Animation</label>
+      <div style="display:flex;gap:6px">
+        <button class="btn primary" id="btnPlay">Play</button>
+        <button class="btn" id="btnReset">Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="diskSvg" viewBox="0 0 880 320" width="100%" height="320"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>Rotating body</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>Applied torque</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Angular position marker</span>
+    </div>
+  </div>
+
+  <div id="rotSummary" class="figure" style="padding:14px 18px;font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>
+
+  <h2>2. Moment-of-inertia formula table</h2>
+  <table>
+    <thead><tr><th>Body</th><th>Axis</th><th>I</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Solid disk / cylinder</td><td>Centroidal spin axis</td><td>½ m r²</td><td>Flywheels, rotor blanks</td></tr>
+      <tr><td>Hollow cylinder (thick wall)</td><td>Centroidal spin axis</td><td>½ m (r_o² + r_i²)</td><td>Tubes, sleeves</td></tr>
+      <tr><td>Thin rod</td><td>Through center, ⟂ to rod</td><td>m L² / 12</td><td>Symmetric link</td></tr>
+      <tr><td>Thin rod</td><td>Through one end, ⟂ to rod</td><td>m L² / 3</td><td>Cantilevered arm link</td></tr>
+      <tr><td>Solid sphere</td><td>Any diameter</td><td>2 m r² / 5</td><td>Rolling ball</td></tr>
+      <tr><td>Thin-walled hollow sphere</td><td>Any diameter</td><td>2 m r² / 3</td><td>Shell, hollow flywheel</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3. Parallel-axis theorem: I = I_cg + m·d²</h2>
+  <p>Shift the rotation axis off the centroid by a distance d. The body's inertia about the new axis
+  grows quadratically with d. This is why a robotic-arm link rotated about its base joint has roughly
+  4× the inertia of the same link rotated about its center.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Offset distance d (m)</label>
+      <input type="range" id="offset" min="0" max="0.5" step="0.01" value="0.15">
+      <span class="readout" id="offsetRO">0.15 m</span>
+    </div>
+    <div class="control">
+      <label>Body</label>
+      <select id="paxBody">
+        <option value="rod" selected>Thin rod (L = 0.5 m, m = 2 kg)</option>
+        <option value="disk">Solid disk (r = 0.2 m, m = 2 kg)</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="paxSvg" viewBox="0 0 880 280" width="100%" height="280"></svg>
+  </div>
+
+  <div id="paxSummary" class="figure" style="padding:14px 18px;font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>α = T / I is the rotational F = m·a.</b> Doubling torque doubles angular acceleration; doubling mass halves it (with size held fixed); doubling size *quadruples* I and *quarters* α.</li>
+    <li><b>I scales with size squared.</b> A 2× bigger disk with the same mass has 4× the inertia. Bigger bodies are dramatically harder to spin up.</li>
+    <li><b>Where the mass sits matters more than how much there is.</b> Hollow sphere (2/3) vs solid sphere (2/5) — same mass, same radius, but the hollow shell has 67% more inertia because all its mass is at maximum r.</li>
+    <li><b>Rod about end has 4× the inertia of rod about center.</b> mL²/3 vs mL²/12. This is the parallel-axis theorem with d = L/2 in action.</li>
+    <li><b>Robot-arm consequence (arm-6dof-pa612):</b> J1 carries the moment of inertia of <i>everything outboard</i>, shifted by the parallel-axis term. Each downstream link adds m·d² where d is its centroid distance to J1 — payload at full reach can dwarf the arm's own I.</li>
+    <li><b>Flywheel design:</b> energy stored E = ½ I ω². To pack more energy at safe RPM, put mass at the rim, not the hub — same kg of steel, much more I.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Newton-rot</dt><dd><span class="eq">ΣT = I · α</span></dd>
+        <dt>Rot KE</dt><dd><span class="eq">KE_rot = ½ I ω²</span></dd>
+        <dt>Parallel axis</dt><dd><span class="eq">I = I_cg + m·d²</span></dd>
+        <dt>Rolling KE</dt><dd><span class="eq">KE = ½mv² + ½Iω²</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>I TABLE (common bodies)</h3>
+      <table>
+        <thead><tr><th>Shape</th><th>I about cg</th></tr></thead>
+        <tbody>
+          <tr><td>Solid disk / cylinder</td><td>½ m r²</td></tr>
+          <tr><td>Hoop / thin ring</td><td>m r²</td></tr>
+          <tr><td>Solid sphere</td><td>⅖ m r²</td></tr>
+          <tr><td>Rod, axis at center</td><td>m L² / 12</td></tr>
+          <tr><td>Rod, axis at end</td><td>m L² / 3</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Units</b>: I in <b>kg·m²</b>, ω in <b>rad/s</b> — convert RPM via 2π/60</li>
+        <li>Rolling without slip → split KE between translation and rotation</li>
+        <li>Rod about <b>end</b> = 4× rod about center (parallel-axis with d = L/2)</li>
+        <li>Hollow sphere = ⅔ m r², solid = ⅖ m r² — placement of mass &gt; total mass</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 8 — Dynamics</a> ·
+    Topic: Rotational dynamics, moment of inertia, parallel-axis theorem
+  </footer>
+</main>
+<script>
+const diskSvg = document.getElementById('diskSvg');
+const paxSvg = document.getElementById('paxSvg');
+function ns(tag, attrs={}, parent){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+let body = 'solidDisk';
+let m = 2.0, sz = 0.2, T = 5.0;
+let omega = 0, theta = 0;
+let playing = true;
+let lastT = 0;
+
+function inertia(b, mass, size){
+  // size is r for disks/cyl/sphere, L for rods
+  switch(b){
+    case 'solidDisk':   return 0.5 * mass * size*size;
+    case 'hollowCyl':   return 0.5 * mass * (size*size + (size*0.7)*(size*0.7));  // assume r_i = 0.7 r_o
+    case 'rodCenter':   return mass * size*size / 12;
+    case 'rodEnd':      return mass * size*size / 3;
+    case 'solidSphere': return 0.4 * mass * size*size;
+    case 'hollowSphere':return (2/3) * mass * size*size;
+  }
+  return 0.5 * mass * size*size;
+}
+function bodyLabel(b){
+  return ({
+    solidDisk:'Solid disk (½mr²)',
+    hollowCyl:'Hollow cyl (½m(r_o²+r_i²)), r_i=0.7r_o',
+    rodCenter:'Rod, center axis (mL²/12)',
+    rodEnd:'Rod, end axis (mL²/3)',
+    solidSphere:'Solid sphere (2mr²/5)',
+    hollowSphere:'Hollow sphere (2mr²/3)'
+  })[b];
+}
+
+function drawDisk(){
+  clear(diskSvg);
+  const CX = 240, CY = 160, R = 110;
+  // Outer disk
+  ns('circle',{cx:CX,cy:CY,r:R,fill:'#1a2c3a',stroke:'#5ec8ff','stroke-width':2},diskSvg);
+  // For hollow cyl, draw inner ring
+  if(body === 'hollowCyl'){
+    ns('circle',{cx:CX,cy:CY,r:R*0.7,fill:'#0e1116',stroke:'#5ec8ff','stroke-width':1.5},diskSvg);
+  }
+  // For thin rod, draw a rectangle instead of disk
+  if(body === 'rodCenter' || body === 'rodEnd'){
+    ns('circle',{cx:CX,cy:CY,r:R,fill:'#0e1116',stroke:'#2a313c','stroke-width':1,'stroke-dasharray':'3 3'},diskSvg);
+    const len = R * 1.7;
+    const cs = Math.cos(theta), sn = Math.sin(theta);
+    let x1, y1, x2, y2;
+    if(body === 'rodCenter'){
+      x1 = CX - len/2*cs; y1 = CY - len/2*sn;
+      x2 = CX + len/2*cs; y2 = CY + len/2*sn;
+    } else {
+      x1 = CX; y1 = CY;
+      x2 = CX + len*cs; y2 = CY + len*sn;
+    }
+    ns('line',{x1,y1,x2,y2,stroke:'#5ec8ff','stroke-width':10,'stroke-linecap':'round'},diskSvg);
+  } else {
+    // Reference marker (a wedge) so rotation is visible
+    const a1 = theta, a2 = theta + Math.PI/8;
+    const x1 = CX + R*Math.cos(a1), y1 = CY + R*Math.sin(a1);
+    const x2 = CX + R*Math.cos(a2), y2 = CY + R*Math.sin(a2);
+    ns('path',{d:`M ${CX},${CY} L ${x1},${y1} A ${R} ${R} 0 0 1 ${x2},${y2} Z`,fill:'#a3e635',opacity:0.85},diskSvg);
+  }
+  // Center pin
+  ns('circle',{cx:CX,cy:CY,r:6,fill:'#0e1116',stroke:'#dde3ec','stroke-width':1.5},diskSvg);
+  // Torque arrow (curved)
+  const aR = R + 28;
+  const ax = CX + aR*Math.cos(-Math.PI/4);
+  const ay = CY + aR*Math.sin(-Math.PI/4);
+  const ax2 = CX + aR*Math.cos(Math.PI/4);
+  const ay2 = CY + aR*Math.sin(Math.PI/4);
+  ns('path',{d:`M ${ax},${ay} A ${aR} ${aR} 0 0 1 ${ax2},${ay2}`,fill:'none',stroke:'#ffb86c','stroke-width':2.5,'marker-end':'url(#arr)'},diskSvg);
+  // Arrow marker
+  const defs = ns('defs',{},diskSvg);
+  const marker = ns('marker',{id:'arr',viewBox:'0 0 10 10',refX:'8',refY:'5',markerWidth:'6',markerHeight:'6',orient:'auto'},defs);
+  ns('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:'#ffb86c'},marker);
+  ns('text',{x:CX,y:CY+R+58,class:'label','text-anchor':'middle',fill:'#ffb86c'},diskSvg).textContent=`T = ${T.toFixed(2)} N·m`;
+
+  // Right-side readouts
+  const I = inertia(body, m, sz);
+  const alpha = (I>0)? T/I : 0;
+  const rpm = omega * 60 / (2*Math.PI);
+  ns('text',{x:480,y:50,class:'label',fill:'#dde3ec','font-weight':'600'},diskSvg).textContent=bodyLabel(body);
+  ns('text',{x:480,y:82,class:'label'},diskSvg).textContent=`m = ${m.toFixed(2)} kg`;
+  ns('text',{x:480,y:104,class:'label'},diskSvg).textContent=`r or L = ${sz.toFixed(3)} m`;
+  ns('text',{x:480,y:126,class:'label',fill:'#5ec8ff'},diskSvg).textContent=`I = ${I.toFixed(5)} kg·m²`;
+  ns('text',{x:480,y:148,class:'label',fill:'#ffb86c'},diskSvg).textContent=`T = ${T.toFixed(2)} N·m`;
+  ns('text',{x:480,y:170,class:'label',fill:'#a3e635'},diskSvg).textContent=`α = T/I = ${alpha.toFixed(3)} rad/s²`;
+  ns('text',{x:480,y:200,class:'label',fill:'#dde3ec'},diskSvg).textContent=`Current ω = ${omega.toFixed(2)} rad/s`;
+  ns('text',{x:480,y:222,class:'label-dim'},diskSvg).textContent=`≈ ${rpm.toFixed(0)} RPM`;
+  ns('text',{x:480,y:248,class:'label-dim'},diskSvg).textContent=`KE = ½Iω² = ${(0.5*I*omega*omega).toFixed(2)} J`;
+
+  // Summary line
+  const reachTime = (alpha > 0) ? (157.08 / alpha) : Infinity;  // to 1500 RPM = 157.08 rad/s
+  document.getElementById('rotSummary').innerHTML =
+    `<b>α = T / I = ${T.toFixed(2)} / ${I.toFixed(5)} = ${alpha.toFixed(3)} rad/s²</b><br>` +
+    `<span style="color:var(--fg-dim)">Time to reach 1500 RPM from rest at constant α: ${isFinite(reachTime) ? reachTime.toFixed(3) + ' s' : '∞ (no torque)'}</span>`;
+}
+
+function drawPax(){
+  clear(paxSvg);
+  const bodySel = document.getElementById('paxBody').value;
+  const d = parseFloat(document.getElementById('offset').value);
+  const massPax = 2;
+  let I_cg, sizeLabel;
+  if(bodySel === 'rod'){
+    const L = 0.5;
+    I_cg = massPax * L*L / 12;
+    sizeLabel = `Rod, L = 0.5 m, m = 2 kg`;
+  } else {
+    const r = 0.2;
+    I_cg = 0.5 * massPax * r*r;
+    sizeLabel = `Disk, r = 0.2 m, m = 2 kg`;
+  }
+  const I_new = I_cg + massPax * d*d;
+
+  // Diagram: draw body + centroid + offset axis
+  const CX = 240, CY = 140;
+  const scale = 500;  // px per m
+  if(bodySel === 'rod'){
+    const L = 0.5 * scale;
+    ns('rect',{x:CX-L/2,y:CY-6,width:L,height:12,fill:'#1a2c3a',stroke:'#5ec8ff','stroke-width':2,rx:2},paxSvg);
+  } else {
+    ns('circle',{cx:CX,cy:CY,r:0.2*scale,fill:'#1a2c3a',stroke:'#5ec8ff','stroke-width':2},paxSvg);
+  }
+  // Centroid axis
+  ns('circle',{cx:CX,cy:CY,r:5,fill:'#a3e635'},paxSvg);
+  ns('text',{x:CX,y:CY-12,class:'label-dim','text-anchor':'middle',fill:'#a3e635'},paxSvg).textContent='CG axis';
+
+  // Offset axis (rotated d to the right)
+  const ox = CX + d*scale;
+  ns('circle',{cx:ox,cy:CY,r:5,fill:'#ffb86c'},paxSvg);
+  ns('text',{x:ox,y:CY-12,class:'label-dim','text-anchor':'middle',fill:'#ffb86c'},paxSvg).textContent='new axis';
+  // Distance marker
+  ns('line',{x1:CX,y1:CY+30,x2:ox,y2:CY+30,stroke:'#dde3ec','stroke-width':1,'marker-end':'url(#paxArr)','marker-start':'url(#paxArr)'},paxSvg);
+  const defs = ns('defs',{},paxSvg);
+  const marker = ns('marker',{id:'paxArr',viewBox:'0 0 10 10',refX:'5',refY:'5',markerWidth:'4',markerHeight:'4',orient:'auto'},defs);
+  ns('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:'#dde3ec'},marker);
+  ns('text',{x:(CX+ox)/2,y:CY+48,class:'label','text-anchor':'middle'},paxSvg).textContent=`d = ${d.toFixed(2)} m`;
+
+  // Numeric panel on right
+  ns('text',{x:600,y:50,class:'label',fill:'#dde3ec','font-weight':'600'},paxSvg).textContent=sizeLabel;
+  ns('text',{x:600,y:78,class:'label',fill:'#a3e635'},paxSvg).textContent=`I_cg = ${I_cg.toFixed(5)} kg·m²`;
+  ns('text',{x:600,y:100,class:'label'},paxSvg).textContent=`m·d² = ${(massPax*d*d).toFixed(5)} kg·m²`;
+  ns('text',{x:600,y:124,class:'label',fill:'#ffb86c'},paxSvg).textContent=`I_new = I_cg + m·d²`;
+  ns('text',{x:600,y:146,class:'label',fill:'#ffb86c'},paxSvg).textContent=`     = ${I_new.toFixed(5)} kg·m²`;
+  const ratio = I_new / I_cg;
+  ns('text',{x:600,y:178,class:'label-dim'},paxSvg).textContent=`I_new / I_cg = ${ratio.toFixed(2)}×`;
+
+  document.getElementById('paxSummary').innerHTML =
+    `<b>Parallel-axis theorem: I = I_cg + m·d² = ${I_cg.toFixed(5)} + ${(massPax*d*d).toFixed(5)} = ${I_new.toFixed(5)} kg·m²</b><br>` +
+    `<span style="color:var(--fg-dim)">Shifting the rotation axis by d = ${d.toFixed(2)} m increases inertia by ${(ratio*100-100).toFixed(0)}%.</span>`;
+}
+
+// Controls
+document.getElementById('bodyPreset').onchange = e=>{ body = e.target.value; drawDisk(); };
+document.getElementById('mass').oninput = e=>{
+  m = parseFloat(e.target.value);
+  document.getElementById('massRO').textContent = m.toFixed(2) + ' kg';
+  drawDisk();
+};
+document.getElementById('size').oninput = e=>{
+  sz = parseFloat(e.target.value);
+  document.getElementById('sizeRO').textContent = sz.toFixed(2) + ' m';
+  drawDisk();
+};
+document.getElementById('torque').oninput = e=>{
+  T = parseFloat(e.target.value);
+  document.getElementById('torqueRO').textContent = T.toFixed(2) + ' N·m';
+  drawDisk();
+};
+document.getElementById('btnPlay').onclick = ()=>{
+  playing = !playing;
+  document.getElementById('btnPlay').textContent = playing ? 'Pause' : 'Play';
+};
+document.getElementById('btnReset').onclick = ()=>{ omega = 0; theta = 0; drawDisk(); };
+
+document.getElementById('offset').oninput = e=>{
+  document.getElementById('offsetRO').textContent = parseFloat(e.target.value).toFixed(2) + ' m';
+  drawPax();
+};
+document.getElementById('paxBody').onchange = drawPax;
+
+function animate(t){
+  if(playing){
+    const dt = lastT ? Math.min(0.05, (t - lastT)/1000) : 0;
+    const I = inertia(body, m, sz);
+    if(I > 0){
+      const alpha = T / I;
+      omega += alpha * dt;
+      // Cap omega to keep visualization sane
+      if(omega > 50) omega = 50;
+      theta += omega * dt;
+      if(theta > 2*Math.PI) theta -= 2*Math.PI;
+    }
+    drawDisk();
+  }
+  lastT = t;
+  requestAnimationFrame(animate);
+}
+drawDisk();
+drawPax();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

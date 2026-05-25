@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Current Sensing — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+    gap:10px;margin:12px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px}
+  .stat .lbl{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 16px ui-monospace,monospace;color:var(--accent);margin-top:4px}
+  .stat.warn .val{color:var(--warn)}
+  .topology-buttons{display:flex;flex-wrap:wrap;gap:6px}
+  .topology-btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:12px ui-monospace,monospace;cursor:pointer}
+  .topology-btn.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Current Sensing — Shunt &amp; Hall</h1>
+  <p class="lede">FOC needs phase currents sampled mid-PWM-pulse. Pick the right shunt location, gain it through an INA, sample the ADC at the right instant.</p>
+
+  <p>Current is the torque-producing signal in every closed-loop motor drive — FOC, stepper chopper control, overcurrent protection. Two physical methods: drop voltage across a tiny resistor (a "shunt") and amplify, or measure the magnetic field with a Hall-effect IC. Shunts are cheap, accurate, and noisy (PWM commutation noise couples in); Hall sensors are isolated and quiet but more expensive and slower. The shunt-location decision (low-side / high-side / inline) controls cost, accuracy, and how cleverly you have to time the ADC sample. For FOC on a 3-phase inverter, the modern default is inline (one shunt per phase, after the half-bridge, before the motor) with a SAR ADC sampled at the PWM midpoint.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Shunt topology</label>
+      <div class="topology-buttons">
+        <button class="topology-btn active" data-top="low">Low-side</button>
+        <button class="topology-btn" data-top="high">High-side</button>
+        <button class="topology-btn" data-top="inline">Inline (phase)</button>
+        <button class="topology-btn" data-top="hall">Hall sensor</button>
+      </div>
+    </div>
+    <div class="control">
+      <label>I_motor: <span class="readout" id="iRead">5.0 A</span></label>
+      <input id="im" type="range" min="0.1" max="40" step="0.1" value="5">
+    </div>
+    <div class="control">
+      <label>R_shunt: <span class="readout" id="rsRead">10 mΩ</span></label>
+      <input id="rs" type="range" min="0.5" max="100" step="0.5" value="10">
+    </div>
+    <div class="control">
+      <label>Amp gain: <span class="readout" id="gRead">20×</span></label>
+      <input id="g" type="range" min="1" max="200" step="1" value="20">
+    </div>
+    <div class="control">
+      <label>V_ref ADC: <span class="readout" id="vrRead">3.3 V</span></label>
+      <select id="vr">
+        <option value="1.8">1.8 V</option>
+        <option value="2.5">2.5 V</option>
+        <option value="3.3" selected>3.3 V</option>
+        <option value="5.0">5.0 V</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>ADC bits: <span class="readout" id="adcRead">12</span></label>
+      <select id="adc">
+        <option value="8">8</option>
+        <option value="10">10</option>
+        <option value="12" selected>12</option>
+        <option value="14">14</option>
+        <option value="16">16</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Topology — shunt placement</h3>
+    <svg id="topoSvg" viewBox="0 0 700 280" width="100%" style="background:var(--bg-elev2);border-radius:6px"></svg>
+    <p id="topoNote" style="margin-top:8px;font-size:12px;color:var(--fg-dim)"></p>
+  </div>
+
+  <div class="figure">
+    <h3>ADC sample timing inside one PWM period</h3>
+    <svg viewBox="0 0 700 240" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <line x1="50" y1="20" x2="50" y2="220" class="axis"/>
+      <line x1="50" y1="220" x2="680" y2="220" class="axis"/>
+      <text x="685" y="232" class="axis-label">t</text>
+
+      <!-- PWM (top trace) -->
+      <text x="40" y="40" class="label-dim" text-anchor="end">PWM</text>
+      <polyline id="pwmTrace" class="trace trace-1" points=""/>
+
+      <!-- Phase current (middle) -->
+      <text x="40" y="115" class="label-dim" text-anchor="end">I_ph</text>
+      <polyline id="iphTrace" class="trace trace-2" points=""/>
+
+      <!-- Shunt voltage (bottom) -->
+      <text x="40" y="190" class="label-dim" text-anchor="end">V_shunt</text>
+      <polyline id="vshTrace" class="trace trace-3" points=""/>
+
+      <!-- Sample marker -->
+      <line id="sampleLine" x1="365" y1="20" x2="365" y2="220" stroke="var(--warn)" stroke-dasharray="3,3" stroke-width="2"/>
+      <text id="sampleLabel" x="365" y="14" class="label" fill="var(--warn)" text-anchor="middle">ADC sample (midpoint)</text>
+
+      <!-- Blanking window for low-side / inline -->
+      <rect id="blankRect" x="50" y="20" width="60" height="200" fill="rgba(255,123,114,0.12)" stroke="var(--warn)" stroke-dasharray="2,2"/>
+      <text id="blankLabel" x="80" y="35" class="label-dim" fill="var(--warn)" text-anchor="middle">blank</text>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>PWM (high-side gate)</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>Motor phase current</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>Shunt voltage (V_shunt = I·R_shunt)</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>Sample point</span>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Signal chain numbers</h3>
+    <div class="stat-grid">
+      <div class="stat"><div class="lbl">V_shunt</div><div class="val" id="statVsh">50 mV</div></div>
+      <div class="stat"><div class="lbl">V_amp out</div><div class="val" id="statVamp">1.0 V</div></div>
+      <div class="stat"><div class="lbl">ADC code</div><div class="val" id="statCode">1240</div></div>
+      <div class="stat"><div class="lbl">LSB</div><div class="val" id="statLsb">0.81 mV</div></div>
+      <div class="stat"><div class="lbl">LSB → A</div><div class="val" id="statLsbA">4.0 mA</div></div>
+      <div class="stat"><div class="lbl">Shunt power</div><div class="val" id="statP">250 mW</div></div>
+      <div class="stat" id="statSatBox"><div class="lbl">Saturation</div><div class="val" id="statSat">OK</div></div>
+      <div class="stat"><div class="lbl">Dynamic range</div><div class="val" id="statDyn">96 dB</div></div>
+    </div>
+    <p style="margin-top:12px;font-size:12px;color:var(--fg-dim)">
+      <code>V_shunt = I·R</code> · <code>V_amp = G·V_shunt</code> · <code>code = V_amp·(2^N − 1)/V_ref</code> · keep V_amp &lt; 0.9·V_ref
+    </p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Low-side shunt is cheap and easy</b> — referenced to GND, standard op-amp works. But you only see current when the low-side FET is conducting, so the ADC must sample during the freewheel interval (the "OFF" of the high-side PWM). Misses overcurrent during the ON time.</li>
+    <li><b>High-side shunt measures current into the motor leg always</b> — but its common-mode voltage rides on V_supply (12–48 V). Needs a high-side current-sense amp (INA240, MAX4080) with high CMRR. More expensive but always-on.</li>
+    <li><b>Inline shunt is the FOC default</b> — sits between the half-bridge and the motor phase, so it sees the actual phase current at any duty. CM voltage swings 0↔V_supply at PWM rate — requires fast wideband CSA (INA240 again, ~400 kHz BW). Three shunts for a 3-phase FOC inverter.</li>
+    <li><b>Sample at the PWM midpoint</b> — the dead-time, FET turn-on/off, and reverse-recovery ringing all happen near the edges. Center-aligned PWM with ADC trigger at TIM_OC4_REF puts the sample in the quiet middle. Blanking window typically 1–3 µs.</li>
+    <li><b>Hall current sensors give galvanic isolation</b> — no electrical path between motor and MCU. Great for safety / fault tolerance. But slower (BW 100–200 kHz), more drift, and you pay ~$3 per channel.</li>
+    <li><b>Shunt power = I²·R</b> — at 30 A and 10 mΩ that's 9 W of heat. Use a 4-terminal Kelvin shunt and a copper pour to spread it; precision drops if the shunt itself heats up (TCR matters).</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>SIGNAL CHAIN</h3>
+      <dl>
+        <dt>V_shunt</dt><dd><span class="eq">V = I · R_shunt</span></dd>
+        <dt>V_amp</dt><dd><span class="eq">V_out = G · V_shunt + V_bias</span></dd>
+        <dt>ADC</dt><dd><span class="eq">code = V_out · (2^N − 1) / V_ref</span></dd>
+        <dt>I→code</dt><dd><span class="eq">code = I · R · G · (2^N−1) / V_ref</span></dd>
+        <dt>Shunt P</dt><dd><span class="eq">P = I²·R</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>PICK BY APPLICATION</h3>
+      <table>
+        <tr><th>Use</th><th>Choice</th></tr>
+        <tr><td>Cheap brushed PWM</td><td>Low-side shunt</td></tr>
+        <tr><td>Overcurrent always-on</td><td>High-side CSA</td></tr>
+        <tr><td>FOC 3-phase inverter</td><td>3× inline shunts</td></tr>
+        <tr><td>Isolated / EV-class</td><td>Hall (ACS770)</td></tr>
+        <tr><td>Battery monitor</td><td>Low-side shunt</td></tr>
+      </table>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Not Kelvin-sensed</b> — sense leads on the high-current pad pick up IR drop in copper; use 4-terminal.</li>
+        <li><b>Sampling near edges</b> — ringing &amp; reverse-recovery glitches; sample mid-pulse.</li>
+        <li><b>CSA saturation</b> — at peak current G·V_shunt &gt; V_ref → clip; check with worst-case I.</li>
+        <li><b>Forgotten offset</b> — bipolar current needs V_bias = V_ref/2 reference; calibrate at zero current.</li>
+        <li><b>TCR drift</b> — 50 ppm/°C shunt at 80 °C rise = 0.4% error.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 3 — Motor Control</a> ·
+    Topic: Current Sensing
+  </footer>
+</main>
+<script>
+  const buttons=document.querySelectorAll('.topology-btn');
+  const imEl=document.getElementById('im');
+  const rsEl=document.getElementById('rs');
+  const gEl=document.getElementById('g');
+  const vrEl=document.getElementById('vr');
+  const adcEl=document.getElementById('adc');
+  const topoSvg=document.getElementById('topoSvg');
+  const topoNote=document.getElementById('topoNote');
+  let topo='low';
+
+  buttons.forEach(b=>b.addEventListener('click',()=>{
+    buttons.forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    topo=b.dataset.top;
+    drawTopo();
+    update();
+  }));
+
+  function fmtSI(v,unit,dec=2){
+    const a=Math.abs(v);
+    if(a===0) return '0 '+unit;
+    if(a>=1e6) return (v/1e6).toFixed(dec)+' M'+unit;
+    if(a>=1e3) return (v/1e3).toFixed(dec)+' k'+unit;
+    if(a>=1) return v.toFixed(dec)+' '+unit;
+    if(a>=1e-3) return (v*1e3).toFixed(dec)+' m'+unit;
+    if(a>=1e-6) return (v*1e6).toFixed(dec)+' µ'+unit;
+    return (v*1e9).toFixed(dec)+' n'+unit;
+  }
+
+  function drawTopo(){
+    // Common: V+ at top (40), GND at bottom (240), half-bridge in middle.
+    let svg = `
+      <line x1="50" y1="40" x2="650" y2="40" class="wire"/>
+      <line x1="50" y1="240" x2="650" y2="240" class="wire"/>
+      <text x="40" y="44" class="label" text-anchor="end">V+</text>
+      <text x="40" y="244" class="label" text-anchor="end">GND</text>`;
+
+    // Half-bridge in middle
+    svg += `
+      <line x1="250" y1="40" x2="250" y2="90" class="wire"/>
+      <rect x="225" y="90" width="50" height="40" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="250" y="115" class="label" text-anchor="middle">HS</text>
+      <line x1="250" y1="130" x2="250" y2="160" class="wire"/>
+      <circle cx="250" cy="160" r="3" fill="var(--accent2)"/>
+      <text x="260" y="158" class="label" fill="var(--accent2)">SW</text>
+      <rect x="225" y="160" width="50" height="40" fill="var(--bg-elev2)" stroke="var(--accent3)" stroke-width="2"/>
+      <text x="250" y="185" class="label" text-anchor="middle">LS</text>`;
+
+    // Phase wire to motor
+    svg += `
+      <line x1="250" y1="160" x2="500" y2="160" class="wire"/>
+      <circle cx="500" cy="160" r="20" fill="var(--bg)" stroke="var(--fg)" stroke-width="2"/>
+      <text x="500" y="164" class="label" text-anchor="middle">M</text>`;
+
+    // Shunt rectangle helper
+    const shunt = (x,y,label)=> `
+      <rect x="${x-15}" y="${y-7}" width="30" height="14" fill="var(--bg)" stroke="var(--warn)" stroke-width="2"/>
+      <text x="${x}" y="${y+25}" class="label" fill="var(--warn)" text-anchor="middle">${label}</text>`;
+
+    const opamp = (cx,cy,label)=> `
+      <polygon points="${cx-22},${cy-18} ${cx-22},${cy+18} ${cx+22},${cy}" fill="var(--bg-elev2)" stroke="var(--accent3)" stroke-width="2"/>
+      <text x="${cx-12}" y="${cy-4}" class="label-dim" text-anchor="end">+</text>
+      <text x="${cx-12}" y="${cy+10}" class="label-dim" text-anchor="end">−</text>
+      <text x="${cx-2}" y="${cy+34}" class="label" fill="var(--accent3)" text-anchor="middle">${label}</text>`;
+
+    if(topo==='low'){
+      // Shunt between LS source and GND
+      svg += `
+        <line x1="250" y1="200" x2="250" y2="220" class="wire"/>
+        ${shunt(250,225,'R_sh')}
+        <line x1="250" y1="232" x2="250" y2="240" class="wire"/>
+        <line x1="265" y1="220" x2="380" y2="220" class="wire" stroke="var(--accent3)"/>
+        <line x1="265" y1="232" x2="380" y2="232" class="wire" stroke="var(--accent3)"/>
+        ${opamp(400,226,'INA (G=20)')}
+        <line x1="422" y1="226" x2="500" y2="226" class="wire"/>
+        <text x="560" y="226" class="label" fill="var(--accent)">→ ADC</text>`;
+      topoNote.textContent='Low-side: only conducts when LS FET is ON (PWM low). Sample during freewheel interval. Cheap & ground-referenced.';
+    } else if(topo==='high'){
+      // Shunt between V+ rail and HS drain
+      svg += `
+        <line x1="50" y1="40" x2="170" y2="40" class="wire"/>
+        ${shunt(190,40,'R_sh')}
+        <line x1="205" y1="40" x2="250" y2="40" class="wire"/>
+        <line x1="175" y1="55" x2="320" y2="100" class="wire" stroke="var(--accent3)"/>
+        <line x1="205" y1="55" x2="320" y2="116" class="wire" stroke="var(--accent3)"/>
+        ${opamp(340,108,'CSA INA240')}
+        <line x1="362" y1="108" x2="500" y2="108" class="wire"/>
+        <text x="560" y="108" class="label" fill="var(--accent)">→ ADC</text>`;
+      topoNote.textContent='High-side: rides on V_supply common mode. Needs high-CMRR current-sense amp (INA240, MAX4080). Always-on, sees fault currents.';
+    } else if(topo==='inline'){
+      // Shunt between SW node and motor
+      svg += `
+        ${shunt(370,160,'R_sh')}
+        <line x1="370" y1="145" x2="450" y2="100" class="wire" stroke="var(--accent3)"/>
+        <line x1="370" y1="175" x2="450" y2="115" class="wire" stroke="var(--accent3)"/>
+        ${opamp(490,108,'INA240 (fast)')}
+        <line x1="512" y1="108" x2="600" y2="108" class="wire"/>
+        <text x="608" y="108" class="label" fill="var(--accent)">→ ADC</text>`;
+      topoNote.textContent='Inline / phase shunt: CM voltage swings 0↔V_sup at PWM rate. Needs wideband bidirectional CSA. The FOC standard — one per phase.';
+    } else { // hall
+      // Hall sensor in series with motor phase, isolated output
+      svg += `
+        <rect x="350" y="140" width="50" height="40" fill="var(--bg-elev2)" stroke="var(--accent2)" stroke-width="2"/>
+        <text x="375" y="165" class="label" text-anchor="middle">Hall</text>
+        <text x="375" y="200" class="label-dim" text-anchor="middle">ACS770 / TMCS1108</text>
+        <line x1="400" y1="160" x2="450" y2="160" class="wire"/>
+        <line x1="375" y1="180" x2="375" y2="100" class="wire" stroke="var(--accent3)"/>
+        <text x="385" y="100" class="label" fill="var(--accent3)">V_out (isolated)</text>
+        <text x="385" y="115" class="label-dim">≈ 50 mV/A + 1.65 V</text>
+        <line x1="450" y1="100" x2="500" y2="100" class="wire"/>
+        <text x="560" y="100" class="label" fill="var(--accent)">→ ADC</text>`;
+      topoNote.textContent='Hall sensor: galvanic isolation (motor side & MCU side decoupled). BW 100–250 kHz. ~$3/ch. Great for EV-class / safety-critical drives.';
+    }
+    topoSvg.innerHTML = svg;
+  }
+
+  function update(){
+    const I=parseFloat(imEl.value);
+    const R=parseFloat(rsEl.value)/1000;
+    const G=parseFloat(gEl.value);
+    const Vr=parseFloat(vrEl.value);
+    const N=parseInt(adcEl.value);
+
+    document.getElementById('iRead').textContent=I.toFixed(1)+' A';
+    document.getElementById('rsRead').textContent=(R*1000).toFixed(1)+' mΩ';
+    document.getElementById('gRead').textContent=G+'×';
+    document.getElementById('vrRead').textContent=Vr.toFixed(1)+' V';
+    document.getElementById('adcRead').textContent=N;
+
+    const Vsh = I*R;
+    const Vamp = G*Vsh;
+    const codes = Math.pow(2,N)-1;
+    const code = Math.min(Math.round(Vamp/Vr*codes), codes);
+    const lsb = Vr/codes;
+    const lsbA = lsb/(R*G);
+    const P = I*I*R;
+    const sat = Vamp >= 0.95*Vr;
+    const dyn = 20*Math.log10(codes);
+
+    document.getElementById('statVsh').textContent=fmtSI(Vsh,'V');
+    document.getElementById('statVamp').textContent=Vamp.toFixed(3)+' V';
+    document.getElementById('statCode').textContent=code.toLocaleString();
+    document.getElementById('statLsb').textContent=fmtSI(lsb,'V');
+    document.getElementById('statLsbA').textContent=fmtSI(lsbA,'A');
+    document.getElementById('statP').textContent=fmtSI(P,'W');
+    document.getElementById('statSat').textContent= sat?'CLIPPING':'OK';
+    document.getElementById('statSatBox').className='stat'+(sat?' warn':'');
+    document.getElementById('statDyn').textContent=dyn.toFixed(0)+' dB';
+
+    // Build timing diagram
+    const xL=50,xR=680;
+    const N2=400;
+    const D=0.5;
+    let pwm=[],iph=[],vsh=[];
+    const cycles=2;
+    // PWM trace (y: 30 high, 60 low)
+    for(let i=0;i<=N2;i++){
+      const t=i/N2;
+      const p=(t*cycles)%1;
+      const high = p<D;
+      const x=xL+t*(xR-xL);
+      pwm.push(`${x},${high?30:60}`);
+    }
+    // Phase current: rising during HS-on (toward Imax), falling during LS-on (toward Imin)
+    for(let i=0;i<=N2;i++){
+      const t=i/N2;
+      const p=(t*cycles)%1;
+      const ramp = p<D ? 0.3+p/D*0.6 : 0.9-(p-D)/(1-D)*0.6;
+      const x=xL+t*(xR-xL);
+      const y=140-ramp*40;
+      iph.push(`${x},${y}`);
+    }
+    // V_shunt: depends on topology
+    for(let i=0;i<=N2;i++){
+      const t=i/N2;
+      const p=(t*cycles)%1;
+      const ramp = p<D ? 0.3+p/D*0.6 : 0.9-(p-D)/(1-D)*0.6;
+      const x=xL+t*(xR-xL);
+      let v=0;
+      if(topo==='inline' || topo==='hall'){
+        v=ramp;
+      } else if(topo==='low'){
+        v = p>=D ? ramp : 0; // only sees current when LS on (PWM low)
+      } else { // high
+        v = p<D ? ramp : 0;
+      }
+      const y=210-v*40;
+      vsh.push(`${x},${y}`);
+    }
+    document.getElementById('pwmTrace').setAttribute('points',pwm.join(' '));
+    document.getElementById('iphTrace').setAttribute('points',iph.join(' '));
+    document.getElementById('vshTrace').setAttribute('points',vsh.join(' '));
+
+    // Sample point: mid-pulse-ON for high/inline, mid-pulse-OFF for low
+    const sampleP = topo==='low' ? D+(1-D)/2 : (topo==='hall' ? D/2 : D/2);
+    const sampleT = sampleP/cycles;
+    const xSample = xL+sampleT*(xR-xL);
+    document.getElementById('sampleLine').setAttribute('x1',xSample);
+    document.getElementById('sampleLine').setAttribute('x2',xSample);
+    document.getElementById('sampleLabel').setAttribute('x',xSample);
+    document.getElementById('sampleLabel').textContent =
+      topo==='low' ? 'sample mid OFF (LS conducting)' :
+      topo==='high' ? 'sample mid ON (HS conducting)' :
+      topo==='hall' ? 'sample anywhere (continuous)' : 'sample at PWM midpoint';
+
+    // Blanking
+    const blank = document.getElementById('blankRect');
+    const blankLabel = document.getElementById('blankLabel');
+    if(topo==='hall'){
+      blank.setAttribute('width',0);
+      blankLabel.setAttribute('visibility','hidden');
+    } else {
+      // place at PWM edge (near D boundary on the first cycle)
+      const edgeT = D/cycles;
+      const xEdge = xL+edgeT*(xR-xL);
+      blank.setAttribute('x', xEdge-30);
+      blank.setAttribute('width', 60);
+      blankLabel.setAttribute('x', xEdge);
+      blankLabel.setAttribute('visibility','visible');
+      blankLabel.textContent='edge blank';
+    }
+  }
+
+  [imEl,rsEl,gEl,vrEl,adcEl].forEach(el=>el.addEventListener('input',update));
+  drawTopo();
+  update();
+</script>
+</body>
+</html>

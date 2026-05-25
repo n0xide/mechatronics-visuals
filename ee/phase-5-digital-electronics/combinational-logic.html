@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Combinational Logic — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0;flex-wrap:wrap}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .wire.hot{stroke:var(--accent3);stroke-width:2}
+  .wire.cold{stroke:var(--warn);stroke-width:1.5}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .input-toggle{display:inline-block;width:34px;height:26px;background:var(--warn);color:var(--bg);
+    text-align:center;line-height:26px;border-radius:4px;cursor:pointer;
+    font:600 13px ui-monospace,monospace;user-select:none;border:1px solid var(--line)}
+  .input-toggle.on{background:var(--accent3)}
+  .toggles{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0}
+  .toggles label{font:12px ui-monospace,monospace;color:var(--fg-dim)}
+  .out-pill{display:inline-block;padding:3px 10px;border-radius:12px;
+    font:600 13px ui-monospace,monospace;background:var(--bg-elev2);border:1px solid var(--line)}
+  .out-pill.on{background:var(--accent3);color:var(--bg);border-color:var(--accent3)}
+  .out-pill.off{background:var(--warn);color:var(--bg);border-color:var(--warn)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Combinational Logic</h1>
+  <p class="lede">Half/full adders, ripple-carry chains, multiplexers, decoders, and priority encoders — the building blocks of every ALU and bus controller.</p>
+
+  <p>Combinational logic means <b>no memory</b> — outputs are pure functions of current inputs. Each tab below isolates one canonical block. Toggle the inputs and watch how signals propagate. The ripple-carry tab also shows the delay penalty that motivates carry-lookahead and prefix adders in real CPUs.</p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="adders">Adders</div>
+    <div class="tab" data-tab="ripple">Ripple 4-bit</div>
+    <div class="tab" data-tab="mux">4:1 MUX</div>
+    <div class="tab" data-tab="decoder">3-to-8 Decoder</div>
+    <div class="tab" data-tab="encoder">Priority Encoder</div>
+  </div>
+
+  <!-- ADDERS -->
+  <div class="tab-panel active" data-panel="adders">
+    <h3>Half adder — 2 inputs, no carry-in</h3>
+    <p style="font-size:12px;color:var(--fg-dim)">S = A ⊕ B,   Cout = A · B</p>
+    <div class="toggles">
+      <label>A:</label><span class="input-toggle" id="haA" onclick="toggle('haA','ha')">0</span>
+      <label>B:</label><span class="input-toggle" id="haB" onclick="toggle('haB','ha')">0</span>
+      <label>→ Sum:</label><span class="out-pill" id="haS">0</span>
+      <label>Cout:</label><span class="out-pill" id="haC">0</span>
+    </div>
+    <table style="max-width:340px">
+      <tr><th>A</th><th>B</th><th>S</th><th>Cout</th></tr>
+      <tr><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+      <tr><td>0</td><td>1</td><td>1</td><td>0</td></tr>
+      <tr><td>1</td><td>0</td><td>1</td><td>0</td></tr>
+      <tr><td>1</td><td>1</td><td>0</td><td>1</td></tr>
+    </table>
+
+    <h3>Full adder — 3 inputs (A, B, Cin)</h3>
+    <p style="font-size:12px;color:var(--fg-dim)">S = A ⊕ B ⊕ Cin,   Cout = A·B + Cin·(A⊕B)</p>
+    <div class="toggles">
+      <label>A:</label><span class="input-toggle" id="faA" onclick="toggle('faA','fa')">0</span>
+      <label>B:</label><span class="input-toggle" id="faB" onclick="toggle('faB','fa')">0</span>
+      <label>Cin:</label><span class="input-toggle" id="faCin" onclick="toggle('faCin','fa')">0</span>
+      <label>→ Sum:</label><span class="out-pill" id="faS">0</span>
+      <label>Cout:</label><span class="out-pill" id="faC">0</span>
+    </div>
+    <svg viewBox="0 0 520 200" width="100%" style="margin-top:8px">
+      <!-- Two half-adders + OR -->
+      <text x="10" y="40" class="label">A</text>
+      <text x="10" y="80" class="label">B</text>
+      <text x="10" y="170" class="label">Cin</text>
+      <!-- HA1 XOR -->
+      <rect x="60" y="30" width="80" height="40" fill="var(--bg-elev2)" stroke="var(--fg)"/>
+      <text x="100" y="55" class="label" text-anchor="middle">XOR1</text>
+      <line x1="30" y1="40" x2="60" y2="40" class="wire"/>
+      <line x1="30" y1="80" x2="60" y2="80" class="wire"/>
+      <line x1="30" y1="80" x2="60" y2="60" class="wire"/>
+      <!-- HA1 AND -->
+      <rect x="60" y="100" width="80" height="40" fill="var(--bg-elev2)" stroke="var(--fg)"/>
+      <text x="100" y="125" class="label" text-anchor="middle">AND1</text>
+      <line x1="30" y1="40" x2="50" y2="40" class="wire"/>
+      <line x1="50" y1="40" x2="50" y2="110" class="wire"/>
+      <line x1="50" y1="110" x2="60" y2="110" class="wire"/>
+      <line x1="30" y1="80" x2="55" y2="80" class="wire"/>
+      <line x1="55" y1="80" x2="55" y2="130" class="wire"/>
+      <line x1="55" y1="130" x2="60" y2="130" class="wire"/>
+      <!-- HA2 XOR -->
+      <rect x="220" y="40" width="80" height="40" fill="var(--bg-elev2)" stroke="var(--fg)"/>
+      <text x="260" y="65" class="label" text-anchor="middle">XOR2</text>
+      <line x1="140" y1="50" x2="220" y2="50" class="wire"/>
+      <line x1="30" y1="170" x2="200" y2="170" class="wire"/>
+      <line x1="200" y1="170" x2="200" y2="70" class="wire"/>
+      <line x1="200" y1="70" x2="220" y2="70" class="wire"/>
+      <!-- HA2 AND -->
+      <rect x="220" y="120" width="80" height="40" fill="var(--bg-elev2)" stroke="var(--fg)"/>
+      <text x="260" y="145" class="label" text-anchor="middle">AND2</text>
+      <line x1="140" y1="50" x2="180" y2="50" class="wire"/>
+      <line x1="180" y1="50" x2="180" y2="130" class="wire"/>
+      <line x1="180" y1="130" x2="220" y2="130" class="wire"/>
+      <line x1="200" y1="155" x2="220" y2="155" class="wire"/>
+      <!-- OR for Cout -->
+      <rect x="380" y="110" width="80" height="40" fill="var(--bg-elev2)" stroke="var(--fg)"/>
+      <text x="420" y="135" class="label" text-anchor="middle">OR</text>
+      <line x1="140" y1="120" x2="380" y2="120" class="wire"/>
+      <line x1="300" y1="140" x2="380" y2="140" class="wire"/>
+      <!-- Outputs -->
+      <line x1="300" y1="60" x2="500" y2="60" class="wire"/>
+      <text x="505" y="64" class="label">S</text>
+      <line x1="460" y1="130" x2="500" y2="130" class="wire"/>
+      <text x="505" y="134" class="label">Cout</text>
+    </svg>
+    <table style="max-width:420px">
+      <tr><th>Cin</th><th>A</th><th>B</th><th>S</th><th>Cout</th></tr>
+      <tr><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+      <tr><td>0</td><td>0</td><td>1</td><td>1</td><td>0</td></tr>
+      <tr><td>0</td><td>1</td><td>0</td><td>1</td><td>0</td></tr>
+      <tr><td>0</td><td>1</td><td>1</td><td>0</td><td>1</td></tr>
+      <tr><td>1</td><td>0</td><td>0</td><td>1</td><td>0</td></tr>
+      <tr><td>1</td><td>0</td><td>1</td><td>0</td><td>1</td></tr>
+      <tr><td>1</td><td>1</td><td>0</td><td>0</td><td>1</td></tr>
+      <tr><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td></tr>
+    </table>
+  </div>
+
+  <!-- RIPPLE 4-bit -->
+  <div class="tab-panel" data-panel="ripple">
+    <h3>4-bit ripple-carry adder</h3>
+    <p style="font-size:12px;color:var(--fg-dim)">Each full adder waits for the carry-in from the previous stage. Total delay = N × t<sub>FA</sub>. Click "Step ripple" to see the carry propagate one stage per click — the red dotted line marks the carry wavefront.</p>
+
+    <div class="toggles">
+      <label>A (4-bit):</label>
+      <input id="ripA" type="number" min="0" max="15" value="13" style="width:60px">
+      <label>B (4-bit):</label>
+      <input id="ripB" type="number" min="0" max="15" value="7" style="width:60px">
+      <label>Cin:</label>
+      <span class="input-toggle" id="ripCin" onclick="toggle('ripCin','rip')">0</span>
+      <button class="btn primary" id="ripStep">Step ripple</button>
+      <button class="btn" id="ripReset">Reset</button>
+      <span style="font:12px ui-monospace,monospace;color:var(--fg-dim)" id="ripStatus">stage 0 of 4 (idle)</span>
+    </div>
+
+    <svg id="ripSvg" viewBox="0 0 800 240" width="100%" style="margin-top:8px;background:var(--bg-elev2);border-radius:6px"></svg>
+
+    <div style="margin-top:12px;font:13px ui-monospace,monospace">
+      Sum = <span id="ripSum" class="readout">20</span> &nbsp; (4-bit + carry-out)
+    </div>
+  </div>
+
+  <!-- MUX -->
+  <div class="tab-panel" data-panel="mux">
+    <h3>4:1 Multiplexer</h3>
+    <p style="font-size:12px;color:var(--fg-dim)">Y = I[S1·2 + S0]. Two select lines pick one of four data inputs to pass through.</p>
+
+    <div class="toggles">
+      <label>I0:</label><span class="input-toggle" id="muxI0" onclick="toggle('muxI0','mux')">0</span>
+      <label>I1:</label><span class="input-toggle" id="muxI1" onclick="toggle('muxI1','mux')">0</span>
+      <label>I2:</label><span class="input-toggle" id="muxI2" onclick="toggle('muxI2','mux')">0</span>
+      <label>I3:</label><span class="input-toggle" id="muxI3" onclick="toggle('muxI3','mux')">0</span>
+      <label>S1:</label><span class="input-toggle" id="muxS1" onclick="toggle('muxS1','mux')">0</span>
+      <label>S0:</label><span class="input-toggle" id="muxS0" onclick="toggle('muxS0','mux')">0</span>
+      <label>Y:</label><span class="out-pill" id="muxY">0</span>
+    </div>
+
+    <svg viewBox="0 0 460 280" width="100%" style="background:var(--bg-elev2);border-radius:6px;padding:8px">
+      <path d="M120,40 L120,240 L240,200 L240,80 Z" fill="var(--bg)" stroke="var(--fg)" stroke-width="2"/>
+      <text x="180" y="145" class="label" text-anchor="middle">4:1 MUX</text>
+      <line x1="60" y1="60" x2="120" y2="60" class="wire" id="muxW0"/>
+      <line x1="60" y1="100" x2="120" y2="100" class="wire" id="muxW1"/>
+      <line x1="60" y1="140" x2="120" y2="140" class="wire" id="muxW2"/>
+      <line x1="60" y1="180" x2="120" y2="180" class="wire" id="muxW3"/>
+      <text x="50" y="64" class="label" text-anchor="end">I0</text>
+      <text x="50" y="104" class="label" text-anchor="end">I1</text>
+      <text x="50" y="144" class="label" text-anchor="end">I2</text>
+      <text x="50" y="184" class="label" text-anchor="end">I3</text>
+      <line x1="160" y1="260" x2="160" y2="220" class="wire"/>
+      <line x1="200" y1="260" x2="200" y2="210" class="wire"/>
+      <text x="155" y="275" class="label" text-anchor="middle">S1</text>
+      <text x="195" y="275" class="label" text-anchor="middle">S0</text>
+      <line x1="240" y1="140" x2="380" y2="140" class="wire" id="muxOut"/>
+      <text x="390" y="144" class="label">Y</text>
+      <text x="290" y="135" class="label-dim" id="muxSelLabel" text-anchor="middle">S=00 → I0</text>
+    </svg>
+  </div>
+
+  <!-- DECODER -->
+  <div class="tab-panel" data-panel="decoder">
+    <h3>3-to-8 Decoder</h3>
+    <p style="font-size:12px;color:var(--fg-dim)">3 binary inputs select exactly one of 8 outputs to go HIGH. Used in memory address decoding (e.g. picking one of 8 banks).</p>
+
+    <div class="toggles">
+      <label>A2:</label><span class="input-toggle" id="decA2" onclick="toggle('decA2','dec')">0</span>
+      <label>A1:</label><span class="input-toggle" id="decA1" onclick="toggle('decA1','dec')">0</span>
+      <label>A0:</label><span class="input-toggle" id="decA0" onclick="toggle('decA0','dec')">0</span>
+      <label>Enable:</label><span class="input-toggle on" id="decEN" onclick="toggle('decEN','dec')">1</span>
+    </div>
+
+    <svg viewBox="0 0 500 360" width="100%" style="background:var(--bg-elev2);border-radius:6px;padding:8px">
+      <rect x="100" y="40" width="120" height="280" fill="var(--bg)" stroke="var(--fg)" stroke-width="2" rx="6"/>
+      <text x="160" y="180" class="label" text-anchor="middle">3:8 DECODER</text>
+      <text x="60" y="80" class="label" text-anchor="end">A2</text>
+      <text x="60" y="180" class="label" text-anchor="end">A1</text>
+      <text x="60" y="280" class="label" text-anchor="end">A0</text>
+      <line x1="70" y1="80" x2="100" y2="80" class="wire"/>
+      <line x1="70" y1="180" x2="100" y2="180" class="wire"/>
+      <line x1="70" y1="280" x2="100" y2="280" class="wire"/>
+      <g id="decOuts"></g>
+    </svg>
+  </div>
+
+  <!-- ENCODER -->
+  <div class="tab-panel" data-panel="encoder">
+    <h3>Priority Encoder (8-to-3)</h3>
+    <p style="font-size:12px;color:var(--fg-dim)">8 inputs → 3-bit code of the highest-priority active input. If I7 is HIGH it always wins, even if lower-numbered inputs are also HIGH. Used in interrupt controllers and ADC range detection.</p>
+
+    <div class="toggles" id="encToggles"></div>
+    <div style="margin-top:10px;font:14px ui-monospace,monospace">
+      Active line: <span class="readout" id="encActive">none</span><br>
+      Output code: <span class="readout" id="encCode">000</span> &nbsp; Valid: <span class="readout" id="encValid">0</span>
+    </div>
+
+    <table style="max-width:600px;margin-top:12px">
+      <tr><th>I7</th><th>I6</th><th>I5</th><th>I4</th><th>I3</th><th>I2</th><th>I1</th><th>I0</th><th>Out</th><th>V</th></tr>
+      <tr><td>1</td><td>x</td><td>x</td><td>x</td><td>x</td><td>x</td><td>x</td><td>x</td><td>111</td><td>1</td></tr>
+      <tr><td>0</td><td>1</td><td>x</td><td>x</td><td>x</td><td>x</td><td>x</td><td>x</td><td>110</td><td>1</td></tr>
+      <tr><td>0</td><td>0</td><td>1</td><td>x</td><td>x</td><td>x</td><td>x</td><td>x</td><td>101</td><td>1</td></tr>
+      <tr><td>0</td><td>0</td><td>0</td><td>1</td><td>x</td><td>x</td><td>x</td><td>x</td><td>100</td><td>1</td></tr>
+      <tr><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>x</td><td>x</td><td>x</td><td>011</td><td>1</td></tr>
+      <tr><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>x</td><td>x</td><td>010</td><td>1</td></tr>
+      <tr><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>x</td><td>001</td><td>1</td></tr>
+      <tr><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>000</td><td>1</td></tr>
+      <tr><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>xxx</td><td>0</td></tr>
+    </table>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Full adder = half adder + half adder + OR</b> — once you see the structure, the carry-out formula becomes obvious.</li>
+    <li><b>Ripple-carry delay is linear in N</b> — a 64-bit ripple adder is unusable in a CPU. Carry-lookahead adders compute carries in parallel; Brent-Kung/Kogge-Stone scale as O(log N).</li>
+    <li><b>The MUX is "if-then-else" in silicon</b> — every conditional branch in a hardware datapath is a mux selecting between alternatives.</li>
+    <li><b>Decoder enables exactly one output</b>, so it is the canonical address-line driver — assert the right column or row.</li>
+    <li><b>Priority encoder needs the "valid" output</b> — otherwise output 000 ambiguously means "I0 is active" or "no inputs active."</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>BLOCK FORMULAS</h3>
+      <dl>
+        <dt>Full adder</dt><dd><span class="eq">S = A ⊕ B ⊕ Cin</span><span class="eq">Cout = A·B + Cin·(A⊕B)</span></dd>
+        <dt>2:1 MUX</dt><dd><span class="eq">Y = S̄·A + S·B</span></dd>
+        <dt>Decoder</dt><dd><span class="eq">n inputs → 2ⁿ one-hot outputs</span></dd>
+        <dt>Encoder</dt><dd><span class="eq">2ⁿ inputs → n outputs (+ valid)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>MUX = if/else</b> in hardware — S selects A or B.</li>
+        <li><b>Decoder = case statement</b> — exactly one output HIGH.</li>
+        <li><b>XOR = inequality</b>, XNOR = equality detector.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Ripple-carry delay</b> — N-bit adder takes ~N gate delays; use CLA for wide adders.</li>
+        <li><b>Decoder enable</b> — without EN, decoder is always active; can clash on a bus.</li>
+        <li><b>Priority encoder ambiguity</b> — 000 means "I0 active" AND "all zero"; always emit a valid flag.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 5 — Digital Electronics</a> ·
+    Topic: Combinational Logic
+  </footer>
+</main>
+<script>
+  // tabs
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.onclick = ()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      document.querySelector(`.tab-panel[data-panel="${t.dataset.tab}"]`).classList.add('active');
+    };
+  });
+
+  const state = {
+    haA:0, haB:0,
+    faA:0, faB:0, faCin:0,
+    ripCin:0, ripStage:0,
+    muxI0:0, muxI1:0, muxI2:0, muxI3:0, muxS0:0, muxS1:0,
+    decA0:0, decA1:0, decA2:0, decEN:1,
+    enc:[0,0,0,0,0,0,0,0]
+  };
+
+  function toggle(id, group){
+    state[id] ^= 1;
+    const el = document.getElementById(id);
+    el.classList.toggle('on', state[id]===1);
+    el.textContent = state[id];
+    if(group==='ha') renderHA();
+    else if(group==='fa') renderFA();
+    else if(group==='rip') renderRipple();
+    else if(group==='mux') renderMux();
+    else if(group==='dec') renderDecoder();
+  }
+
+  function renderHA(){
+    const a=state.haA, b=state.haB;
+    const s=a^b, c=a&b;
+    const setOut = (id,v)=>{
+      const e=document.getElementById(id);
+      e.textContent=v;
+      e.classList.toggle('on', v===1); e.classList.toggle('off', v===0);
+    };
+    setOut('haS', s); setOut('haC', c);
+  }
+  renderHA();
+
+  function renderFA(){
+    const a=state.faA, b=state.faB, ci=state.faCin;
+    const s=a^b^ci, co=(a&b)|(ci&(a^b));
+    const setOut = (id,v)=>{
+      const e=document.getElementById(id);
+      e.textContent=v;
+      e.classList.toggle('on', v===1); e.classList.toggle('off', v===0);
+    };
+    setOut('faS', s); setOut('faC', co);
+  }
+  renderFA();
+
+  // Ripple
+  const ripSvg = document.getElementById('ripSvg');
+  function renderRipple(){
+    const A = parseInt(document.getElementById('ripA').value) & 0xF;
+    const B = parseInt(document.getElementById('ripB').value) & 0xF;
+    const Cin = state.ripCin;
+    const stage = state.ripStage; // 0..4 (0 = nothing computed yet, 4 = all done)
+    let html = '';
+    let carries = [Cin, 0, 0, 0, 0]; // c0 in, then c1..c4
+    let sums = [0,0,0,0];
+    for(let i=0;i<4;i++){
+      const ai = (A>>i)&1, bi=(B>>i)&1;
+      if(i < stage){
+        sums[i] = ai^bi^carries[i];
+        carries[i+1] = (ai&bi)|(carries[i]&(ai^bi));
+      }
+    }
+    // Draw 4 stages right-to-left (bit 0 on right? actually bit 3 left → match MSB-to-LSB read)
+    // We'll draw bit 0 leftmost for clarity in propagation
+    const W = 800, BW = 180;
+    for(let i=0;i<4;i++){
+      const ai=(A>>i)&1, bi=(B>>i)&1;
+      const x = 20 + i*BW;
+      const computed = i < stage;
+      const wireCls = computed ? 'wire hot' : 'wire';
+      html += `<rect x="${x}" y="80" width="120" height="80" fill="var(--bg)" stroke="${computed?'var(--accent3)':'var(--fg)'}" stroke-width="2" rx="4"/>`;
+      html += `<text x="${x+60}" y="125" class="label" text-anchor="middle">FA bit ${i}</text>`;
+      html += `<text x="${x+30}" y="60" class="label">A=${ai}</text>`;
+      html += `<text x="${x+70}" y="60" class="label">B=${bi}</text>`;
+      html += `<line x1="${x+40}" y1="65" x2="${x+40}" y2="80" class="wire"/>`;
+      html += `<line x1="${x+80}" y1="65" x2="${x+80}" y2="80" class="wire"/>`;
+      // sum out
+      html += `<line x1="${x+60}" y1="160" x2="${x+60}" y2="200" class="${wireCls}"/>`;
+      html += `<text x="${x+60}" y="218" class="label" text-anchor="middle" fill="${computed?'#a3e635':'var(--fg-dim)'}">S${i}=${computed?sums[i]:'?'}</text>`;
+      // carry in / out
+      if(i===0){
+        html += `<line x1="${x-10}" y1="120" x2="${x}" y2="120" class="wire"/>`;
+        html += `<text x="${x-15}" y="124" class="label" text-anchor="end">Cin=${Cin}</text>`;
+      }
+      if(i<3){
+        html += `<line x1="${x+120}" y1="120" x2="${x+BW}" y2="120" class="${wireCls}"/>`;
+        html += `<text x="${x+150}" y="115" class="label-dim" text-anchor="middle">C${i+1}=${computed?carries[i+1]:'?'}</text>`;
+      } else {
+        html += `<line x1="${x+120}" y1="120" x2="${x+150}" y2="120" class="${wireCls}"/>`;
+        html += `<text x="${x+160}" y="124" class="label">Cout=${computed?carries[4]:'?'}</text>`;
+      }
+    }
+    // wavefront indicator
+    if(stage>0 && stage<4){
+      const wf = 20 + stage*BW;
+      html += `<line x1="${wf}" y1="20" x2="${wf}" y2="240" stroke="var(--warn)" stroke-width="2" stroke-dasharray="6 4"/>`;
+      html += `<text x="${wf+6}" y="36" class="label" fill="var(--warn)">carry wavefront</text>`;
+    }
+    ripSvg.innerHTML = html;
+    const fullSum = (A + B + Cin);
+    document.getElementById('ripSum').textContent = `${A}+${B}+${Cin}=${fullSum}  (0b${fullSum.toString(2).padStart(5,'0')})`;
+    document.getElementById('ripStatus').textContent = stage===0 ? 'stage 0 of 4 (idle)' : (stage<4 ? `stage ${stage} of 4 (propagating)` : 'all 4 stages settled');
+  }
+  document.getElementById('ripA').oninput = renderRipple;
+  document.getElementById('ripB').oninput = renderRipple;
+  document.getElementById('ripStep').onclick = ()=>{ state.ripStage = Math.min(4, state.ripStage+1); renderRipple(); };
+  document.getElementById('ripReset').onclick = ()=>{ state.ripStage = 0; renderRipple(); };
+  renderRipple();
+
+  function renderMux(){
+    const s = state.muxS1*2 + state.muxS0;
+    const inputs = [state.muxI0,state.muxI1,state.muxI2,state.muxI3];
+    const y = inputs[s];
+    for(let i=0;i<4;i++){
+      const w = document.getElementById('muxW'+i);
+      w.setAttribute('class', i===s ? 'wire hot' : 'wire');
+    }
+    document.getElementById('muxOut').setAttribute('class', y? 'wire hot' : 'wire cold');
+    document.getElementById('muxSelLabel').textContent = `S=${state.muxS1}${state.muxS0} → I${s}=${inputs[s]}`;
+    const out = document.getElementById('muxY');
+    out.textContent = y; out.classList.toggle('on', y===1); out.classList.toggle('off', y===0);
+  }
+  renderMux();
+
+  function renderDecoder(){
+    const addr = state.decA2*4 + state.decA1*2 + state.decA0;
+    const en = state.decEN;
+    let html = '';
+    for(let i=0;i<8;i++){
+      const cy = 60 + i*32;
+      const on = en===1 && i===addr;
+      html += `<line x1="220" y1="${cy}" x2="380" y2="${cy}" class="${on?'wire hot':'wire'}" />`;
+      html += `<text x="385" y="${cy+4}" class="label">Y${i} = ${on?1:0}</text>`;
+      if(on) html += `<circle cx="390" cy="${cy}" r="8" fill="var(--accent3)" opacity="0.4"/>`;
+    }
+    document.getElementById('decOuts').innerHTML = html;
+  }
+  renderDecoder();
+
+  // Encoder
+  const encToggles = document.getElementById('encToggles');
+  for(let i=7;i>=0;i--){
+    const span = document.createElement('span');
+    span.className = 'input-toggle';
+    span.id = 'encI'+i;
+    span.textContent = 'I'+i+'=0';
+    span.onclick = ()=>{
+      state.enc[i] ^= 1;
+      span.classList.toggle('on', state.enc[i]===1);
+      span.textContent = 'I'+i+'='+state.enc[i];
+      renderEncoder();
+    };
+    encToggles.appendChild(span);
+  }
+  function renderEncoder(){
+    let active = -1;
+    for(let i=7;i>=0;i--) if(state.enc[i]===1){ active = i; break; }
+    document.getElementById('encActive').textContent = active<0 ? 'none' : ('I'+active);
+    document.getElementById('encCode').textContent = active<0 ? 'xxx' : active.toString(2).padStart(3,'0');
+    document.getElementById('encValid').textContent = active<0 ? '0' : '1';
+  }
+  renderEncoder();
+</script>
+</body>
+</html>

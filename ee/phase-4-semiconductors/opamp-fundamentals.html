@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Op-Amp Fundamentals — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Op-Amp Fundamentals</h1>
+  <p class="lede">Visualize the two golden rules (V+ = V−, no input current), feedback's tradeoff between gain and bandwidth, and slew-rate's effect on fast signals.</p>
+
+  <p>An ideal op-amp has <b>infinite open-loop gain A_ol</b>, <b>infinite input impedance</b>, <b>zero output impedance</b>, and <b>infinite bandwidth</b>. Real op-amps approach the ideal closely enough that, under negative feedback, you can treat them as ideal — which lets you solve any feedback circuit using two rules:</p>
+
+  <div class="figure">
+    <h3>The Golden Rules (only when negative feedback is present)</h3>
+    <svg viewBox="0 0 920 200" width="100%">
+      <!-- Rule 1 -->
+      <g transform="translate(40,40)">
+        <text x="0" y="0" class="label" style="font-weight:600;fill:var(--accent)">Rule 1 — virtual short</text>
+        <text x="0" y="22" class="label-dim">Op-amp's output drives feedback until V+ = V−.</text>
+        <text x="0" y="38" class="label-dim">Whatever V+ is, V− follows.</text>
+        <!-- circuit -->
+        <g transform="translate(0,60)">
+          <polygon points="40,0 40,60 100,30" fill="none" stroke="var(--fg)" stroke-width="1.5"/>
+          <text x="48" y="14" class="label" style="font-size:14px">+</text>
+          <text x="48" y="56" class="label" style="font-size:14px">−</text>
+          <line x1="0" y1="10" x2="40" y2="10" class="wire"/>
+          <line x1="0" y1="50" x2="40" y2="50" class="wire"/>
+          <line x1="100" y1="30" x2="140" y2="30" class="wire"/>
+          <text x="-4" y="14" class="label" text-anchor="end" style="fill:var(--accent)">V+</text>
+          <text x="-4" y="54" class="label" text-anchor="end" style="fill:var(--accent)">V−</text>
+          <text x="148" y="34" class="label" style="fill:var(--accent2)">Vout</text>
+          <text x="20" y="36" class="label-dim" text-anchor="middle" style="fill:var(--accent3);font-size:11px">≈</text>
+        </g>
+      </g>
+      <!-- Rule 2 -->
+      <g transform="translate(500,40)">
+        <text x="0" y="0" class="label" style="font-weight:600;fill:var(--accent)">Rule 2 — no input current</text>
+        <text x="0" y="22" class="label-dim">Input impedance is enormous (Tera-ohms typical).</text>
+        <text x="0" y="38" class="label-dim">All current through Rf must come from somewhere else.</text>
+        <g transform="translate(0,60)">
+          <polygon points="40,0 40,60 100,30" fill="none" stroke="var(--fg)" stroke-width="1.5"/>
+          <text x="48" y="14" class="label" style="font-size:14px">+</text>
+          <text x="48" y="56" class="label" style="font-size:14px">−</text>
+          <line x1="0" y1="50" x2="40" y2="50" class="wire"/>
+          <circle cx="20" cy="50" r="3" fill="var(--accent)"/>
+          <text x="20" y="76" class="label" text-anchor="middle" style="fill:var(--warn);font-size:11px">I_in ≈ 0</text>
+          <line x1="100" y1="30" x2="140" y2="30" class="wire"/>
+          <text x="148" y="34" class="label" style="fill:var(--accent2)">Vout</text>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <h2>1. Open-loop vs closed-loop gain</h2>
+  <p style="color:var(--fg-dim);font-size:13px">A real op-amp has finite A_ol (say 100,000×). Negative feedback "spends" that surplus gain to lock the closed-loop gain to a ratio of resistors, immune to A_ol drift.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Open-loop gain A_ol: <span class="readout" id="aolRead">100,000</span></label>
+      <input id="aolSlide" type="range" min="2" max="6" step="0.05" value="5">
+      <small style="color:var(--fg-dim);font-size:11px">log: 100 to 1,000,000</small>
+    </div>
+    <div class="control">
+      <label>Target closed-loop gain A_cl_target: <span class="readout" id="aclTargetRead">10</span></label>
+      <input id="aclTargetSlide" type="range" min="1" max="1000" step="1" value="10">
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="gainPlot" viewBox="0 0 600 260" width="100%"></svg>
+    <p style="color:var(--fg-dim);font-size:12px;margin-top:8px">
+      Feedback fraction β = 1/A_cl_target. Actual closed-loop gain: A_cl = A_ol / (1 + β·A_ol).
+      <br>When β·A_ol &gt;&gt; 1, A_cl → 1/β = A_cl_target. When β·A_ol ≈ 1, real A_cl falls short.
+      <br>Loop gain (in dB): <span class="readout" id="loopGain">60 dB</span>. Larger = better precision.
+    </p>
+  </div>
+
+  <h2>2. Gain–bandwidth product (GBP)</h2>
+  <p style="color:var(--fg-dim);font-size:13px">For a unity-gain-compensated op-amp, A_cl × BW = GBP = constant. Pick gain; bandwidth is the leftover. Cheap op-amp GBP: 1 MHz. Premium video op-amp: 1 GHz.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>GBP (gain-bandwidth product): <span class="readout" id="gbpRead">1 MHz</span></label>
+      <input id="gbpSlide" type="range" min="5" max="9" step="0.1" value="6">
+      <small style="color:var(--fg-dim);font-size:11px">log: 100 kHz to 1 GHz</small>
+    </div>
+    <div class="control">
+      <label>Closed-loop gain A_cl: <span class="readout" id="aclRead">10</span></label>
+      <input id="aclSlide" type="range" min="1" max="1000" step="1" value="10">
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="gbpPlot" viewBox="0 0 600 320" width="100%"></svg>
+    <p style="color:var(--fg-dim);font-size:12px;margin-top:8px">
+      −3 dB bandwidth: BW = GBP / A_cl = <span class="readout" id="bwOut">100 kHz</span>.
+      At A_cl=100, BW shrinks 10×. The open-loop response is the "ceiling" — closed-loop never exceeds it.
+    </p>
+  </div>
+
+  <h2>3. Slew rate — the large-signal speed limit</h2>
+  <p style="color:var(--fg-dim);font-size:13px">Slew rate (V/µs) is the maximum output rate of change. A square wave's edges get linearly ramped instead of vertical. A sine wave at frequency f and amplitude V can be reproduced only if 2π·f·V ≤ SR.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Slew rate SR: <span class="readout" id="srRead">1 V/µs</span></label>
+      <input id="srSlide" type="range" min="0.1" max="100" step="0.1" value="1">
+    </div>
+    <div class="control">
+      <label>Input frequency: <span class="readout" id="srFreqRead">10 kHz</span></label>
+      <input id="srFreqSlide" type="range" min="2" max="6" step="0.05" value="4">
+      <small style="color:var(--fg-dim);font-size:11px">log: 100 Hz to 1 MHz</small>
+    </div>
+    <div class="control">
+      <label>Amplitude: <span class="readout" id="srAmpRead">5 V</span></label>
+      <input id="srAmpSlide" type="range" min="0.1" max="10" step="0.1" value="5">
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="slewPlot" viewBox="0 0 600 280" width="100%"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>input (ideal square)</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>output (slew-limited)</span>
+    </div>
+    <p style="color:var(--fg-dim);font-size:12px">
+      Edge time to traverse 2·V: t_edge = 2·V / SR = <span class="readout" id="tEdgeOut">10 µs</span>.
+      Full-power bandwidth f_FP = SR / (2π·V) = <span class="readout" id="fpOut">31.8 kHz</span>.
+    </p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Golden rules require feedback</b> — without negative feedback, the op-amp railed. V+ = V− is a consequence, not a fact, and it's enforced by the output reaching whatever value makes it true.</li>
+    <li><b>Closed-loop gain is set by resistors</b> — drag A_ol down to 1000 and a 10× amplifier is still ≈9.9×. Drag A_ol down to 100, and you'll see the closed-loop start to deviate. This is the precision-by-feedback bargain.</li>
+    <li><b>GBP is the universal currency</b> — choose between gain and speed. You cannot have both above the part's GBP. Cascading two A_cl=10 stages gives the same total gain with √(GBP_total) more bandwidth.</li>
+    <li><b>Small-signal vs large-signal speed</b> — GBP says how fast tiny signals propagate; slew rate says how fast big swings can change. The smaller of the two limits you. For audio you usually hit GBP first; for fast logic interfacing, slew rate.</li>
+    <li><b>Full-power bandwidth</b> — at amplitude V, an op-amp can output a clean sine only up to f_FP = SR/(2π·V). Try shrinking V on the slider — f_FP grows.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>Golden rules</b> — V+ = V−, and I_in = 0.</li>
+        <li><b>A_ol ≈ 100 dB</b> = 100,000× open-loop.</li>
+        <li>Both rules require <b>negative feedback</b>.</li>
+      </ul>
+    </div>
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>GBP</dt><dd><span class="eq">A_cl × BW = GBP (constant)</span></dd>
+        <dt>Closed BW</dt><dd><span class="eq">BW = GBP / A_cl</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Slew rate is separate</b> — limits large-signal BW independently of GBP.</li>
+        <li><b>GBP doesn't help</b> if the SR ceiling is lower — the smaller one wins.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 4 — Semiconductor Devices</a> ·
+    Topic: Op-Amp Fundamentals
+  </footer>
+</main>
+<script>
+  function fmtFreq(f){
+    if(f>=1e9) return (f/1e9).toFixed(2)+" GHz";
+    if(f>=1e6) return (f/1e6).toFixed(2)+" MHz";
+    if(f>=1e3) return (f/1e3).toFixed(2)+" kHz";
+    return f.toFixed(1)+" Hz";
+  }
+  function fmtTime(t){
+    if(t>=1) return t.toFixed(2)+" s";
+    if(t>=1e-3) return (t*1e3).toFixed(2)+" ms";
+    if(t>=1e-6) return (t*1e6).toFixed(2)+" µs";
+    return (t*1e9).toFixed(2)+" ns";
+  }
+
+  // === 1. Open-loop vs closed-loop ===
+  function updateGain(){
+    const Aol=Math.pow(10, parseFloat(document.getElementById('aolSlide').value));
+    const AclT=parseFloat(document.getElementById('aclTargetSlide').value);
+    const beta=1/AclT;
+    const Acl=Aol/(1+beta*Aol);
+    document.getElementById('aolRead').textContent=Math.round(Aol).toLocaleString();
+    document.getElementById('aclTargetRead').textContent=AclT.toFixed(0);
+    const loopGain=20*Math.log10(beta*Aol);
+    document.getElementById('loopGain').textContent=loopGain.toFixed(1)+" dB";
+
+    // Plot: x = log Aol (2..6), y = Acl on linear scale 0..2×AclT
+    const svg=document.getElementById('gainPlot');
+    const W=600,H=260,mL=70,mR=30,mT=20,mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const xs=v=>mL+((v-2)/4)*pw;
+    const ymax=Math.max(AclT*1.1, 2);
+    const ys=v=>mT+ph-(v/ymax)*ph;
+    let s='';
+    // grid
+    for(let i=2;i<=6;i++){
+      const x=xs(i);
+      s+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" class="grid-line"/>`;
+      s+=`<text x="${x}" y="${H-mB+16}" class="axis-label" text-anchor="middle">10^${i}</text>`;
+    }
+    for(let i=0;i<=5;i++){
+      const v=i*ymax/5;
+      const y=ys(v);
+      s+=`<line x1="${mL}" y1="${y}" x2="${mL+pw}" y2="${y}" class="grid-line"/>`;
+      s+=`<text x="${mL-6}" y="${y+3}" class="axis-label" text-anchor="end">${v.toFixed(1)}</text>`;
+    }
+    s+=`<text x="${W/2}" y="${H-4}" class="axis-label" text-anchor="middle">Open-loop gain A_ol</text>`;
+    s+=`<text x="${mL-50}" y="${mT+ph/2}" class="axis-label" text-anchor="middle" transform="rotate(-90,${mL-50},${mT+ph/2})">closed-loop A_cl</text>`;
+
+    // Target line
+    s+=`<line x1="${mL}" y1="${ys(AclT)}" x2="${mL+pw}" y2="${ys(AclT)}" stroke="var(--accent3)" stroke-dasharray="4 4"/>`;
+    s+=`<text x="${mL+pw-8}" y="${ys(AclT)-4}" class="label-dim" text-anchor="end" style="fill:var(--accent3)">target 1/β = ${AclT.toFixed(0)}</text>`;
+
+    // Curve
+    let p='';
+    for(let k=0;k<=200;k++){
+      const logA=2+k/200*4;
+      const A=Math.pow(10,logA);
+      const Acl_k=A/(1+beta*A);
+      p+=(k===0?'M':'L')+xs(logA)+','+ys(Math.min(ymax,Acl_k))+' ';
+    }
+    s+=`<path d="${p}" class="trace trace-1"/>`;
+
+    // Current point
+    s+=`<circle cx="${xs(Math.log10(Aol))}" cy="${ys(Acl)}" r="5" fill="var(--accent2)"/>`;
+    s+=`<text x="${xs(Math.log10(Aol))+10}" y="${ys(Acl)-8}" class="label-dim" style="fill:var(--accent2)">A_cl = ${Acl.toFixed(2)}</text>`;
+    svg.innerHTML=s;
+  }
+  ['aolSlide','aclTargetSlide'].forEach(id=>
+    document.getElementById(id).addEventListener('input',updateGain));
+
+  // === 2. GBP ===
+  function updateGBP(){
+    const GBP=Math.pow(10, parseFloat(document.getElementById('gbpSlide').value));
+    const Acl=parseFloat(document.getElementById('aclSlide').value);
+    const BW=GBP/Acl;
+    document.getElementById('gbpRead').textContent=fmtFreq(GBP);
+    document.getElementById('aclRead').textContent=Acl.toFixed(0);
+    document.getElementById('bwOut').textContent=fmtFreq(BW);
+
+    // Bode magnitude plot: freq from 1 Hz to 1 GHz log
+    const svg=document.getElementById('gbpPlot');
+    const W=600,H=320,mL=70,mR=30,mT=20,mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const fMin=0, fMax=9; // 10^0..10^9
+    const dBmin=-20, dBmax=120;
+    const xs=lf=>mL+((lf-fMin)/(fMax-fMin))*pw;
+    const ys=dB=>mT+ph-((dB-dBmin)/(dBmax-dBmin))*ph;
+    let s='';
+    for(let i=fMin;i<=fMax;i++){
+      const x=xs(i);
+      s+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" class="grid-line"/>`;
+      s+=`<text x="${x}" y="${H-mB+16}" class="axis-label" text-anchor="middle">10^${i}</text>`;
+    }
+    for(let dB=dBmin;dB<=dBmax;dB+=20){
+      const y=ys(dB);
+      s+=`<line x1="${mL}" y1="${y}" x2="${mL+pw}" y2="${y}" class="grid-line"/>`;
+      s+=`<text x="${mL-6}" y="${y+3}" class="axis-label" text-anchor="end">${dB}</text>`;
+    }
+    s+=`<text x="${W/2}" y="${H-4}" class="axis-label" text-anchor="middle">Frequency (Hz, log)</text>`;
+    s+=`<text x="${mL-50}" y="${mT+ph/2}" class="axis-label" text-anchor="middle" transform="rotate(-90,${mL-50},${mT+ph/2})">Magnitude (dB)</text>`;
+
+    // Open-loop curve: A_ol = GBP / f, with DC plateau at 100 dB
+    const AolDc=1e5;
+    const fp=GBP/AolDc; // pole
+    let p1='';
+    for(let k=0;k<=200;k++){
+      const lf=fMin+k/200*(fMax-fMin);
+      const f=Math.pow(10,lf);
+      let A;
+      if(f<fp) A=AolDc;
+      else A=GBP/f;
+      const dB=20*Math.log10(A);
+      p1+=(k===0?'M':'L')+xs(lf)+','+ys(Math.max(dBmin,Math.min(dBmax,dB)))+' ';
+    }
+    s+=`<path d="${p1}" class="trace trace-1"/>`;
+    s+=`<text x="${xs(fMin+0.5)}" y="${ys(dBmax-8)}" class="label-dim" style="fill:var(--accent)">A_ol (open-loop)</text>`;
+
+    // Closed-loop: flat at A_cl until f=BW, then rolls off at −20 dB/dec following A_ol
+    let p2='';
+    for(let k=0;k<=200;k++){
+      const lf=fMin+k/200*(fMax-fMin);
+      const f=Math.pow(10,lf);
+      let A;
+      if(f<BW) A=Acl;
+      else A=GBP/f;
+      const dB=20*Math.log10(A);
+      p2+=(k===0?'M':'L')+xs(lf)+','+ys(Math.max(dBmin,Math.min(dBmax,dB)))+' ';
+    }
+    s+=`<path d="${p2}" class="trace trace-2"/>`;
+    s+=`<text x="${xs(fMin+0.5)}" y="${ys(20*Math.log10(Acl)+6)}" class="label-dim" style="fill:var(--accent2)">A_cl (closed-loop)</text>`;
+    // BW marker
+    s+=`<line x1="${xs(Math.log10(BW))}" y1="${mT}" x2="${xs(Math.log10(BW))}" y2="${mT+ph}" stroke="var(--accent3)" stroke-dasharray="3 3"/>`;
+    s+=`<text x="${xs(Math.log10(BW))+4}" y="${mT+14}" class="label-dim" style="fill:var(--accent3)">BW</text>`;
+    // GBP marker (where A_cl=0 dB)
+    s+=`<line x1="${xs(Math.log10(GBP))}" y1="${mT}" x2="${xs(Math.log10(GBP))}" y2="${mT+ph}" stroke="var(--warn)" stroke-dasharray="3 3"/>`;
+    s+=`<text x="${xs(Math.log10(GBP))+4}" y="${mT+14}" class="label-dim" style="fill:var(--warn)">GBP</text>`;
+    svg.innerHTML=s;
+  }
+  ['gbpSlide','aclSlide'].forEach(id=>
+    document.getElementById(id).addEventListener('input',updateGBP));
+
+  // === 3. Slew rate ===
+  function updateSlew(){
+    const SR=parseFloat(document.getElementById('srSlide').value)*1e6; // V/s
+    const f=Math.pow(10, parseFloat(document.getElementById('srFreqSlide').value));
+    const V=parseFloat(document.getElementById('srAmpSlide').value);
+    document.getElementById('srRead').textContent=(SR/1e6).toFixed(2)+" V/µs";
+    document.getElementById('srFreqRead').textContent=fmtFreq(f);
+    document.getElementById('srAmpRead').textContent=V.toFixed(2)+" V";
+    const tEdge=2*V/SR;
+    const fFP=SR/(2*Math.PI*V);
+    document.getElementById('tEdgeOut').textContent=fmtTime(tEdge);
+    document.getElementById('fpOut').textContent=fmtFreq(fFP);
+
+    const svg=document.getElementById('slewPlot');
+    const W=600,H=280,mL=60,mR=30,mT=20,mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    // 2 periods of input
+    const T=1/f;
+    const tMax=2*T;
+    const xs=t=>mL+(t/tMax)*pw;
+    const Vmax=V*1.3;
+    const ys=v=>mT+ph/2 - (v/Vmax)*(ph/2);
+    let s='';
+    // grid
+    const nx=8;
+    for(let i=0;i<=nx;i++){
+      const x=mL+i/nx*pw;
+      s+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" class="grid-line"/>`;
+    }
+    for(let i=-2;i<=2;i++){
+      const v=i*V/2;
+      const y=ys(v);
+      s+=`<line x1="${mL}" y1="${y}" x2="${mL+pw}" y2="${y}" class="grid-line"/>`;
+      s+=`<text x="${mL-6}" y="${y+3}" class="axis-label" text-anchor="end">${v.toFixed(1)}</text>`;
+    }
+    s+=`<text x="${W/2}" y="${H-4}" class="axis-label" text-anchor="middle">time (2 periods at ${fmtFreq(f)})</text>`;
+    s+=`<text x="${mL-44}" y="${mT+ph/2}" class="axis-label" text-anchor="middle" transform="rotate(-90,${mL-44},${mT+ph/2})">Vout (V)</text>`;
+
+    // Input: square wave ±V
+    let pin='';
+    for(let k=0;k<=400;k++){
+      const t=k/400*tMax;
+      const sq=(t%T < T/2) ? V : -V;
+      const x=xs(t), y=ys(sq);
+      pin+=(k===0?'M':'L')+x+','+y+' ';
+    }
+    s+=`<path d="${pin}" class="trace trace-1" stroke-dasharray="2 2"/>`;
+
+    // Output: slew-limited approach to ±V
+    let pout='';
+    let vOut=-V;
+    let dt=tMax/400;
+    for(let k=0;k<=400;k++){
+      const t=k/400*tMax;
+      const tgt=(t%T < T/2) ? V : -V;
+      const dV=tgt-vOut;
+      const maxStep=SR*dt;
+      if(Math.abs(dV)<=maxStep) vOut=tgt;
+      else vOut += Math.sign(dV)*maxStep;
+      const x=xs(t), y=ys(vOut);
+      pout+=(k===0?'M':'L')+x+','+y+' ';
+    }
+    s+=`<path d="${pout}" class="trace trace-2"/>`;
+
+    // Annotation
+    if(tEdge>T/2){
+      s+=`<text x="${xs(tMax*0.5)}" y="${mT+ph-10}" class="label-dim" text-anchor="middle" style="fill:var(--warn)">SLEW-LIMITED: edge longer than half-period</text>`;
+    }
+    svg.innerHTML=s;
+  }
+  ['srSlide','srFreqSlide','srAmpSlide'].forEach(id=>
+    document.getElementById(id).addEventListener('input',updateSlew));
+
+  updateGain();
+  updateGBP();
+  updateSlew();
+</script>
+</body>
+</html>

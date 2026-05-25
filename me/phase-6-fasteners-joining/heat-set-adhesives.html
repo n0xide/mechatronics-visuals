@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heat-set inserts &amp; threadlockers — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+
+  .panel-grid{display:grid;gap:16px;grid-template-columns:1fr}
+  @media(min-width:760px){.panel-grid{grid-template-columns:1fr 1fr}}
+
+  .tl-card{background:var(--bg-elev2);border-left:6px solid var(--fg-dim);
+    border-radius:4px;padding:10px 14px;margin:6px 0;cursor:pointer;transition:0.15s}
+  .tl-card:hover{transform:translateX(2px)}
+  .tl-card.active{outline:2px solid var(--accent)}
+  .tl-card .nm{font:600 16px ui-monospace,monospace;display:block}
+  .tl-card .num{font:11px ui-monospace,monospace;color:var(--fg-dim);margin-left:6px}
+  .tl-card .props{font:11px ui-monospace,monospace;color:var(--fg-dim);margin-top:4px}
+
+  .uc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:6px;margin:10px 0}
+  .uc{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:8px 10px;cursor:pointer;font:12px ui-monospace,monospace;transition:0.15s}
+  .uc:hover{border-color:var(--accent)}
+  .uc.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+
+  .rec-box{background:var(--bg-elev2);border:1px solid var(--accent);
+    border-radius:6px;padding:12px;margin:10px 0;font:13px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Heat-set inserts &amp; threadlockers</h1>
+  <p class="lede">Two assembly tricks that make plastic parts and mass-produced bolted joints actually
+  hold together: (a) brass heat-set inserts melt into a printed boss so the screw threads into metal,
+  not plastic; (b) anaerobic threadlockers cure inside the thread interface to resist vibration loosening.</p>
+
+  <div class="panel-grid">
+
+    <!-- ============ PANEL A: HEAT-SET INSERTS ============ -->
+    <div>
+      <h2 style="margin-top:0">Heat-set insert installation</h2>
+
+      <section class="controls" style="grid-template-columns:1fr">
+        <div class="control">
+          <label>Iron tip temperature <span class="readout" id="rTemp">210 °C</span></label>
+          <input type="range" id="sTemp" min="140" max="280" step="2" value="210">
+        </div>
+        <div class="control">
+          <label>Material</label>
+          <select id="selMat">
+            <option value="PETG" selected>PETG (target 200–220°C)</option>
+            <option value="PLA">PLA (target 180–200°C)</option>
+            <option value="Nylon">Nylon PA12 (target 230–250°C)</option>
+          </select>
+        </div>
+      </section>
+
+      <div class="figure" style="padding:12px">
+        <h3>Installation sequence</h3>
+        <svg viewBox="0 0 380 260" id="svgInstall" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div id="installStatus" style="font-size:12px;margin-top:8px;color:var(--fg-dim)"></div>
+      </div>
+
+      <div class="figure" style="padding:12px">
+        <h3>M2.5 pull-out strength by material (Ruthex × 4 mm, 6 mm boss)</h3>
+        <svg viewBox="0 0 380 200" id="svgPull" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </div>
+
+    <!-- ============ PANEL B: THREADLOCKERS ============ -->
+    <div>
+      <h2 style="margin-top:0">Threadlocker color guide</h2>
+
+      <div id="tlList">
+        <div class="tl-card active" data-tl="blue">
+          <span class="nm" style="color:#5ec8ff">Blue<span class="num">Loctite 243</span></span>
+          <span class="props">medium · hand-tool removable · –55 to 150°C</span>
+        </div>
+        <div class="tl-card" data-tl="red">
+          <span class="nm" style="color:#ff7b72">Red<span class="num">Loctite 271</span></span>
+          <span class="props">high · heat to remove (250°C) · –55 to 150°C</span>
+        </div>
+        <div class="tl-card" data-tl="purple">
+          <span class="nm" style="color:#c084fc">Purple<span class="num">Loctite 222</span></span>
+          <span class="props">low · removable by hand · M6 and smaller</span>
+        </div>
+        <div class="tl-card" data-tl="green">
+          <span class="nm" style="color:#a3e635">Green<span class="num">Loctite 290</span></span>
+          <span class="props">wicking · post-assembly · for hard-to-reach</span>
+        </div>
+      </div>
+
+      <h3>Use-case picker</h3>
+      <div class="uc-grid">
+        <div class="uc" data-uc="hinge">cyberdeck hinge M3</div>
+        <div class="uc" data-uc="grub">stepper grub screw</div>
+        <div class="uc" data-uc="pico">Pico mounting screws</div>
+        <div class="uc" data-uc="assembled">already-assembled bolt</div>
+        <div class="uc" data-uc="hot">200°C motor housing</div>
+        <div class="uc" data-uc="critical">flight-critical airframe</div>
+      </div>
+
+      <div class="rec-box" id="ucRec">Pick a use case →</div>
+
+      <h3>Application steps</h3>
+      <ol style="color:var(--fg-dim);font-size:12px;padding-left:18px;line-height:1.7">
+        <li>Clean threads with IPA, let dry</li>
+        <li>Apply 1–2 drops on male thread near engagement zone</li>
+        <li>Assemble and torque immediately</li>
+        <li>Hand-tight strength in ~10 min, functional ~1 h, full cure 24 h</li>
+      </ol>
+    </div>
+
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Insert temperature is a band, not a setpoint.</b> Too cold: the boss won't melt enough, insert stops short, leaves a gap that voids pull-out strength. Too hot: melt zone gets wide, plastic flows around the insert and may leave it loose or angled.</li>
+    <li><b>Heat-set in nylon is hard.</b> Nylon's higher melt temp means tip needs ~240°C; the melt zone is narrow and the surface tends to bubble/scorch. Pull-out is high if done right but failure rate is significant.</li>
+    <li><b>Pull-out scales with boss diameter MORE than insert length</b> for FDM. The failure mode is the boss splitting, not the threads stripping — so a thicker wall around the insert is the highest-leverage change.</li>
+    <li><b>Blue 243 is the default threadlocker.</b> Removable, medium strength, won't cause headaches. Reserve red for things you'll never touch again.</li>
+    <li><b>Don't use red on small bolts you might service.</b> Removing red 271 needs 250°C — for an M2 or M3, you risk twisting the bolt off before it breaks free. Use blue and accept the trade.</li>
+    <li><b>Green wicks INTO an assembled joint.</b> Apply on the side of the bolt-nut interface; capillary action pulls it in. The only option when you already torqued and forgot.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE — heat-set</h3>
+      <ul>
+        <li>Tip temp: <b>PETG 200–220°C</b></li>
+        <li>Tip temp: <b>PLA 180–200°C</b></li>
+        <li>Tip temp: <b>PA12 240°C</b></li>
+        <li>Boss OD = insert OD + <b>0.0–0.1 mm</b></li>
+        <li>Pull-out M2.5/PETG/4mm ≈ <b>200–400 N</b></li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>DECISION — threadlocker</h3>
+      <ul>
+        <li><b>Blue 243</b> — medium, removable (default)</li>
+        <li><b>Red 271</b> — permanent, needs heat</li>
+        <li><b>Purple 222</b> — small bolts &lt;M6</li>
+        <li><b>Green 290</b> — wicks into assembled joint</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li>Over-torque heat-set in PETG → <b>boss pulls out</b>, not insert</li>
+        <li>Threadlocker full cure = <b>24 h</b> (functional ~1 h)</li>
+        <li>Red on M2/M3 → bolt twists off before releasing</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 6 — Fasteners &amp; Joining</a> ·
+    Topic: Heat-set insert install + pull-out, Loctite color/strength/use-case picker
+  </footer>
+</main>
+<script>
+// =========== HEAT-SET ===========
+const MAT_TARGET = {
+  PETG: {lo:200, hi:220, melt:230},
+  PLA:  {lo:180, hi:200, melt:180},
+  Nylon:{lo:230, hi:250, melt:250},
+};
+
+const sTemp = document.getElementById("sTemp");
+const selMat = document.getElementById("selMat");
+const rTemp = document.getElementById("rTemp");
+
+function drawInstall(){
+  const T = +sTemp.value;
+  const mat = selMat.value;
+  const tgt = MAT_TARGET[mat];
+  rTemp.textContent = `${T} °C`;
+  let mode = "ok";
+  if (T < tgt.lo - 10) mode = "cold";
+  else if (T > tgt.hi + 10) mode = "hot";
+  const svg = document.getElementById("svgInstall");
+  // Draw 4-step sequence: drill, heat, press, cool. Show last step result colored by mode.
+  const W=380, H=260;
+  const stepX = [50, 145, 240, 335];
+  let html = "";
+  const stepLabels = ["drill", "heat tip", "press in", "result"];
+  for (let i=0;i<4;i++){
+    // boss cross-section, narrowing color
+    const cx = stepX[i];
+    // boss body
+    html += `<rect x="${cx-30}" y="100" width="60" height="80" fill="#2a313c" stroke="var(--fg-dim)"/>`;
+    // hole in boss
+    const holeW = 16;
+    html += `<rect x="${cx-holeW/2}" y="100" width="${holeW}" height="${i===0?80:50}" fill="var(--bg)" stroke="var(--fg-dim)"/>`;
+    if (i>=1){
+      // soldering iron / insert
+      if (i===1){
+        // hot tip above hole
+        const tipColor = T<150 ? "#888" : T<220 ? "#ffb86c" : "#ff7b72";
+        html += `<polygon points="${cx-6},60 ${cx+6},60 ${cx+4},90 ${cx-4},90" fill="${tipColor}" stroke="var(--fg)"/>`;
+        html += `<rect x="${cx-3}" y="30" width="6" height="30" fill="#444" stroke="var(--fg-dim)"/>`;
+        html += `<text x="${cx}" y="22" class="label-dim" text-anchor="middle" font-size="10">${T}°C</text>`;
+      } else if (i===2){
+        // insert mid-press
+        const insertColor = "#d4a373";
+        const pressY = 110;
+        html += `<rect x="${cx-7}" y="${pressY}" width="14" height="32" fill="${insertColor}" stroke="#8a6a3a"/>`;
+        // ridges
+        for (let r=0;r<3;r++){
+          html += `<line x1="${cx-7}" y1="${pressY+8+r*8}" x2="${cx+7}" y2="${pressY+8+r*8}" stroke="#8a6a3a" stroke-width="0.7"/>`;
+        }
+      } else if (i===3){
+        // final result depends on temp mode
+        const insertColor = "#d4a373";
+        if (mode === "ok"){
+          html += `<rect x="${cx-7}" y="115" width="14" height="40" fill="${insertColor}" stroke="#8a6a3a"/>`;
+          for (let r=0;r<5;r++){
+            html += `<line x1="${cx-7}" y1="${120+r*7}" x2="${cx+7}" y2="${120+r*7}" stroke="#8a6a3a" stroke-width="0.7"/>`;
+          }
+          html += `<text x="${cx}" y="200" class="label" text-anchor="middle" fill="var(--accent3)" font-size="11">flush ✓</text>`;
+        } else if (mode === "cold"){
+          // insert sits high - gap underneath
+          html += `<rect x="${cx-7}" y="100" width="14" height="32" fill="${insertColor}" stroke="#8a6a3a"/>`;
+          html += `<text x="${cx}" y="95" class="label" text-anchor="middle" fill="var(--warn)" font-size="11">stopped short</text>`;
+          // poor melt zone
+          html += `<rect x="${cx-8}" y="100" width="16" height="32" fill="none" stroke="var(--warn)" stroke-dasharray="2 2"/>`;
+        } else {
+          // hot: wide melt zone, insert wobbly
+          html += `<rect x="${cx-7}" y="118" width="14" height="40" fill="${insertColor}" stroke="#8a6a3a" transform="rotate(4 ${cx} 138)"/>`;
+          // melt halo
+          html += `<rect x="${cx-14}" y="116" width="28" height="44" fill="rgba(255,123,114,0.18)" stroke="var(--warn)" stroke-dasharray="2 2"/>`;
+          html += `<text x="${cx}" y="200" class="label" text-anchor="middle" fill="var(--warn)" font-size="11">melt zone too wide</text>`;
+        }
+      }
+    }
+    html += `<text x="${cx}" y="220" class="label" text-anchor="middle" font-size="11">${i+1}. ${stepLabels[i]}</text>`;
+  }
+  svg.innerHTML = html;
+  let status = "";
+  if (mode === "ok") status = `<b style="color:var(--accent3)">PASS:</b> ${T}°C is within target ${tgt.lo}–${tgt.hi}°C for ${mat}. Insert seats flush with full thread engagement.`;
+  else if (mode === "cold") status = `<b style="color:var(--warn)">TOO COLD:</b> ${T}°C is below ${tgt.lo}°C for ${mat}. Plastic doesn't melt enough; insert stops short with cosmetic + structural gap. Pull-out strength drops 30–50%.`;
+  else status = `<b style="color:var(--warn)">TOO HOT:</b> ${T}°C is above ${tgt.hi}°C for ${mat}. Excess melt flows around the insert; it tilts and the surrounding boss is weakened. Pull-out drops, may smoke / scorch.`;
+  document.getElementById("installStatus").innerHTML = status;
+}
+
+function drawPullout(){
+  // Bar chart: PETG, PLA, Nylon — pull-out for M2.5×4 (typical CNC Kitchen-style numbers)
+  const data = [
+    {name:"PLA",   N:300, col:"#a3e635"},
+    {name:"PETG",  N:350, col:"#5ec8ff"},
+    {name:"Nylon", N:450, col:"#ffb86c"},
+  ];
+  const W=380, H=200, pad={l:50,r:20,t:20,b:50};
+  const maxN = 500;
+  const barW = 60;
+  let html = "";
+  html += `<line class="axis" x1="${pad.l}" y1="${H-pad.b}" x2="${W-pad.r}" y2="${H-pad.b}"/>`;
+  html += `<line class="axis" x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${H-pad.b}"/>`;
+  for (let v=0;v<=maxN;v+=100){
+    const y = (H-pad.b) - (v/maxN)*(H-pad.t-pad.b);
+    html += `<line class="grid-line" x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}"/>`;
+    html += `<text class="axis-label" x="${pad.l-6}" y="${y+4}" text-anchor="end">${v}</text>`;
+  }
+  html += `<text class="axis-label" x="${pad.l-32}" y="${pad.t+10}" transform="rotate(-90,${pad.l-32},${pad.t+10})">Pull-out (N)</text>`;
+  data.forEach((d,i) => {
+    const xc = pad.l + (i+0.5)*((W-pad.l-pad.r)/data.length);
+    const y = (H-pad.b) - (d.N/maxN)*(H-pad.t-pad.b);
+    html += `<rect x="${xc-barW/2}" y="${y}" width="${barW}" height="${(H-pad.b)-y}" fill="${d.col}" opacity="0.85"/>`;
+    html += `<text x="${xc}" y="${y-6}" class="label" text-anchor="middle" fill="${d.col}">${d.N} N</text>`;
+    html += `<text x="${xc}" y="${H-pad.b+18}" class="label" text-anchor="middle">${d.name}</text>`;
+  });
+  document.getElementById("svgPull").innerHTML = html;
+}
+
+sTemp.addEventListener("input", drawInstall);
+selMat.addEventListener("change", () => {
+  // Snap slider to mid-range of new mat for convenience
+  const m = MAT_TARGET[selMat.value];
+  sTemp.value = Math.round((m.lo + m.hi)/2);
+  drawInstall();
+});
+
+// =========== THREADLOCKERS ===========
+const TL = {
+  blue:   {name:"Blue (Loctite 243)",  strength:"medium",  remove:"hand tools (wrench)",     temp:"-55 to +150°C", size:"M6 to M20", color:"#5ec8ff"},
+  red:    {name:"Red (Loctite 271)",   strength:"high",    remove:"heat to 250°C",            temp:"-55 to +150°C", size:"M6 to M25", color:"#ff7b72"},
+  purple: {name:"Purple (Loctite 222)",strength:"low",     remove:"hand (no tools)",          temp:"-55 to +150°C", size:"M2 to M6",  color:"#c084fc"},
+  green:  {name:"Green (Loctite 290)", strength:"medium-high (wicking)", remove:"heat or extended torque", temp:"-55 to +150°C", size:"M2 to M12 (assembled)", color:"#a3e635"},
+};
+const UC_REC = {
+  hinge:     {pick:"blue",   why:"Service every ~6 months → blue 243 = medium hold, hand-tool removable. Wrong picks: red (won't disassemble), purple (may back off)."},
+  grub:      {pick:"red",    why:"Grub screws cannot back off under shock load. Red 271 is permanent; you only change pulleys rarely and can heat the screw."},
+  pico:      {pick:"purple", why:"M2.5 reflashed often → purple 222 (low strength) is hand-removable, won't strip screw heads. Blue 243 is too strong here."},
+  assembled: {pick:"green",  why:"Already torqued? Apply green 290 on the bolt-thread interface; capillary action wicks IN. The only post-assembly threadlocker."},
+  hot:       {pick:"none",   why:"200°C exceeds all standard Loctite ratings (max ~150°C). Use mechanical locking (jam nut, all-metal stop nut, safety wire) or specialty high-temp (Loctite 272, 620). Don't rely on color-coded threadlocker here."},
+  critical:  {pick:"red",    why:"Aerospace primary structure → red 271 + safety-wire backup. Single point of failure is unacceptable; use redundant locking methods."},
+};
+
+let currentTL = "blue";
+
+function selectTL(t){
+  currentTL = t;
+  document.querySelectorAll(".tl-card").forEach(c => c.classList.toggle("active", c.dataset.tl===t));
+}
+document.querySelectorAll(".tl-card").forEach(c => {
+  c.addEventListener("click", () => selectTL(c.dataset.tl));
+});
+
+document.querySelectorAll(".uc").forEach(u => {
+  u.addEventListener("click", () => {
+    document.querySelectorAll(".uc").forEach(x => x.classList.remove("active"));
+    u.classList.add("active");
+    const rec = UC_REC[u.dataset.uc];
+    const recBox = document.getElementById("ucRec");
+    if (rec.pick === "none"){
+      recBox.innerHTML = `<b style="color:var(--warn)">No standard threadlocker</b><br/><span style="color:var(--fg-dim);font-size:12px">${rec.why}</span>`;
+    } else {
+      const t = TL[rec.pick];
+      recBox.innerHTML = `<b style="color:${t.color}">${t.name}</b><br/><span style="color:var(--fg);font-size:12px">${rec.why}</span><br/><span style="color:var(--fg-dim);font-size:11px;margin-top:4px;display:block">strength: ${t.strength} · removal: ${t.remove} · range: ${t.temp}</span>`;
+      selectTL(rec.pick);
+    }
+  });
+});
+
+drawInstall();
+drawPullout();
+</script>
+</body>
+</html>

@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LC resonance — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .marker-line{stroke:var(--warn);stroke-width:1.2;stroke-dasharray:4 3}
+  .marker-dot{fill:var(--warn);stroke:var(--bg);stroke-width:1.5}
+  .energy-bar{height:22px;border-radius:4px;transition:width 60ms linear}
+  .f0-readout{font:600 16px ui-monospace,Menlo,monospace;color:var(--accent3);
+    text-align:center;padding:10px;background:var(--bg-elev2);
+    border-radius:6px;margin:10px 0}
+  .energy-row{display:grid;grid-template-columns:90px 1fr 90px;gap:10px;
+    align-items:center;margin:8px 0;font:13px ui-monospace,monospace}
+  .energy-row .name{color:var(--fg)}
+  .energy-row .val{color:var(--fg-dim);text-align:right}
+  .e-track{background:var(--bg-elev2);border-radius:4px;height:22px;
+    border:1px solid var(--line);overflow:hidden}
+  .e-fill-L{background:linear-gradient(90deg,var(--accent2),#ffd99a);height:100%}
+  .e-fill-C{background:linear-gradient(90deg,var(--accent),#9be0ff);height:100%}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>LC resonance</h1>
+  <p class="lede">An LC tank doesn't decay — it sloshes. Energy ping-pongs between the inductor's magnetic field and the capacitor's electric field at f₀ = 1/(2π√LC). Add R (and the resistance is always there) and you get Q: how many cycles before that sloshing dies out. The impedance plot is where filters, antennas, and oscillators live.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>L = <span class="readout" id="rL">100 µH</span></label>
+      <input type="range" id="sL" min="-9" max="-1" value="-4" step="0.01">
+    </div>
+    <div class="control">
+      <label>C = <span class="readout" id="rC">100 nF</span></label>
+      <input type="range" id="sC" min="-12" max="-5" value="-7" step="0.01">
+    </div>
+    <div class="control">
+      <label>Q = <span class="readout" id="rQ">20</span></label>
+      <input type="range" id="sQ" min="1" max="200" value="20" step="0.5">
+    </div>
+  </section>
+
+  <div class="f0-readout" id="f0Readout">f₀ = 50.3 kHz · X_L = X_C = 31.6 Ω · R_loss = 1.58 Ω</div>
+
+  <div class="figure">
+    <h3 style="margin-top:0">Energy exchange (idealized, undamped)</h3>
+    <svg id="tankSvg" viewBox="0 0 880 260" width="100%" height="260" aria-label="LC tank animation"></svg>
+    <div class="energy-row">
+      <span class="name">E_L (½LI²)</span>
+      <div class="e-track"><div class="e-fill-L" id="eL" style="width:0%"></div></div>
+      <span class="val" id="eLval">0%</span>
+    </div>
+    <div class="energy-row">
+      <span class="name">E_C (½CV²)</span>
+      <div class="e-track"><div class="e-fill-C" id="eC" style="width:100%"></div></div>
+      <span class="val" id="eCval">100%</span>
+    </div>
+    <div class="energy-row">
+      <span class="name">E_total</span>
+      <div class="e-track"><div style="background:var(--accent3);height:100%" id="eT" class="energy-bar" style="width:100%"></div></div>
+      <span class="val" id="eTval">100%</span>
+    </div>
+    <div class="legend">In an ideal (R=0) LC tank, E_total is constant; E_L and E_C swap at 2·f₀.</div>
+  </div>
+
+  <div class="figure">
+    <h3 style="margin-top:0">Impedance magnitude vs. frequency (log–log)</h3>
+    <svg id="bodeSvg" viewBox="0 0 880 320" width="100%" height="320" aria-label="Impedance Bode"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>Series RLC — min at f₀</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>Parallel RLC — max at f₀</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>f₀ marker</span>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>f₀ = 1/(2π√LC)</b> — Only the product LC sets the resonant frequency. Halve L and double C and you're back where you started. The individual values set characteristic impedance Z_0 = √(L/C), which sets antenna match and Q for a given loss.</li>
+    <li><b>Series resonance = short circuit</b> — At f₀ the inductive and capacitive reactances cancel exactly (+jωL and −j/ωC sum to zero). Only the loss R remains, so impedance drops to a minimum. This is how a series-LC trap shorts an interfering frequency to ground.</li>
+    <li><b>Parallel resonance = open circuit</b> — Same cancellation, opposite topology: a parallel tank rejects f₀ (huge impedance) while letting other frequencies through. This is the "tank circuit" in oscillators and tube/RF amps.</li>
+    <li><b>Q sharpens both</b> — Q = ω₀L/R = (1/R)√(L/C). High Q ⇒ narrow, peaky resonance (good for selectivity, bad for bandwidth). Crystal Q can be 10⁵; air-core RF coil Q ≈ 100; a wound power inductor at 100 kHz might be Q ≈ 30. Slide Q and watch the peak/notch grow or smear.</li>
+    <li><b>Energy is the real story</b> — Far from f₀ the cap or inductor dominates. At f₀ the two store equal energy and trade it back and forth twice per RF cycle. The R only drains the running total — that's why Q ≈ "how many cycles before half the energy is gone × 2π."</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>f₀</dt><dd><span class="eq">f₀ = 1 / (2π·√(L·C))</span></dd>
+        <dt>Q</dt><dd><span class="eq">Q = (1/R)·√(L/C)</span></dd>
+        <dt>BW</dt><dd><span class="eq">BW = f₀ / Q</span></dd>
+        <dt>V_L,V_C</dt><dd><span class="eq">V_L = V_C = Q · V_src  (series, at f₀)</span></dd>
+        <dt>Z_0</dt><dd><span class="eq">Z_0 = √(L/C)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>Series LC at f₀</b> — minimum |Z| (just R); acts as a short.</li>
+        <li><b>Parallel LC at f₀</b> — maximum |Z|; acts as an open (tank).</li>
+        <li><b>Below f₀</b> — series tank looks capacitive; <b>above</b> — inductive.</li>
+        <li><b>Crystal Q ~10⁵</b>; <b>air-core RF coil Q ~100</b>; <b>wound choke Q ~30</b>.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>High Q = narrow BW</b> — selective filters are hard to tune and drift with temp.</li>
+        <li><b>V_L, V_C blow up at f₀</b> — Q·V_src can punch through caps in a series tank.</li>
+        <li><b>Loaded vs unloaded Q</b> — adding source/load resistance crashes Q; spec the right one.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 2 — Passive Components</a> ·
+    Topic: LC resonance, series vs parallel impedance, Q factor
+  </footer>
+</main>
+<script>
+  const $ = id => document.getElementById(id);
+  const state = { L: 1e-4, C: 1e-7, Q: 20 };
+
+  function fmtFarad(c){
+    if (c >= 1e-3) return (c*1e3).toFixed(2) + ' mF';
+    if (c >= 1e-6) return (c*1e6).toFixed(2) + ' µF';
+    if (c >= 1e-9) return (c*1e9).toFixed(2) + ' nF';
+    return (c*1e12).toFixed(2) + ' pF';
+  }
+  function fmtHenry(l){
+    if (l >= 1)    return l.toFixed(2) + ' H';
+    if (l >= 1e-3) return (l*1e3).toFixed(2) + ' mH';
+    if (l >= 1e-6) return (l*1e6).toFixed(2) + ' µH';
+    return (l*1e9).toFixed(2) + ' nH';
+  }
+  function fmtHz(f){
+    if (f >= 1e9) return (f/1e9).toFixed(2) + ' GHz';
+    if (f >= 1e6) return (f/1e6).toFixed(2) + ' MHz';
+    if (f >= 1e3) return (f/1e3).toFixed(2) + ' kHz';
+    if (f >= 1)   return f.toFixed(2) + ' Hz';
+    return f.toFixed(3) + ' Hz';
+  }
+  function fmtOhm(v){
+    if (!isFinite(v)) return '∞';
+    if (v >= 1e6) return (v/1e6).toFixed(2) + ' MΩ';
+    if (v >= 1e3) return (v/1e3).toFixed(2) + ' kΩ';
+    if (v >= 1) return v.toFixed(2) + ' Ω';
+    return v.toFixed(3) + ' Ω';
+  }
+
+  function f0(){ return 1 / (2 * Math.PI * Math.sqrt(state.L * state.C)); }
+  function Z0(){ return Math.sqrt(state.L / state.C); }       // characteristic impedance
+  function Rloss(){ return Z0() / state.Q; }                  // series loss for given Q
+
+  // ----- Tank schematic + sloshing animation -----
+  function drawTank(){
+    const svg = $('tankSvg');
+    svg.innerHTML = '';
+    const W = 880, H = 260;
+    // Inductor on left, Capacitor on right, both connected top + bottom
+    // L at x≈220, C at x≈660. Loop between.
+    const loopY1 = 60, loopY2 = 200;
+    const xL = 240, xC = 640;
+
+    // Outer wires
+    const wires = [
+      [xL, loopY1, xC, loopY1],
+      [xL, loopY2, xC, loopY2],
+      [xL, loopY1-30, xL, loopY1],  // top stub for L
+      [xL, loopY2, xL, loopY2+30],  // bottom stub for L
+      [xC, loopY1-30, xC, loopY1],
+      [xC, loopY2, xC, loopY2+30]
+    ];
+    wires.forEach(w => {
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('class','wire');
+      ln.setAttribute('x1',w[0]); ln.setAttribute('y1',w[1]);
+      ln.setAttribute('x2',w[2]); ln.setAttribute('y2',w[3]);
+      svg.appendChild(ln);
+    });
+
+    // Inductor (4 humps)
+    const indPath = document.createElementNS('http://www.w3.org/2000/svg','path');
+    indPath.setAttribute('class','wire');
+    const indSeg = 30;
+    let dInd = `M ${xL} ${loopY1}`;
+    for (let k = 0; k < 4; k++){
+      const y0 = loopY1 + k * indSeg + indSeg/2;
+      const y1 = loopY1 + (k+1) * indSeg;
+      dInd += ` A 14 ${indSeg/2} 0 0 1 ${xL} ${y1}`;
+    }
+    indPath.setAttribute('d', dInd);
+    indPath.setAttribute('stroke-width','2');
+    svg.appendChild(indPath);
+    const lblL = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lblL.setAttribute('class','label');
+    lblL.setAttribute('x', xL - 60); lblL.setAttribute('y', loopY1 + 60);
+    lblL.textContent = 'L';
+    lblL.setAttribute('fill','var(--accent2)');
+    lblL.setAttribute('font-size','22');
+    lblL.setAttribute('font-weight','700');
+    svg.appendChild(lblL);
+
+    // Capacitor plates
+    const capW = 50, capGap = 14;
+    const capCY = (loopY1 + loopY2) / 2;
+    const stub1 = document.createElementNS('http://www.w3.org/2000/svg','line');
+    stub1.setAttribute('class','wire');
+    stub1.setAttribute('x1',xC); stub1.setAttribute('y1',loopY1);
+    stub1.setAttribute('x2',xC); stub1.setAttribute('y2',capCY - capGap/2);
+    svg.appendChild(stub1);
+    const stub2 = document.createElementNS('http://www.w3.org/2000/svg','line');
+    stub2.setAttribute('class','wire');
+    stub2.setAttribute('x1',xC); stub2.setAttribute('y1',capCY + capGap/2);
+    stub2.setAttribute('x2',xC); stub2.setAttribute('y2',loopY2);
+    svg.appendChild(stub2);
+    const plate1 = document.createElementNS('http://www.w3.org/2000/svg','line');
+    plate1.setAttribute('class','wire');
+    plate1.setAttribute('stroke-width','3');
+    plate1.setAttribute('x1',xC-capW/2); plate1.setAttribute('y1',capCY-capGap/2);
+    plate1.setAttribute('x2',xC+capW/2); plate1.setAttribute('y2',capCY-capGap/2);
+    svg.appendChild(plate1);
+    const plate2 = document.createElementNS('http://www.w3.org/2000/svg','line');
+    plate2.setAttribute('class','wire');
+    plate2.setAttribute('stroke-width','3');
+    plate2.setAttribute('x1',xC-capW/2); plate2.setAttribute('y1',capCY+capGap/2);
+    plate2.setAttribute('x2',xC+capW/2); plate2.setAttribute('y2',capCY+capGap/2);
+    svg.appendChild(plate2);
+    const lblC = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lblC.setAttribute('class','label');
+    lblC.setAttribute('x', xC + 30); lblC.setAttribute('y', capCY + 6);
+    lblC.textContent = 'C';
+    lblC.setAttribute('fill','var(--accent)');
+    lblC.setAttribute('font-size','22');
+    lblC.setAttribute('font-weight','700');
+    svg.appendChild(lblC);
+
+    // Magnetic field rings on L (animated)
+    const fieldGroup = document.createElementNS('http://www.w3.org/2000/svg','g');
+    fieldGroup.setAttribute('id','magField');
+    svg.appendChild(fieldGroup);
+    // Electric field arrows on C (animated)
+    const eFieldGroup = document.createElementNS('http://www.w3.org/2000/svg','g');
+    eFieldGroup.setAttribute('id','eField');
+    svg.appendChild(eFieldGroup);
+
+    // Current arrow on top wire (animated)
+    const iArrow = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    iArrow.setAttribute('id','iArrow');
+    iArrow.setAttribute('fill','var(--accent3)');
+    iArrow.setAttribute('points','0,0 12,5 0,10');
+    svg.appendChild(iArrow);
+    const iLbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    iLbl.setAttribute('id','iLbl');
+    iLbl.setAttribute('class','label');
+    iLbl.setAttribute('fill','var(--accent3)');
+    iLbl.setAttribute('y', loopY1 - 12);
+    iLbl.setAttribute('text-anchor','middle');
+    iLbl.textContent = 'i(t)';
+    svg.appendChild(iLbl);
+  }
+
+  function updateAnim(phase){
+    // phase in [0, 2π)
+    // I = I_max·sin(phase),  V_C = V_max·cos(phase)
+    const i = Math.sin(phase);
+    const v = Math.cos(phase);
+    const E_L = i*i;
+    const E_C = v*v;
+    $('eL').style.width = (E_L * 100).toFixed(0) + '%';
+    $('eC').style.width = (E_C * 100).toFixed(0) + '%';
+    $('eT').style.width = ((E_L + E_C) * 100).toFixed(0) + '%';
+    $('eLval').textContent = (E_L * 100).toFixed(0) + '%';
+    $('eCval').textContent = (E_C * 100).toFixed(0) + '%';
+    $('eTval').textContent = ((E_L + E_C) * 100).toFixed(0) + '%';
+
+    // Field rings around inductor — opacity proportional to |i|
+    const xL = 240, loopY1 = 60, loopY2 = 200;
+    const fg = $('magField');
+    if (fg){
+      fg.innerHTML = '';
+      const intensity = Math.abs(i);
+      for (let r = 18; r <= 38; r += 8){
+        const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        c.setAttribute('cx',xL); c.setAttribute('cy',(loopY1+loopY2)/2);
+        c.setAttribute('r',r);
+        c.setAttribute('fill','none');
+        c.setAttribute('stroke','var(--accent2)');
+        c.setAttribute('stroke-width','1.5');
+        c.setAttribute('opacity', (intensity * 0.6).toFixed(2));
+        fg.appendChild(c);
+      }
+    }
+
+    // Electric field arrows on capacitor — opacity ∝ |v|
+    const xC = 640, capCY = (loopY1+loopY2)/2, capGap = 14;
+    const ef = $('eField');
+    if (ef){
+      ef.innerHTML = '';
+      const intensity = Math.abs(v);
+      const dir = v >= 0 ? 1 : -1;
+      for (let off = -15; off <= 15; off += 10){
+        const arrow = document.createElementNS('http://www.w3.org/2000/svg','line');
+        arrow.setAttribute('x1', xC + off);
+        arrow.setAttribute('x2', xC + off);
+        arrow.setAttribute('y1', capCY - capGap/2 + (dir > 0 ? 0 : capGap));
+        arrow.setAttribute('y2', capCY + capGap/2 - (dir > 0 ? 0 : capGap));
+        arrow.setAttribute('stroke','var(--accent)');
+        arrow.setAttribute('stroke-width','2');
+        arrow.setAttribute('opacity', (intensity * 0.8).toFixed(2));
+        arrow.setAttribute('marker-end','url(#arrowEnd)');
+        ef.appendChild(arrow);
+        const triY = dir > 0 ? capCY - capGap/2 - 3 : capCY + capGap/2 + 3;
+        const tri = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+        tri.setAttribute('points', `${xC+off-3},${triY} ${xC+off+3},${triY} ${xC+off},${triY + (dir>0?-5:5)}`);
+        tri.setAttribute('fill','var(--accent)');
+        tri.setAttribute('opacity', (intensity*0.8).toFixed(2));
+        ef.appendChild(tri);
+      }
+    }
+
+    // Current arrow along top wire — position oscillates
+    const ia = $('iArrow');
+    if (ia){
+      const baseX = (240 + 640) / 2;
+      const swing = 120;
+      const px = baseX + i * swing;
+      ia.setAttribute('transform', `translate(${px - 6}, ${60 - 5}) ${i < 0 ? 'rotate(180 6 5)' : ''}`);
+      ia.setAttribute('opacity', Math.abs(i).toFixed(2));
+      $('iLbl').setAttribute('x', px);
+      $('iLbl').setAttribute('opacity', Math.abs(i).toFixed(2));
+    }
+  }
+
+  // ----- Bode plot of series + parallel impedance -----
+  function drawBode(){
+    const svg = $('bodeSvg');
+    svg.innerHTML = '';
+    const W = 880, H = 320;
+    const padL = 64, padR = 16, padT = 14, padB = 40;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+    const fr = f0();
+    const z0 = Z0();
+    const R = Rloss();
+    const logF0 = Math.log10(fr);
+    const fmin = logF0 - 2.5, fmax = logF0 + 2.5;
+    // Z log scale
+    // series Z: sqrt(R^2 + (ωL - 1/ωC)^2)
+    // parallel Z: 1 / sqrt( (1/R)^2 + (ωC - 1/(ωL))^2 ) approx; using parallel of (R+jωL) and 1/(jωC)
+    const zmin_log = Math.log10(Math.max(R, 1e-3)) - 1;
+    const zmax_log = Math.log10(z0 * state.Q) + 1;
+
+    // gridlines
+    for (let zl = Math.floor(zmin_log); zl <= Math.ceil(zmax_log); zl++){
+      const y = padT + (zmax_log - zl)/(zmax_log - zmin_log) * plotH;
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('class','grid-line');
+      ln.setAttribute('x1',padL); ln.setAttribute('x2',W-padR);
+      ln.setAttribute('y1',y); ln.setAttribute('y2',y);
+      svg.appendChild(ln);
+      const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('class','axis-label');
+      lbl.setAttribute('x',padL-6); lbl.setAttribute('y',y+3);
+      lbl.setAttribute('text-anchor','end');
+      const zv = Math.pow(10, zl);
+      lbl.textContent = fmtOhm(zv);
+      svg.appendChild(lbl);
+    }
+    for (let d = Math.ceil(fmin); d <= Math.floor(fmax); d++){
+      const x = padL + (d - fmin)/(fmax - fmin) * plotW;
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('class','grid-line');
+      ln.setAttribute('x1',x); ln.setAttribute('x2',x);
+      ln.setAttribute('y1',padT); ln.setAttribute('y2',padT+plotH);
+      svg.appendChild(ln);
+      const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('class','axis-label');
+      lbl.setAttribute('x',x); lbl.setAttribute('y',H-padB+14);
+      lbl.setAttribute('text-anchor','middle');
+      lbl.textContent = fmtHz(Math.pow(10,d));
+      svg.appendChild(lbl);
+    }
+
+    ['x','y'].forEach(axis => {
+      const ax = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ax.setAttribute('class','axis');
+      if (axis === 'x'){
+        ax.setAttribute('x1',padL); ax.setAttribute('x2',W-padR);
+        ax.setAttribute('y1',padT+plotH); ax.setAttribute('y2',padT+plotH);
+      } else {
+        ax.setAttribute('x1',padL); ax.setAttribute('x2',padL);
+        ax.setAttribute('y1',padT); ax.setAttribute('y2',padT+plotH);
+      }
+      svg.appendChild(ax);
+    });
+    // axis labels
+    const xlab = document.createElementNS('http://www.w3.org/2000/svg','text');
+    xlab.setAttribute('class','axis-label');
+    xlab.setAttribute('x', (padL + (W-padR))/2);
+    xlab.setAttribute('y', H-6);
+    xlab.setAttribute('text-anchor','middle');
+    xlab.textContent = 'frequency (log)';
+    svg.appendChild(xlab);
+    const ylab = document.createElementNS('http://www.w3.org/2000/svg','text');
+    ylab.setAttribute('class','axis-label');
+    ylab.setAttribute('x', 16); ylab.setAttribute('y', padT + plotH/2);
+    ylab.setAttribute('text-anchor','middle');
+    ylab.setAttribute('transform', `rotate(-90 16 ${padT + plotH/2})`);
+    ylab.textContent = '|Z| (log)';
+    svg.appendChild(ylab);
+
+    // Build series & parallel traces
+    const N = 600;
+    let dSer = '', dPar = '';
+    const omega0 = 2 * Math.PI * fr;
+    for (let i = 0; i <= N; i++){
+      const logF = fmin + (fmax - fmin) * i / N;
+      const f = Math.pow(10, logF);
+      const w = 2 * Math.PI * f;
+      const XL = w * state.L;
+      const XC = 1 / (w * state.C);
+      // Series: Z = R + jωL + 1/(jωC) = R + j(XL - XC)
+      const zSer = Math.sqrt(R*R + (XL - XC)*(XL - XC));
+      // Parallel R||L||C tank — easiest: Y = 1/R + 1/(jωL) + jωC, |Z| = 1/|Y|
+      // but R here is series loss inside L. Approximate parallel tank with Rp = Q·Z0 at f0.
+      const Rp = state.Q * z0;
+      const Gp = 1/Rp;
+      const Bp = w * state.C - 1/(w * state.L);
+      const zPar = 1 / Math.sqrt(Gp*Gp + Bp*Bp);
+
+      const px = padL + (logF - fmin)/(fmax - fmin) * plotW;
+      const pyS = padT + (zmax_log - Math.log10(Math.max(zSer,1e-6)))/(zmax_log - zmin_log) * plotH;
+      const pyP = padT + (zmax_log - Math.log10(Math.max(zPar,1e-6)))/(zmax_log - zmin_log) * plotH;
+      dSer += (i === 0 ? 'M' : 'L') + px.toFixed(2) + ',' + Math.max(padT, Math.min(padT+plotH, pyS)).toFixed(2);
+      dPar += (i === 0 ? 'M' : 'L') + px.toFixed(2) + ',' + Math.max(padT, Math.min(padT+plotH, pyP)).toFixed(2);
+    }
+    const trSer = document.createElementNS('http://www.w3.org/2000/svg','path');
+    trSer.setAttribute('class','trace trace-1');
+    trSer.setAttribute('d', dSer);
+    svg.appendChild(trSer);
+    const trPar = document.createElementNS('http://www.w3.org/2000/svg','path');
+    trPar.setAttribute('class','trace trace-2');
+    trPar.setAttribute('d', dPar);
+    svg.appendChild(trPar);
+
+    // f0 marker
+    const xf0 = padL + (logF0 - fmin)/(fmax - fmin) * plotW;
+    const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+    ln.setAttribute('class','marker-line');
+    ln.setAttribute('x1',xf0); ln.setAttribute('x2',xf0);
+    ln.setAttribute('y1',padT); ln.setAttribute('y2',padT+plotH);
+    svg.appendChild(ln);
+    const lblF0 = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lblF0.setAttribute('class','label');
+    lblF0.setAttribute('fill','var(--warn)');
+    lblF0.setAttribute('x', xf0 + 6); lblF0.setAttribute('y', padT + 14);
+    lblF0.textContent = 'f₀ = ' + fmtHz(fr);
+    svg.appendChild(lblF0);
+  }
+
+  // ----- Animation loop -----
+  let t0 = null;
+  function tick(ts){
+    if (t0 === null) t0 = ts;
+    const elapsed = (ts - t0) / 1000; // seconds
+    // visible cycle: ~1.2 s per full LC swing regardless of real f0
+    const phase = (elapsed / 1.2) * 2 * Math.PI;
+    updateAnim(phase);
+    requestAnimationFrame(tick);
+  }
+
+  function update(){
+    $('rL').textContent = fmtHenry(state.L);
+    $('rC').textContent = fmtFarad(state.C);
+    $('rQ').textContent = state.Q.toFixed(0);
+    $('f0Readout').textContent =
+      'f₀ = ' + fmtHz(f0()) +
+      ' · Z₀ = √(L/C) = ' + fmtOhm(Z0()) +
+      ' · R_loss = Z₀/Q = ' + fmtOhm(Rloss());
+    drawBode();
+  }
+
+  $('sL').addEventListener('input', e => {
+    state.L = Math.pow(10, parseFloat(e.target.value));
+    update();
+  });
+  $('sC').addEventListener('input', e => {
+    state.C = Math.pow(10, parseFloat(e.target.value));
+    update();
+  });
+  $('sQ').addEventListener('input', e => {
+    state.Q = parseFloat(e.target.value);
+    update();
+  });
+
+  drawTank();
+  update();
+  requestAnimationFrame(tick);
+</script>
+</body>
+</html>

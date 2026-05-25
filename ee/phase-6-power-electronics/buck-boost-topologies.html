@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buck-Boost Topology Comparison — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:1100px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:10px ui-monospace,monospace}
+  .topo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+    gap:14px;margin:12px 0}
+  .topo{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px;transition:border-color 0.2s}
+  .topo.recommended{border-color:var(--accent3);box-shadow:0 0 0 1px var(--accent3)}
+  .topo h4{font:600 13px ui-monospace,monospace;color:var(--fg-bright);
+    margin:0 0 6px;display:flex;justify-content:space-between;align-items:center}
+  .topo .formula{font:12px ui-monospace,monospace;color:var(--accent2);
+    padding:4px 8px;background:var(--bg);border-radius:4px;margin:6px 0;
+    display:inline-block}
+  .topo .desc{font-size:12px;color:var(--fg-dim);margin:4px 0}
+  .topo svg{background:var(--bg);border-radius:4px;margin:6px 0}
+  .topo .live{font:11px ui-monospace,monospace;color:var(--accent);margin-top:6px}
+  .topo .tag{display:inline-block;font:10px ui-monospace,monospace;
+    padding:2px 6px;border-radius:3px;background:var(--bg);
+    color:var(--fg-dim);margin-right:4px;margin-top:4px}
+  .topo .tag.iso{background:rgba(255,184,108,0.15);color:var(--accent2)}
+  .topo .tag.inv{background:rgba(255,123,114,0.15);color:var(--warn)}
+  .topo .tag.both{background:rgba(94,200,255,0.15);color:var(--accent)}
+  .topo .tag.rec{background:rgba(163,230,53,0.2);color:var(--accent3);font-weight:600}
+  .picker{background:var(--bg-elev2);padding:14px 16px;border-radius:8px;
+    border:1px solid var(--line);margin:12px 0;font:13px ui-monospace,monospace}
+  .picker .question{color:var(--fg-bright);margin-bottom:10px}
+  .picker .opts{display:flex;flex-wrap:wrap;gap:8px}
+  .picker .opt{padding:8px 14px;background:var(--bg);border:1px solid var(--line);
+    border-radius:5px;cursor:pointer;color:var(--fg);font:13px ui-monospace,monospace;
+    transition:all 0.15s}
+  .picker .opt:hover{border-color:var(--accent)}
+  .picker .opt.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .picker .answer{margin-top:12px;padding:10px 12px;background:var(--bg);
+    border-left:3px solid var(--accent3);border-radius:0 6px 6px 0;
+    color:var(--fg);font:12px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Buck-Boost &amp; Family — Topology Comparison</h1>
+  <p class="lede">Seven DC/DC topologies side by side. Pick "I need V_out _ V_in" — the matching topology highlights.</p>
+
+  <p>The buck and boost are the two simplest switched-mode converters, but real systems often need more: outputs that cross V_in, isolation between input and output, negative supplies, or extreme step ratios. This page shows the common topologies, their <b>V_out vs D</b> formulas, and what each one is actually used for. Use the picker to filter by need.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>V_in (for live values): <span class="readout" id="vinRead">5.0 V</span></label>
+      <input id="vin" type="range" min="1" max="48" step="0.1" value="5">
+    </div>
+    <div class="control">
+      <label>D — duty cycle: <span class="readout" id="dRead">50%</span></label>
+      <input id="dval" type="range" min="0.05" max="0.92" step="0.01" value="0.5">
+    </div>
+    <div class="control">
+      <label>N — transformer turns ratio (flyback): <span class="readout" id="nRead">1:1</span></label>
+      <input id="nval" type="range" min="0.1" max="5" step="0.05" value="1">
+    </div>
+  </section>
+
+  <div class="picker">
+    <div class="question">I need V_out that is...</div>
+    <div class="opts">
+      <div class="opt" data-need="below" onclick="selectNeed('below')">below V_in (step-down)</div>
+      <div class="opt" data-need="above" onclick="selectNeed('above')">above V_in (step-up)</div>
+      <div class="opt" data-need="cross" onclick="selectNeed('cross')">crosses V_in (above or below)</div>
+      <div class="opt" data-need="neg" onclick="selectNeed('neg')">negative polarity</div>
+      <div class="opt" data-need="iso" onclick="selectNeed('iso')">galvanically isolated</div>
+      <div class="opt" data-need="any" onclick="selectNeed('any')">show all</div>
+    </div>
+    <div class="answer" id="answer">Pick a constraint. Matching topologies will be highlighted with a green border below.</div>
+  </div>
+
+  <div class="topo-grid" id="topoGrid">
+
+    <!-- BUCK -->
+    <div class="topo" data-id="buck" data-tags="below">
+      <h4>Buck<span class="tag">step-down</span></h4>
+      <svg viewBox="0 0 280 110" width="100%">
+        <line x1="10" y1="30" x2="10" y2="90" class="wire"/>
+        <text x="6" y="22" class="label-dim">Vin</text>
+        <line x1="10" y1="30" x2="50" y2="30" class="wire"/>
+        <rect x="50" y="22" width="20" height="16" stroke="var(--accent)" fill="var(--bg-elev2)"/>
+        <text x="60" y="20" class="label-dim" text-anchor="middle">Q</text>
+        <line x1="70" y1="30" x2="120" y2="30" class="wire"/>
+        <line x1="120" y1="30" x2="120" y2="55" class="wire"/>
+        <polygon points="115,55 125,55 120,68" fill="var(--bg-elev2)" stroke="var(--accent2)"/>
+        <line x1="115" y1="68" x2="125" y2="68" stroke="var(--accent2)"/>
+        <line x1="120" y1="68" x2="120" y2="90" class="wire"/>
+        <path d="M 120 30 q 8 -10 16 0 q 8 -10 16 0 q 8 -10 16 0" stroke="var(--fg)" fill="none"/>
+        <line x1="168" y1="30" x2="220" y2="30" class="wire"/>
+        <line x1="220" y1="30" x2="220" y2="55" class="wire"/>
+        <line x1="212" y1="55" x2="228" y2="55" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="212" y1="62" x2="228" y2="62" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="220" y1="62" x2="220" y2="90" class="wire"/>
+        <line x1="220" y1="30" x2="265" y2="30" class="wire"/>
+        <text x="270" y="33" class="label-dim">Vout</text>
+        <line x1="10" y1="90" x2="265" y2="90" class="wire"/>
+      </svg>
+      <div class="formula">V_out = D · V_in</div>
+      <div class="desc">Simplest step-down. High efficiency. V_out always &lt; V_in.</div>
+      <div class="live" id="liveBuck">V_out @ D=0.50, V_in=5.0V → 2.5 V</div>
+      <span class="tag">non-isolated</span><span class="tag">step-down</span>
+    </div>
+
+    <!-- BOOST -->
+    <div class="topo" data-id="boost" data-tags="above">
+      <h4>Boost<span class="tag">step-up</span></h4>
+      <svg viewBox="0 0 280 110" width="100%">
+        <line x1="10" y1="30" x2="10" y2="90" class="wire"/>
+        <text x="6" y="22" class="label-dim">Vin</text>
+        <line x1="10" y1="30" x2="40" y2="30" class="wire"/>
+        <path d="M 40 30 q 8 -10 16 0 q 8 -10 16 0 q 8 -10 16 0" stroke="var(--fg)" fill="none"/>
+        <line x1="88" y1="30" x2="140" y2="30" class="wire"/>
+        <line x1="140" y1="30" x2="140" y2="55" class="wire"/>
+        <rect x="130" y="55" width="20" height="16" stroke="var(--accent3)" fill="var(--bg-elev2)"/>
+        <text x="140" y="67" class="label-dim" text-anchor="middle">Q</text>
+        <line x1="140" y1="71" x2="140" y2="90" class="wire"/>
+        <line x1="140" y1="30" x2="170" y2="30" class="wire"/>
+        <polygon points="170,25 170,35 185,30" fill="var(--bg-elev2)" stroke="var(--accent)"/>
+        <line x1="185" y1="25" x2="185" y2="35" stroke="var(--accent)"/>
+        <line x1="185" y1="30" x2="220" y2="30" class="wire"/>
+        <line x1="220" y1="30" x2="220" y2="55" class="wire"/>
+        <line x1="212" y1="55" x2="228" y2="55" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="212" y1="62" x2="228" y2="62" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="220" y1="62" x2="220" y2="90" class="wire"/>
+        <line x1="220" y1="30" x2="265" y2="30" class="wire"/>
+        <text x="270" y="33" class="label-dim">Vout</text>
+        <line x1="10" y1="90" x2="265" y2="90" class="wire"/>
+      </svg>
+      <div class="formula">V_out = V_in / (1−D)</div>
+      <div class="desc">Step-up. Used for raising battery voltage. RHP zero limits loop BW.</div>
+      <div class="live" id="liveBoost">V_out @ D=0.50, V_in=5.0V → 10.0 V</div>
+      <span class="tag">non-isolated</span><span class="tag">step-up</span>
+    </div>
+
+    <!-- INV BUCK-BOOST -->
+    <div class="topo" data-id="ibuckboost" data-tags="cross neg">
+      <h4>Inverting Buck-Boost<span class="tag inv">neg</span></h4>
+      <svg viewBox="0 0 280 110" width="100%">
+        <line x1="10" y1="30" x2="10" y2="90" class="wire"/>
+        <text x="6" y="22" class="label-dim">Vin</text>
+        <line x1="10" y1="30" x2="40" y2="30" class="wire"/>
+        <rect x="40" y="22" width="20" height="16" stroke="var(--accent)" fill="var(--bg-elev2)"/>
+        <text x="50" y="20" class="label-dim" text-anchor="middle">Q</text>
+        <line x1="60" y1="30" x2="120" y2="30" class="wire"/>
+        <line x1="120" y1="30" x2="120" y2="50" class="wire"/>
+        <path d="M 110 50 q 5 10 10 0 q 5 10 10 0 q 5 10 10 0" stroke="var(--fg)" fill="none"/>
+        <line x1="120" y1="76" x2="120" y2="90" class="wire"/>
+        <line x1="120" y1="30" x2="160" y2="30" class="wire"/>
+        <polygon points="170,25 170,35 160,30" fill="var(--bg-elev2)" stroke="var(--accent2)"/>
+        <line x1="170" y1="25" x2="170" y2="35" stroke="var(--accent2)"/>
+        <line x1="170" y1="30" x2="220" y2="30" class="wire"/>
+        <line x1="220" y1="30" x2="220" y2="55" class="wire"/>
+        <line x1="212" y1="55" x2="228" y2="55" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="212" y1="62" x2="228" y2="62" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="220" y1="62" x2="220" y2="90" class="wire"/>
+        <line x1="220" y1="30" x2="265" y2="30" class="wire"/>
+        <text x="270" y="33" class="label-dim">Vout</text>
+        <text x="270" y="44" class="label-dim" fill="var(--warn)">(neg)</text>
+        <line x1="10" y1="90" x2="265" y2="90" class="wire"/>
+      </svg>
+      <div class="formula">V_out = −V_in · D/(1−D)</div>
+      <div class="desc">Output is negative polarity. Can be above or below |V_in|.</div>
+      <div class="live" id="liveIBB">V_out @ D=0.50, V_in=5.0V → −5.0 V</div>
+      <span class="tag">non-isolated</span><span class="tag inv">inverting</span>
+    </div>
+
+    <!-- 4-SWITCH BB -->
+    <div class="topo" data-id="bb4" data-tags="cross below above">
+      <h4>4-Switch Buck-Boost<span class="tag both">cross</span></h4>
+      <svg viewBox="0 0 280 110" width="100%">
+        <line x1="10" y1="30" x2="10" y2="90" class="wire"/>
+        <text x="6" y="22" class="label-dim">Vin</text>
+        <line x1="10" y1="30" x2="40" y2="30" class="wire"/>
+        <rect x="40" y="22" width="16" height="16" stroke="var(--accent)" fill="var(--bg-elev2)"/>
+        <text x="48" y="20" class="label-dim" text-anchor="middle" font-size="8">Q1</text>
+        <line x1="56" y1="30" x2="100" y2="30" class="wire"/>
+        <rect x="65" y="55" width="16" height="16" stroke="var(--accent3)" fill="var(--bg-elev2)"/>
+        <text x="73" y="67" class="label-dim" text-anchor="middle" font-size="8">Q2</text>
+        <line x1="73" y1="30" x2="73" y2="55" class="wire"/>
+        <line x1="73" y1="71" x2="73" y2="90" class="wire"/>
+        <path d="M 100 30 q 8 -10 16 0 q 8 -10 16 0 q 8 -10 16 0" stroke="var(--fg)" fill="none"/>
+        <line x1="148" y1="30" x2="200" y2="30" class="wire"/>
+        <rect x="195" y="55" width="16" height="16" stroke="var(--accent3)" fill="var(--bg-elev2)"/>
+        <text x="203" y="67" class="label-dim" text-anchor="middle" font-size="8">Q4</text>
+        <line x1="203" y1="30" x2="203" y2="55" class="wire"/>
+        <line x1="203" y1="71" x2="203" y2="90" class="wire"/>
+        <rect x="195" y="22" width="16" height="16" stroke="var(--accent)" fill="var(--bg-elev2)"/>
+        <text x="203" y="20" class="label-dim" text-anchor="middle" font-size="8">Q3</text>
+        <line x1="211" y1="30" x2="230" y2="30" class="wire"/>
+        <line x1="230" y1="30" x2="230" y2="55" class="wire"/>
+        <line x1="222" y1="55" x2="238" y2="55" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="222" y1="62" x2="238" y2="62" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="230" y1="62" x2="230" y2="90" class="wire"/>
+        <line x1="230" y1="30" x2="265" y2="30" class="wire"/>
+        <text x="270" y="33" class="label-dim">Vout</text>
+        <line x1="10" y1="90" x2="265" y2="90" class="wire"/>
+      </svg>
+      <div class="formula">V_out can equal V_in (transitions buck ↔ boost smoothly)</div>
+      <div class="desc">Four MOSFETs. Used when V_in crosses V_out (e.g., USB-PD, Li-Ion supplying 5V).</div>
+      <div class="live" id="liveBB4">Modes: buck (D1, Q3 on), boost (Q1 on, D2), pass-through</div>
+      <span class="tag">non-isolated</span><span class="tag both">step up/down</span>
+    </div>
+
+    <!-- SEPIC -->
+    <div class="topo" data-id="sepic" data-tags="cross below above">
+      <h4>SEPIC<span class="tag both">cross</span></h4>
+      <svg viewBox="0 0 280 110" width="100%">
+        <line x1="10" y1="30" x2="10" y2="90" class="wire"/>
+        <text x="6" y="22" class="label-dim">Vin</text>
+        <line x1="10" y1="30" x2="30" y2="30" class="wire"/>
+        <path d="M 30 30 q 8 -10 16 0 q 8 -10 16 0" stroke="var(--fg)" fill="none"/>
+        <line x1="78" y1="30" x2="100" y2="30" class="wire"/>
+        <line x1="100" y1="22" x2="100" y2="38" class="wire" stroke-width="2"/>
+        <line x1="108" y1="22" x2="108" y2="38" class="wire" stroke-width="2"/>
+        <text x="104" y="18" class="label-dim" text-anchor="middle" font-size="9">Cs</text>
+        <line x1="108" y1="30" x2="155" y2="30" class="wire"/>
+        <path d="M 155 30 q 8 -10 16 0 q 8 -10 16 0" stroke="var(--fg)" fill="none"/>
+        <line x1="203" y1="30" x2="240" y2="30" class="wire"/>
+        <line x1="155" y1="30" x2="155" y2="50" class="wire"/>
+        <rect x="100" y="55" width="16" height="16" stroke="var(--accent3)" fill="var(--bg-elev2)"/>
+        <text x="108" y="67" class="label-dim" text-anchor="middle" font-size="8">Q</text>
+        <line x1="100" y1="30" x2="100" y2="55" class="wire"/>
+        <line x1="108" y1="71" x2="108" y2="90" class="wire"/>
+        <polygon points="160,55 160,65 175,60" fill="var(--bg-elev2)" stroke="var(--accent)"/>
+        <line x1="175" y1="55" x2="175" y2="65" stroke="var(--accent)"/>
+        <line x1="155" y1="60" x2="160" y2="60" class="wire"/>
+        <line x1="175" y1="60" x2="220" y2="60" class="wire"/>
+        <line x1="220" y1="60" x2="220" y2="90" class="wire"/>
+        <line x1="220" y1="60" x2="220" y2="30" class="wire"/>
+        <line x1="240" y1="30" x2="265" y2="30" class="wire"/>
+        <text x="270" y="33" class="label-dim">Vout</text>
+        <line x1="10" y1="90" x2="265" y2="90" class="wire"/>
+      </svg>
+      <div class="formula">V_out = V_in · D/(1−D)</div>
+      <div class="desc">Non-inverting. Coupling cap blocks DC. Common in battery-fed wide-V_in regulators.</div>
+      <div class="live" id="liveSEPIC">V_out @ D=0.50, V_in=5.0V → 5.0 V</div>
+      <span class="tag">non-isolated</span><span class="tag both">step up/down</span>
+    </div>
+
+    <!-- ĆUK -->
+    <div class="topo" data-id="cuk" data-tags="cross neg below above">
+      <h4>Ćuk<span class="tag inv">neg</span></h4>
+      <svg viewBox="0 0 280 110" width="100%">
+        <line x1="10" y1="30" x2="10" y2="90" class="wire"/>
+        <text x="6" y="22" class="label-dim">Vin</text>
+        <line x1="10" y1="30" x2="30" y2="30" class="wire"/>
+        <path d="M 30 30 q 8 -10 16 0 q 8 -10 16 0" stroke="var(--fg)" fill="none"/>
+        <line x1="78" y1="30" x2="100" y2="30" class="wire"/>
+        <line x1="100" y1="22" x2="100" y2="38" class="wire" stroke-width="2"/>
+        <line x1="108" y1="22" x2="108" y2="38" class="wire" stroke-width="2"/>
+        <line x1="108" y1="30" x2="160" y2="30" class="wire"/>
+        <rect x="100" y="55" width="16" height="16" stroke="var(--accent3)" fill="var(--bg-elev2)"/>
+        <text x="108" y="67" class="label-dim" text-anchor="middle" font-size="8">Q</text>
+        <line x1="100" y1="30" x2="100" y2="55" class="wire"/>
+        <line x1="108" y1="71" x2="108" y2="90" class="wire"/>
+        <polygon points="160,25 160,35 175,30" fill="var(--bg-elev2)" stroke="var(--accent)"/>
+        <line x1="175" y1="25" x2="175" y2="35" stroke="var(--accent)"/>
+        <line x1="175" y1="30" x2="175" y2="90" class="wire"/>
+        <line x1="175" y1="60" x2="220" y2="60" class="wire"/>
+        <path d="M 220 60 q 8 -10 16 0 q 8 -10 16 0" stroke="var(--fg)" fill="none"/>
+        <text x="270" y="63" class="label-dim">Vout</text>
+        <text x="270" y="76" class="label-dim" fill="var(--warn)">(neg)</text>
+        <line x1="10" y1="90" x2="265" y2="90" class="wire"/>
+      </svg>
+      <div class="formula">V_out = −V_in · D/(1−D)</div>
+      <div class="desc">Inverting. Continuous input and output current → lowest EMI of the family.</div>
+      <div class="live" id="liveCuk">V_out @ D=0.50, V_in=5.0V → −5.0 V</div>
+      <span class="tag">non-isolated</span><span class="tag inv">inverting</span>
+    </div>
+
+    <!-- FLYBACK -->
+    <div class="topo" data-id="flyback" data-tags="iso above below">
+      <h4>Flyback<span class="tag iso">isolated</span></h4>
+      <svg viewBox="0 0 280 110" width="100%">
+        <line x1="10" y1="30" x2="10" y2="90" class="wire"/>
+        <text x="6" y="22" class="label-dim">Vin</text>
+        <line x1="10" y1="30" x2="60" y2="30" class="wire"/>
+        <!-- primary -->
+        <path d="M 60 30 q 8 -10 16 0 q 8 -10 16 0 q 8 -10 16 0" stroke="var(--fg)" fill="none"/>
+        <line x1="108" y1="30" x2="108" y2="55" class="wire"/>
+        <rect x="100" y="55" width="16" height="16" stroke="var(--accent3)" fill="var(--bg-elev2)"/>
+        <text x="108" y="67" class="label-dim" text-anchor="middle" font-size="8">Q</text>
+        <line x1="108" y1="71" x2="108" y2="90" class="wire"/>
+        <!-- isolation gap -->
+        <line x1="130" y1="15" x2="130" y2="95" stroke="var(--accent2)" stroke-dasharray="3,4"/>
+        <!-- secondary -->
+        <path d="M 138 30 q 8 -10 16 0 q 8 -10 16 0 q 8 -10 16 0" stroke="var(--fg)" fill="none"/>
+        <line x1="186" y1="30" x2="195" y2="30" class="wire"/>
+        <polygon points="195,25 195,35 210,30" fill="var(--bg-elev2)" stroke="var(--accent)"/>
+        <line x1="210" y1="25" x2="210" y2="35" stroke="var(--accent)"/>
+        <line x1="210" y1="30" x2="230" y2="30" class="wire"/>
+        <line x1="230" y1="30" x2="230" y2="55" class="wire"/>
+        <line x1="222" y1="55" x2="238" y2="55" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="222" y1="62" x2="238" y2="62" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="230" y1="62" x2="230" y2="90" class="wire"/>
+        <line x1="230" y1="30" x2="265" y2="30" class="wire"/>
+        <text x="270" y="33" class="label-dim">Vout</text>
+        <line x1="10" y1="90" x2="120" y2="90" class="wire"/>
+        <line x1="140" y1="90" x2="265" y2="90" class="wire"/>
+        <text x="130" y="105" class="label-dim" text-anchor="middle" fill="var(--accent2)" font-size="9">isolation</text>
+      </svg>
+      <div class="formula">V_out = N · V_in · D/(1−D)</div>
+      <div class="desc">Transformer-isolated. Used for mains adapters, isolated bias. Wide step-up via N.</div>
+      <div class="live" id="liveFly">V_out @ D=0.50, V_in=5.0V, N=1 → 5.0 V</div>
+      <span class="tag iso">isolated</span><span class="tag">multi-output</span>
+    </div>
+
+  </div>
+
+  <h2>Decision matrix</h2>
+  <table>
+    <tr><th>Topology</th><th>V_out vs V_in</th><th>Polarity</th><th>Isolated?</th><th>Sweet spot</th></tr>
+    <tr><td>Buck</td><td>V_out &lt; V_in</td><td>+</td><td>No</td><td>Simple step-down, &lt; 20V, &gt; 90% η</td></tr>
+    <tr><td>Boost</td><td>V_out &gt; V_in</td><td>+</td><td>No</td><td>Battery → 5V, LED strings, small step-up</td></tr>
+    <tr><td>Inverting BB</td><td>any |V|</td><td>−</td><td>No</td><td>Bias rails for op-amps, GaAs LNAs</td></tr>
+    <tr><td>4-switch BB</td><td>any</td><td>+</td><td>No</td><td>USB-PD, single Li-Ion → 5V</td></tr>
+    <tr><td>SEPIC</td><td>any</td><td>+</td><td>No</td><td>Battery 2–6V → 5V, LED drivers</td></tr>
+    <tr><td>Ćuk</td><td>any |V|</td><td>−</td><td>No</td><td>Low EMI inverting supplies (rare)</td></tr>
+    <tr><td>Flyback</td><td>any (×N)</td><td>± (winding choice)</td><td>Yes</td><td>USB adapters, mains isolation, multi-output</td></tr>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Buck-boost is a family, not one circuit</b> — pick by polarity, isolation needs, and how V_out relates to V_in. Don't reach for a SEPIC if a boost will do.</li>
+    <li><b>Switch count grows with capability</b> — buck (1), boost (1), inv BB (1), SEPIC (1+1 inductor), 4-switch BB (4), flyback (1 + transformer). More parts = more loss, more cost, more complexity.</li>
+    <li><b>Polarity reversal is mechanical, not magical</b> — the inverting BB and Ćuk store energy in the inductor while the input current flows one way, then release it the other way. The diode + ground rearrangement does the polarity flip.</li>
+    <li><b>Isolation costs efficiency</b> — flyback typically hits 75–85% versus 90%+ for non-isolated. You pay for the safety barrier in transformer copper loss and leakage inductance ringing.</li>
+    <li><b>SEPIC's coupling cap is the secret</b> — Cs forces equal DC voltage across the two inductors and provides AC coupling for energy transfer. It must be a low-ESR film or ceramic; electrolytic will dissipate the ripple as heat.</li>
+    <li><b>Wide V_in problem</b> — when V_in could be 3.0 V or 5.5 V and V_out is 5.0 V, you need a topology that crosses. 4-switch buck-boost gives best efficiency; SEPIC is simpler but lower η.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card">
+      <h3>DECISION — pick a topology</h3>
+      <table>
+        <tr><th>Need</th><th>Use</th></tr>
+        <tr><td>V_out &lt; V_in</td><td>Buck</td></tr>
+        <tr><td>V_out &gt; V_in</td><td>Boost</td></tr>
+        <tr><td>V_out crosses V_in</td><td>SEPIC / 4-switch BB</td></tr>
+        <tr><td>Isolation or huge step</td><td>Flyback</td></tr>
+        <tr><td>Need negative rail</td><td>Inverting buck-boost</td></tr>
+      </table>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>Inverting BB</b> — V_out polarity is negative.</li>
+        <li><b>4-switch BB</b> — seamlessly crosses V_in = V_out.</li>
+        <li><b>Ćuk</b> — continuous current at both ports, low EMI.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Flyback ≠ regular xfmr</b> — it's a coupled inductor storing energy in the gap.</li>
+        <li><b>SEPIC inductor pairing</b> — mismatched L1/L2 (or shared core) shifts the operating point; use spec'd coupled inductors.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 6 — Power Electronics</a> ·
+    Topic: Topology Comparison
+  </footer>
+</main>
+<script>
+  const vinEl=document.getElementById('vin');
+  const dEl=document.getElementById('dval');
+  const nEl=document.getElementById('nval');
+
+  function update(){
+    const Vin=parseFloat(vinEl.value);
+    const D=parseFloat(dEl.value);
+    const N=parseFloat(nEl.value);
+
+    document.getElementById('vinRead').textContent = Vin.toFixed(1)+' V';
+    document.getElementById('dRead').textContent = (D*100).toFixed(0)+'%';
+    document.getElementById('nRead').textContent = '1:'+N.toFixed(2);
+
+    const Vbuck = D*Vin;
+    const Vboost = Vin/(1-D);
+    const Vibb = -Vin*D/(1-D);
+    const Vsepic = Vin*D/(1-D);
+    const Vcuk = -Vin*D/(1-D);
+    const Vfly = N*Vin*D/(1-D);
+
+    document.getElementById('liveBuck').textContent =
+      `V_out @ D=${D.toFixed(2)}, V_in=${Vin.toFixed(1)}V → ${Vbuck.toFixed(2)} V`;
+    document.getElementById('liveBoost').textContent =
+      `V_out @ D=${D.toFixed(2)}, V_in=${Vin.toFixed(1)}V → ${Vboost.toFixed(2)} V`;
+    document.getElementById('liveIBB').textContent =
+      `V_out @ D=${D.toFixed(2)}, V_in=${Vin.toFixed(1)}V → ${Vibb.toFixed(2)} V`;
+    document.getElementById('liveBB4').textContent =
+      `Buck range 0..${Vin.toFixed(1)}V | Boost range ${Vin.toFixed(1)}..${(Vin*5).toFixed(0)}V | smooth crossover`;
+    document.getElementById('liveSEPIC').textContent =
+      `V_out @ D=${D.toFixed(2)}, V_in=${Vin.toFixed(1)}V → ${Vsepic.toFixed(2)} V`;
+    document.getElementById('liveCuk').textContent =
+      `V_out @ D=${D.toFixed(2)}, V_in=${Vin.toFixed(1)}V → ${Vcuk.toFixed(2)} V`;
+    document.getElementById('liveFly').textContent =
+      `V_out @ D=${D.toFixed(2)}, V_in=${Vin.toFixed(1)}V, N=${N.toFixed(2)} → ${Vfly.toFixed(2)} V`;
+  }
+  [vinEl,dEl,nEl].forEach(el=>el.addEventListener('input',update));
+
+  function selectNeed(need){
+    document.querySelectorAll('.picker .opt').forEach(o=>{
+      o.classList.toggle('active', o.dataset.need===need);
+    });
+    const messages = {
+      below: 'Step-down: pick <b>Buck</b> (simplest), or <b>4-switch buck-boost</b>/<b>SEPIC</b> if V_in might also drop below target.',
+      above: 'Step-up: pick <b>Boost</b> (simplest), or <b>Flyback</b> if you need isolation or large step-up ratio.',
+      cross: 'V_in crosses V_out: pick <b>4-switch buck-boost</b> (highest η) or <b>SEPIC</b> (simpler, single switch).',
+      neg: 'Negative output: pick <b>Inverting buck-boost</b> (simplest) or <b>Ćuk</b> (lower EMI but more complex).',
+      iso: 'Isolated: pick <b>Flyback</b> for moderate power (≤ 100 W). Higher power uses forward, push-pull, half/full bridge.',
+      any: 'Showing all topologies. Use the V_in/D sliders to compare V_out across the family.'
+    };
+    document.getElementById('answer').innerHTML = messages[need] || '';
+
+    document.querySelectorAll('.topo').forEach(t=>{
+      const tags = t.dataset.tags.split(' ');
+      const match = need==='any' ? true : tags.includes(need);
+      t.classList.toggle('recommended', match);
+    });
+  }
+
+  update();
+  selectNeed('any');
+</script>
+</body>
+</html>

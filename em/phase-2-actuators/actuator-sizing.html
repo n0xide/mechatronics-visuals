@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Actuator Sizing — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px;margin:12px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px}
+  .stat .lbl{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 16px ui-monospace,monospace;color:var(--accent);margin-top:4px}
+  .stat .val.warn{color:var(--warn)}
+  .stat .val.ok{color:var(--accent3)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;
+    font:11px ui-monospace,monospace;background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line)}
+  .badge.ok{background:rgba(163,230,53,0.15);color:var(--accent3);border-color:var(--accent3)}
+  .badge.warn{background:rgba(255,123,114,0.15);color:var(--warn);border-color:var(--warn)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Actuator Sizing — Power, Gearing, Thermal Duty</h1>
+  <p class="lede">Given a required output torque and speed, find the motor + gearbox combo that lands the operating point near peak efficiency and inside the thermal envelope.</p>
+
+  <p>Sizing has three stages. <b>(1) Power requirement</b>: at the load, P = T·ω. You can't deliver more mechanical power than the motor's continuous rating allows, regardless of gearing. <b>(2) Gear-ratio selection</b>: pick N to land the motor's operating point at high efficiency — usually 60–80% of no-load speed for a DC motor. The motor sees torque T_load/N and angular velocity ω_load·N (and reflected inertia J_load/N²). <b>(3) Thermal duty</b>: continuous current is limited by I²R heating. Intermittent operation lets you exceed the continuous limit briefly, with RMS current as the gate: I_rms = I_peak · √(duty), and motor heating is governed by I_rms².</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Required output torque T_load: <span class="readout" id="tlRead">2.0 N·m</span></label>
+      <input id="tl" type="range" min="0.05" max="20" step="0.05" value="2">
+    </div>
+    <div class="control">
+      <label>Required output speed ω_load: <span class="readout" id="wlRead">60 RPM</span></label>
+      <input id="wl" type="range" min="5" max="600" step="5" value="60">
+    </div>
+    <div class="control">
+      <label>Gear ratio N (×): <span class="readout" id="nRead">30</span></label>
+      <input id="n" type="range" min="1" max="200" step="1" value="30">
+    </div>
+    <div class="control">
+      <label>Gearbox efficiency η_gear (%): <span class="readout" id="egRead">85</span></label>
+      <input id="eg" type="range" min="40" max="95" step="1" value="85">
+    </div>
+    <div class="control">
+      <label>Motor type:
+        <select id="mtype">
+          <option value="dc_small">Small DC (Pololu 25D, ~10W cont.)</option>
+          <option value="dc_med" selected>Med DC (Maxon RE25, ~20W cont.)</option>
+          <option value="bldc">BLDC (gimbal MN3110, ~50W cont.)</option>
+        </select>
+      </label>
+    </div>
+    <div class="control">
+      <label>Duty cycle (% on): <span class="readout" id="dRead">100</span></label>
+      <input id="d" type="range" min="5" max="100" step="5" value="100">
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Operating point on the motor's torque-speed curve</h3>
+    <svg id="opSvg" viewBox="0 0 700 320" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <line x1="60" y1="30" x2="60" y2="280" class="axis"/>
+      <line x1="60" y1="280" x2="680" y2="280" class="axis"/>
+      <text x="60" y="20" class="axis-label" text-anchor="middle">T (motor)</text>
+      <text x="685" y="295" class="axis-label">ω (motor)</text>
+      <text x="55" y="285" class="axis-label" text-anchor="end">0</text>
+
+      <!-- Motor torque-speed line -->
+      <line id="tsLine" x1="60" y1="60" x2="680" y2="280" stroke="var(--accent)" stroke-width="2"/>
+      <text x="80" y="55" class="label" fill="var(--accent)">Motor T(ω)</text>
+
+      <!-- Continuous operating region (shaded) -->
+      <rect id="contZone" x="60" y="280" width="620" height="0" fill="rgba(163,230,53,0.08)" stroke="var(--accent3)" stroke-dasharray="3,3" stroke-width="1"/>
+      <text id="contLabel" x="70" y="200" class="label-dim" fill="var(--accent3)">cont. torque limit</text>
+
+      <!-- Sweet spot (60-80% no-load) -->
+      <line id="sweetL" x1="500" y1="30" x2="500" y2="285" stroke="var(--accent2)" stroke-dasharray="3,3"/>
+      <line id="sweetR" x1="620" y1="30" x2="620" y2="285" stroke="var(--accent2)" stroke-dasharray="3,3"/>
+      <text id="sweetLbl" x="560" y="20" class="label-dim" fill="var(--accent2)" text-anchor="middle">sweet spot</text>
+
+      <!-- Operating point -->
+      <circle id="opDot" cx="300" cy="180" r="7" fill="var(--warn)" stroke="var(--bg)" stroke-width="2"/>
+      <text id="opLbl" x="310" y="178" class="label" fill="var(--warn)"></text>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>Motor T(ω) curve</span>
+      <span><span class="swatch" style="background:var(--accent3);opacity:0.4"></span>Continuous torque zone</span>
+      <span><span class="swatch" style="background:var(--accent2);height:1px;border:1px dashed var(--accent2)"></span>Efficiency sweet spot</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>Your operating point</span>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Computed values — load, motor side, thermal</h3>
+    <div class="stat-grid">
+      <div class="stat"><div class="lbl">P_required @ load</div><div class="val" id="statPl">12.6 W</div></div>
+      <div class="stat"><div class="lbl">P_required @ motor</div><div class="val" id="statPm">14.8 W</div></div>
+      <div class="stat"><div class="lbl">T_motor (reflected)</div><div class="val" id="statTm">78 mN·m</div></div>
+      <div class="stat"><div class="lbl">ω_motor</div><div class="val" id="statWm">1800 RPM</div></div>
+      <div class="stat"><div class="lbl">% of no-load ω</div><div class="val" id="statWPct">60%</div></div>
+      <div class="stat"><div class="lbl">I_motor (peak)</div><div class="val" id="statI">1.20 A</div></div>
+      <div class="stat"><div class="lbl">I_rms (thermal)</div><div class="val" id="statIrms">1.20 A</div></div>
+      <div class="stat"><div class="lbl">Status</div><div class="val" id="statBadge"><span class="badge ok">OK</span></div></div>
+    </div>
+    <p style="margin-top:12px;font-size:12px;color:var(--fg-dim)" id="advice"></p>
+  </div>
+
+  <div class="figure">
+    <h3>Power flow diagram</h3>
+    <svg viewBox="0 0 700 180" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <!-- Source -->
+      <rect x="30" y="60" width="100" height="60" fill="var(--bg-elev)" stroke="var(--fg)" stroke-width="1.5"/>
+      <text x="80" y="85" class="label" text-anchor="middle">P_electrical</text>
+      <text x="80" y="100" class="label" text-anchor="middle" id="pelLabel">17.4 W</text>
+
+      <!-- Arrow -->
+      <line x1="130" y1="90" x2="180" y2="90" class="wire" marker-end="url(#mk)"/>
+
+      <!-- Motor -->
+      <rect x="180" y="60" width="110" height="60" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="235" y="83" class="label" text-anchor="middle" fill="var(--accent)">MOTOR</text>
+      <text x="235" y="100" class="label-dim" text-anchor="middle" id="motorEff">η = 85%</text>
+      <text x="235" y="155" class="label-dim" text-anchor="middle" id="motorLoss">heat: 2.6 W</text>
+
+      <!-- Arrow -->
+      <line x1="290" y1="90" x2="340" y2="90" class="wire" marker-end="url(#mk)"/>
+
+      <!-- Gearbox -->
+      <rect x="340" y="60" width="110" height="60" fill="var(--bg-elev)" stroke="var(--accent2)" stroke-width="2"/>
+      <text x="395" y="83" class="label" text-anchor="middle" fill="var(--accent2)">GEARBOX</text>
+      <text x="395" y="100" class="label-dim" text-anchor="middle" id="gearEffLbl">N=30, η=85%</text>
+      <text x="395" y="155" class="label-dim" text-anchor="middle" id="gearLoss">heat: 2.2 W</text>
+
+      <!-- Arrow -->
+      <line x1="450" y1="90" x2="500" y2="90" class="wire" marker-end="url(#mk)"/>
+
+      <!-- Load -->
+      <rect x="500" y="60" width="170" height="60" fill="var(--bg-elev)" stroke="var(--accent3)" stroke-width="2"/>
+      <text x="585" y="83" class="label" text-anchor="middle" fill="var(--accent3)">LOAD</text>
+      <text x="585" y="100" class="label" text-anchor="middle" id="loadLbl">T=2.0 N·m, ω=60 RPM</text>
+      <text x="585" y="113" class="label-dim" text-anchor="middle" id="loadP">P_mech = 12.6 W</text>
+
+      <defs>
+        <marker id="mk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--fg)"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Gear ratio is the most powerful sizing tool</b>. Doubling N halves the torque the motor must produce and doubles its speed — moving the operating point along the curve without changing motor. Most "torque too low" problems are gear-ratio problems.</li>
+    <li><b>Sweet spot is 60–80% of no-load speed</b> for typical DC motors, where efficiency peaks. Far below that, you're current-limited (overheating). Far above, you're voltage-limited (can't deliver torque). Gear so your <i>continuous</i> operating point sits in this band.</li>
+    <li><b>Continuous vs intermittent matters more than peak torque</b>. A motor with 80% duty cycle and 1.2× rated current effectively sees I_rms = 1.2·√0.8 = 1.07× rated — fine. The same motor at 100% duty and 1.2× current is overheating.</li>
+    <li><b>Reflected inertia drops by N²</b>. A 30:1 gearbox makes a 1 kg·m² load look like 1.1 g·m² to the motor — huge for dynamics. This is why robot arms with large reductions accelerate so quickly relative to motor torque.</li>
+    <li><b>Gearbox efficiency is not free</b>. Spur/planetary: 85–95%. Worm: 40–80%. Cycloidal: 75–90%. Harmonic drive: 70–85% but zero backlash. Account for the drop in your P_motor calculation.</li>
+    <li><b>30% torque margin minimum</b>. Real loads have peaks, friction varies, batteries sag. If your calculated motor torque equals exactly the load, you're under-sized. Plan for 1.5×.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Load power</dt><dd><span class="eq">P_L = T_L · ω_L</span></dd>
+        <dt>Motor side</dt><dd><span class="eq">T_m = T_L / (N · η_gear)</span><span class="eq">ω_m = ω_L · N</span></dd>
+        <dt>Reflected J</dt><dd><span class="eq">J_reflected = J_L / N²</span></dd>
+        <dt>Thermal I</dt><dd><span class="eq">I_rms = I_peak · √(duty)</span></dd>
+        <dt>Sweet spot</dt><dd><span class="eq">ω_op ≈ 0.6–0.8 × ω_no_load</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SIZING WORKFLOW</h3>
+      <ul>
+        <li><b>1. P_required</b> — from load T·ω; add 30% margin.</li>
+        <li><b>2. Pick motor</b> — cont. rating ≥ P/η_gear.</li>
+        <li><b>3. Compute N</b> — N = ω_motor_target / ω_load.</li>
+        <li><b>4. Check T_motor</b> — must be &lt; cont. torque at chosen speed.</li>
+        <li><b>5. Verify thermal</b> — I_rms ≤ I_rated.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Sizing for peak torque</b> — your motor melts in steady state.</li>
+        <li><b>Forgetting gearbox losses</b> — a 30:1 worm gives 0.5× the torque you expected.</li>
+        <li><b>Ignoring acceleration torque</b> — for fast motion, T_accel = J·α can dwarf static load torque.</li>
+        <li><b>Skipping duty-cycle math</b> — 50% duty doesn't mean 2× current is safe; it means I_rms gates.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 2 — Actuators</a> ·
+    Topic: Actuator Sizing (power, gearing, thermal duty)
+  </footer>
+</main>
+<script>
+  const tlEl=document.getElementById('tl');
+  const wlEl=document.getElementById('wl');
+  const nEl=document.getElementById('n');
+  const egEl=document.getElementById('eg');
+  const mtypeEl=document.getElementById('mtype');
+  const dEl=document.getElementById('d');
+
+  // Motor presets: {Kt (N·m/A), R (ohm), V (V), I_cont (A), I_stall (A), label}
+  const MOTORS={
+    dc_small: {Kt:0.012, R:1.5, V:12, Icont:1.5, Istall:8, label:'Small DC'},
+    dc_med:   {Kt:0.025, R:0.8, V:24, Icont:2.5, Istall:30, label:'Med DC'},
+    bldc:     {Kt:0.040, R:0.4, V:24, Icont:5.0, Istall:60, label:'BLDC gimbal'}
+  };
+
+  function update(){
+    const Tl=parseFloat(tlEl.value);
+    let wl_rpm=parseFloat(wlEl.value);
+    const N=parseFloat(nEl.value);
+    const eg=parseFloat(egEl.value)/100;
+    const duty=parseFloat(dEl.value)/100;
+    const m=MOTORS[mtypeEl.value];
+
+    document.getElementById('tlRead').textContent = Tl.toFixed(2)+' N·m';
+    document.getElementById('wlRead').textContent = wl_rpm.toFixed(0)+' RPM';
+    document.getElementById('nRead').textContent = N.toFixed(0);
+    document.getElementById('egRead').textContent = (eg*100).toFixed(0);
+    document.getElementById('dRead').textContent = (duty*100).toFixed(0);
+
+    const wl = wl_rpm * 2*Math.PI/60; // rad/s
+    const Pl = Tl * wl;
+    // motor side
+    const Tm = Tl / (N * eg);
+    const wm = wl * N;
+    const Pm = Tm * wm;
+    // From motor equation: I = Tm/Kt; V_required = Kt·wm + I·R; can compute from rated V
+    const I = Tm / m.Kt;
+    const Vneeded = m.Kt*wm + I*m.R;
+    const Pel = m.V * I; // electrical input
+    const motorEff = Pm/Pel;
+    const motorLoss = Pel - Pm;
+    const gearLoss = Pm - Pl;
+    const Wnl = m.V / m.Kt;
+    const wmPct = wm/Wnl;
+
+    // Thermal: I_rms = I*sqrt(duty)
+    const Irms = I*Math.sqrt(duty);
+    const overTorque = Tm > m.Kt*m.Icont; // continuous limit (approx)
+    const overSpeed = wm > Wnl;
+    const overThermal = Irms > m.Icont;
+    const ok = !overTorque && !overSpeed && !overThermal;
+
+    // Stats
+    document.getElementById('statPl').textContent = Pl.toFixed(2)+' W';
+    document.getElementById('statPm').textContent = Pm.toFixed(2)+' W';
+    document.getElementById('statTm').textContent = (Tm*1000).toFixed(0)+' mN·m';
+    document.getElementById('statWm').textContent = (wm*60/(2*Math.PI)).toFixed(0)+' RPM';
+    const wPctEl = document.getElementById('statWPct');
+    wPctEl.textContent = (wmPct*100).toFixed(0)+'%';
+    wPctEl.className = 'val' + (wmPct>=0.55 && wmPct<=0.85 ? ' ok' : (wmPct>1 ? ' warn' : ''));
+    document.getElementById('statI').textContent = I.toFixed(2)+' A';
+    const irmsEl = document.getElementById('statIrms');
+    irmsEl.textContent = Irms.toFixed(2)+' A';
+    irmsEl.className = 'val' + (overThermal ? ' warn' : ' ok');
+    const badge=document.getElementById('statBadge');
+    if(ok){
+      badge.innerHTML = '<span class="badge ok">OK</span>';
+    } else {
+      let reasons=[];
+      if(overTorque) reasons.push('over torque');
+      if(overSpeed) reasons.push('above no-load speed');
+      if(overThermal) reasons.push('thermal');
+      badge.innerHTML = `<span class="badge warn">${reasons.join(', ')}</span>`;
+    }
+
+    // Advice
+    let advice='';
+    if(overSpeed) advice += 'Motor speed exceeds no-load — reduce gear ratio N or raise supply voltage. ';
+    if(overTorque) advice += 'Motor torque demand exceeds continuous limit — increase N or pick a bigger motor. ';
+    if(overThermal) advice += `I_rms (${Irms.toFixed(2)} A) > I_cont (${m.Icont} A) — increase duty cycle margin or upsize motor. `;
+    if(wmPct<0.4) advice += 'Operating well below sweet spot — efficiency suffers. Increase N to bring motor closer to its sweet spot. ';
+    if(wmPct>0.85 && !overSpeed) advice += 'Motor near no-load speed — torque margin is thin; consider lower N. ';
+    if(ok && wmPct>=0.55 && wmPct<=0.85) advice = 'Sweet-spot operation with thermal headroom. Add 30–50% margin for real-world variation.';
+    document.getElementById('advice').textContent = advice;
+
+    // Power flow labels
+    document.getElementById('pelLabel').textContent = Pel.toFixed(2)+' W';
+    document.getElementById('motorEff').textContent = `η = ${(motorEff*100).toFixed(0)}%`;
+    document.getElementById('motorLoss').textContent = `heat: ${Math.max(motorLoss,0).toFixed(2)} W`;
+    document.getElementById('gearEffLbl').textContent = `N=${N.toFixed(0)}, η=${(eg*100).toFixed(0)}%`;
+    document.getElementById('gearLoss').textContent = `heat: ${Math.max(gearLoss,0).toFixed(2)} W`;
+    document.getElementById('loadLbl').textContent = `T=${Tl.toFixed(2)} N·m, ω=${wl_rpm.toFixed(0)} RPM`;
+    document.getElementById('loadP').textContent = `P_mech = ${Pl.toFixed(2)} W`;
+
+    // Update torque-speed diagram
+    const xL=60, xR=680, yT=30, yB=280;
+    const Tstall = m.Kt*m.V/m.R;
+    const Wnl_rpm = Wnl*60/(2*Math.PI);
+    // axes scale: x: 0..Wnl, y: 0..Tstall
+    const xOf = w => xL + Math.min(w/Wnl,1.05)*(xR-xL);
+    const yOf = t => yB - Math.min(t/Tstall,1.05)*(yB-yT);
+    document.getElementById('tsLine').setAttribute('y1', yOf(Tstall));
+    document.getElementById('tsLine').setAttribute('y2', yOf(0));
+
+    // continuous torque zone: rect from y=continuous T down to y=Tstall (low)
+    const Tcont = m.Kt*m.Icont;
+    const yCont = yOf(Tcont);
+    document.getElementById('contZone').setAttribute('y', yCont);
+    document.getElementById('contZone').setAttribute('height', yB-yCont);
+    document.getElementById('contLabel').setAttribute('y', yCont-4);
+    document.getElementById('contLabel').textContent = `cont. torque ≤ ${(Tcont*1000).toFixed(0)} mN·m`;
+
+    // sweet spot bands at 60-80% no-load
+    document.getElementById('sweetL').setAttribute('x1', xOf(0.6*Wnl));
+    document.getElementById('sweetL').setAttribute('x2', xOf(0.6*Wnl));
+    document.getElementById('sweetR').setAttribute('x1', xOf(0.8*Wnl));
+    document.getElementById('sweetR').setAttribute('x2', xOf(0.8*Wnl));
+    document.getElementById('sweetLbl').setAttribute('x', xOf(0.7*Wnl));
+
+    // operating point
+    const opX = xOf(Math.max(wm,0));
+    const opY = yOf(Math.max(Tm,0));
+    document.getElementById('opDot').setAttribute('cx', opX);
+    document.getElementById('opDot').setAttribute('cy', opY);
+    document.getElementById('opDot').setAttribute('fill', ok?'var(--accent3)':'var(--warn)');
+    document.getElementById('opLbl').setAttribute('x', opX+10);
+    document.getElementById('opLbl').setAttribute('y', opY-6);
+    document.getElementById('opLbl').textContent = `op: ${(wm*60/(2*Math.PI)).toFixed(0)} RPM, ${(Tm*1000).toFixed(0)} mN·m`;
+  }
+
+  [tlEl,wlEl,nEl,egEl,mtypeEl,dEl].forEach(el=>el.addEventListener('input',update));
+  update();
+</script>
+</body>
+</html>

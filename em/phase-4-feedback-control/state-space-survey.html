@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>State-space — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>State-space — a survey via the inverted pendulum</h1>
+  <p class="lede">State-space recasts dynamics as <code>ẋ = A·x + B·u</code>, where x is the full state vector
+  (positions and velocities together) and u is the input. The eigenvalues of A are the closed-loop poles
+  in the time domain — placing them where you want is "pole placement." Full-state feedback
+  <code>u = −K·x</code> can stabilise systems that PID alone cannot (the canonical example: an inverted pendulum).</p>
+
+  <h2>Cart-pole: two-state subset (angle and angular velocity)</h2>
+  <p>Linearising around the upright equilibrium gives a 2-state model (we ignore cart position for clarity):
+  <code>x = [θ, θ̇]</code>, input <code>u = F</code> (force on cart). The open-loop A matrix has one
+  positive eigenvalue (the pendulum falls). Choose K so that A − B·K has both eigenvalues in the left half-plane,
+  and the system stabilises.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Initial tilt θ₀ (°)</label>
+      <input type="range" id="th0" min="-30" max="30" step="1" value="15">
+      <span class="readout" id="th0RO">15 °</span>
+    </div>
+    <div class="control">
+      <label>Pole 1 (real, target eigenvalue)</label>
+      <input type="range" id="p1" min="-12" max="-1" step="0.1" value="-4">
+      <span class="readout" id="p1RO">-4.0</span>
+    </div>
+    <div class="control">
+      <label>Pole 2 (real, target eigenvalue)</label>
+      <input type="range" id="p2" min="-12" max="-1" step="0.1" value="-5">
+      <span class="readout" id="p2RO">-5.0</span>
+    </div>
+    <div class="control">
+      <label>Pendulum length L (m)</label>
+      <input type="range" id="L" min="0.3" max="1.2" step="0.02" value="0.6">
+      <span class="readout" id="LRO">0.60 m</span>
+    </div>
+    <div class="control">
+      <label>Control mode</label>
+      <select id="mode">
+        <option value="off">Off (let it fall)</option>
+        <option value="pid">PID on θ only</option>
+        <option value="full" selected>Full-state feedback u = −Kx</option>
+      </select>
+    </div>
+  </section>
+
+  <h2>Phase portrait + pole diagram</h2>
+  <div class="figure">
+    <svg id="figSvg" viewBox="0 0 880 360" width="100%" height="360"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>θ(t) trajectory in state space</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>Closed-loop pole locations</span>
+      <span><span class="swatch" style="background:#ff7b72"></span>Open-loop pole locations</span>
+    </div>
+  </div>
+
+  <h2>Time response</h2>
+  <div class="figure">
+    <svg id="timeSvg" viewBox="0 0 880 220" width="100%" height="220"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>θ (°)</span>
+      <span><span class="swatch" style="background:#a3e635"></span>θ̇ (rad/s)</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>u = control force (N, scaled)</span>
+    </div>
+  </div>
+
+  <div id="summary" class="figure" style="padding:14px 18px;font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>
+
+  <h2>Linearised model</h2>
+  <p>For a pendulum of mass m and length L on a (massless cart), linearised about upright:</p>
+  <pre style="background:var(--bg-elev2);padding:12px;border-radius:6px;color:var(--accent);font-family:ui-monospace,monospace;font-size:13px;overflow-x:auto">
+ẋ = [θ̇]     A = [  0     1  ]     B = [  0   ]
+    [θ̈]         [ g/L    0  ]         [ -1/(mL) ]
+
+eigenvalues of A: λ = ±√(g/L)   →  one POSITIVE → unstable open-loop
+  </pre>
+  <p>Pole placement: pick desired closed-loop eigenvalues λ₁, λ₂ (both negative, real). Then K is computed
+  (Ackermann's formula in textbooks; here the controller forms u = −[k₁ k₂]·x analytically). When applied,
+  <code>A − B·K</code> has eigenvalues at λ₁, λ₂.</p>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Open-loop the pendulum falls.</b> Set mode "off" and watch θ explode. The orange pole on the right-half plane is the offender. PID on θ alone can struggle because PID has no notion of θ̇ as an independent state — it has to estimate it numerically.</li>
+    <li><b>Full-state feedback uses θ̇ as a separate signal.</b> The K matrix has two entries: one weighs θ, the other weighs θ̇. With both states fed back, the controller has the entire phase to work with.</li>
+    <li><b>Moving the target poles to the left = faster, but bigger control force.</b> Slide pole 1 toward −12 and watch u spike. There's no free lunch — fast convergence costs actuator effort.</li>
+    <li><b>The phase portrait is the geometric truth.</b> A stable system spirals (or curves) into the origin. An unstable one runs outward. The closed-loop eigenvalues determine the shape: real → exponential decay, complex → decaying spiral.</li>
+    <li><b>Longer pendulum is easier to stabilise.</b> g/L is smaller, so the unstable open-loop eigenvalue is smaller. Babies can balance a broom; nobody balances a pencil.</li>
+    <li><b>You need a state estimate.</b> Real systems don't measure θ̇ directly; an observer (Luenberger or Kalman) reconstructs it from θ measurements + model. That's the Kalman visual.</li>
+  </ul>
+
+  <h2>State-space vs PID — quick comparison</h2>
+  <table>
+    <thead><tr><th>Aspect</th><th>PID</th><th>State-space</th></tr></thead>
+    <tbody>
+      <tr><td>Plant model</td><td>None (tunes on response)</td><td>Required — A, B, C matrices</td></tr>
+      <tr><td>State count</td><td>Implicit (e, ∫e, de/dt)</td><td>Explicit (full x vector)</td></tr>
+      <tr><td>MIMO support</td><td>Hard — one PID per channel</td><td>Native — K is a matrix</td></tr>
+      <tr><td>Pole placement</td><td>Empirical via tuning</td><td>Direct via Ackermann / LQR</td></tr>
+      <tr><td>Unstable open-loop plant</td><td>Rarely works</td><td>Designed for it</td></tr>
+      <tr><td>Implementation</td><td>~10 lines of code</td><td>Needs matrix math (Eigen, numpy)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>STATE-SPACE FORMULAS</h3>
+      <dl>
+        <dt>Dynamics</dt><dd><span class="eq">ẋ = A·x + B·u</span></dd>
+        <dt>Output</dt><dd><span class="eq">y = C·x + D·u</span></dd>
+        <dt>Closed-loop</dt><dd><span class="eq">ẋ = (A − B·K)·x</span></dd>
+        <dt>Stability</dt><dd>all eigenvalues of (A−BK) have Re &lt; 0</dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>CONTROLLABILITY / OBSERVABILITY</h3>
+      <ul>
+        <li><b>Controllable</b> — rank(C_ctrl) = n where C_ctrl = [B  AB  A²B … Aⁿ⁻¹B]</li>
+        <li><b>Observable</b> — rank(C_obs) = n where C_obs = [C; CA; CA²; … CAⁿ⁻¹]ᵀ</li>
+        <li><b>If not controllable</b> — some states cannot be moved by u; can't stabilise them</li>
+        <li><b>If not observable</b> — some states cannot be inferred from y; need extra sensors</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li><b>Linearisation only valid locally</b> — inverted pendulum model breaks at θ ≳ 30°</li>
+        <li><b>Pole placement uses linear model</b> — large excursions reveal nonlinear behaviour</li>
+        <li><b>Need full state x</b> — usually requires an observer (Kalman filter visual)</li>
+        <li><b>Bad model = bad K</b> — wrong A or B leads to wrong gains; identification matters</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 4 — Feedback Control</a> ·
+    Topic: state-space, pole placement, full-state feedback, inverted pendulum
+  </footer>
+</main>
+<script>
+function ns(tag, attrs={}, parent){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+const g = 9.81;
+let th0 = 15*Math.PI/180, p1 = -4, p2 = -5, Llen = 0.6, mode = 'full';
+const mPend = 0.2;
+
+function makeA(){
+  return [[0,1],[g/Llen,0]];
+}
+function makeB(){
+  return [0, -1/(mPend*Llen)];
+}
+// Compute K so A - BK has eigenvalues p1, p2.
+// For SISO with B=[0; b]: A-BK = [[0, 1], [g/L - b*k2, -b*k1]] ??? Wait, K is a row vector [k1, k2].
+// A - B*K = [[0,1],[g/L, 0]] - [[0],[b]] * [k1, k2] = [[0,1],[g/L - b*k1, -b*k2]]
+// Characteristic: λ² + b·k2·λ + (b·k1 - g/L) = 0
+// Compare with (λ-p1)(λ-p2) = λ² - (p1+p2)λ + p1·p2
+// So: b·k2 = -(p1+p2),  b·k1 - g/L = p1·p2 → k1 = (p1·p2 + g/L)/b, k2 = -(p1+p2)/b
+function computeK(){
+  const b = -1/(mPend*Llen);  // from B[1]
+  return [(p1*p2 + g/Llen)/b, -(p1+p2)/b];
+}
+
+function simulate(){
+  const T = 4, dt = 0.001;
+  const N = Math.floor(T/dt);
+  // Nonlinear pendulum (not just linearised): θ̈ = g/L sin(θ) - u/(mL)  -- u is force on cart
+  let th = th0, thd = 0, I = 0;
+  const K = computeK();
+  const t = new Float32Array(N), thA = new Float32Array(N), thdA = new Float32Array(N), uA = new Float32Array(N);
+  for(let i=0;i<N;i++){
+    const tt = i*dt;
+    let u = 0;
+    if(mode === 'full'){
+      u = -(K[0]*th + K[1]*thd);
+    } else if(mode === 'pid'){
+      // PID on θ only — equivalent to single gain with derivative
+      I += 5*th*dt; if(I>10)I=10; if(I<-10)I=-10;
+      u = -(40*th + 5*thd + I);
+    }
+    // Saturate
+    if(u > 25) u = 25; if(u < -25) u = -25;
+    // Dynamics (nonlinear)
+    const thdd = g/Llen*Math.sin(th) - u/(mPend*Llen);
+    thd += thdd*dt;
+    th += thd*dt;
+    // Clamp to ±90° for plotting sanity
+    if(th > Math.PI/2) th = Math.PI/2;
+    if(th < -Math.PI/2) th = -Math.PI/2;
+    t[i]=tt; thA[i]=th; thdA[i]=thd; uA[i]=u;
+  }
+  return {t, thA, thdA, uA};
+}
+
+function drawFig(){
+  const svg = document.getElementById('figSvg');
+  clear(svg);
+  const W=880, H=360;
+  // Two panels: left phase portrait, right pole map
+  // === Phase portrait ===
+  const PP = {x:30, y:30, w:380, h:300};
+  ns('rect',{x:PP.x,y:PP.y,width:PP.w,height:PP.h,fill:'#0e1116',stroke:'#2a313c',rx:6},svg);
+  ns('text',{x:PP.x+PP.w/2,y:PP.y-8,class:'label','text-anchor':'middle',fill:'#5ec8ff'},svg).textContent='Phase portrait (θ vs θ̇)';
+  // axes through center
+  const cx = PP.x + PP.w/2, cy = PP.y + PP.h/2;
+  ns('line',{x1:PP.x+10,y1:cy,x2:PP.x+PP.w-10,y2:cy,stroke:'#8f99a8'},svg);
+  ns('line',{x1:cx,y1:PP.y+10,x2:cx,y2:PP.y+PP.h-10,stroke:'#8f99a8'},svg);
+  // grid
+  for(let i=-2;i<=2;i++){
+    if(i===0) continue;
+    ns('line',{x1:PP.x+10,y1:cy + i*PP.h/8,x2:PP.x+PP.w-10,y2:cy + i*PP.h/8,stroke:'#222831'},svg);
+    ns('line',{x1:cx + i*PP.w/8,y1:PP.y+10,x2:cx + i*PP.w/8,y2:PP.y+PP.h-10,stroke:'#222831'},svg);
+  }
+  ns('text',{x:PP.x+PP.w-25,y:cy-5,class:'label-dim'},svg).textContent='θ';
+  ns('text',{x:cx+5,y:PP.y+18,class:'label-dim'},svg).textContent='θ̇';
+  // scale
+  const thScale = (PP.w/2-15) / (Math.PI/2);
+  const thdScale = (PP.h/2-15) / 6;
+  const sim = simulate();
+  let path = '';
+  for(let i=0;i<sim.t.length;i+=3){
+    const x = cx + sim.thA[i] * thScale;
+    const y = cy - sim.thdA[i] * thdScale;
+    if(i===0) path = `M ${x},${y}`;
+    else path += ` L ${x},${y}`;
+  }
+  ns('path',{d:path,fill:'none',stroke:'#5ec8ff','stroke-width':2},svg);
+  ns('circle',{cx:cx+th0*thScale,cy:cy,r:4,fill:'#a3e635'},svg);
+  ns('text',{x:cx+th0*thScale,y:cy-8,class:'label-dim','text-anchor':'middle',fill:'#a3e635'},svg).textContent='start';
+  ns('circle',{cx:cx,cy:cy,r:4,fill:'#fff'},svg);
+  ns('text',{x:cx+8,y:cy-8,class:'label-dim'},svg).textContent='target';
+
+  // === Pole map (s-plane) ===
+  const PM = {x:480, y:30, w:370, h:300};
+  ns('rect',{x:PM.x,y:PM.y,width:PM.w,height:PM.h,fill:'#0e1116',stroke:'#2a313c',rx:6},svg);
+  ns('text',{x:PM.x+PM.w/2,y:PM.y-8,class:'label','text-anchor':'middle',fill:'#ffb86c'},svg).textContent='s-plane (poles = eigenvalues)';
+  const cx2 = PM.x + PM.w/2, cy2 = PM.y + PM.h/2;
+  // shaded stable region (Re < 0)
+  ns('rect',{x:PM.x+10,y:PM.y+10,width:PM.w/2-10,height:PM.h-20,fill:'#1c2820',opacity:0.6},svg);
+  ns('rect',{x:cx2,y:PM.y+10,width:PM.w/2-10,height:PM.h-20,fill:'#281c1c',opacity:0.6},svg);
+  ns('text',{x:PM.x+PM.w/4,y:PM.y+24,class:'label-dim','text-anchor':'middle',fill:'#a3e635'},svg).textContent='STABLE (Re < 0)';
+  ns('text',{x:PM.x+3*PM.w/4,y:PM.y+24,class:'label-dim','text-anchor':'middle',fill:'#ff7b72'},svg).textContent='UNSTABLE (Re > 0)';
+  // axes
+  ns('line',{x1:PM.x+10,y1:cy2,x2:PM.x+PM.w-10,y2:cy2,stroke:'#8f99a8'},svg);
+  ns('line',{x1:cx2,y1:PM.y+10,x2:cx2,y2:PM.y+PM.h-10,stroke:'#8f99a8'},svg);
+  // tick numbers
+  const sScale = (PM.w/2-20) / 12;
+  for(let i=-12;i<=12;i+=2){
+    if(i===0) continue;
+    const x = cx2 + i*sScale;
+    ns('line',{x1:x,y1:cy2-3,x2:x,y2:cy2+3,stroke:'#8f99a8'},svg);
+    ns('text',{x,y:cy2+15,class:'label-dim','text-anchor':'middle'},svg).textContent=i.toString();
+  }
+  ns('text',{x:PM.x+PM.w-25,y:cy2-5,class:'label-dim'},svg).textContent='Re(s)';
+  ns('text',{x:cx2+5,y:PM.y+18,class:'label-dim'},svg).textContent='Im(s)';
+  // Open-loop poles
+  const olP = Math.sqrt(g/Llen);
+  ns('text',{x:cx2-olP*sScale,y:cy2+25,class:'label-dim','text-anchor':'middle',fill:'#ff7b72'},svg).textContent='-'+olP.toFixed(2);
+  ns('text',{x:cx2+olP*sScale,y:cy2+25,class:'label-dim','text-anchor':'middle',fill:'#ff7b72'},svg).textContent='+'+olP.toFixed(2);
+  // x markers
+  const xSize = 8;
+  function poleX(svg, cx, cy, color){
+    ns('line',{x1:cx-xSize,y1:cy-xSize,x2:cx+xSize,y2:cy+xSize,stroke:color,'stroke-width':2.5},svg);
+    ns('line',{x1:cx-xSize,y1:cy+xSize,x2:cx+xSize,y2:cy-xSize,stroke:color,'stroke-width':2.5},svg);
+  }
+  poleX(svg, cx2 - olP*sScale, cy2, '#ff7b72');
+  poleX(svg, cx2 + olP*sScale, cy2, '#ff7b72');
+  // Closed-loop target poles
+  if(mode === 'full'){
+    poleX(svg, cx2 + p1*sScale, cy2, '#ffb86c');
+    poleX(svg, cx2 + p2*sScale, cy2, '#ffb86c');
+    ns('text',{x:cx2+p1*sScale,y:cy2-12,class:'label-dim','text-anchor':'middle',fill:'#ffb86c'},svg).textContent='p₁='+p1.toFixed(1);
+    ns('text',{x:cx2+p2*sScale,y:cy2-12,class:'label-dim','text-anchor':'middle',fill:'#ffb86c'},svg).textContent='p₂='+p2.toFixed(1);
+  }
+
+  // Summary
+  const K = computeK();
+  const finalTh = sim.thA[sim.thA.length-1]*180/Math.PI;
+  let stat;
+  if(Math.abs(finalTh) < 1) stat = 'stabilised at upright';
+  else if(Math.abs(finalTh) > 80) stat = 'pendulum fell';
+  else stat = 'oscillating / not converged';
+  document.getElementById('summary').innerHTML =
+    `<b>Linearised model:</b> A = [[0,1],[g/L,0]] = [[0,1],[${(g/Llen).toFixed(2)},0]],  B = [0, ${(-1/(mPend*Llen)).toFixed(2)}]ᵀ<br>` +
+    `<span style="color:var(--accent2)">Computed gain K = [k₁, k₂] = [${K[0].toFixed(2)}, ${K[1].toFixed(2)}] (for desired poles ${p1.toFixed(1)}, ${p2.toFixed(1)})</span><br>` +
+    `<span style="color:var(--accent)">Final θ = ${finalTh.toFixed(2)}° — ${stat}</span><br>` +
+    `<span style="color:var(--fg-dim)">Open-loop eigenvalues: ±√(g/L) = ±${olP.toFixed(2)} (one unstable). Closed-loop A − BK eigenvalues: p₁, p₂ — both placed in left half-plane.</span>`;
+}
+
+function drawTime(){
+  const svg = document.getElementById('timeSvg');
+  clear(svg);
+  const W=880, H=220, PAD_L=50, PAD_R=20, PAD_T=20, PAD_B=30;
+  const tMax = 4;
+  for(let i=0;i<=4;i++){
+    const yy = PAD_T + i/4*(H-PAD_T-PAD_B);
+    ns('line',{x1:PAD_L,y1:yy,x2:W-PAD_R,y2:yy,stroke:'#222831'},svg);
+  }
+  ns('line',{x1:PAD_L,y1:H-PAD_B,x2:W-PAD_R,y2:H-PAD_B,stroke:'#8f99a8'},svg);
+  ns('line',{x1:PAD_L,y1:PAD_T,x2:PAD_L,y2:H-PAD_B,stroke:'#8f99a8'},svg);
+  // zero
+  const y0 = PAD_T + (H-PAD_T-PAD_B)/2;
+  ns('line',{x1:PAD_L,y1:y0,x2:W-PAD_R,y2:y0,stroke:'#3a4150'},svg);
+
+  function xPx(t){ return PAD_L + t/tMax*(W-PAD_L-PAD_R); }
+  // scaled axes (one shared for clarity)
+  const yScale = (H-PAD_T-PAD_B)/2 / 50;  // ±50° / ±50 rad/s scale
+  function yPx(v){ return y0 - v*yScale; }
+
+  for(let i=0;i<=4;i++){
+    ns('text',{x:xPx(i),y:H-PAD_B+18,class:'label-dim','text-anchor':'middle'},svg).textContent=i+'s';
+  }
+  ns('text',{x:PAD_L-5,y:y0-2,class:'label-dim','text-anchor':'end'},svg).textContent='0';
+  ns('text',{x:PAD_L-5,y:PAD_T+10,class:'label-dim','text-anchor':'end'},svg).textContent='+50';
+  ns('text',{x:PAD_L-5,y:H-PAD_B,class:'label-dim','text-anchor':'end'},svg).textContent='-50';
+
+  const sim = simulate();
+  function trace(arr, color, scale){
+    let p = '';
+    for(let i=0;i<sim.t.length;i+=4){
+      const v = arr[i]*scale;
+      if(i===0) p = `M ${xPx(sim.t[i])},${yPx(v)}`;
+      else p += ` L ${xPx(sim.t[i])},${yPx(v)}`;
+    }
+    ns('path',{d:p,fill:'none',stroke:color,'stroke-width':2},svg);
+  }
+  trace(sim.thA, '#5ec8ff', 180/Math.PI);  // deg
+  trace(sim.thdA, '#a3e635', 1);  // rad/s
+  trace(sim.uA, '#ffb86c', 2);  // scaled
+}
+
+function refresh(){ drawFig(); drawTime(); }
+
+document.getElementById('th0').oninput = e=>{ th0=parseFloat(e.target.value)*Math.PI/180; document.getElementById('th0RO').textContent=e.target.value+' °'; refresh(); };
+document.getElementById('p1').oninput = e=>{ p1=parseFloat(e.target.value); document.getElementById('p1RO').textContent=p1.toFixed(1); refresh(); };
+document.getElementById('p2').oninput = e=>{ p2=parseFloat(e.target.value); document.getElementById('p2RO').textContent=p2.toFixed(1); refresh(); };
+document.getElementById('L').oninput = e=>{ Llen=parseFloat(e.target.value); document.getElementById('LRO').textContent=Llen.toFixed(2)+' m'; refresh(); };
+document.getElementById('mode').onchange = e=>{ mode=e.target.value; refresh(); };
+
+refresh();
+</script>
+</body>
+</html>

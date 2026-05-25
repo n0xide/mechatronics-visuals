@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Complex Impedance vs. Frequency — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .toggle-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .toggle-row label{display:flex;align-items:center;gap:4px;background:var(--bg-elev2);
+    padding:4px 8px;border-radius:4px;cursor:pointer;font:12px ui-monospace,monospace;color:var(--fg)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Complex Impedance vs. Frequency</h1>
+  <p class="lede">Resistors, capacitors, and inductors each have a signature on a log-log impedance plot. Resistor is flat. Capacitor slopes down at −20 dB/decade (and sits at −90°). Inductor slopes up at +20 dB/decade (and sits at +90°). Combine them and the curves bend at corner frequencies.</p>
+
+  <h3>What this teaches</h3>
+  <p>Impedance generalizes resistance: <code>Z_R = R</code>, <code>Z_L = jωL</code>, <code>Z_C = 1/(jωC) = −j/(ωC)</code>. Series adds Z; parallel adds Y=1/Z. The straight-line slopes on a log-log plot come straight from those formulas — multiplying ω by 10 multiplies <code>|Z_L|</code> by 10 (one decade up) and divides <code>|Z_C|</code> by 10 (one decade down).</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>R (Ω) — <span class="readout" id="rR">100</span></label>
+      <input type="range" id="sR" min="1" max="10000" step="1" value="100">
+    </div>
+    <div class="control">
+      <label>L (mH) — <span class="readout" id="rL">10</span></label>
+      <input type="range" id="sL" min="0.01" max="100" step="0.01" value="10">
+    </div>
+    <div class="control">
+      <label>C (µF) — <span class="readout" id="rC">1.0</span></label>
+      <input type="range" id="sC" min="0.001" max="100" step="0.001" value="1">
+    </div>
+    <div class="control" style="grid-column:1/-1">
+      <label>Show traces</label>
+      <div class="toggle-row">
+        <label><input type="checkbox" id="tR" checked> R</label>
+        <label><input type="checkbox" id="tL" checked> L</label>
+        <label><input type="checkbox" id="tC" checked> C</label>
+        <label><input type="checkbox" id="tSeries" checked> Series RLC</label>
+        <label><input type="checkbox" id="tParallel"> Parallel RLC</label>
+      </div>
+    </div>
+    <div class="control" style="grid-column:1/-1">
+      <label>Cursor frequency: <span class="readout" id="rFcur">1000</span> Hz</label>
+      <input type="range" id="sFcur" min="0" max="1000" step="1" value="500">
+      <div style="font-size:12px;color:var(--fg-dim);margin-top:4px">
+        |Z_R|=<span class="readout" id="oZR">—</span>Ω &nbsp;
+        |Z_L|=<span class="readout" id="oZL">—</span>Ω &nbsp;
+        |Z_C|=<span class="readout" id="oZC">—</span>Ω &nbsp;
+        |Z_series|=<span class="readout" id="oZS">—</span>Ω ∠<span class="readout" id="oAS">—</span>° &nbsp;
+        |Z_parallel|=<span class="readout" id="oZP">—</span>Ω ∠<span class="readout" id="oAP">—</span>°
+      </div>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="magSvg" viewBox="0 0 720 300" width="100%"></svg>
+    <svg id="phSvg" viewBox="0 0 720 220" width="100%" style="margin-top:8px"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>R (flat)</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>L (rising)</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>C (falling)</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>Series RLC (V-shape)</span>
+      <span><span class="swatch" style="background:#c678dd"></span>Parallel RLC (∧-shape)</span>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Slopes are integer multiples of 20 dB/decade</b> — because |Z_L|=ωL and |Z_C|=1/(ωC) are pure powers of ω. Plot ω on a log axis and powers become straight lines.</li>
+    <li><b>R is the floor of the series RLC</b> — at the resonant frequency f₀ = 1/(2π√LC), L's and C's reactances cancel and only R remains. The V-bottom of the orange/red curve sits exactly at R.</li>
+    <li><b>Parallel RLC inverts the shape</b> — same f₀, but now the curve <i>peaks</i> at R (in an ideal lossless tank, it would peak at R·Q²). At resonance, L and C "swallow" each other and look like an open circuit.</li>
+    <li><b>Phase tells you who's winning</b> — below f₀, the series circuit looks capacitive (−90° → 0°); above f₀, inductive (0° → +90°). The crossover at f₀ is exactly 0°.</li>
+    <li><b>Sliding R doesn't change f₀</b> — only damping. Watch the bottom of the V get sharper as R shrinks (high Q) and rounder as R grows (low Q).</li>
+    <li><b>Move the cursor through f₀</b> — the impedances |Z_L| and |Z_C| in the readout should match exactly when phase crosses zero.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Z_R</dt><dd><span class="eq">Z_R = R</span></dd>
+        <dt>Z_C</dt><dd><span class="eq">Z_C = −j/(ωC)</span></dd>
+        <dt>Z_L</dt><dd><span class="eq">Z_L = jωL</span></dd>
+        <dt>|Z|</dt><dd><span class="eq">|Z| = √(R² + X²)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>C shorts at high f</b> — |Z_C| → 0 as ω → ∞.</li>
+        <li><b>L opens at high f</b> — |Z_L| → ∞ as ω → ∞.</li>
+        <li><b>Phase</b> — R = 0°, C = −90°, L = +90°.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Don't sum magnitudes</b> — sum complex numbers, then take |·|.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 3 — AC Circuit Analysis</a> ·
+    Topic: Complex Impedance
+  </footer>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const sR=$('sR'), sL=$('sL'), sC=$('sC'), sFcur=$('sFcur');
+  const rR=$('rR'), rL=$('rL'), rC=$('rC'), rFcur=$('rFcur');
+  const tR=$('tR'), tL=$('tL'), tC=$('tC'), tSeries=$('tSeries'), tParallel=$('tParallel');
+  const magSvg=$('magSvg'), phSvg=$('phSvg');
+  const oZR=$('oZR'), oZL=$('oZL'), oZC=$('oZC'),
+        oZS=$('oZS'), oAS=$('oAS'), oZP=$('oZP'), oAP=$('oAP');
+
+  // Frequency range: 1 Hz .. 1 MHz (6 decades)
+  const FMIN=1, FMAX=1e6, DECADES=6;
+  // Magnitude range: 1e-2 .. 1e6 Ω (8 decades displayed)
+  const ZMIN=0.01, ZMAX=1e6, MDEC=8;
+
+  // Magnitude plot box
+  const MW=720, MH=300;
+  const ML=60, MR=20, MT=20, MB=40;
+  const MPW = MW-ML-MR, MPH = MH-MT-MB;
+
+  // Phase plot box
+  const PW=720, PH=220;
+  const PL=60, PR=20, PT=20, PB=40;
+  const PPW = PW-PL-PR, PPH = PH-PT-PB;
+
+  function fToX(f){ return ML + (Math.log10(f)-Math.log10(FMIN))/DECADES*MPW; }
+  function zToY(z){
+    if (z<=ZMIN) z=ZMIN;
+    if (z>ZMAX) z=ZMAX;
+    return MT + (Math.log10(ZMAX)-Math.log10(z))/MDEC*MPH;
+  }
+  function fToXp(f){ return PL + (Math.log10(f)-Math.log10(FMIN))/DECADES*PPW; }
+  function angToY(a){
+    // a in degrees, range -180..180
+    return PT + (90 - a)/180 * PPH;
+  }
+
+  function buildMagStatic(){
+    let s='';
+    // vertical decade grid
+    for (let d=0; d<=DECADES; d++){
+      const x = ML + d/DECADES*MPW;
+      s += `<line x1="${x}" y1="${MT}" x2="${x}" y2="${MT+MPH}" class="grid-line"/>`;
+      const labels=['1','10','100','1k','10k','100k','1M'];
+      s += `<text x="${x}" y="${MH-22}" class="axis-label" text-anchor="middle">${labels[d]}</text>`;
+    }
+    // horizontal decade grid for Z
+    const zlabs=['1M','100k','10k','1k','100','10','1','0.1','0.01'];
+    for (let i=0;i<=MDEC;i++){
+      const y = MT + i/MDEC*MPH;
+      s += `<line x1="${ML}" y1="${y}" x2="${ML+MPW}" y2="${y}" class="grid-line"/>`;
+      s += `<text x="${ML-6}" y="${y+4}" class="axis-label" text-anchor="end">${zlabs[i]}</text>`;
+    }
+    // outer axes
+    s += `<line x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT+MPH}" class="axis"/>`;
+    s += `<line x1="${ML}" y1="${MT+MPH}" x2="${ML+MPW}" y2="${MT+MPH}" class="axis"/>`;
+    s += `<text x="${ML+MPW/2}" y="${MH-6}" class="axis-label" text-anchor="middle">frequency (Hz, log) →</text>`;
+    s += `<text x="14" y="${MT+MPH/2}" class="axis-label" text-anchor="middle" transform="rotate(-90 14 ${MT+MPH/2})">|Z| (Ω, log)</text>`;
+    magSvg.innerHTML = s + '<g id="magLayer"></g>';
+  }
+  function buildPhStatic(){
+    let s='';
+    for (let d=0; d<=DECADES; d++){
+      const x = PL + d/DECADES*PPW;
+      s += `<line x1="${x}" y1="${PT}" x2="${x}" y2="${PT+PPH}" class="grid-line"/>`;
+      const labels=['1','10','100','1k','10k','100k','1M'];
+      s += `<text x="${x}" y="${PH-22}" class="axis-label" text-anchor="middle">${labels[d]}</text>`;
+    }
+    const angs=[90,45,0,-45,-90];
+    for (const a of angs){
+      const y = angToY(a);
+      s += `<line x1="${PL}" y1="${y}" x2="${PL+PPW}" y2="${y}" class="grid-line"/>`;
+      s += `<text x="${PL-6}" y="${y+4}" class="axis-label" text-anchor="end">${a}°</text>`;
+    }
+    // zero line
+    s += `<line x1="${PL}" y1="${angToY(0)}" x2="${PL+PPW}" y2="${angToY(0)}" class="axis"/>`;
+    s += `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT+PPH}" class="axis"/>`;
+    s += `<line x1="${PL}" y1="${PT+PPH}" x2="${PL+PPW}" y2="${PT+PPH}" class="axis"/>`;
+    s += `<text x="${PL+PPW/2}" y="${PH-6}" class="axis-label" text-anchor="middle">frequency (Hz, log) →</text>`;
+    s += `<text x="14" y="${PT+PPH/2}" class="axis-label" text-anchor="middle" transform="rotate(-90 14 ${PT+PPH/2})">∠Z (deg)</text>`;
+    phSvg.innerHTML = s + '<g id="phLayer"></g>';
+  }
+  buildMagStatic(); buildPhStatic();
+
+  function complexMul(a,b){ return [a[0]*b[0]-a[1]*b[1], a[0]*b[1]+a[1]*b[0]]; }
+  function complexDiv(a,b){
+    const d = b[0]*b[0]+b[1]*b[1];
+    return [(a[0]*b[0]+a[1]*b[1])/d, (a[1]*b[0]-a[0]*b[1])/d];
+  }
+  function cAdd(a,b){ return [a[0]+b[0], a[1]+b[1]]; }
+  function cMag(a){ return Math.hypot(a[0],a[1]); }
+  function cAng(a){ return Math.atan2(a[1],a[0])*180/Math.PI; }
+
+  function computeAt(f, R, L, C){
+    const w = 2*Math.PI*f;
+    const ZR = [R, 0];
+    const ZL = [0, w*L];
+    const ZC = [0, -1/(w*C)];
+    const Zs = cAdd(cAdd(ZR, ZL), ZC); // series
+    // parallel: 1/Z = 1/R + 1/jwL + jwC ; let's just sum admittances
+    const YR = [1/R, 0];
+    const YL = complexDiv([1,0], ZL); // = [0, -1/(wL)]
+    const YC = complexDiv([1,0], ZC); // = [0, wC]
+    const Y = cAdd(cAdd(YR, YL), YC);
+    const Zp = complexDiv([1,0], Y);
+    return {ZR, ZL, ZC, Zs, Zp};
+  }
+
+  function draw(){
+    const R = +sR.value;
+    const L = +sL.value * 1e-3;     // mH → H
+    const C = +sC.value * 1e-6;     // µF → F
+    rR.textContent = R;
+    rL.textContent = (+sL.value).toFixed(2);
+    rC.textContent = (+sC.value).toFixed(3);
+
+    // cursor freq: sFcur 0..1000 → log f in [FMIN, FMAX]
+    const fCur = FMIN * Math.pow(10, (+sFcur.value)/1000 * DECADES);
+    rFcur.textContent = fCur < 1000 ? fCur.toFixed(1) : fCur < 1e6 ? (fCur/1000).toFixed(2)+'k' : (fCur/1e6).toFixed(2)+'M';
+
+    const N=400;
+    let pR='', pL='', pC='', pS='', pP='';
+    let aR='', aL='', aC='', aS='', aP='';
+    for (let i=0;i<=N;i++){
+      const f = FMIN * Math.pow(10, i/N * DECADES);
+      const w = 2*Math.PI*f;
+      const x = fToX(f);
+      const xp = fToXp(f);
+      const ZRm = R; pR += (i===0?'M':'L') + x.toFixed(1)+' '+zToY(ZRm).toFixed(1)+' ';
+      aR += (i===0?'M':'L') + xp.toFixed(1)+' '+angToY(0).toFixed(1)+' ';
+      const ZLm = w*L; pL += (i===0?'M':'L') + x.toFixed(1)+' '+zToY(ZLm).toFixed(1)+' ';
+      aL += (i===0?'M':'L') + xp.toFixed(1)+' '+angToY(90).toFixed(1)+' ';
+      const ZCm = 1/(w*C); pC += (i===0?'M':'L') + x.toFixed(1)+' '+zToY(ZCm).toFixed(1)+' ';
+      aC += (i===0?'M':'L') + xp.toFixed(1)+' '+angToY(-90).toFixed(1)+' ';
+      const {Zs, Zp} = computeAt(f, R, L, C);
+      pS += (i===0?'M':'L') + x.toFixed(1)+' '+zToY(cMag(Zs)).toFixed(1)+' ';
+      aS += (i===0?'M':'L') + xp.toFixed(1)+' '+angToY(cAng(Zs)).toFixed(1)+' ';
+      pP += (i===0?'M':'L') + x.toFixed(1)+' '+zToY(cMag(Zp)).toFixed(1)+' ';
+      aP += (i===0?'M':'L') + xp.toFixed(1)+' '+angToY(cAng(Zp)).toFixed(1)+' ';
+    }
+
+    let mL='', pL_str='';
+    if (tR.checked){ mL += `<path d="${pR}" stroke="var(--accent)" stroke-width="2" fill="none"/>`; pL_str += `<path d="${aR}" stroke="var(--accent)" stroke-width="2" fill="none"/>`; }
+    if (tL.checked){ mL += `<path d="${pL}" stroke="var(--accent2)" stroke-width="2" fill="none"/>`; pL_str += `<path d="${aL}" stroke="var(--accent2)" stroke-width="2" fill="none"/>`; }
+    if (tC.checked){ mL += `<path d="${pC}" stroke="var(--accent3)" stroke-width="2" fill="none"/>`; pL_str += `<path d="${aC}" stroke="var(--accent3)" stroke-width="2" fill="none"/>`; }
+    if (tSeries.checked){ mL += `<path d="${pS}" stroke="var(--warn)" stroke-width="2.5" fill="none"/>`; pL_str += `<path d="${aS}" stroke="var(--warn)" stroke-width="2.5" fill="none"/>`; }
+    if (tParallel.checked){ mL += `<path d="${pP}" stroke="#c678dd" stroke-width="2.5" fill="none"/>`; pL_str += `<path d="${aP}" stroke="#c678dd" stroke-width="2.5" fill="none"/>`; }
+
+    // resonance marker
+    const f0 = 1/(2*Math.PI*Math.sqrt(L*C));
+    if (f0>=FMIN && f0<=FMAX){
+      const xf0m = fToX(f0), xf0p = fToXp(f0);
+      mL += `<line x1="${xf0m}" y1="${MT}" x2="${xf0m}" y2="${MT+MPH}" stroke="var(--fg-dim)" stroke-width="1" stroke-dasharray="4,3"/>`;
+      mL += `<text x="${xf0m+4}" y="${MT+12}" class="axis-label">f₀=${f0.toFixed(0)} Hz</text>`;
+      pL_str += `<line x1="${xf0p}" y1="${PT}" x2="${xf0p}" y2="${PT+PPH}" stroke="var(--fg-dim)" stroke-width="1" stroke-dasharray="4,3"/>`;
+    }
+
+    // cursor line
+    const xcM = fToX(fCur), xcP = fToXp(fCur);
+    mL += `<line x1="${xcM}" y1="${MT}" x2="${xcM}" y2="${MT+MPH}" stroke="var(--fg-bright)" stroke-width="1" opacity="0.6"/>`;
+    pL_str += `<line x1="${xcP}" y1="${PT}" x2="${xcP}" y2="${PT+PPH}" stroke="var(--fg-bright)" stroke-width="1" opacity="0.6"/>`;
+
+    document.getElementById('magLayer').innerHTML = mL;
+    document.getElementById('phLayer').innerHTML = pL_str;
+
+    // readouts
+    const v = computeAt(fCur, R, L, C);
+    const w = 2*Math.PI*fCur;
+    oZR.textContent = R.toFixed(1);
+    oZL.textContent = (w*L).toFixed(2);
+    oZC.textContent = (1/(w*C)).toFixed(2);
+    oZS.textContent = cMag(v.Zs).toFixed(2);
+    oAS.textContent = cAng(v.Zs).toFixed(1);
+    oZP.textContent = cMag(v.Zp).toFixed(2);
+    oAP.textContent = cAng(v.Zp).toFixed(1);
+  }
+
+  for (const el of [sR,sL,sC,sFcur,tR,tL,tC,tSeries,tParallel]) el.addEventListener('input', draw);
+  draw();
+})();
+</script>
+</body>
+</html>

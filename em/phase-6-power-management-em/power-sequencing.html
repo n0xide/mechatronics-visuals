@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Power Sequencing &mdash; visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .out-status{padding:10px 14px;border-radius:6px;
+    font:13px ui-monospace,monospace;margin:10px 0}
+  .out-status.ok{background:rgba(163,230,53,0.10);border:1px solid var(--accent3);color:var(--accent3)}
+  .out-status.warn{background:rgba(255,184,108,0.10);border:1px solid var(--accent2);color:var(--accent2)}
+  .out-status.fault{background:rgba(255,123,114,0.10);border:1px solid var(--warn);color:var(--warn)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+</style>
+</head>
+<body>
+<main>
+  <h1>Power Sequencing on Boot</h1>
+  <p class="lede">Which rail comes up first? Analog before digital, core before I/O, supervisor before MCU release. Brown-out, slow-start, POR.</p>
+
+  <p>Multi-rail systems can't all turn on at once. If the MCU comes up before its analog reference is stable, the first ADC reads are garbage. If a 3.3&nbsp;V I/O rail comes up before the 1.2&nbsp;V core, the I/O pads back-bias the substrate and latchup is possible. If the MCU's RESET line releases before the 3.3&nbsp;V supply has settled within tolerance, code starts executing in undefined memory. <b>Power sequencing</b> is the contract between rails: the order they ramp, how long after each other, and who tells the MCU it's safe to start.</p>
+
+  <div class="controls">
+    <div class="control">
+      <label>Sequencing strategy</label>
+      <select id="strategy">
+        <option value="ordered">Ordered (slow-start chained, recommended)</option>
+        <option value="concurrent">Concurrent (all rails enable together)</option>
+        <option value="broken">Broken (I/O before core, no supervisor)</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Supervisor delay: <span class="readout" id="supR">100 ms</span></label>
+      <input id="sup" type="range" min="10" max="500" step="10" value="100">
+    </div>
+    <div class="control">
+      <label>Brown-out threshold: <span class="readout" id="botR">2.8 V</span></label>
+      <input id="bot" type="range" min="1.0" max="3.0" step="0.05" value="2.8">
+    </div>
+    <div class="control">
+      <label>Battery V (drop test): <span class="readout" id="vinR">11.1 V</span></label>
+      <input id="vin" type="range" min="2.0" max="14" step="0.1" value="11.1">
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Boot timing &mdash; rails &amp; RESET line</h3>
+    <svg id="seqSvg" viewBox="0 0 940 360" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <line x1="80" y1="20" x2="80" y2="330" class="axis"/>
+      <line x1="80" y1="330" x2="920" y2="330" class="axis"/>
+      <text x="920" y="346" class="axis-label" text-anchor="end">t (ms)</text>
+      <text x="40" y="22" class="axis-label">Rails</text>
+
+      <!-- gridlines time -->
+      <line x1="80"  y1="20" x2="80"  y2="330" stroke="var(--grid)"/>
+      <line x1="248" y1="20" x2="248" y2="330" stroke="var(--grid)" stroke-dasharray="2,3"/>
+      <line x1="416" y1="20" x2="416" y2="330" stroke="var(--grid)" stroke-dasharray="2,3"/>
+      <line x1="584" y1="20" x2="584" y2="330" stroke="var(--grid)" stroke-dasharray="2,3"/>
+      <line x1="752" y1="20" x2="752" y2="330" stroke="var(--grid)" stroke-dasharray="2,3"/>
+      <text x="248" y="346" class="label-dim" text-anchor="middle">50</text>
+      <text x="416" y="346" class="label-dim" text-anchor="middle">100</text>
+      <text x="584" y="346" class="label-dim" text-anchor="middle">150</text>
+      <text x="752" y="346" class="label-dim" text-anchor="middle">200</text>
+      <text x="920" y="346" class="label-dim" text-anchor="middle">250</text>
+
+      <!-- Rail rows -->
+      <g id="rowVbat">
+        <text x="75" y="55" class="label" text-anchor="end" fill="var(--accent3)">V_bat</text>
+        <line x1="80" y1="55" x2="920" y2="55" stroke="var(--grid)"/>
+        <polyline id="trVbat" class="trace" stroke="var(--accent3)" points=""/>
+      </g>
+      <g id="rowCore">
+        <text x="75" y="105" class="label" text-anchor="end" fill="var(--accent)">1.2V core</text>
+        <line x1="80" y1="105" x2="920" y2="105" stroke="var(--grid)"/>
+        <polyline id="trCore" class="trace" stroke="var(--accent)" points=""/>
+      </g>
+      <g id="row33">
+        <text x="75" y="155" class="label" text-anchor="end" fill="var(--accent)">3.3V dig</text>
+        <line x1="80" y1="155" x2="920" y2="155" stroke="var(--grid)"/>
+        <polyline id="tr33" class="trace" stroke="var(--accent)" points=""/>
+      </g>
+      <g id="row33a">
+        <text x="75" y="205" class="label" text-anchor="end" fill="var(--accent2)">3.3V ana</text>
+        <line x1="80" y1="205" x2="920" y2="205" stroke="var(--grid)"/>
+        <polyline id="tr33a" class="trace" stroke="var(--accent2)" points=""/>
+      </g>
+      <g id="row5">
+        <text x="75" y="255" class="label" text-anchor="end" fill="var(--accent)">5V logic</text>
+        <line x1="80" y1="255" x2="920" y2="255" stroke="var(--grid)"/>
+        <polyline id="tr5" class="trace" stroke="var(--accent)" points=""/>
+      </g>
+      <g id="rowRst">
+        <text x="75" y="305" class="label" text-anchor="end" fill="var(--warn)">RESET#</text>
+        <line x1="80" y1="305" x2="920" y2="305" stroke="var(--grid)"/>
+        <polyline id="trRst" class="trace" stroke="var(--warn)" points=""/>
+      </g>
+
+      <!-- BOR threshold marker (overlay on 3.3V dig row) -->
+      <line id="borLine" x1="80" y1="148" x2="920" y2="148" stroke="var(--warn)" stroke-dasharray="2,3" opacity="0.5"/>
+      <text x="925" y="151" class="label-dim" fill="var(--warn)">V_BOR</text>
+    </svg>
+    <div class="out-status ok" id="seqStatus">All rails sequenced cleanly. RESET released after supervisor delay. Safe boot.</div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Core before I/O.</b> The 1.2&nbsp;V core has to come up before the 3.3&nbsp;V I/O pads, or the I/O pads pull current through the I/O-to-core protection diodes &mdash; latchup risk on some processes. Most modern SoCs have a tolerance window (a few hundred mV), but the design rule is "core first."</li>
+    <li><b>RESET is the last signal to release.</b> Even if all rails are up, the MCU must be held in reset until everything is stable. A supervisor IC (or the supervisor inside a PMIC) watches all rails; only when every monitored rail is in spec does it release the active-low RESET pin.</li>
+    <li><b>Brown-out detector catches dips during operation, not just boot.</b> If V_in sags below the BOR threshold mid-flight (e.g., motor inrush pulls the bus down), the BOR re-asserts RESET. This is a feature, not a fault &mdash; better to reset than to execute on collapsing rails.</li>
+    <li><b>Slow-start ramps the inrush.</b> A 1000&nbsp;&micro;F bulk cap on a 5&nbsp;V rail charges instantly if you slam the converter on &mdash; peak current is limited only by the inductor. Soft-start (an RC on the enable pin, or built into the converter) ramps V_out over 1&minus;10&nbsp;ms, capping I_inrush to ~C&middot;dV/dt.</li>
+    <li><b>Concurrent enable is risky but common.</b> If you tie all the EN pins together, rails come up roughly together &mdash; usually OK if all converters have built-in soft-start and the MCU's POR window is wide. The "broken" mode here shows what happens when 3.3&nbsp;V wins the race against 1.2&nbsp;V.</li>
+    <li><b>The supervisor delay is not optional.</b> Even after rails are nominally in spec, the MCU needs time for PLL lock, flash readout, and bootloader handoff. 50&minus;200&nbsp;ms of "stable" before RESET release is standard.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Inrush I</dt><dd><span class="eq">I = C&middot;dV/dt</span></dd>
+        <dt>Soft-start t</dt><dd><span class="eq">t = C_ss&middot;V_ref/I_ss</span></dd>
+        <dt>BOR margin</dt><dd><span class="eq">V_BOR &lt; V_nom &minus; ripple</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SEQ RULES</h3>
+      <ul>
+        <li><b>Core before I/O</b> &mdash; or coincident within tolerance.</li>
+        <li><b>Analog after digital settles</b> &mdash; let switching transients pass.</li>
+        <li><b>RESET released last</b>, after supervisor sees all rails good.</li>
+        <li><b>Power-down: reverse order</b>, or all-at-once if shut down is unrecoverable anyway.</li>
+        <li><b>Soft-start on every rail with &gt;100&nbsp;&micro;F bulk.</b></li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>No supervisor, MCU starts on dirty rails</b> &mdash; sporadic boot fails on cold start.</li>
+        <li><b>Capacitor inrush trips fuse</b> &mdash; 5&nbsp;A fuse, 2200&nbsp;&micro;F cap, no soft-start &rarr; nuisance blow.</li>
+        <li><b>BOR set too low</b> &mdash; MCU runs on collapsing rail before BOR catches it; corrupt EEPROM writes.</li>
+        <li><b>BOR set too high</b> &mdash; can't operate at low end of battery range; cuts runtime.</li>
+        <li><b>Wrong power-down order</b> &mdash; analog ref collapses, MCU writes garbage flash on power-fail.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 6 &mdash; Power Management for EM Systems</a> &middot;
+    Topic: Power Sequencing on Boot
+  </footer>
+</main>
+<script>
+  // Coordinate model:
+  //   x: 80..920 -> 0..250 ms
+  //   each rail occupies 50 px row, line at y, ramps up to y-30 (full rail)
+  function tx(ms){ return 80 + (920-80)*ms/250; }
+  function rampY(yBase, frac){ return yBase - 30*frac; }
+
+  function rampUpPolyline(yBase, t_start, t_dur, vMax){
+    // generate points: flat low until t_start, linear ramp to vMax over t_dur, flat hi after
+    const pts=[];
+    pts.push(`${tx(0)},${yBase}`);
+    pts.push(`${tx(t_start)},${yBase}`);
+    pts.push(`${tx(t_start+t_dur)},${rampY(yBase, vMax)}`);
+    pts.push(`${tx(250)},${rampY(yBase, vMax)}`);
+    return pts.join(' ');
+  }
+  function squarePolyline(yBase, segments){
+    // segments: array of {t, hi} - state changes
+    const pts=[];
+    pts.push(`${tx(0)},${rampY(yBase, segments[0].hi)}`);
+    for(let i=0;i<segments.length;i++){
+      const t = segments[i].t;
+      pts.push(`${tx(t)},${rampY(yBase, segments[i-1]?segments[i-1].hi:segments[0].hi)}`);
+      pts.push(`${tx(t)},${rampY(yBase, segments[i].hi)}`);
+    }
+    pts.push(`${tx(250)},${rampY(yBase, segments[segments.length-1].hi)}`);
+    return pts.join(' ');
+  }
+
+  function update(){
+    const strat = document.getElementById('strategy').value;
+    const supDelay = parseFloat(document.getElementById('sup').value);
+    const bor = parseFloat(document.getElementById('bot').value);
+    const vin = parseFloat(document.getElementById('vin').value);
+
+    document.getElementById('supR').textContent = supDelay+' ms';
+    document.getElementById('botR').textContent = bor.toFixed(2)+' V';
+    document.getElementById('vinR').textContent = vin.toFixed(1)+' V';
+
+    // V_bat trace — fixed
+    document.getElementById('trVbat').setAttribute('points',
+      rampUpPolyline(55, 0, 5, Math.min(1, vin/14)));
+
+    // Rail timing per strategy
+    let coreStart=10, coreDur=15;
+    let dig33Start=25, dig33Dur=10;
+    let ana33Start=40, ana33Dur=10;
+    let logic5Start=15, logic5Dur=15;
+
+    if(strat==='concurrent'){
+      coreStart=10; dig33Start=10; ana33Start=10; logic5Start=10;
+      coreDur=20; dig33Dur=20; ana33Dur=20; logic5Dur=20;
+    } else if(strat==='broken'){
+      coreStart=40; coreDur=20; // late!
+      dig33Start=10; dig33Dur=15; // I/O before core - bad
+      ana33Start=15; ana33Dur=15; logic5Start=10; logic5Dur=15;
+    }
+
+    document.getElementById('trCore').setAttribute('points',
+      rampUpPolyline(105, coreStart, coreDur, 1));
+    document.getElementById('tr33').setAttribute('points',
+      rampUpPolyline(155, dig33Start, dig33Dur, 1));
+    document.getElementById('tr33a').setAttribute('points',
+      rampUpPolyline(205, ana33Start, ana33Dur, 1));
+    document.getElementById('tr5').setAttribute('points',
+      rampUpPolyline(255, logic5Start, logic5Dur, 1));
+
+    // RESET: held low until last rail stable + supDelay, then high
+    const rallyDone = Math.max(coreStart+coreDur, dig33Start+dig33Dur,
+                              ana33Start+ana33Dur, logic5Start+logic5Dur);
+    let rstHi_t = rallyDone + supDelay;
+    if(strat==='broken') rstHi_t = Math.min(rstHi_t, 25); // bad: releases early without supervisor
+
+    document.getElementById('trRst').setAttribute('points',
+      squarePolyline(305, [{t:0,hi:0},{t:rstHi_t,hi:0},{t:rstHi_t,hi:1}]));
+
+    // BOR line - mapped to 3.3V dig row
+    const borFrac = bor/3.3;
+    const borY = rampY(155, borFrac);
+    document.getElementById('borLine').setAttribute('y1', borY);
+    document.getElementById('borLine').setAttribute('y2', borY);
+
+    // Status
+    const status = document.getElementById('seqStatus');
+    let msg, cls;
+    if(strat==='ordered'){
+      msg=`All rails sequenced cleanly. Core (${coreStart}&minus;${coreStart+coreDur}ms) before I/O (${dig33Start}&minus;${dig33Start+dig33Dur}ms). Supervisor releases RESET at ${rstHi_t}ms. Safe boot.`;
+      cls='ok';
+    } else if(strat==='concurrent'){
+      msg=`Concurrent enable. All rails ramp together. Works if soft-start present and MCU POR window covers race. RESET released at ${rstHi_t}ms.`;
+      cls='warn';
+    } else {
+      msg=`BROKEN: 3.3V I/O at ${dig33Start}ms but core not up until ${coreStart}ms. Latchup risk. RESET released early without supervisor &mdash; MCU may boot before rails stable.`;
+      cls='fault';
+    }
+    if(vin < bor){
+      msg = `Brown-out: V_in=${vin.toFixed(1)}V below BOR=${bor}V threshold. RESET asserted. MCU held off.`;
+      cls='fault';
+    }
+    status.className='out-status '+cls;
+    status.innerHTML=msg;
+  }
+  ['strategy','sup','bot','vin'].forEach(id=>{
+    document.getElementById(id).addEventListener('input',update);
+  });
+  update();
+</script>
+</body>
+</html>

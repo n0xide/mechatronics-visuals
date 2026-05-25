@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Axial Stress & Strain — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  /* Common SVG conventions */
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .summary{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;
+    padding:10px 14px;margin:10px 0;font:13px ui-monospace,monospace;line-height:1.7}
+  .summary b{color:var(--fg-bright)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Axial Stress & Strain</h1>
+  <p class="lede">Pull on a bar. The cross-section feels a uniform normal stress σ = F/A. The whole
+  bar stretches by δ = FL/(AE). Hooke's law σ = Eε ties them together. Stress, strain, and
+  deformation are three views of the same elastic story.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Applied force F = <span class="readout" id="rF">10.0</span> kN</label>
+      <input type="range" id="F" min="-30" max="30" step="0.5" value="10">
+    </div>
+    <div class="control">
+      <label>Cross-section A = <span class="readout" id="rA">100</span> mm²</label>
+      <input type="range" id="A" min="20" max="400" step="5" value="100">
+    </div>
+    <div class="control">
+      <label>Length L = <span class="readout" id="rL">500</span> mm</label>
+      <input type="range" id="L" min="100" max="1000" step="10" value="500">
+    </div>
+    <div class="control">
+      <label>Material E</label>
+      <select id="mat">
+        <option value="200">Steel (E=200 GPa, α=12e-6 /°C)</option>
+        <option value="69">Aluminum (E=69 GPa, α=23.6e-6 /°C)</option>
+        <option value="110">Brass (E=110 GPa, α=19e-6 /°C)</option>
+        <option value="2.2">PETG (E=2.2 GPa, α=68e-6 /°C)</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="bar" viewBox="0 0 880 280" width="100%" height="280"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>Unloaded bar</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Deformed bar (δ ×50 visually)</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>Saint-Venant zone (≈1 width from load)</span>
+      <span><span class="swatch" style="background:#ff7b72"></span>Point Q (tracks displacement)</span>
+    </div>
+  </div>
+
+  <div class="summary" id="results"></div>
+
+  <h2>Thermal strain (no mechanical load)</h2>
+  <p class="lede">Heat a bar by ΔT. If free, it lengthens by ε_T·L. If clamped between rigid walls,
+  it can't lengthen — so it pushes back with a compressive stress σ = −E·α·ΔT.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Temperature change ΔT = <span class="readout" id="rT">30</span> °C</label>
+      <input type="range" id="T" min="-50" max="100" step="1" value="30">
+    </div>
+    <div class="control">
+      <label>Constraint</label>
+      <select id="con">
+        <option value="free">Free to expand</option>
+        <option value="fixed">Clamped both ends (constrained)</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="thermal" viewBox="0 0 880 200" width="100%" height="200"></svg>
+  </div>
+
+  <div class="summary" id="thermal-results"></div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>σ = F/A is an average.</b> True over the bar's bulk, but near the loaded ends the stress is non-uniform — fibers right next to the bolt feel concentrated stress, fibers in between don't.</li>
+    <li><b>Saint-Venant's principle:</b> beyond roughly one cross-section width from the point of load application, the stress distribution is uniform. The orange shaded zones are the "don't trust σ=F/A" regions.</li>
+    <li><b>Stiffness AE/L</b> — the bar acts like a spring with k = AE/L. Stiffer material (E↑), fatter cross-section (A↑), or shorter bar (L↓) all reduce stretch under the same load.</li>
+    <li><b>δ scales linearly with F</b> in the elastic region. Double the load → double the stretch. Beyond yield (not modeled here), behavior is non-linear.</li>
+    <li><b>Thermal strain is independent of E.</b> A free bar expands by ε = α·ΔT no matter how stiff the material is. Stiffness only matters once the bar is constrained — then σ = −E·α·ΔT, and a *stiffer* material develops *more* thermal stress for the same ΔT.</li>
+    <li><b>Aluminum's α is roughly 2× steel's,</b> so an Al standoff inside a heated cyberdeck stretches twice as much as a steel one — important when you bolt dissimilar materials together (galvanic mismatch + thermal-strain mismatch).</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>stress</dt><dd><span class="eq">σ = F / A</span></dd>
+        <dt>strain</dt><dd><span class="eq">ε = δ / L</span></dd>
+        <dt>elongation</dt><dd><span class="eq">δ = F·L / (A·E)</span></dd>
+        <dt>thermal ε</dt><dd><span class="eq">ε_T = α · ΔT</span></dd>
+        <dt>thermal σ</dt><dd><span class="eq">σ = −E · α · ΔT</span><span class="eq-note">(if constrained)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>Saint-Venant</b> — σ uniform beyond ~1 cross-section width from load.</li>
+        <li><b>α_steel ≈ 12e-6 /°C</b> · <b>α_Al ≈ 23e-6 /°C</b>.</li>
+        <li><b>k = AE/L</b> — bar is a spring.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>δ=FL/AE near a discontinuity</b> — invalid; use FEA or stress conc factor.</li>
+        <li><b>Thermal stress with no constraint</b> — bar just expands; σ_T = 0.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 4 — Mechanics of Materials</a> ·
+    Topic: Axial stress, strain, Hooke's law, thermal stress
+  </footer>
+</main>
+<script>
+// ---- Axial bar visual ----
+const svg = document.getElementById('bar');
+function ns(tag, attrs={}, parent=svg){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+function render(){
+  clear(svg);
+  const F = parseFloat(document.getElementById('F').value);   // kN
+  const A = parseFloat(document.getElementById('A').value);   // mm²
+  const L = parseFloat(document.getElementById('L').value);   // mm
+  const E = parseFloat(document.getElementById('mat').value); // GPa
+  document.getElementById('rF').textContent = F.toFixed(1);
+  document.getElementById('rA').textContent = A.toFixed(0);
+  document.getElementById('rL').textContent = L.toFixed(0);
+
+  // Stress (MPa) = (F kN * 1000 N/kN) / A mm² = F*1000/A in N/mm² = F*1000/A MPa
+  const sigma = (F*1000)/A;                  // MPa
+  const eps = sigma / (E*1000);              // strain (E GPa = E*1000 MPa)
+  const delta = eps * L;                     // mm
+
+  // Layout
+  const x0 = 120, x1 = 760, y0 = 90, h0 = 50;
+  const Lpx = x1 - x0;
+  // bar width in px corresponds to model A by sqrt
+  const barH = Math.max(18, Math.min(70, Math.sqrt(A)*4));
+  const yMid = y0 + h0/2;
+  const yTop = yMid - barH/2, yBot = yMid + barH/2;
+
+  // Saint-Venant zone width ~ barH (1 cross-section width from each end)
+  const svW = barH * 1.5;
+
+  // Unloaded outline (faint)
+  ns('rect', {x:x0, y:yTop, width:Lpx, height:barH,
+    fill:'none', stroke:'#5ec8ff', 'stroke-width':1, 'stroke-dasharray':'4 4', opacity:0.55});
+
+  // Walls / mounts on the left side
+  for(let i=0;i<6;i++){
+    ns('line',{x1:x0-12, y1:yTop+i*(barH/5), x2:x0, y2:yTop+i*(barH/5),
+      stroke:'#8f99a8', 'stroke-width':1.5});
+  }
+  ns('line',{x1:x0, y1:yTop-6, x2:x0, y2:yBot+6,
+    stroke:'#8f99a8', 'stroke-width':2});
+
+  // Deformed bar: scale δ to be visible (×50 visual amplification, capped)
+  const visScale = 50;
+  const dPx = Math.max(-100, Math.min(120, delta * visScale * 0.1));
+  // Right edge moves by dPx
+  const xRight = x1 + dPx;
+
+  // Deformed outline (solid, color depends on sign)
+  const col = F >= 0 ? '#a3e635' : '#ff7b72';
+  ns('rect', {x:x0, y:yTop, width:xRight-x0, height:barH,
+    fill:col, 'fill-opacity':0.18, stroke:col, 'stroke-width':2});
+
+  // Saint-Venant zones
+  ns('rect',{x:x0, y:yTop, width:svW, height:barH,
+    fill:'#ffb86c', 'fill-opacity':0.1, stroke:'none'});
+  ns('rect',{x:xRight-svW, y:yTop, width:svW, height:barH,
+    fill:'#ffb86c', 'fill-opacity':0.1, stroke:'none'});
+
+  // Force arrow at right
+  const arrowLen = Math.min(80, Math.abs(F)*4);
+  const dir = F >= 0 ? 1 : -1;
+  // Arrow body
+  ns('line',{x1:xRight, y1:yMid, x2:xRight + dir*arrowLen, y2:yMid,
+    stroke:'#ffb86c', 'stroke-width':3});
+  // arrowhead
+  ns('polygon',{points:`${xRight + dir*arrowLen},${yMid} ${xRight + dir*(arrowLen-10)},${yMid-6} ${xRight + dir*(arrowLen-10)},${yMid+6}`,
+    fill:'#ffb86c'});
+  ns('text',{x:xRight + dir*arrowLen + dir*8, y:yMid-10,
+    'text-anchor': dir>0?'start':'end', class:'label', fill:'#ffb86c'})
+    .textContent = `F = ${F.toFixed(1)} kN`;
+
+  // Length dimension
+  ns('line',{x1:x0, y1:yBot+30, x2:xRight, y2:yBot+30, stroke:'#8f99a8', 'stroke-width':1});
+  ns('line',{x1:x0, y1:yBot+25, x2:x0, y2:yBot+35, stroke:'#8f99a8', 'stroke-width':1});
+  ns('line',{x1:xRight, y1:yBot+25, x2:xRight, y2:yBot+35, stroke:'#8f99a8', 'stroke-width':1});
+  ns('text',{x:(x0+xRight)/2, y:yBot+45, 'text-anchor':'middle', class:'label-dim'})
+    .textContent = `L + δ = ${(L+delta).toFixed(3)} mm`;
+
+  // Original L dimension above
+  ns('line',{x1:x0, y1:yTop-25, x2:x1, y2:yTop-25, stroke:'#5ec8ff', 'stroke-width':1, 'stroke-dasharray':'3 3'});
+  ns('text',{x:(x0+x1)/2, y:yTop-30, 'text-anchor':'middle', class:'label-dim'})
+    .textContent = `L (unloaded) = ${L.toFixed(0)} mm`;
+
+  // Point Q tracking
+  const Qmodel = 0.6; // 60% along the bar
+  const Qx0 = x0 + Lpx*Qmodel;
+  const QxNow = x0 + (xRight-x0)*Qmodel;
+  // Q displacement = δ * Qmodel
+  const dQ = delta * Qmodel;
+  ns('circle',{cx:Qx0, cy:yTop-4, r:3, fill:'#ff7b72', opacity:0.5});
+  ns('circle',{cx:QxNow, cy:yTop-4, r:4, fill:'#ff7b72'});
+  ns('line',{x1:Qx0, y1:yTop-12, x2:QxNow, y2:yTop-12, stroke:'#ff7b72', 'stroke-width':1});
+  ns('text',{x:(Qx0+QxNow)/2, y:yTop-16, 'text-anchor':'middle', class:'label', fill:'#ff7b72'})
+    .textContent = `Q: u(x) = ${dQ.toFixed(3)} mm`;
+
+  // Stress label on bar
+  const sigCol = sigma >= 0 ? '#5ec8ff' : '#ff7b72';
+  ns('text',{x:(x0+xRight)/2, y:yMid+4, 'text-anchor':'middle', class:'label', fill:sigCol,
+    'font-weight':'600'}).textContent = `σ = ${sigma.toFixed(2)} MPa`;
+
+  // Saint-Venant labels
+  ns('text',{x:x0+svW/2, y:yTop-8, 'text-anchor':'middle', class:'label-dim', fill:'#ffb86c'})
+    .textContent = 'St-Venant';
+
+  // Update results
+  const k = (A*E*1000)/L; // stiffness in N/mm
+  document.getElementById('results').innerHTML =
+    `<b>σ = F/A =</b> <span class="readout">${sigma.toFixed(3)} MPa</span> · ` +
+    `<b>ε = σ/E =</b> <span class="readout">${(eps*1e6).toFixed(1)} µε</span> ` +
+    `(${(eps*100).toFixed(4)}%)<br>` +
+    `<b>δ = FL/(AE) =</b> <span class="readout">${delta.toFixed(4)} mm</span> · ` +
+    `<b>Axial stiffness k = AE/L =</b> <span class="readout">${k.toFixed(1)} N/mm</span><br>` +
+    `<span style="color:var(--fg-dim)">Visual amplification ×${visScale}. Sign convention: + tension, − compression.</span>`;
+}
+
+document.getElementById('F').oninput = render;
+document.getElementById('A').oninput = render;
+document.getElementById('L').oninput = render;
+document.getElementById('mat').onchange = render;
+
+// ---- Thermal panel ----
+const tsvg = document.getElementById('thermal');
+function nsT(tag, attrs={}){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  tsvg.appendChild(e);
+  return e;
+}
+
+// Material → α map
+const alphaMap = {'200':12e-6, '69':23.6e-6, '110':19e-6, '2.2':68e-6};
+
+function renderThermal(){
+  clear(tsvg);
+  const dT = parseFloat(document.getElementById('T').value);
+  const con = document.getElementById('con').value;
+  const E = parseFloat(document.getElementById('mat').value); // GPa
+  const alpha = alphaMap[document.getElementById('mat').value] || 12e-6;
+  const L = parseFloat(document.getElementById('L').value);
+  document.getElementById('rT').textContent = dT.toFixed(0);
+
+  const eps_T = alpha * dT;       // free thermal strain
+  const delta_T = eps_T * L;      // free thermal expansion (mm)
+  const sigma_T = (con==='fixed') ? -E*1000 * eps_T : 0;  // MPa, negative = compression for ΔT>0
+
+  // Color by temperature: cold blue, hot red
+  let barCol;
+  if(dT > 0) barCol = `hsl(${20 + Math.max(0,40-dT*0.4)}, 80%, 55%)`;
+  else if(dT < 0) barCol = `hsl(${210 - dT*0.5}, 70%, 60%)`;
+  else barCol = '#8f99a8';
+
+  const x0 = 120, x1 = 760, y0 = 60, h0 = 60;
+  const yMid = y0 + h0/2;
+  const barH = 50;
+  const yTop = yMid - barH/2, yBot = yMid + barH/2;
+  const Lpx = x1 - x0;
+
+  // Walls
+  for(let i=0;i<7;i++){
+    nsT('line',{x1:x0-14, y1:yTop+i*(barH/6), x2:x0, y2:yTop+i*(barH/6),
+      stroke:'#8f99a8', 'stroke-width':1.5});
+  }
+  nsT('line',{x1:x0, y1:yTop-6, x2:x0, y2:yBot+6, stroke:'#8f99a8', 'stroke-width':2});
+
+  if(con === 'fixed'){
+    // Right wall
+    for(let i=0;i<7;i++){
+      nsT('line',{x1:x1, y1:yTop+i*(barH/6), x2:x1+14, y2:yTop+i*(barH/6),
+        stroke:'#8f99a8', 'stroke-width':1.5});
+    }
+    nsT('line',{x1:x1, y1:yTop-6, x2:x1, y2:yBot+6, stroke:'#8f99a8', 'stroke-width':2});
+    // Bar stays at L (constrained). Internal stress shown by color intensity.
+    nsT('rect',{x:x0, y:yTop, width:Lpx, height:barH,
+      fill:barCol, 'fill-opacity':0.5, stroke:barCol, 'stroke-width':2});
+    // Stress arrows pushing in (or out if cooled)
+    const dir = dT > 0 ? -1 : 1;  // hot bar pushes outward (so wall reacts inward on bar)
+    const arrowLen = Math.min(40, Math.abs(sigma_T)*0.3);
+    if(arrowLen > 5){
+      // Left side, arrow pointing right (into bar)
+      nsT('line',{x1:x0-5, y1:yMid, x2:x0-5+(-dir)*arrowLen, y2:yMid,
+        stroke:'#ff7b72', 'stroke-width':2.5});
+      nsT('polygon',{points:`${x0-5+(-dir)*arrowLen},${yMid} ${x0-5+(-dir)*(arrowLen-8)},${yMid-5} ${x0-5+(-dir)*(arrowLen-8)},${yMid+5}`,
+        fill:'#ff7b72'});
+      nsT('line',{x1:x1+5, y1:yMid, x2:x1+5+dir*arrowLen, y2:yMid,
+        stroke:'#ff7b72', 'stroke-width':2.5});
+      nsT('polygon',{points:`${x1+5+dir*arrowLen},${yMid} ${x1+5+dir*(arrowLen-8)},${yMid-5} ${x1+5+dir*(arrowLen-8)},${yMid+5}`,
+        fill:'#ff7b72'});
+    }
+    nsT('text',{x:(x0+x1)/2, y:yMid+5, 'text-anchor':'middle', class:'label',
+      fill:'#ff7b72', 'font-weight':'600'})
+      .textContent = `σ_T = ${sigma_T.toFixed(2)} MPa`;
+  } else {
+    // Free: bar grows by delta_T (visual ×50)
+    const dPx = Math.max(-80, Math.min(160, delta_T * 50 * 0.5));
+    const xR = x1 + dPx;
+    // Original outline
+    nsT('rect',{x:x0, y:yTop, width:Lpx, height:barH,
+      fill:'none', stroke:'#5ec8ff', 'stroke-width':1, 'stroke-dasharray':'4 4', opacity:0.4});
+    // Expanded bar
+    nsT('rect',{x:x0, y:yTop, width:xR-x0, height:barH,
+      fill:barCol, 'fill-opacity':0.45, stroke:barCol, 'stroke-width':2});
+    // Expansion arrow
+    if(Math.abs(dPx) > 4){
+      const dir = dPx > 0 ? 1 : -1;
+      nsT('line',{x1:x1, y1:yMid, x2:xR, y2:yMid, stroke:'#ffb86c', 'stroke-width':2});
+      nsT('polygon',{points:`${xR},${yMid} ${xR-dir*8},${yMid-5} ${xR-dir*8},${yMid+5}`, fill:'#ffb86c'});
+      nsT('text',{x:xR + dir*8, y:yMid-6, 'text-anchor':dir>0?'start':'end', class:'label', fill:'#ffb86c'})
+        .textContent = `δ_T = ${delta_T.toFixed(3)} mm`;
+    } else {
+      nsT('text',{x:x1+8, y:yMid-6, class:'label-dim'})
+        .textContent = 'δ_T ≈ 0';
+    }
+  }
+
+  // Temperature indicator
+  nsT('text',{x:60, y:yMid+4, 'text-anchor':'middle', class:'label', fill:barCol})
+    .textContent = `ΔT = ${dT}°C`;
+
+  document.getElementById('thermal-results').innerHTML =
+    `<b>α (material) =</b> <span class="readout">${(alpha*1e6).toFixed(1)} ×10⁻⁶ /°C</span> · ` +
+    `<b>ε_T = α·ΔT =</b> <span class="readout">${(eps_T*1e6).toFixed(1)} µε</span><br>` +
+    (con==='free'
+      ? `<b>Free expansion δ_T = ε_T·L =</b> <span class="readout">${delta_T.toFixed(4)} mm</span> · ` +
+        `<span style="color:var(--fg-dim)">No constraint → no stress.</span>`
+      : `<b>Constrained: δ = 0,</b> so the bar develops <b>σ_T = −E·α·ΔT =</b> ` +
+        `<span class="readout">${sigma_T.toFixed(2)} MPa</span> ` +
+        `<span style="color:var(--fg-dim)">(negative ⇒ compression when heated; tension when cooled).</span>`);
+}
+
+document.getElementById('T').oninput = renderThermal;
+document.getElementById('con').onchange = renderThermal;
+document.getElementById('mat').addEventListener('change', renderThermal);
+document.getElementById('L').addEventListener('input', renderThermal);
+
+render();
+renderThermal();
+</script>
+</body>
+</html>

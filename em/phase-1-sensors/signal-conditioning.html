@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signal Conditioning — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .stage{display:flex;align-items:center;gap:8px;font-size:12px}
+  .stage-box{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;
+    padding:8px 12px;text-align:center;min-width:90px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Signal Conditioning — Sensor to ADC</h1>
+  <p class="lede">Between the sensor and the ADC sits a chain of stages that decide whether your firmware reads truth or garbage. Each stage adds noise. The art is making the signal big enough that the noise stops mattering before quantization happens.</p>
+
+  <p>Every sensor produces a signal at some native amplitude and frequency content. The ADC accepts voltages in a fixed range (e.g., 0–3.3 V) and samples at a fixed rate (e.g., 1 kSPS). The conditioning chain — buffer, amplifier, anti-alias filter, ADC — exists to bridge those two worlds without losing information or adding aliases. Three rules govern the design: (1) match the signal amplitude to the ADC's full-scale to maximize bit usage, (2) low-pass-filter every frequency above Nyquist (f_s/2) before sampling, or risk false low-frequency images, (3) keep total noise below 1 LSB of the ADC. Skip any one and your 12-bit ADC silently degrades to 8 effective bits.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Signal amplitude (mV pk): <span class="readout" id="vsigRead">10 mV</span></label>
+      <input id="vsig" type="range" min="0.1" max="500" step="0.1" value="10">
+    </div>
+    <div class="control">
+      <label>Signal frequency (Hz): <span class="readout" id="fsigRead">50 Hz</span></label>
+      <input id="fsig" type="range" min="1" max="500" step="1" value="50">
+    </div>
+    <div class="control">
+      <label>Amp gain G: <span class="readout" id="gainRead">100×</span></label>
+      <input id="gain" type="range" min="1" max="1000" step="1" value="100">
+    </div>
+    <div class="control">
+      <label>LPF cutoff f_c (Hz): <span class="readout" id="fcRead">200 Hz</span></label>
+      <input id="fc" type="range" min="10" max="2000" step="10" value="200">
+    </div>
+    <div class="control">
+      <label>ADC sample rate f_s (Hz): <span class="readout" id="fsRead">1000 Hz</span></label>
+      <input id="fs" type="range" min="50" max="5000" step="10" value="1000">
+    </div>
+    <div class="control">
+      <label>ADC bits: <span class="readout" id="bitsRead">12 bits</span></label>
+      <input id="bits" type="range" min="8" max="16" step="1" value="12">
+    </div>
+    <div class="control">
+      <label>Amp input noise (µV/√Hz): <span class="readout" id="enRead">10 nV/√Hz</span></label>
+      <input id="en" type="range" min="1" max="100" step="1" value="10">
+    </div>
+    <div class="control">
+      <label>50 Hz mains coupling (mV): <span class="readout" id="hum">5 mV</span></label>
+      <input id="humEl" type="range" min="0" max="100" step="0.5" value="5">
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Signal chain — block diagram</h3>
+    <svg viewBox="0 0 720 110" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <!-- Stages -->
+      <g>
+        <rect x="20" y="35" width="80" height="40" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="60" y="55" class="label" text-anchor="middle" fill="var(--accent)">Sensor</text>
+        <text x="60" y="72" class="label-dim" text-anchor="middle" id="stg1">10 mV</text>
+      </g>
+      <line x1="100" y1="55" x2="140" y2="55" class="wire" marker-end="url(#fa)"/>
+      <g>
+        <rect x="140" y="35" width="80" height="40" fill="var(--bg-elev2)" stroke="var(--accent2)" stroke-width="1.5"/>
+        <text x="180" y="55" class="label" text-anchor="middle" fill="var(--accent2)">Amp (G)</text>
+        <text x="180" y="72" class="label-dim" text-anchor="middle" id="stg2">×100</text>
+      </g>
+      <line x1="220" y1="55" x2="260" y2="55" class="wire" marker-end="url(#fa)"/>
+      <g>
+        <rect x="260" y="35" width="100" height="40" fill="var(--bg-elev2)" stroke="var(--accent3)" stroke-width="1.5"/>
+        <text x="310" y="55" class="label" text-anchor="middle" fill="var(--accent3)">LPF f_c</text>
+        <text x="310" y="72" class="label-dim" text-anchor="middle" id="stg3">200 Hz</text>
+      </g>
+      <line x1="360" y1="55" x2="400" y2="55" class="wire" marker-end="url(#fa)"/>
+      <g>
+        <rect x="400" y="35" width="80" height="40" fill="var(--bg-elev2)" stroke="var(--warn)" stroke-width="1.5"/>
+        <text x="440" y="55" class="label" text-anchor="middle" fill="var(--warn)">S/H</text>
+        <text x="440" y="72" class="label-dim" text-anchor="middle" id="stg4">f_s</text>
+      </g>
+      <line x1="480" y1="55" x2="520" y2="55" class="wire" marker-end="url(#fa)"/>
+      <g>
+        <rect x="520" y="35" width="80" height="40" fill="var(--bg-elev2)" stroke="var(--fg)" stroke-width="1.5"/>
+        <text x="560" y="55" class="label" text-anchor="middle">ADC</text>
+        <text x="560" y="72" class="label-dim" text-anchor="middle" id="stg5">12-bit</text>
+      </g>
+      <line x1="600" y1="55" x2="640" y2="55" class="wire" marker-end="url(#fa)"/>
+      <g>
+        <rect x="640" y="35" width="60" height="40" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="670" y="60" class="label" text-anchor="middle" fill="var(--accent)">MCU</text>
+      </g>
+      <defs>
+        <marker id="fa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--fg)"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <div class="figure">
+    <h3>Frequency-domain view — signal, noise, aliasing risk</h3>
+    <svg id="freqSvg" viewBox="0 0 700 280" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <line x1="60" y1="20" x2="60" y2="240" class="axis"/>
+      <line x1="60" y1="240" x2="680" y2="240" class="axis"/>
+      <text x="370" y="265" class="axis-label" text-anchor="middle">frequency (Hz, log scale)</text>
+      <text x="55" y="20" class="axis-label" text-anchor="end">|V|</text>
+      <!-- LPF response curve -->
+      <polyline id="lpfCurve" stroke="var(--accent3)" stroke-width="2" fill="none" points=""/>
+      <!-- signal spike -->
+      <line id="sigLine" x1="200" y1="100" x2="200" y2="240" stroke="var(--accent)" stroke-width="3"/>
+      <text id="sigLbl" x="205" y="98" class="label" fill="var(--accent)">signal</text>
+      <!-- 50 Hz hum spike -->
+      <line id="humLine" x1="280" y1="180" x2="280" y2="240" stroke="var(--warn)" stroke-width="3"/>
+      <text x="285" y="178" class="label" fill="var(--warn)">50 Hz hum</text>
+      <!-- Nyquist marker -->
+      <line id="nyqLine" x1="500" y1="20" x2="500" y2="240" stroke="var(--accent2)" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <text id="nyqLbl" x="505" y="35" class="label" fill="var(--accent2)">Nyquist (f_s/2)</text>
+      <!-- alias band shaded -->
+      <rect id="aliasBand" x="500" y="20" width="180" height="220" fill="rgba(255,123,114,0.10)" stroke="none"/>
+      <text x="590" y="60" class="label-dim" text-anchor="middle">aliases here →</text>
+      <text x="590" y="75" class="label-dim" text-anchor="middle">fold into baseband</text>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>Wanted signal</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>50 Hz mains hum</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>LPF response</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>Nyquist frequency</span>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Noise budget</h3>
+    <table>
+      <tr><th>Source</th><th>Contribution (V rms)</th><th>Note</th></tr>
+      <tr><td>Sensor (raw)</td><td><span class="readout" id="nbSensor">7.1 mV</span></td><td>signal amplitude rms = pk / √2</td></tr>
+      <tr><td>Amp output noise (BW-limited)</td><td><span class="readout" id="nbAmp">14 µV</span></td><td>e_n · √(f_c) · G</td></tr>
+      <tr><td>Quantization (1 LSB)</td><td><span class="readout" id="nbQuant">0.806 mV</span></td><td>V_FS / 2^N / √12</td></tr>
+      <tr><td>Mains hum at ADC (filtered)</td><td><span class="readout" id="nbHum">0.5 V</span></td><td>passes through LPF if f_c &gt; 50 Hz</td></tr>
+      <tr><td>SNR (signal / total noise)</td><td><span class="readout" id="nbSnr">42 dB</span></td><td>≈ 7 effective bits</td></tr>
+      <tr><td>Effective Number of Bits (ENOB)</td><td><span class="readout" id="nbEnob">6.7 bits</span></td><td>(SNR − 1.76)/6.02</td></tr>
+    </table>
+    <p style="font-size:12px;color:var(--fg-dim)">If amp output noise &gt;&gt; 1 LSB, ADC bits past that point are wasted. If signal &lt; 1 LSB, you can't see it at all — boost gain or use a higher-resolution ADC.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Amplify before the filter</b> — every stage adds noise; gain reduces the impact of downstream noise. Op-amp noise after a ×1000 gain looks 1000× smaller relative to signal than before it.</li>
+    <li><b>Anti-alias filter is mandatory</b> — any energy above f_s/2 folds into the baseband as a false low-frequency signal. The LPF is the only way to stop it; you cannot fix it in software.</li>
+    <li><b>Cutoff vs sample rate</b> — set f_c ≤ f_s/2.5 to give the LPF some roll-off room (single-pole RC only drops 20 dB/decade). For a sharp cut, use 2nd or 4th order active filters.</li>
+    <li><b>50 Hz mains coupling is your enemy</b> — long sensor wires act as antennas; mains hum can dwarf a 10 mV strain-gauge signal. Twisted-pair, shielded cable, or differential measurement (INA) cancels it.</li>
+    <li><b>SNR caps your effective bits</b> — a 16-bit ADC behind a noisy 8-bit-effective amp chain is an expensive 8-bit ADC. Spec for ENOB end-to-end, not catalog bits.</li>
+    <li><b>Match impedance to ADC sample cap</b> — 12-bit SAR ADCs need source impedance &lt; ~10 kΩ to settle in 1 µs. Higher than that → buffer with an op-amp follower (rail-to-rail input, low offset).</li>
+    <li><b>Quantization noise = V_FS / (2^N · √12)</b> — for 3.3 V, 12-bit: ~232 µV rms. If your signal is 200 µV, you're below the noise floor without gain.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Nyquist</dt><dd><span class="eq">f_s &gt; 2 · f_max</span></dd>
+        <dt>Single-pole RC</dt><dd><span class="eq">f_c = 1 / (2π·R·C)</span></dd>
+        <dt>Quant noise (rms)</dt><dd><span class="eq">V_q = V_FS / (2^N · √12)</span></dd>
+        <dt>SNR (ideal)</dt><dd><span class="eq">SNR = 6.02·N + 1.76 dB</span></dd>
+        <dt>ENOB</dt><dd><span class="eq">ENOB = (SNR_meas − 1.76) / 6.02</span></dd>
+        <dt>Amp noise BW</dt><dd><span class="eq">V_n = e_n · √(1.57·f_c) · G</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>Amplify first, filter second</b>, sample last.</li>
+        <li><b>f_s &gt; 2·f_max</b> or you alias. No exceptions.</li>
+        <li><b>1 LSB @ 12-bit 3.3 V = 806 µV</b>.</li>
+        <li><b>ENOB ≈ catalog − 2 bits</b> for most real chains.</li>
+        <li><b>Twisted pair + shield</b> kills 50/60 Hz pickup.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>No anti-alias filter</b> — aliasing is invisible in firmware. The harmonic at 980 Hz becomes 20 Hz garbage at f_s=1 kHz.</li>
+        <li><b>Gain too high</b> → amp saturates → signal flat-tops → 3rd harmonic distortion. Pick G so peak signal = ~80% of ADC FS.</li>
+        <li><b>High source impedance</b> → ADC sample cap doesn't settle → wrong reading. Buffer with op-amp.</li>
+        <li><b>Op-amp without rail-to-rail</b> → can't reach 0 or Vcc → clipped at 0.2 V from each rail.</li>
+        <li><b>Ground loops</b> → 60 Hz hum that no filter helps. Single-point ground, separate analog/digital planes.</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>BUILD ORDER</h3>
+      <ul>
+        <li><b>1.</b> What's the signal: amplitude, bandwidth, source Z?</li>
+        <li><b>2.</b> Pick G so signal_pk · G ≈ 0.4·V_FS (some headroom).</li>
+        <li><b>3.</b> Pick f_c just above signal bandwidth.</li>
+        <li><b>4.</b> Pick f_s &gt; 2.5·f_c for filter roll-off margin.</li>
+        <li><b>5.</b> Check: amp noise BW &lt; 1 LSB? If not, lower G or use higher-resolution ADC.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 1 — Sensors</a> ·
+    Topic: Signal Conditioning + ADC Chain
+  </footer>
+</main>
+<script>
+  const els = {
+    vsig:document.getElementById('vsig'),
+    fsig:document.getElementById('fsig'),
+    gain:document.getElementById('gain'),
+    fc:document.getElementById('fc'),
+    fs:document.getElementById('fs'),
+    bits:document.getElementById('bits'),
+    en:document.getElementById('en'),
+    hum:document.getElementById('humEl')
+  };
+
+  function update(){
+    const vsig = parseFloat(els.vsig.value) / 1000; // V pk
+    const fsig = parseFloat(els.fsig.value);
+    const G = parseFloat(els.gain.value);
+    const fc = parseFloat(els.fc.value);
+    const fs = parseFloat(els.fs.value);
+    const N = parseInt(els.bits.value);
+    const en = parseFloat(els.en.value) * 1e-9; // V/√Hz
+    const hum = parseFloat(els.hum.value) / 1000; // V pk
+
+    const Vfs = 3.3;
+    const vsigRms = vsig / Math.SQRT2;
+    const ampOutNoise = en * Math.sqrt(1.57 * fc) * G;
+    const Vq = Vfs / (Math.pow(2, N) * Math.sqrt(12));
+    // 50 Hz hum attenuated by LPF (single-pole, hum amplified by G first)
+    const humAtAdc = (hum * G) / Math.sqrt(1 + Math.pow(50/fc, 2));
+    const totalNoise = Math.sqrt(ampOutNoise*ampOutNoise + Vq*Vq + humAtAdc*humAtAdc/2);
+    const signalAtAdc = vsigRms * G;
+    const snr = 20 * Math.log10(signalAtAdc / totalNoise);
+    const enob = (snr - 1.76) / 6.02;
+
+    // Readouts
+    els.vsig.previousElementSibling.querySelector('.readout').textContent = (vsig*1000).toFixed(2)+' mV';
+    document.getElementById('fsigRead').textContent = fsig.toFixed(0)+' Hz';
+    document.getElementById('gainRead').textContent = G.toFixed(0)+'×';
+    document.getElementById('fcRead').textContent = fc.toFixed(0)+' Hz';
+    document.getElementById('fsRead').textContent = fs.toFixed(0)+' Hz';
+    document.getElementById('bitsRead').textContent = N+' bits';
+    document.getElementById('enRead').textContent = (en*1e9).toFixed(0)+' nV/√Hz';
+    document.getElementById('hum').textContent = (hum*1000).toFixed(1)+' mV';
+
+    document.getElementById('nbSensor').textContent = (vsigRms*1000).toFixed(2)+' mV';
+    document.getElementById('nbAmp').textContent = ampOutNoise<1e-3 ? (ampOutNoise*1e6).toFixed(1)+' µV' : (ampOutNoise*1000).toFixed(2)+' mV';
+    document.getElementById('nbQuant').textContent = (Vq*1e3).toFixed(3)+' mV';
+    document.getElementById('nbHum').textContent = humAtAdc<1e-3 ? (humAtAdc*1e6).toFixed(0)+' µV' : (humAtAdc*1000).toFixed(2)+' mV';
+    document.getElementById('nbSnr').textContent = snr.toFixed(1)+' dB';
+    document.getElementById('nbEnob').textContent = enob.toFixed(1)+' bits';
+
+    // Update block-diagram stage labels
+    document.getElementById('stg1').textContent = (vsig*1000).toFixed(1)+' mV pk';
+    document.getElementById('stg2').textContent = '×'+G.toFixed(0);
+    document.getElementById('stg3').textContent = fc.toFixed(0)+' Hz';
+    document.getElementById('stg4').textContent = fs.toFixed(0)+' Hz';
+    document.getElementById('stg5').textContent = N+'-bit ('+enob.toFixed(1)+' ENOB)';
+
+    // Frequency plot
+    const xL=60, xR=680, yT=20, yB=240;
+    const fMin=1, fMax=10000;
+    const xOf = f => xL + (Math.log10(f) - Math.log10(fMin)) / (Math.log10(fMax) - Math.log10(fMin)) * (xR-xL);
+    // LPF curve: |H(f)| = 1/sqrt(1 + (f/fc)^2), single pole
+    let pts=[];
+    for(let i=0;i<=200;i++){
+      const f = Math.pow(10, Math.log10(fMin) + (i/200)*(Math.log10(fMax) - Math.log10(fMin)));
+      const H = 1 / Math.sqrt(1 + Math.pow(f/fc, 2));
+      const y = yB - H * (yB - yT - 10);
+      pts.push(`${xOf(f).toFixed(1)},${y.toFixed(1)}`);
+    }
+    document.getElementById('lpfCurve').setAttribute('points', pts.join(' '));
+    // Signal spike
+    const sigX = xOf(fsig);
+    document.getElementById('sigLine').setAttribute('x1', sigX);
+    document.getElementById('sigLine').setAttribute('x2', sigX);
+    document.getElementById('sigLbl').setAttribute('x', sigX+5);
+    // Hum spike at 50 Hz
+    const humX = xOf(50);
+    document.getElementById('humLine').setAttribute('x1', humX);
+    document.getElementById('humLine').setAttribute('x2', humX);
+    // Nyquist line
+    const nyqX = xOf(fs/2);
+    document.getElementById('nyqLine').setAttribute('x1', nyqX);
+    document.getElementById('nyqLine').setAttribute('x2', nyqX);
+    document.getElementById('nyqLbl').setAttribute('x', nyqX+5);
+    // Alias band
+    document.getElementById('aliasBand').setAttribute('x', nyqX);
+    document.getElementById('aliasBand').setAttribute('width', xR - nyqX);
+  }
+  Object.values(els).forEach(e => e.addEventListener('input', update));
+  update();
+</script>
+</body>
+</html>

@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decibels & RF Power — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px;margin:12px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px}
+  .stat .lbl{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 16px ui-monospace,monospace;color:var(--accent);margin-top:4px}
+  .cascade{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:14px 0}
+  .stage{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 14px;min-width:120px;text-align:center}
+  .stage .name{font:11px ui-monospace,monospace;color:var(--fg-dim)}
+  .stage .gain{font:600 15px ui-monospace,monospace;color:var(--accent2);margin-top:4px}
+  .arrow{color:var(--fg-dim);font-size:18px}
+  .stage.out{background:rgba(94,200,255,0.12);border-color:var(--accent)}
+  .stage.out .gain{color:var(--accent)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Decibels & RF Power — dB, dBm, dBi, dBd</h1>
+  <p class="lede">dB is just a logarithmic ratio. Multiplying becomes adding. Three rules to memorize and the rest is arithmetic.</p>
+
+  <p>RF lives in <code>dB</code> because the dynamic range is huge — a transmitter pushes +20 dBm (100 mW) and the receiver listens at −137 dBm (femtowatts). Linear numbers would be unreadable. Logarithms compress the scale: every <code>+10 dB</code> means <code>×10</code> in power, every <code>+3 dB</code> means <code>×2</code>. Cascaded gains <i>multiply</i> in linear units but <i>add</i> in dB — which is why link budgets are addition tables. <code>dBm</code> is dB relative to 1 milliwatt (an absolute reference), <code>dBi</code> is antenna gain vs. an isotropic radiator, <code>dBd</code> is vs. a half-wave dipole (<code>dBd = dBi − 2.15</code>).</p>
+
+  <h2>Ratio → dB calculator</h2>
+  <section class="controls">
+    <div class="control">
+      <label>Power ratio P2/P1: <span class="readout" id="prRead">2.000×</span></label>
+      <input id="pr" type="range" min="0.001" max="1000" step="0.001" value="2">
+    </div>
+    <div class="control">
+      <label>Voltage ratio V2/V1: <span class="readout" id="vrRead">1.414×</span></label>
+      <input id="vr" type="range" min="0.001" max="100" step="0.001" value="1.414">
+    </div>
+  </section>
+
+  <div class="figure">
+    <div class="stat-grid">
+      <div class="stat"><div class="lbl">Power: 10·log10(P2/P1)</div><div class="val" id="pdb">+3.01 dB</div></div>
+      <div class="stat"><div class="lbl">Voltage: 20·log10(V2/V1)</div><div class="val" id="vdb">+3.01 dB</div></div>
+      <div class="stat"><div class="lbl">Linked power ratio</div><div class="val" id="pratio">2.00×</div></div>
+      <div class="stat"><div class="lbl">Linked voltage ratio</div><div class="val" id="vratio">1.414×</div></div>
+    </div>
+    <p style="margin-top:10px;font-size:12px;color:var(--fg-dim)">
+      Same numerical dB result for power doubled vs. voltage multiplied by √2 — because power ∝ V². That's why voltage uses the 20·log10 form.
+    </p>
+  </div>
+
+  <h2>Reference card — memorize these</h2>
+  <div class="figure">
+    <table>
+      <tr><th>dB</th><th>Power factor</th><th>Voltage factor</th><th>Mnemonic</th></tr>
+      <tr><td>+3 dB</td><td>2×</td><td>1.414×</td><td>doubles power</td></tr>
+      <tr><td>+6 dB</td><td>4×</td><td>2×</td><td>doubles voltage</td></tr>
+      <tr><td>+10 dB</td><td>10×</td><td>3.162×</td><td>order of magnitude</td></tr>
+      <tr><td>+20 dB</td><td>100×</td><td>10×</td><td>two orders</td></tr>
+      <tr><td>+30 dB</td><td>1000×</td><td>31.62×</td><td>three orders</td></tr>
+      <tr><td>−3 dB</td><td>0.5×</td><td>0.707×</td><td>half power</td></tr>
+      <tr><td>−10 dB</td><td>0.1×</td><td>0.316×</td><td>tenth power</td></tr>
+    </table>
+  </div>
+
+  <h2>dBm calculator — absolute power</h2>
+  <p style="color:var(--fg-dim);font-size:13px">dBm = 10·log10(P / 1 mW). Used everywhere in RF for transmit power and receive sensitivity.</p>
+  <section class="controls">
+    <div class="control">
+      <label>Power (mW): <span class="readout" id="mwRead">100 mW</span></label>
+      <input id="mw" type="range" min="0.0001" max="2000" step="0.0001" value="100">
+    </div>
+    <div class="control">
+      <label>dBm direct entry: <span class="readout" id="dbmInRead">+20.0 dBm</span></label>
+      <input id="dbmIn" type="range" min="-150" max="40" step="0.1" value="20">
+    </div>
+  </section>
+  <div class="figure">
+    <div class="stat-grid">
+      <div class="stat"><div class="lbl">From mW → dBm</div><div class="val" id="dbmOut">+20.0 dBm</div></div>
+      <div class="stat"><div class="lbl">From dBm → mW</div><div class="val" id="mwOut">100.0 mW</div></div>
+      <div class="stat"><div class="lbl">From dBm → W</div><div class="val" id="wOut">0.100 W</div></div>
+      <div class="stat"><div class="lbl">From dBm → µW</div><div class="val" id="uwOut">1.00e+5 µW</div></div>
+    </div>
+    <table style="margin-top:10px">
+      <tr><th>dBm</th><th>Linear power</th><th>Where you see it</th></tr>
+      <tr><td>−137 dBm</td><td>0.2 fW</td><td>LoRa SF12 sensitivity floor</td></tr>
+      <tr><td>−100 dBm</td><td>0.1 pW</td><td>WiFi at the edge of usable</td></tr>
+      <tr><td>−80 dBm</td><td>10 pW</td><td>WiFi "good" indoor signal</td></tr>
+      <tr><td>0 dBm</td><td>1 mW</td><td>BLE Tx default</td></tr>
+      <tr><td>+10 dBm</td><td>10 mW</td><td>WiFi STA typical</td></tr>
+      <tr><td>+20 dBm</td><td>100 mW</td><td>LoRa Tx max, WiFi AP</td></tr>
+      <tr><td>+30 dBm</td><td>1 W</td><td>ISM band legal limit (US 915)</td></tr>
+    </table>
+  </div>
+
+  <h2>dBi vs dBd — antenna gain references</h2>
+  <div class="figure">
+    <p style="color:var(--fg-dim);font-size:13px;margin-top:0">
+      <code>dBi</code> = gain vs. an isotropic radiator (the ideal point-source baseline). <code>dBd</code> = gain vs. a half-wave dipole. A dipole has 2.15 dBi gain, so <code>dBd = dBi − 2.15</code>. Marketing tends to quote dBi (bigger number). Always check which one a datasheet uses — a "6 dB rubber duck" could mean 6 dBi (= 3.85 dBd) or 6 dBd (= 8.15 dBi).
+    </p>
+    <section class="controls" style="margin-top:8px">
+      <div class="control">
+        <label>Antenna gain (dBi): <span class="readout" id="dbiRead">2.0 dBi</span></label>
+        <input id="dbi" type="range" min="-10" max="25" step="0.1" value="2">
+      </div>
+    </section>
+    <div class="stat-grid">
+      <div class="stat"><div class="lbl">In dBi (vs isotropic)</div><div class="val" id="dbiOut">+2.0 dBi</div></div>
+      <div class="stat"><div class="lbl">In dBd (vs dipole)</div><div class="val" id="dbdOut">−0.15 dBd</div></div>
+      <div class="stat"><div class="lbl">Linear gain</div><div class="val" id="linG">1.58×</div></div>
+    </div>
+  </div>
+
+  <h2>Cascade — dB adds across stages</h2>
+  <p style="color:var(--fg-dim);font-size:13px">
+    Worked link example. TX outputs +20 dBm, hits +2 dBi antenna (gain), then path loss of −90 dB (FSPL), then +2 dBi RX antenna, then a +15 dB LNA. Just add the dB. Linear math would require multiplying ratios.
+  </p>
+  <div class="figure">
+    <div class="cascade">
+      <div class="stage"><div class="name">TX power</div><div class="gain">+20 dBm</div></div>
+      <span class="arrow">+</span>
+      <div class="stage"><div class="name">TX antenna</div><div class="gain">+2 dBi</div></div>
+      <span class="arrow">−</span>
+      <div class="stage"><div class="name">FSPL</div><div class="gain" style="color:var(--warn)">90 dB</div></div>
+      <span class="arrow">+</span>
+      <div class="stage"><div class="name">RX antenna</div><div class="gain">+2 dBi</div></div>
+      <span class="arrow">+</span>
+      <div class="stage"><div class="name">LNA</div><div class="gain">+15 dB</div></div>
+      <span class="arrow">=</span>
+      <div class="stage out"><div class="name">at receiver</div><div class="gain">−51 dBm</div></div>
+    </div>
+    <p style="margin-top:8px;font-size:12px;color:var(--fg-dim)">
+      Same in linear: 100 mW × 1.58 × 10⁻⁹ × 1.58 × 31.6 = 7.9 × 10⁻⁹ mW = 7.9 nW. Adding the dB column is faster and less error-prone.
+    </p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>+3 / +10 is enough to estimate by sight</b> — +13 dB = ×20, +23 dB = ×200, −7 dB ≈ ×0.2 (−10 +3). You don't need a calculator for ballpark link budgets.</li>
+    <li><b>Voltage gets the 20·log</b> — because power scales with V². A doubling of voltage (+6 dB) is a quadrupling of power (also +6 dB). Stay in <i>one</i> column per calculation.</li>
+    <li><b>dBm is absolute, dB is relative</b> — never add two dBm values together; "20 dBm + 20 dBm" is meaningless. You add dB (gain/loss) <i>to</i> dBm (power).</li>
+    <li><b>Tiny dBm numbers are tiny powers</b> — −137 dBm is 0.2 femtowatts. The receiver's job is to pull a signal out of thermal noise that is barely larger.</li>
+    <li><b>dBi ≈ dBd + 2.15</b> — datasheet says "5 dBd"? That's 7.15 dBi. Always normalize when comparing antennas across vendors.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>dB (power)</dt><dd><span class="eq">10·log₁₀(P/P_ref)</span></dd>
+        <dt>dB (voltage)</dt><dd><span class="eq">20·log₁₀(V/V_ref)</span></dd>
+        <dt>dBm</dt><dd><span class="eq">10·log₁₀(P / 1 mW)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <table>
+        <tr><th>dB</th><th>ratio</th><th>dBm</th><th>power</th></tr>
+        <tr><td>+3</td><td>≈ 2×</td><td>0</td><td>1 mW</td></tr>
+        <tr><td>+10</td><td>10×</td><td>+10</td><td>10 mW</td></tr>
+        <tr><td>+20</td><td>100×</td><td>+20</td><td>100 mW</td></tr>
+        <tr><td>+30</td><td>1000×</td><td>+30</td><td>1 W</td></tr>
+        <tr><td>−3</td><td>≈ 0.5×</td><td>−30</td><td>1 µW</td></tr>
+      </table>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>10× vs 20×</b> — power uses 10·log, voltage uses 20·log. Pick one column, stay in it.</li>
+        <li><b>dBm ≠ dB</b> — dBm is absolute power; dB is a ratio. You add dB to dBm, never two dBm values.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 9 — RF & Wireless</a> ·
+    Topic: dB, dBm, dBi, dBd
+  </footer>
+</main>
+<script>
+  const prEl=document.getElementById('pr');
+  const vrEl=document.getElementById('vr');
+  const mwEl=document.getElementById('mw');
+  const dbmInEl=document.getElementById('dbmIn');
+  const dbiEl=document.getElementById('dbi');
+
+  function fmtSI(v, unit, decimals=2){
+    const abs=Math.abs(v);
+    if(abs===0) return '0 '+unit;
+    if(abs>=1e9) return (v/1e9).toFixed(decimals)+' G'+unit;
+    if(abs>=1e6) return (v/1e6).toFixed(decimals)+' M'+unit;
+    if(abs>=1e3) return (v/1e3).toFixed(decimals)+' k'+unit;
+    if(abs>=1) return v.toFixed(decimals)+' '+unit;
+    if(abs>=1e-3) return (v*1e3).toFixed(decimals)+' m'+unit;
+    if(abs>=1e-6) return (v*1e6).toFixed(decimals)+' µ'+unit;
+    if(abs>=1e-9) return (v*1e9).toFixed(decimals)+' n'+unit;
+    if(abs>=1e-12) return (v*1e12).toFixed(decimals)+' p'+unit;
+    if(abs>=1e-15) return (v*1e15).toFixed(decimals)+' f'+unit;
+    return v.toExponential(2)+' '+unit;
+  }
+
+  let syncingRatio=false;
+  function updateRatio(source){
+    if(syncingRatio) return;
+    syncingRatio=true;
+    let p=parseFloat(prEl.value), v=parseFloat(vrEl.value);
+    if(source==='p'){
+      v = Math.sqrt(p);
+      vrEl.value=Math.min(Math.max(v,parseFloat(vrEl.min)),parseFloat(vrEl.max));
+    } else {
+      p = v*v;
+      prEl.value=Math.min(Math.max(p,parseFloat(prEl.min)),parseFloat(prEl.max));
+    }
+    const pdb = 10*Math.log10(p);
+    const vdb = 20*Math.log10(v);
+    document.getElementById('prRead').textContent = p.toFixed(3)+'×';
+    document.getElementById('vrRead').textContent = v.toFixed(3)+'×';
+    document.getElementById('pdb').textContent = (pdb>=0?'+':'')+pdb.toFixed(2)+' dB';
+    document.getElementById('vdb').textContent = (vdb>=0?'+':'')+vdb.toFixed(2)+' dB';
+    document.getElementById('pratio').textContent = p.toFixed(3)+'×';
+    document.getElementById('vratio').textContent = v.toFixed(3)+'×';
+    syncingRatio=false;
+  }
+
+  let syncingDbm=false;
+  function updateDbm(source){
+    if(syncingDbm) return;
+    syncingDbm=true;
+    let mW=parseFloat(mwEl.value), dBm=parseFloat(dbmInEl.value);
+    if(source==='mw'){
+      dBm = 10*Math.log10(mW);
+      dbmInEl.value=Math.min(Math.max(dBm,parseFloat(dbmInEl.min)),parseFloat(dbmInEl.max));
+    } else {
+      mW = Math.pow(10, dBm/10);
+      if(mW<=parseFloat(mwEl.max) && mW>=parseFloat(mwEl.min)) mwEl.value=mW;
+    }
+    document.getElementById('mwRead').textContent = fmtSI(mW*1e-3,'W');
+    document.getElementById('dbmInRead').textContent = (dBm>=0?'+':'')+dBm.toFixed(1)+' dBm';
+    document.getElementById('dbmOut').textContent = (dBm>=0?'+':'')+dBm.toFixed(2)+' dBm';
+    document.getElementById('mwOut').textContent = fmtSI(mW,'W').replace(' W',' mW').replace('m mW','µW');
+    // simpler: just direct
+    document.getElementById('mwOut').textContent = mW.toExponential(2)+' mW';
+    document.getElementById('wOut').textContent = fmtSI(mW*1e-3,'W');
+    document.getElementById('uwOut').textContent = (mW*1e3).toExponential(2)+' µW';
+    syncingDbm=false;
+  }
+
+  function updateDbi(){
+    const dbi=parseFloat(dbiEl.value);
+    const dbd=dbi-2.15;
+    const lin=Math.pow(10,dbi/10);
+    document.getElementById('dbiRead').textContent = (dbi>=0?'+':'')+dbi.toFixed(1)+' dBi';
+    document.getElementById('dbiOut').textContent = (dbi>=0?'+':'')+dbi.toFixed(2)+' dBi';
+    document.getElementById('dbdOut').textContent = (dbd>=0?'+':'')+dbd.toFixed(2)+' dBd';
+    document.getElementById('linG').textContent = lin.toFixed(2)+'×';
+  }
+
+  prEl.addEventListener('input',()=>updateRatio('p'));
+  vrEl.addEventListener('input',()=>updateRatio('v'));
+  mwEl.addEventListener('input',()=>updateDbm('mw'));
+  dbmInEl.addEventListener('input',()=>updateDbm('dbm'));
+  dbiEl.addEventListener('input',updateDbi);
+
+  updateRatio('p');
+  updateDbm('mw');
+  updateDbi();
+</script>
+</body>
+</html>

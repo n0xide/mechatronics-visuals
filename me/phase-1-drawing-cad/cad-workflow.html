@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parametric CAD Workflow — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  /* workflow-specific */
+  .step-node{cursor:pointer;transition:transform 0.12s}
+  .step-node:hover{transform:translateY(-2px)}
+  .step-rect{fill:var(--bg-elev2);stroke:var(--line);stroke-width:1.5;rx:6}
+  .step-rect.active{fill:rgba(94,200,255,0.15);stroke:var(--accent);stroke-width:2}
+  .step-label{fill:var(--fg);font:600 12px ui-monospace,monospace;text-anchor:middle;
+    pointer-events:none}
+  .step-icon{font:600 18px ui-monospace,monospace;fill:var(--accent);text-anchor:middle;
+    pointer-events:none}
+  .arrow{fill:none;stroke:var(--fg-dim);stroke-width:1.5;marker-end:url(#arrow-head)}
+  .step-detail{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:14px 0;min-height:120px}
+  .step-detail h3{margin-top:0;color:var(--accent)}
+  .step-detail .gotcha{background:rgba(255,123,114,0.10);border-left:3px solid var(--warn);
+    padding:8px 12px;margin-top:10px;font-size:13px;color:var(--fg)}
+  .step-detail .gotcha b{color:var(--warn)}
+  /* export matrix */
+  .matrix{width:100%;margin-top:14px}
+  .matrix th,.matrix td{text-align:center}
+  .matrix td.fmt{text-align:left;color:var(--accent);font-weight:600}
+  .matrix .yes{color:var(--accent3)}
+  .matrix .no{color:var(--fg-dim);opacity:0.4}
+  .matrix .partial{color:var(--accent2)}
+  .matrix tr.active{background:rgba(94,200,255,0.08)}
+  .export-pick{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px;margin-top:10px}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Parametric CAD Workflow — Fusion 360 pipeline</h1>
+  <p class="lede">A parametric model is a chain of operations: sketch a 2D profile, constrain it, dimension it, push it into 3D, then refine. Click any step to see what it does and the most common way it bites you. Below: pick an export format and see which downstream uses it actually supports.</p>
+
+  <h3>What this teaches</h3>
+  <p>Every CAD model is a recipe. The pipeline is the recipe; the timeline records every step. Change a sketch dimension and everything downstream updates — that's the value. Reorder steps or rename geometry and downstream references break — that's the gotcha. The export step is its own minefield: STL discards parameters forever, STEP keeps them, DXF only carries 2D, and Gerber isn't a mechanical format at all.</p>
+
+  <div class="figure">
+    <svg viewBox="0 0 920 240" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--fg-dim)"/>
+        </marker>
+      </defs>
+
+      <!-- 9 steps in a horizontal flow with wrap to 2 rows -->
+      <!-- Row 1: Sketch -> Constrain -> Dimension -> Extrude -> Modify -->
+      <!-- Row 2:                                              -> Pattern -> Assemble -> Draw -> Export -->
+      <g id="steps"></g>
+    </svg>
+  </div>
+
+  <div class="step-detail" id="step-detail">
+    <h3>Click a step above</h3>
+    <p style="color:var(--fg-dim)">Each step shows: what it does, a typical Fusion 360 menu path, and the most common gotcha you'll hit on your second or third model.</p>
+  </div>
+
+  <h2>Export format chooser</h2>
+  <p class="lede">Pick the format, see what survives. The matrix flags whether each format carries the data the downstream stage needs.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Export format</label>
+      <select id="sel-fmt">
+        <option value="step">STEP (.stp / .step) — neutral CAD exchange</option>
+        <option value="stl">STL (.stl) — triangulated mesh</option>
+        <option value="dxf">DXF (.dxf) — 2D profile</option>
+        <option value="3mf">3MF (.3mf) — modern 3D print format</option>
+        <option value="gerber">Gerber (.gbr) — PCB copper layers</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Recommended for</label>
+      <span class="readout" id="ro-fmt-use">—</span>
+    </div>
+  </section>
+
+  <div class="export-pick" id="export-pick"></div>
+
+  <table class="matrix" id="matrix">
+    <thead>
+      <tr>
+        <th>Format</th>
+        <th>FDM print</th>
+        <th>Resin print</th>
+        <th>Laser cut</th>
+        <th>CNC mill</th>
+        <th>Send to supplier (other CAD)</th>
+        <th>PCB fab</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr data-fmt="step"><td class="fmt">STEP</td>
+        <td class="partial">partial</td><td class="partial">partial</td><td class="no">no</td>
+        <td class="yes">yes</td><td class="yes">yes</td><td class="no">no</td></tr>
+      <tr data-fmt="stl"><td class="fmt">STL</td>
+        <td class="yes">yes</td><td class="yes">yes</td><td class="no">no</td>
+        <td class="no">no</td><td class="partial">partial</td><td class="no">no</td></tr>
+      <tr data-fmt="dxf"><td class="fmt">DXF</td>
+        <td class="no">no</td><td class="no">no</td><td class="yes">yes</td>
+        <td class="partial">partial</td><td class="partial">partial</td><td class="no">no</td></tr>
+      <tr data-fmt="3mf"><td class="fmt">3MF</td>
+        <td class="yes">yes</td><td class="yes">yes</td><td class="no">no</td>
+        <td class="no">no</td><td class="no">no</td><td class="no">no</td></tr>
+      <tr data-fmt="gerber"><td class="fmt">Gerber</td>
+        <td class="no">no</td><td class="no">no</td><td class="no">no</td>
+        <td class="no">no</td><td class="no">no</td><td class="yes">yes</td></tr>
+    </tbody>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>The timeline is the model.</b> Fusion's bottom-bar timeline records every step in order. Re-running the timeline (after edits) re-derives all geometry from the original sketches — that's why a dimension change propagates instantly.</li>
+    <li><b>Constrain first, dimension second.</b> Sketches with no constraints can rotate or shear when you drag any point. Apply geometric constraints (coincident, horizontal, perpendicular) until the sketch *holds its shape*, then dimension. A fully-constrained sketch goes blue in Fusion (green in FreeCAD).</li>
+    <li><b>FreeCAD's topological naming.</b> Fillet edge "Edge12" — if you add an earlier feature that renumbers edges, the fillet references a different (or vanished) edge and the model breaks. FreeCAD 1.0 begins fixing this; until then, prefer Pattern + sketch references over manual edge picks.</li>
+    <li><b>Pattern saves your sanity.</b> Four M2.5 mounting holes is one sketch + one Rectangular Pattern, not four sketches. Reorder them later by changing one parameter (47×11.4 mm spacing) instead of editing four sketches independently.</li>
+    <li><b>STL is one-way.</b> Once exported, the parametric history is gone — the file is a triangle soup. Always keep the source .f3d (Fusion) or .FCStd (FreeCAD) file for future edits. STL is the deliverable, not the source.</li>
+    <li><b>STEP is the universal handoff.</b> Going to a supplier you don't know? Export STEP. It carries solid geometry, assembly structure, and surfaces, and every CAD tool reads it. 3MF is newer and better for 3D printing specifically.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>SKETCH STATE COLORS</h3>
+      <ul>
+        <li><b>Blue</b> — fully constrained; safe.</li>
+        <li><b>Yellow / red</b> — under-constrained; drag-warps.</li>
+        <li><b>Named parameters</b> survive iterations; hard-coded values don't.</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>TOOL + FORMAT DECISIONS</h3>
+      <ul>
+        <li><b>Fusion 360</b> — better assemblies + drawings; free for hobby.</li>
+        <li><b>FreeCAD</b> — open-source, Linux-friendly.</li>
+        <li><b>STEP</b> CAD interchange · <b>STL</b> 3D print · <b>DXF</b> laser/CNC · <b>3MF</b> modern print.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>FreeCAD topological naming</b> — edge refs break on timeline reorder.</li>
+        <li><b>STL is lossy</b> — no parameters survive export; keep source file.</li>
+        <li><b>Timeline reorder</b> breaks downstream feature references.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 1 — Technical Drawing &amp; CAD</a> ·
+    Topic: Parametric CAD workflow &amp; export formats
+  </footer>
+</main>
+<script>
+  const STEPS = [
+    {id:'sketch',    icon:'✎', label:'Sketch',
+     what:'Create a 2D profile on a flat plane (or face). Lines, arcs, circles, splines. The profile is the cross-section everything else is built from.',
+     path:'Create → Sketch → pick plane → draw',
+     gotcha:'A sketch with stray lines or open profiles will fail to extrude. Close every loop and delete construction lines you do not need.'},
+    {id:'constrain', icon:'⊥', label:'Constrain',
+     what:'Lock geometric relationships: coincident, horizontal, vertical, perpendicular, tangent, symmetric, equal. Constraints describe *intent* — what should stay true even if dimensions change.',
+     path:'Sketch palette → constraint icons (auto-applied as you draw)',
+     gotcha:'Under-constrained sketches show yellow/red lines that you can drag freely. Drag any point — if the sketch warps, add the missing constraint. Over-constrained sketches throw a red warning and refuse to update.'},
+    {id:'dimension', icon:'↔', label:'Dimension',
+     what:'Pin numerical values to lines, angles, radii. Each dimension removes one degree of freedom. A fully-dimensioned + fully-constrained sketch turns *blue* (Fusion) or *green* (FreeCAD).',
+     path:'Sketch → Sketch Dimension → click feature → type value',
+     gotcha:'Promote critical dimensions to named parameters early (Modify → Change Parameters). "wall_thickness = 2 mm" beats hard-coded 2.0 baked into every sketch — the user later asks for 1.5 mm and you re-edit one place, not twelve.'},
+    {id:'extrude',   icon:'⇧', label:'Extrude',
+     what:'Push the 2D profile into 3D. Operations: New body, Join (add), Cut (subtract), Intersect. Specify distance, direction (one-side / symmetric / two-side), and any taper.',
+     path:'Create → Extrude → select profile → set distance',
+     gotcha:'"Cut" operations require an existing body to cut from. If the cut depth exceeds the body thickness, Fusion truncates at the body edge — fine in practice, confusing when you expected the cut to fail.'},
+    {id:'modify',    icon:'◇', label:'Modify',
+     what:'Refine the body: Fillet (round edges), Chamfer (45° bevel), Shell (hollow out a wall thickness), Combine (boolean ops between bodies).',
+     path:'Modify → Fillet / Chamfer / Shell',
+     gotcha:'Apply fillets *last*. A fillet on edge X depends on edge X existing; if you later reorder the timeline and X stops being an edge, the fillet errors out. Same logic for chamfers.'},
+    {id:'pattern',   icon:'⋮⋮', label:'Pattern',
+     what:'Duplicate a feature in a regular array. Rectangular (rows × columns), Circular (around an axis), Path (along a curve), Mirror (across a plane).',
+     path:'Create → Pattern → Rectangular / Circular / Mirror',
+     gotcha:'Pattern the *feature*, not the *body*. Patterning a body duplicates geometry without history — edit one hole and the others stay stale. Pattern the extrude/cut step instead.'},
+    {id:'assemble',  icon:'⊕', label:'Assemble',
+     what:'Combine multiple components into an assembly. Each component has its own origin and timeline. Joints (rigid, revolute, slider, cylindrical, ball) constrain motion between components.',
+     path:'Assemble → Joint → pick faces → pick joint type',
+     gotcha:'A rigid body in 3D has 6 DOF. Over-constraining (e.g., two rigid joints to the same component) makes Fusion refuse to solve. Use the simplest joint type that captures the intent — Rigid for "glued in place," Revolute for hinges.'},
+    {id:'draw',      icon:'📐', label:'Draw',
+     what:'Generate a 2D shop drawing from the 3D model. Place orthographic views, add dimensions, GD&T callouts, title block, revision history. Output is a multi-sheet drawing the shop can read.',
+     path:'File → New Drawing → From Design',
+     gotcha:'Drawing scale matters for printability. A 100 mm part on US-letter at 1:1 takes most of the sheet; at 1:2 it fits with margin. Check the title-block scale field matches your view scale before exporting.'},
+    {id:'export',    icon:'⤓', label:'Export',
+     what:'Save the model in a downstream-ready format: STEP for suppliers, STL/3MF for 3D printing, DXF for laser cutting, PDF for the drawing itself.',
+     path:'File → Export → pick format',
+     gotcha:'STL is lossy — the parametric history is gone. Always keep the source .f3d / .FCStd; only ship the STL. If you ship someone an STL and they ask for a change, you re-export, not re-edit the STL.'}
+  ];
+
+  const POS = [
+    [60,  60], [180, 60], [300, 60], [420, 60], [540, 60],   // row 1
+    [60, 160], [240, 160], [420, 160], [600, 160]              // row 2 (shifted)
+  ];
+  // we'll re-lay these into a uniform grid: 5 cols row 1 (first 5), 4 cols row 2 (last 4)
+  function layoutSteps() {
+    const w = 110, h = 60, gapX = 30, gapY = 50;
+    const row1y = 30, row2y = row1y + h + gapY;
+    // row 1: 5 nodes
+    for (let i = 0; i < 5; i++) {
+      POS[i] = [40 + i * (w + gapX), row1y];
+    }
+    // row 2: 4 nodes, centered
+    for (let i = 5; i < 9; i++) {
+      POS[i] = [40 + (i - 5) * (w + gapX) + (w + gapX) / 2, row2y];
+    }
+  }
+  layoutSteps();
+
+  function drawSteps() {
+    const root = document.getElementById('steps');
+    root.innerHTML = '';
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    // arrows first (behind)
+    for (let i = 0; i < STEPS.length - 1; i++) {
+      const [x1, y1] = POS[i];
+      const [x2, y2] = POS[i + 1];
+      const ar = document.createElementNS(SVG_NS, 'path');
+      let d;
+      if (y1 === y2) {
+        d = `M ${x1 + 110} ${y1 + 30} L ${x2} ${y2 + 30}`;
+      } else {
+        // L-bend from end of row1 down to start of row2
+        const midX = (x1 + 110 + x2) / 2;
+        d = `M ${x1 + 110} ${y1 + 30} L ${midX} ${y1 + 30} L ${midX} ${y2 + 30} L ${x2} ${y2 + 30}`;
+      }
+      ar.setAttribute('d', d);
+      ar.setAttribute('class', 'arrow');
+      root.appendChild(ar);
+    }
+
+    // nodes
+    STEPS.forEach((s, i) => {
+      const [x, y] = POS[i];
+      const g = document.createElementNS(SVG_NS, 'g');
+      g.setAttribute('class', 'step-node');
+      g.setAttribute('transform', `translate(${x},${y})`);
+      g.setAttribute('data-id', s.id);
+      g.addEventListener('click', () => showDetail(s.id));
+
+      const r = document.createElementNS(SVG_NS, 'rect');
+      r.setAttribute('width', 110); r.setAttribute('height', 60);
+      r.setAttribute('rx', 6); r.setAttribute('class', 'step-rect');
+      r.setAttribute('data-id', s.id);
+      g.appendChild(r);
+
+      const ic = document.createElementNS(SVG_NS, 'text');
+      ic.setAttribute('x', 55); ic.setAttribute('y', 26);
+      ic.setAttribute('class', 'step-icon');
+      ic.textContent = s.icon;
+      g.appendChild(ic);
+
+      const lb = document.createElementNS(SVG_NS, 'text');
+      lb.setAttribute('x', 55); lb.setAttribute('y', 48);
+      lb.setAttribute('class', 'step-label');
+      lb.textContent = s.label;
+      g.appendChild(lb);
+
+      root.appendChild(g);
+    });
+  }
+
+  function showDetail(id) {
+    const s = STEPS.find(x => x.id === id);
+    const det = document.getElementById('step-detail');
+    det.innerHTML = `
+      <h3>${s.icon}  ${s.label}</h3>
+      <p>${s.what}</p>
+      <p style="color:var(--fg-dim);font-size:12px;font-family:ui-monospace,Menlo,monospace">
+        <b style="color:var(--fg)">Menu path:</b> ${s.path}
+      </p>
+      <div class="gotcha"><b>Gotcha:</b> ${s.gotcha}</div>
+    `;
+    // highlight active
+    document.querySelectorAll('rect.step-rect').forEach(r => {
+      r.classList.toggle('active', r.getAttribute('data-id') === id);
+    });
+  }
+
+  const FMT_INFO = {
+    step: {use:'CAD-to-CAD handoff, supplier quoting (CNC, sheet metal, machining)',
+           desc:'Preserves solid geometry, surfaces, and assembly structure. Read by every CAD tool. Loses parametric history but keeps the final 3D shape exactly.'},
+    stl:  {use:'FDM and resin 3D printing — slicers consume STL natively',
+           desc:'Triangulated mesh. Lossy: no curves (everything is flat triangles), no parameters, no assembly structure. Watch mesh resolution: too coarse = visible facets; too fine = slicing slowdown. Verify watertight (no gaps) before slicing.'},
+    dxf:  {use:'Laser cutting, waterjet, CNC routing of flat stock',
+           desc:'2D vector geometry only. Export from a sketch, not a 3D body. Verify units (mm vs inch) — DXF stores no unit metadata, the shop has to guess if you do not tell them.'},
+    '3mf':{use:'Modern FDM print, especially Bambu Studio / PrusaSlicer',
+           desc:'XML-based 3D print format. Carries materials, color, print settings, and supports embedded slicer profiles. Smaller and more accurate than STL. Use it if your slicer accepts it.'},
+    gerber:{use:'PCB fabrication — copper layers, solder mask, silkscreen',
+           desc:'NOT a mechanical CAD format. Exported from KiCad / Altium, not Fusion. Listed here so you know it is the wrong tool for the shell. Mechanical CAD provides the enclosure outline; PCB CAD provides the Gerbers.'}
+  };
+
+  function showFmt(fmt) {
+    document.getElementById('ro-fmt-use').textContent = FMT_INFO[fmt].use;
+    document.getElementById('export-pick').innerHTML =
+      `<p style="margin:0;color:var(--fg)"><b style="color:var(--accent)">${fmt.toUpperCase()}</b> — ${FMT_INFO[fmt].desc}</p>`;
+    document.querySelectorAll('tr[data-fmt]').forEach(tr => {
+      tr.classList.toggle('active', tr.getAttribute('data-fmt') === fmt);
+    });
+  }
+  document.getElementById('sel-fmt').addEventListener('change', e => showFmt(e.target.value));
+
+  drawSteps();
+  showDetail('sketch');
+  showFmt('step');
+</script>
+</body>
+</html>

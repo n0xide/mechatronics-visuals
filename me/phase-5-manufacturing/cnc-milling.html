@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CNC milling — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+
+  .calc-output{background:var(--bg-elev2);border:1px solid var(--accent);border-radius:6px;
+    padding:12px 16px;margin:10px 0;font-family:ui-monospace,monospace}
+  .calc-row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+  .calc-row .v{color:var(--accent2);font-weight:600}
+  .calc-row .v.warn{color:var(--warn)}
+  .calc-row .v.good{color:var(--accent3)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>CNC milling — speeds, feeds, chip flow</h1>
+  <p class="lede">Three numbers govern every CNC cut: <b>RPM</b> (spindle), <b>feed rate</b> (table travel), and <b>chip load</b> (material per cutting edge per revolution). Get them right and the chips look like cornflakes; get them wrong and the tool either rubs (heat, wear) or breaks. The calculator below ties them together.</p>
+
+  <div class="controls">
+    <div class="control">
+      <label>Material</label>
+      <select id="sMat">
+        <option value="alu" selected>Aluminum 6061 — SFM 800</option>
+        <option value="steel">Mild steel — SFM 200</option>
+        <option value="ss">Stainless 304 — SFM 100</option>
+        <option value="brass">Brass — SFM 600</option>
+        <option value="plastic">Plastic (HDPE, acetal) — SFM 500</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Tool diameter: <span class="readout" id="rDia">6.0</span> mm</label>
+      <input type="range" id="sDia" min="1.0" max="20.0" step="0.5" value="6.0">
+    </div>
+    <div class="control">
+      <label>Number of flutes: <span class="readout" id="rFlutes">2</span></label>
+      <input type="range" id="sFlutes" min="1" max="6" step="1" value="2">
+    </div>
+    <div class="control">
+      <label>Spindle RPM: <span class="readout" id="rRpm">12000</span></label>
+      <input type="range" id="sRpm" min="500" max="30000" step="500" value="12000">
+    </div>
+    <div class="control">
+      <label>Feed rate: <span class="readout" id="rFeed">600</span> mm/min</label>
+      <input type="range" id="sFeed" min="50" max="3000" step="50" value="600">
+    </div>
+  </div>
+
+  <div class="calc-output">
+    <div class="calc-row"><span>Surface speed (SFM target)</span><span class="v" id="oSfm">800</span></div>
+    <div class="calc-row"><span>Recommended RPM for this material + tool</span><span class="v" id="oRecRpm">—</span></div>
+    <div class="calc-row"><span>Chip load = feed / (RPM × flutes)</span><span class="v" id="oChip">—</span></div>
+    <div class="calc-row"><span>Verdict</span><span class="v" id="oVerdict">—</span></div>
+  </div>
+
+  <h2>Climb vs conventional milling</h2>
+  <p style="color:var(--fg-dim);font-size:13px;margin-bottom:14px"><b>Climb milling</b> rotates the cutter in the same direction as the feed at the entry point — chip starts thick and thins to zero. <b>Conventional</b> goes opposite — chip starts at zero (rubbing) and thickens. Modern rigid mills: climb. Old gantries with backlash: conventional.</p>
+
+  <div class="figure">
+    <svg viewBox="0 0 720 280" xmlns="http://www.w3.org/2000/svg">
+      <!-- CLIMB -->
+      <g transform="translate(20,30)">
+        <text x="160" y="0" class="label" text-anchor="middle" style="font-weight:600">Climb milling (preferred)</text>
+        <!-- workpiece -->
+        <rect x="20" y="160" width="280" height="60" fill="#2a313c" stroke="#8f99a8" stroke-width="1"/>
+        <text x="160" y="200" class="label-dim" text-anchor="middle">workpiece</text>
+        <!-- feed direction arrow -->
+        <line x1="40" y1="240" x2="280" y2="240" stroke="#5ec8ff" stroke-width="2"/>
+        <polygon points="280,240 270,234 270,246" fill="#5ec8ff"/>
+        <text x="160" y="258" class="label" text-anchor="middle" fill="#5ec8ff">feed direction (table moves)</text>
+        <!-- tool -->
+        <circle cx="170" cy="120" r="40" fill="none" stroke="#ffb86c" stroke-width="2"/>
+        <circle cx="170" cy="120" r="4" fill="#ffb86c"/>
+        <!-- rotation arrow: climb = same direction at contact (clockwise here at bottom going LEFT-TO-RIGHT matches feed) -->
+        <path d="M 130 105 A 40 40 0 1 1 130 135" fill="none" stroke="#a3e635" stroke-width="2"/>
+        <polygon points="130,135 122,130 130,122" fill="#a3e635"/>
+        <text x="100" y="80" class="label-dim" fill="#a3e635">rotation</text>
+        <!-- chip: thick at entry, thin at exit -->
+        <path d="M 200 150 Q 210 145 215 148 L 220 158 Q 215 160 210 160 Z" fill="#ffb86c" opacity="0.7"/>
+        <text x="240" y="158" class="label-dim">chip: thick→thin</text>
+        <!-- tick: heat into chip -->
+        <text x="160" y="120" class="label" fill="#a3e635" text-anchor="middle" style="font-size:14px;font-weight:600">✓</text>
+      </g>
+
+      <!-- CONVENTIONAL -->
+      <g transform="translate(380,30)">
+        <text x="160" y="0" class="label" text-anchor="middle" style="font-weight:600">Conventional milling</text>
+        <rect x="20" y="160" width="280" height="60" fill="#2a313c" stroke="#8f99a8" stroke-width="1"/>
+        <text x="160" y="200" class="label-dim" text-anchor="middle">workpiece</text>
+        <line x1="40" y1="240" x2="280" y2="240" stroke="#5ec8ff" stroke-width="2"/>
+        <polygon points="280,240 270,234 270,246" fill="#5ec8ff"/>
+        <text x="160" y="258" class="label" text-anchor="middle" fill="#5ec8ff">feed direction (table moves)</text>
+        <circle cx="170" cy="120" r="40" fill="none" stroke="#ffb86c" stroke-width="2"/>
+        <circle cx="170" cy="120" r="4" fill="#ffb86c"/>
+        <!-- rotation: opposite -->
+        <path d="M 210 135 A 40 40 0 1 1 210 105" fill="none" stroke="#ff7b72" stroke-width="2"/>
+        <polygon points="210,105 218,110 210,118" fill="#ff7b72"/>
+        <text x="220" y="80" class="label-dim" fill="#ff7b72">rotation</text>
+        <!-- chip: thin at entry, thick at exit -->
+        <path d="M 120 150 Q 125 148 130 158 L 140 160 Q 135 162 125 160 Z" fill="#ffb86c" opacity="0.7"/>
+        <text x="60" y="158" class="label-dim">chip: thin→thick</text>
+        <text x="160" y="120" class="label" fill="#ff7b72" text-anchor="middle" style="font-size:14px;font-weight:600">✗</text>
+      </g>
+    </svg>
+    <p style="font-size:11px;color:var(--fg-dim);margin-top:10px">Climb pushes the chip into the cut path and lifts the workpiece — needs a rigid machine and no backlash. Conventional rubs at entry (poor surface, heat into the tool) but tolerates loose machines. Hobby CNCs: climb if your spindle holder is tight; conventional if you have a Shapeoko-class gantry with measurable backlash.</p>
+  </div>
+
+  <h2>Depth-of-cut rule of thumb</h2>
+  <p style="color:var(--fg-dim);font-size:13px">For a full-slot cut (cutter engaged on both sides), keep axial depth-of-cut <b>≤ 0.5 × tool diameter</b>. For a side cut (climb, &lt; 30% radial engagement), you can push axial to 1.0× tool diameter or more.</p>
+
+  <div class="figure">
+    <svg viewBox="0 0 720 200" xmlns="http://www.w3.org/2000/svg">
+      <!-- Good: shallow slot -->
+      <g transform="translate(20,20)">
+        <text x="110" y="0" class="label" text-anchor="middle" fill="#a3e635" style="font-weight:600">DOC = 0.5D (full slot, safe)</text>
+        <rect x="20" y="40" width="180" height="80" fill="#2a313c" stroke="#8f99a8"/>
+        <!-- slot -->
+        <rect x="50" y="40" width="60" height="30" fill="#0e1116" stroke="#a3e635" stroke-width="1.5"/>
+        <!-- tool inside slot -->
+        <circle cx="80" cy="55" r="30" fill="none" stroke="#ffb86c" stroke-width="1.5"/>
+        <text x="80" y="158" class="label-dim" text-anchor="middle">6mm tool, 3mm depth</text>
+      </g>
+      <!-- Bad: full diameter -->
+      <g transform="translate(260,20)">
+        <text x="110" y="0" class="label" text-anchor="middle" fill="#ff7b72" style="font-weight:600">DOC = 1.0D (full slot, breaks)</text>
+        <rect x="20" y="40" width="180" height="80" fill="#2a313c" stroke="#8f99a8"/>
+        <rect x="50" y="40" width="60" height="60" fill="#0e1116" stroke="#ff7b72" stroke-width="1.5"/>
+        <circle cx="80" cy="70" r="30" fill="none" stroke="#ffb86c" stroke-width="1.5"/>
+        <text x="80" y="158" class="label-dim" text-anchor="middle">6mm tool, 6mm depth → snap</text>
+      </g>
+      <!-- Good: side cut -->
+      <g transform="translate(500,20)">
+        <text x="110" y="0" class="label" text-anchor="middle" fill="#a3e635" style="font-weight:600">DOC = 1.5D (side cut, fine)</text>
+        <rect x="20" y="40" width="180" height="80" fill="#2a313c" stroke="#8f99a8"/>
+        <!-- side cut, only edge engaged -->
+        <rect x="60" y="40" width="120" height="80" fill="#0e1116"/>
+        <circle cx="55" cy="80" r="30" fill="none" stroke="#ffb86c" stroke-width="1.5"/>
+        <text x="100" y="158" class="label-dim" text-anchor="middle">6mm tool, 9mm depth, 20% radial</text>
+      </g>
+    </svg>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>SFM is a material constant, not a machine setting.</b> RPM is derived: <code>RPM = (Vc × 1000) / (π × D)</code> with Vc in m/min and D in mm. Carbide tools push SFM ~2× higher than HSS.</li>
+    <li><b>Chip load is the real diagnostic.</b> Too low → cutter rubs, generates heat, dulls quickly. Too high → cutter breaks. The right band for aluminum + 6 mm 2-flute carbide is ~0.03–0.08 mm/tooth.</li>
+    <li><b>Climb is the default on rigid mills</b>, but on a loose hobby gantry the table can pull into the cut. If you hear chatter or see backlash play, switch to conventional.</li>
+    <li><b>Full-slot ≤ 0.5D, side-cut ≥ 1D.</b> If you need a deep pocket, take multiple shallow passes — total cycle time stays similar because each pass runs at the full feed rate.</li>
+    <li><b>Flood coolant or compressed air is mandatory for aluminum.</b> Without it, chips re-weld to the tool flutes ("built-up edge") and surface finish collapses.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <span class="eq">N<sub>rpm</sub> = 1000 · V<sub>c</sub> / (π · D<sub>mm</sub>)</span>
+      <span class="eq">feed = chip_load × RPM × flutes</span>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE — SFM &amp; CHIP LOAD</h3>
+      <table>
+        <tr><th>Material</th><th>HSS</th><th>Carbide</th></tr>
+        <tr><td>Aluminum</td><td>800</td><td>1600</td></tr>
+        <tr><td>Steel</td><td>200</td><td>400</td></tr>
+        <tr><td>Plastic</td><td>500</td><td>500</td></tr>
+      </table>
+      <ul><li>Al 6 mm 2-fl carbide ≈ <b>0.05 mm/tooth</b></li></ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li>Never full depth — peck <b>≤0.5×D</b></li>
+        <li>Chips rubbing = feed too low → <b>wear + heat</b></li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 5 — Manufacturing Processes</a> ·
+    Topic: CNC milling (speeds, feeds, chip flow)
+  </footer>
+</main>
+<script>
+const MAT = {
+  alu:     {name:"Aluminum 6061",  sfm:800, chipMin:0.03, chipMax:0.08},
+  steel:   {name:"Mild steel",     sfm:200, chipMin:0.02, chipMax:0.06},
+  ss:      {name:"Stainless 304",  sfm:100, chipMin:0.015,chipMax:0.04},
+  brass:   {name:"Brass",          sfm:600, chipMin:0.03, chipMax:0.10},
+  plastic: {name:"Plastic",        sfm:500, chipMin:0.05, chipMax:0.15},
+};
+
+const sMat = document.getElementById("sMat");
+const sDia = document.getElementById("sDia");
+const sFlutes = document.getElementById("sFlutes");
+const sRpm = document.getElementById("sRpm");
+const sFeed = document.getElementById("sFeed");
+
+const rDia = document.getElementById("rDia");
+const rFlutes = document.getElementById("rFlutes");
+const rRpm = document.getElementById("rRpm");
+const rFeed = document.getElementById("rFeed");
+
+const oSfm = document.getElementById("oSfm");
+const oRecRpm = document.getElementById("oRecRpm");
+const oChip = document.getElementById("oChip");
+const oVerdict = document.getElementById("oVerdict");
+
+function update(){
+  const m = MAT[sMat.value];
+  const d = +sDia.value;
+  const z = +sFlutes.value;
+  const n = +sRpm.value;
+  const f = +sFeed.value;
+
+  rDia.textContent = d.toFixed(1);
+  rFlutes.textContent = z;
+  rRpm.textContent = n;
+  rFeed.textContent = f;
+
+  // SFM -> Vc in m/min: Vc = SFM × 0.3048
+  const Vc = m.sfm * 0.3048;
+  // Recommended RPM = 1000 × Vc / (π × D)
+  const recRpm = Math.round(1000 * Vc / (Math.PI * d));
+  // Chip load = feed / (RPM × flutes)
+  const chip = f / (n * z);
+
+  oSfm.textContent = m.sfm + " SFM (" + Vc.toFixed(0) + " m/min)";
+  oRecRpm.textContent = recRpm.toLocaleString() + " RPM";
+  oChip.textContent = chip.toFixed(4) + " mm/tooth";
+
+  // Verdict
+  let verdict = "";
+  let cls = "";
+  // RPM check first
+  const rpmRatio = n / recRpm;
+  if (rpmRatio < 0.5){ verdict = "RPM too low — surface speed under-target, poor finish"; cls = "warn"; }
+  else if (rpmRatio > 2.0){ verdict = "RPM too high — surface speed exceeded, tool will overheat"; cls = "warn"; }
+  else if (chip < m.chipMin){ verdict = "Chip load too low — tool will rub & dull. Increase feed."; cls = "warn"; }
+  else if (chip > m.chipMax){ verdict = "Chip load too high — risk of tool breakage. Decrease feed."; cls = "warn"; }
+  else { verdict = "Good — chip load and surface speed in band"; cls = "good"; }
+
+  oVerdict.textContent = verdict;
+  oVerdict.className = "v " + cls;
+}
+sMat.addEventListener("change", update);
+sDia.addEventListener("input", update);
+sFlutes.addEventListener("input", update);
+sRpm.addEventListener("input", update);
+sFeed.addEventListener("input", update);
+update();
+</script>
+</body>
+</html>

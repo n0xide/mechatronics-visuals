@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Superposition Explorer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number],.control input[type=checkbox]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .control label.cb{display:flex;align-items:center;gap:8px;font-size:13px;
+    color:var(--fg);cursor:pointer}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .wire.off{stroke:var(--fg-dim);stroke-dasharray:3,3;opacity:0.5}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:780px){.pair{grid-template-columns:1fr}}
+  .panel{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:12px}
+  .panel h4{margin:0 0 8px;color:var(--accent);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .trap{background:rgba(255,123,114,0.08);border:1px solid var(--warn);
+    border-radius:6px;padding:14px;margin-top:16px}
+  .trap h3{color:var(--warn);margin-top:0}
+  .delta{color:var(--warn);font-weight:600}
+  .ok{color:var(--accent3);font-weight:600}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Superposition Explorer</h1>
+  <p class="lede">Two voltage sources feed a shared 100 Ω resistor through 50 Ω paths. Toggle each source on/off. Verify voltage superposes — but power does NOT.</p>
+
+  <p>Superposition works for <b>linear quantities</b>: voltage, current, charge. Apply each source one at a time, then add. It does <b>not</b> work for power, because P = V²/R is nonlinear. This is the most common trap in early circuit analysis — the visual computes both and shows the gap, so you see <i>why</i>, not just that it's so.</p>
+
+  <section class="controls">
+    <div class="control"><label>V1 (left source): <span class="readout" id="v1Read">10.0 V</span></label><input id="v1" type="range" min="0" max="20" step="0.5" value="10"></div>
+    <div class="control"><label>V2 (right source): <span class="readout" id="v2Read">6.0 V</span></label><input id="v2" type="range" min="0" max="20" step="0.5" value="6"></div>
+    <div class="control"><label class="cb"><input id="on1" type="checkbox" checked> V1 active (unchecked = short)</label></div>
+    <div class="control"><label class="cb"><input id="on2" type="checkbox" checked> V2 active (unchecked = short)</label></div>
+  </section>
+
+  <div class="figure">
+    <h3>Circuit</h3>
+    <svg viewBox="0 0 600 240" width="100%">
+      <!-- Left source -->
+      <circle id="v1Circ" cx="60" cy="120" r="20" fill="none" stroke="var(--fg)" stroke-width="1.5"/>
+      <text x="60" y="116" class="label" text-anchor="middle">+</text>
+      <text x="60" y="132" class="label" text-anchor="middle">−</text>
+      <text x="60" y="158" class="label" text-anchor="middle" id="v1Lbl">V1=10V</text>
+      <line id="v1WireTop" x1="60" y1="100" x2="60" y2="60" class="wire"/>
+      <line id="v1WireBot" x1="60" y1="140" x2="60" y2="200" class="wire"/>
+      <!-- Path 1: 50 Ω -->
+      <rect x="120" y="50" width="60" height="20" fill="var(--bg-elev2)" stroke="var(--accent2)" stroke-width="1.5"/>
+      <text x="150" y="44" class="label" text-anchor="middle">50Ω</text>
+      <line x1="60" y1="60" x2="120" y2="60" class="wire"/>
+      <line x1="180" y1="60" x2="300" y2="60" class="wire"/>
+      <!-- Node at top center -->
+      <circle cx="300" cy="60" r="4" class="node"/>
+      <text x="300" y="48" class="label" text-anchor="middle">node</text>
+      <!-- 100 Ω down to ground -->
+      <line x1="300" y1="60" x2="300" y2="90" class="wire"/>
+      <rect x="285" y="90" width="30" height="60" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="330" y="125" class="label">100Ω (R)</text>
+      <line x1="300" y1="150" x2="300" y2="200" class="wire"/>
+      <!-- Right path: 50 Ω -->
+      <line x1="300" y1="60" x2="420" y2="60" class="wire"/>
+      <rect x="420" y="50" width="60" height="20" fill="var(--bg-elev2)" stroke="var(--accent2)" stroke-width="1.5"/>
+      <text x="450" y="44" class="label" text-anchor="middle">50Ω</text>
+      <line x1="480" y1="60" x2="540" y2="60" class="wire"/>
+      <!-- Right source -->
+      <circle id="v2Circ" cx="540" cy="120" r="20" fill="none" stroke="var(--fg)" stroke-width="1.5"/>
+      <text x="540" y="116" class="label" text-anchor="middle">+</text>
+      <text x="540" y="132" class="label" text-anchor="middle">−</text>
+      <text x="540" y="158" class="label" text-anchor="middle" id="v2Lbl">V2=6V</text>
+      <line id="v2WireTop" x1="540" y1="100" x2="540" y2="60" class="wire"/>
+      <line id="v2WireBot" x1="540" y1="140" x2="540" y2="200" class="wire"/>
+      <!-- Common ground -->
+      <line x1="60" y1="200" x2="540" y2="200" class="wire"/>
+      <line x1="300" y1="200" x2="300" y2="210" class="wire"/>
+      <text x="300" y="225" class="label-dim" text-anchor="middle">GND</text>
+      <!-- Readout -->
+      <text x="120" y="135" class="readout" id="vRout">V_R = 5.33 V</text>
+      <text x="120" y="155" class="readout" id="iRout">I_R = 53.3 mA</text>
+    </svg>
+
+    <div class="pair">
+      <div class="panel">
+        <h4>Voltage — superposition works</h4>
+        <table>
+          <tr><th>Active</th><th>V across R</th></tr>
+          <tr><td>V1 only</td><td><span class="readout" id="vR1">3.33 V</span></td></tr>
+          <tr><td>V2 only</td><td><span class="readout" id="vR2">2.00 V</span></td></tr>
+          <tr style="background:var(--bg-elev2)"><td><b>Sum (V1+V2)</b></td><td><span class="ok" id="vSum">5.33 V</span></td></tr>
+          <tr><td>Both active (actual)</td><td><span class="ok" id="vAct">5.33 V</span></td></tr>
+        </table>
+        <p style="font:12px ui-monospace,monospace;color:var(--accent3);margin:6px 0 0">
+          Sum ≡ Actual. Voltage superposes because V is linear in source values.
+        </p>
+      </div>
+      <div class="panel">
+        <h4>Power — superposition FAILS</h4>
+        <table>
+          <tr><th>Source</th><th>V_R</th><th>P = V²/R</th></tr>
+          <tr><td>V1 only</td><td><span class="readout" id="vR1b">3.33 V</span></td><td><span class="readout" id="pR1">111 mW</span></td></tr>
+          <tr><td>V2 only</td><td><span class="readout" id="vR2b">2.00 V</span></td><td><span class="readout" id="pR2">40 mW</span></td></tr>
+          <tr style="background:var(--bg-elev2)"><td><b>Sum P1+P2</b></td><td>—</td><td><span class="delta" id="pSum">151 mW</span></td></tr>
+          <tr><td>Both active (actual)</td><td><span class="readout" id="vActb">5.33 V</span></td><td><span class="ok" id="pAct">284 mW</span></td></tr>
+        </table>
+        <p style="font:12px ui-monospace,monospace;color:var(--warn);margin:6px 0 0">
+          ΔP = <span class="delta" id="pDelta">133 mW</span> (actual − sum). They disagree because P ∝ V², and (V1+V2)² ≠ V1² + V2² — the cross term 2·V1·V2 is missing from the sum.
+        </p>
+      </div>
+    </div>
+
+    <div class="trap">
+      <h3>Why power fails — the algebra</h3>
+      <p style="font:13px ui-monospace,monospace;color:var(--fg);margin:6px 0">
+        With both sources on, V_R = V_a + V_b (superposition for voltage).<br>
+        Power: P_total = (V_a + V_b)² / R = (V_a² + 2·V_a·V_b + V_b²) / R<br>
+        = P_a + P_b + <span class="delta">2·V_a·V_b / R</span>  ← cross term, lost when you sum P_a + P_b alone.
+      </p>
+      <p style="font:13px ui-monospace,monospace;color:var(--fg-dim);margin:6px 0">
+        Live values: V_a = <span class="readout" id="vaSym">3.33</span>, V_b = <span class="readout" id="vbSym">2.00</span>,
+        cross = 2·V_a·V_b/R = <span class="readout" id="crossSym">133 mW</span> — matches ΔP above.
+      </p>
+      <p style="font:12px;color:var(--fg-dim)">
+        Rule: <b style="color:var(--warn)">never superpose power.</b> Always find total V or I first, then compute P once.
+      </p>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Voltage and current superpose</b> — find each source's contribution alone, add them, done.</li>
+    <li><b>Power does not superpose</b> — the cross term 2·V_a·V_b/R is always present and is what the naïve sum misses.</li>
+    <li><b>Sign of the cross term</b> — same polarity sources → cross term adds to P_actual; opposing polarity → cross term subtracts. Try setting V2 with opposite polarity by sliding it through zero.</li>
+    <li><b>Deactivating a source</b> means: V → short (0 V wire), I → open (no current path). The visual short-circuits the source when its checkbox is off.</li>
+    <li><b>Superposition is only useful when linear</b> — diodes, transistors, and any nonlinear element break the assumption.</li>
+    <li><b>The shortcut for one branch</b> — if you only want V across one resistor, superposition can be faster than full nodal analysis.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>V superposes</dt><dd><span class="eq">V_total = Σ V_k   (each source alone)</span></dd>
+        <dt>I superposes</dt><dd><span class="eq">I_total = Σ I_k</span></dd>
+        <dt>Power does NOT</dt><dd><span class="eq">P_total = V_total² / R   (compute once)</span></dd>
+        <dt>Power gap</dt><dd><span class="eq">ΔP = 2·V_a·V_b / R   (cross term)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>METHOD</h3>
+      <ul>
+        <li><b>Linear circuits only</b> — no diodes, no transistors at large signal.</li>
+        <li><b>Deactivate</b>: V → short, I → open. One source at a time.</li>
+        <li><b>Sum the V (or I)</b>, then compute P from the total — never sum P.</li>
+        <li><b>Sign matters</b> — same polarity adds the cross term; opposing subtracts.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Σ P_k ≠ P_total</b> — P is quadratic in V. The cross term 2·V_a·V_b/R is missing from the naïve sum.</li>
+        <li><b>Forgetting the dependent sources</b> — independent sources deactivate; <i>dependent</i> stay on (they track the new circuit state).</li>
+        <li><b>Wasted effort</b> — if there are only two sources and you need everything, nodal/mesh is usually faster than superposition.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 1 — DC Circuit Foundations</a> ·
+    Topic: Superposition (and the power trap)
+  </footer>
+</main>
+<script>
+  // Circuit: V1 - 50 - node - 100 (to GND) - 50 - V2
+  //                         R
+  // Node analysis (V_n at top node, GND at bottom).
+  // (V_n - V1)/50 + (V_n - V2)/50 + V_n/100 = 0
+  // => V_n*(1/50+1/50+1/100) = V1/50 + V2/50
+  // => V_n*(5/100) = (V1+V2)/50
+  // => V_n = (V1+V2)/50 * 100/5 = (V1+V2)*0.4
+  // So V_R = V_n = 0.4*(V1+V2). With single source V1 only: V_R = 0.4*V1.
+
+  function vR(V1on,V2on,V1,V2){
+    const v1eff = V1on?V1:0;
+    const v2eff = V2on?V2:0;
+    return 0.4*(v1eff+v2eff);
+  }
+  function fmtV(v){return v.toFixed(2)+" V"}
+  function fmtI(i){return (i*1000).toFixed(1)+" mA"}
+  function fmtP(p){
+    if(p<1e-3) return (p*1e6).toFixed(1)+" µW";
+    if(p<1) return (p*1e3).toFixed(1)+" mW";
+    return p.toFixed(3)+" W";
+  }
+
+  const ids=['v1','v2','on1','on2'];
+  const els={};
+  ids.forEach(k=>els[k]=document.getElementById(k));
+
+  function update(){
+    const V1=parseFloat(els.v1.value);
+    const V2=parseFloat(els.v2.value);
+    const on1=els.on1.checked;
+    const on2=els.on2.checked;
+    document.getElementById('v1Read').textContent=V1.toFixed(1)+" V";
+    document.getElementById('v2Read').textContent=V2.toFixed(1)+" V";
+    document.getElementById('v1Lbl').textContent=on1?`V1=${V1.toFixed(1)}V`:"V1=SHORT";
+    document.getElementById('v2Lbl').textContent=on2?`V2=${V2.toFixed(1)}V`:"V2=SHORT";
+    // Visual deactivation: dim the source circle when off
+    document.getElementById('v1Circ').setAttribute('opacity', on1?'1':'0.3');
+    document.getElementById('v2Circ').setAttribute('opacity', on2?'1':'0.3');
+
+    const Va=vR(true,false,V1,V2);   // V1 only
+    const Vb=vR(false,true,V1,V2);   // V2 only
+    const Vact=vR(on1,on2,V1,V2);    // current state
+    const VbothFull=vR(true,true,V1,V2);
+
+    const Pa=Va*Va/100;
+    const Pb=Vb*Vb/100;
+    const Pact=Vact*Vact/100;
+    const PbothFull=VbothFull*VbothFull/100;
+    const Iact=Vact/100;
+
+    document.getElementById('vRout').textContent="V_R = "+fmtV(Vact);
+    document.getElementById('iRout').textContent="I_R = "+fmtI(Iact);
+
+    document.getElementById('vR1').textContent=fmtV(Va);
+    document.getElementById('vR2').textContent=fmtV(Vb);
+    document.getElementById('vSum').textContent=fmtV(Va+Vb);
+    document.getElementById('vAct').textContent=fmtV(VbothFull);
+
+    document.getElementById('vR1b').textContent=fmtV(Va);
+    document.getElementById('vR2b').textContent=fmtV(Vb);
+    document.getElementById('pR1').textContent=fmtP(Pa);
+    document.getElementById('pR2').textContent=fmtP(Pb);
+    document.getElementById('pSum').textContent=fmtP(Pa+Pb);
+    document.getElementById('vActb').textContent=fmtV(VbothFull);
+    document.getElementById('pAct').textContent=fmtP(PbothFull);
+    document.getElementById('pDelta').textContent=fmtP(PbothFull-(Pa+Pb));
+
+    document.getElementById('vaSym').textContent=Va.toFixed(2);
+    document.getElementById('vbSym').textContent=Vb.toFixed(2);
+    document.getElementById('crossSym').textContent=fmtP(2*Va*Vb/100);
+  }
+  ids.forEach(k=>els[k].addEventListener('input',update));
+  els.on1.addEventListener('change',update);
+  els.on2.addEventListener('change',update);
+  update();
+</script>
+</body>
+</html>

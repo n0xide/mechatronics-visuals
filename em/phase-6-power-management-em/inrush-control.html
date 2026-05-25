@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inrush Control &mdash; visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:8px;margin:10px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:5px;padding:8px 10px}
+  .stat .lbl{font:10px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 14px ui-monospace,monospace;color:var(--accent);margin-top:2px}
+  .stat .val.warn{color:var(--warn)}
+  .stat .val.ok{color:var(--accent3)}
+  .out-status{padding:10px 14px;border-radius:6px;
+    font:13px ui-monospace,monospace;margin:10px 0}
+  .out-status.ok{background:rgba(163,230,53,0.10);border:1px solid var(--accent3);color:var(--accent3)}
+  .out-status.warn{background:rgba(255,184,108,0.10);border:1px solid var(--accent2);color:var(--accent2)}
+  .out-status.fault{background:rgba(255,123,114,0.10);border:1px solid var(--warn);color:var(--warn)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+</style>
+</head>
+<body>
+<main>
+  <h1>Inrush Control</h1>
+  <p class="lede">Cold caps and stalled motors look the same to the battery: a short circuit. Inrush limiters keep peak current out of the destructive zone.</p>
+
+  <p>Three things draw enormous current at power-on: <b>bulk capacitors</b> charging from zero, <b>brushed motors</b> with no back-EMF and locked rotor (stall) resistance only, and <b>incandescent loads</b> with cold filament resistance. All look like dead shorts to the battery for the first few milliseconds &mdash; routinely 10&minus;50&times; the steady-state current. That blows fuses, dips bus voltage, sags MCUs into brown-out, and chars connector contacts. Inrush control caps the peak, smoothing the transient over tens of milliseconds.</p>
+
+  <div class="controls">
+    <div class="control">
+      <label>Inrush method</label>
+      <select id="method">
+        <option value="none">No limiter (direct connect)</option>
+        <option value="ntc">NTC inrush thermistor (CL-60)</option>
+        <option value="softstart">Active soft-start (P-FET + RC)</option>
+        <option value="precharge">Pre-charge resistor + relay</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Bus capacitance: <span class="readout" id="capR">2200 &micro;F</span></label>
+      <input id="cap" type="range" min="100" max="10000" step="100" value="2200">
+    </div>
+    <div class="control">
+      <label>Battery V: <span class="readout" id="vR">12.0 V</span></label>
+      <input id="v" type="range" min="6" max="48" step="0.5" value="12">
+    </div>
+    <div class="control">
+      <label>Series source R: <span class="readout" id="rsR">0.05 &Omega;</span></label>
+      <input id="rs" type="range" min="0.01" max="0.5" step="0.01" value="0.05">
+    </div>
+    <div class="control">
+      <label>Fuse rating: <span class="readout" id="fuseR">10 A</span></label>
+      <input id="fuse" type="range" min="1" max="50" step="1" value="10">
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Current vs time (20 ms window after switch-on)</h3>
+    <svg id="iSvg" viewBox="0 0 940 340" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <line x1="60" y1="20" x2="60" y2="290" class="axis"/>
+      <line x1="60" y1="290" x2="920" y2="290" class="axis"/>
+      <text x="40" y="22" class="axis-label">I (A)</text>
+      <text x="920" y="308" class="axis-label" text-anchor="end">t (ms)</text>
+
+      <!-- y gridlines -->
+      <line x1="60" y1="50"  x2="920" y2="50"  stroke="var(--grid)" stroke-dasharray="2,3"/>
+      <text x="55" y="54"  class="label-dim" text-anchor="end" id="y100">100 A</text>
+      <line x1="60" y1="110" x2="920" y2="110" stroke="var(--grid)" stroke-dasharray="2,3"/>
+      <text x="55" y="114" class="label-dim" text-anchor="end" id="y75">75 A</text>
+      <line x1="60" y1="170" x2="920" y2="170" stroke="var(--grid)" stroke-dasharray="2,3"/>
+      <text x="55" y="174" class="label-dim" text-anchor="end" id="y50">50 A</text>
+      <line x1="60" y1="230" x2="920" y2="230" stroke="var(--grid)" stroke-dasharray="2,3"/>
+      <text x="55" y="234" class="label-dim" text-anchor="end" id="y25">25 A</text>
+
+      <!-- x gridlines -->
+      <line x1="232" y1="20" x2="232" y2="290" stroke="var(--grid)" stroke-dasharray="2,3"/>
+      <text x="232" y="306" class="label-dim" text-anchor="middle">5</text>
+      <line x1="404" y1="20" x2="404" y2="290" stroke="var(--grid)" stroke-dasharray="2,3"/>
+      <text x="404" y="306" class="label-dim" text-anchor="middle">10</text>
+      <line x1="576" y1="20" x2="576" y2="290" stroke="var(--grid)" stroke-dasharray="2,3"/>
+      <text x="576" y="306" class="label-dim" text-anchor="middle">15</text>
+      <line x1="748" y1="20" x2="748" y2="290" stroke="var(--grid)" stroke-dasharray="2,3"/>
+      <text x="748" y="306" class="label-dim" text-anchor="middle">20</text>
+
+      <!-- Fuse limit line -->
+      <line id="fuseLine" x1="60" y1="220" x2="920" y2="220" stroke="var(--warn)" stroke-dasharray="4,3"/>
+      <text id="fuseLbl" x="925" y="222" class="label-dim" fill="var(--warn)">I_fuse</text>
+
+      <!-- Current trace -->
+      <polyline id="iPath" class="trace" stroke="var(--accent)" stroke-width="2" fill="none" points=""/>
+      <!-- Comparison trace (direct connect, for reference) -->
+      <polyline id="refPath" class="trace" stroke="var(--warn)" stroke-width="1" fill="none" stroke-dasharray="2,3" opacity="0.5" points=""/>
+      <text x="700" y="40" class="label-dim" fill="var(--warn)" id="refLbl">&mdash; reference (no limiter)</text>
+    </svg>
+
+    <div class="stat-grid">
+      <div class="stat"><div class="lbl">Peak I</div><div class="val" id="sPeak">240 A</div></div>
+      <div class="stat"><div class="lbl">Time to 90% Vc</div><div class="val" id="sT90">5 ms</div></div>
+      <div class="stat"><div class="lbl">Energy in limiter</div><div class="val" id="sE">0.16 J</div></div>
+      <div class="stat"><div class="lbl">Fuse status</div><div class="val ok" id="sFuse">survives</div></div>
+      <div class="stat"><div class="lbl">Bus dip</div><div class="val" id="sDip">3%</div></div>
+    </div>
+    <div class="out-status ok" id="status">OK</div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>With no limiter, I_peak = V_bat / R_source.</b> A 12&nbsp;V battery into 50&nbsp;m&Omega; source resistance gives 240&nbsp;A peak the instant the switch closes &mdash; that's what the bulk cap pulls until it charges. Even though it lasts only microseconds, fuse I&sup2;t energy can be enough to blow it.</li>
+    <li><b>NTC thermistor: starts cold and high-R, warms and drops.</b> A CL-60 starts ~10&nbsp;&Omega; cold and falls to ~0.1&nbsp;&Omega; hot. Limits inrush to ~1.2&nbsp;A peak on a 12&nbsp;V bus, then drops out of the way. Drawback: you must wait for it to cool before next power-on, otherwise it's bypassed.</li>
+    <li><b>Active soft-start with P-FET + RC.</b> An RC on the gate ramps V_GS slowly so the FET enters the linear region; current is gated by V_GS, not by C charging. Most flexible &mdash; you choose the ramp time. Adds parts, but no thermal recovery issue.</li>
+    <li><b>Pre-charge: resistor + relay.</b> For high-power systems (EV traction packs, big DC servos): a resistor in series during pre-charge phase, then a contactor shorts it out. Two switches, sequenced timing, but handles kilowatt-class buses without the thermistor heat headache.</li>
+    <li><b>Time-to-charge is set by RC.</b> Cap voltage reaches 90% after ~2.3&tau;. If the system can't tolerate the boot delay, lower the cap, lower the R, or use the FET method to ramp linearly instead of exponentially.</li>
+    <li><b>I&sup2;t is the right fuse metric.</b> A fast 10&nbsp;A fuse has an I&sup2;t rating (e.g., 30&nbsp;A&sup2;s). The inrush pulse has its own I&sup2;t (peak&sup2; &middot; duration). If pulse I&sup2;t &gt; fuse I&sup2;t, the fuse blows. Just comparing peak current to fuse rating misses this.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>I_peak (no limit)</dt><dd><span class="eq">V_bat / R_source</span></dd>
+        <dt>RC charge</dt><dd><span class="eq">V_c(t) = V&middot;(1&minus;e&minus;t/RC)</span></dd>
+        <dt>&tau;</dt><dd><span class="eq">RC, t_90% &asymp; 2.3&tau;</span></dd>
+        <dt>I&sup2;t inrush</dt><dd><span class="eq">&int; I&sup2; dt</span> (&approx; I_pk&sup2;&middot;&tau;/2 exp.)</dd>
+        <dt>NTC I_peak</dt><dd><span class="eq">V / R_NTC(cold)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>METHOD SELECTION</h3>
+      <table>
+        <tr><th>Bus power</th><th>Pick</th></tr>
+        <tr><td>&lt; 50&nbsp;W</td><td>NTC (CL-30/60/80)</td></tr>
+        <tr><td>50&nbsp;W &mdash; 500&nbsp;W</td><td>Active soft-start FET</td></tr>
+        <tr><td>&gt; 500&nbsp;W</td><td>Pre-charge R + contactor</td></tr>
+        <tr><td>BMS-managed pack</td><td>Built-in pre-charge in BMS</td></tr>
+      </table>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Hot NTC bypassed</b> &mdash; restart within seconds of shutdown, NTC is still low-R, no limit.</li>
+        <li><b>FET in linear region too long</b> &mdash; absorbs the inrush energy; SOA derating matters.</li>
+        <li><b>Pre-charge relay never closes</b> &mdash; if logic times out, system runs on the limiter forever and burns up.</li>
+        <li><b>Slow-blow fuse hides bigger fault</b> &mdash; sized for inrush headroom, ignores a slow MOSFET failure.</li>
+        <li><b>Sizing on 25&deg;C ambient</b> &mdash; NTC R drops faster when hot ambient; less limiting on summer day.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 6 &mdash; Power Management for EM Systems</a> &middot;
+    Topic: Inrush Control
+  </footer>
+</main>
+<script>
+  function update(){
+    const method = document.getElementById('method').value;
+    const C  = parseFloat(document.getElementById('cap').value)*1e-6; // F
+    const V  = parseFloat(document.getElementById('v').value);
+    const Rs = parseFloat(document.getElementById('rs').value);
+    const If = parseFloat(document.getElementById('fuse').value);
+
+    document.getElementById('capR').textContent = (C*1e6).toFixed(0)+' &micro;F';
+    document.getElementById('vR').textContent = V.toFixed(1)+' V';
+    document.getElementById('rsR').textContent = Rs.toFixed(2)+' &Omega;';
+    document.getElementById('fuseR').textContent = If.toFixed(0)+' A';
+
+    // Reference: direct connect — RC with R=Rs
+    const refR = Rs;
+    // method-specific limiter
+    let limR = 0; // effective added series R for analytical RC method
+    let mode = 'rc'; // or 'linear' for FET soft-start
+    let rampT = 0;   // ms, for FET method
+
+    if(method==='none'){ limR=0; }
+    else if(method==='ntc'){ limR = 10; } // cold NTC ~10 ohms
+    else if(method==='softstart'){ mode='linear'; rampT = 8; } // 8 ms linear ramp
+    else if(method==='precharge'){ limR=50; } // big pre-charge resistor
+
+    const Rtotal = Rs + limR;
+    const tau = Rtotal * C; // s
+    const I_peak = mode==='linear' ? (V/Rs)*0.15 : V/Rtotal;
+    // Time to 90% Vc
+    const t90 = mode==='linear' ? rampT*1e-3 : 2.3*tau;
+
+    // Bus dip percentage during inrush (V drop on source R during peak)
+    const dip = I_peak * Rs / V * 100;
+
+    // I^2t energy in limiter during charge: integral of I(t)^2 * Rlim dt
+    // For RC: ~ 0.5*C*V^2 (energy delivered to cap), limiter dissipates as much again
+    let E_lim;
+    if(mode==='linear'){ E_lim = 0.5*C*V*V; } // FET dissipates 1/2 CV^2 in linear region
+    else { E_lim = 0.5*C*V*V * (limR/(Rs+limR)); }
+
+    // Plot setup. y: 0..max scaled. Auto-scale to refPeak.
+    const refPeak = V/Rs;
+    const yMax = Math.max(refPeak, I_peak)*1.05;
+    // y mapping 0..yMax -> 290..20
+    function yI(i){ return 290 - (i/yMax)*(290-20); }
+
+    // gridline labels
+    document.getElementById('y100').textContent = (yMax).toFixed(0)+' A';
+    document.getElementById('y75').textContent  = (yMax*0.75).toFixed(0)+' A';
+    document.getElementById('y50').textContent  = (yMax*0.5).toFixed(0)+' A';
+    document.getElementById('y25').textContent  = (yMax*0.25).toFixed(0)+' A';
+
+    // Build traces - 20ms window
+    const tMax = 20e-3;
+    const N=200, ptsI=[], ptsRef=[];
+    for(let k=0;k<=N;k++){
+      const t = (k/N)*tMax;
+      const x = 60 + (k/N)*(920-60);
+      // Reference: pure RC with Rs only
+      const iRef = (V/refR)*Math.exp(-t/(refR*C));
+      ptsRef.push(`${x},${yI(iRef)}`);
+      // limited current
+      let i;
+      if(mode==='linear'){
+        // FET soft-start: linear ramp to ~steady; assume i ramps from 0 to peak in rampT then settles
+        const tms = t*1000;
+        if(tms < rampT){
+          i = I_peak * (tms/rampT); // approx triangular
+        } else {
+          // exponential decay tail to ~0 once cap charged
+          i = I_peak * Math.exp(-(tms-rampT)/(rampT*0.5));
+        }
+      } else if(limR===0){
+        i = (V/refR)*Math.exp(-t/(refR*C));
+      } else {
+        i = (V/Rtotal)*Math.exp(-t/(Rtotal*C));
+      }
+      ptsI.push(`${x},${yI(Math.max(i,0))}`);
+    }
+    document.getElementById('iPath').setAttribute('points', ptsI.join(' '));
+    document.getElementById('refPath').setAttribute('points', ptsRef.join(' '));
+    // Hide ref trace if method is 'none' (overlap)
+    document.getElementById('refPath').setAttribute('opacity', method==='none' ? '0' : '0.5');
+    document.getElementById('refLbl').setAttribute('opacity', method==='none' ? '0' : '0.7');
+
+    // Fuse line
+    document.getElementById('fuseLine').setAttribute('y1', yI(If));
+    document.getElementById('fuseLine').setAttribute('y2', yI(If));
+    document.getElementById('fuseLbl').setAttribute('y', yI(If)+4);
+    document.getElementById('fuseLbl').textContent = 'I_fuse = '+If.toFixed(0)+'A';
+
+    // Stats
+    document.getElementById('sPeak').textContent = I_peak.toFixed(1)+' A';
+    document.getElementById('sT90').textContent = (t90*1000).toFixed(1)+' ms';
+    document.getElementById('sE').textContent = E_lim.toFixed(3)+' J';
+    document.getElementById('sDip').textContent = dip.toFixed(1)+' %';
+
+    // Fuse survival check (rough): I^2t pulse vs fuse I^2t (~If^2 * 0.01s for fast-blow)
+    const pulseI2t = mode==='linear' ?
+      Math.pow(I_peak,2)*(rampT*1e-3)/3 :
+      Math.pow(I_peak,2)*tau/2;
+    const fuseI2t = If*If * 0.01; // typical fast-blow I^2t
+    const fuseEl = document.getElementById('sFuse');
+    if(pulseI2t < fuseI2t*0.5){ fuseEl.textContent='survives'; fuseEl.className='val ok'; }
+    else if(pulseI2t < fuseI2t){ fuseEl.textContent='marginal'; fuseEl.className='val warn'; }
+    else { fuseEl.textContent='BLOWS'; fuseEl.className='val warn'; }
+
+    // Status banner
+    const st = document.getElementById('status');
+    let msg, cls;
+    if(method==='none'){
+      msg = `Direct connect: ${I_peak.toFixed(0)}A peak inrush through ${(Rs*1000).toFixed(0)}m&Omega; source. Bus dips ${dip.toFixed(1)}%. ${pulseI2t > fuseI2t ? 'Fuse will blow.' : 'Fuse may hold.'}`;
+      cls = pulseI2t > fuseI2t ? 'fault' : 'warn';
+    } else if(method==='ntc'){
+      msg = `NTC limits peak to ${I_peak.toFixed(1)}A. Bus dip ${dip.toFixed(1)}%. NTC dissipates ${E_lim.toFixed(2)}J each cycle &mdash; needs cool-down before restart.`;
+      cls = 'ok';
+    } else if(method==='softstart'){
+      msg = `Active soft-start ramps ${V}V over ${rampT}ms. Peak ${I_peak.toFixed(1)}A in FET linear region. Energy ${E_lim.toFixed(2)}J in FET &mdash; check SOA derating.`;
+      cls = 'ok';
+    } else {
+      msg = `Pre-charge through ${limR}&Omega; resistor. Peak ${I_peak.toFixed(2)}A. After cap charged, contactor closes to bypass. ${t90*1000>50?'Long pre-charge time; firmware must wait.':''}`;
+      cls = 'ok';
+    }
+    st.innerHTML = msg;
+    st.className = 'out-status '+cls;
+  }
+  ['method','cap','v','rs','fuse'].forEach(id=>{
+    document.getElementById(id).addEventListener('input',update);
+  });
+  update();
+</script>
+</body>
+</html>

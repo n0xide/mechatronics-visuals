@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Synchronization Primitives — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer;
+    margin-right:6px}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:10px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  svg{display:block;max-width:100%;height:auto;background:var(--bg-elev2);border-radius:6px}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  pre.code{background:#0a0d12;border:1px solid var(--line);border-radius:6px;
+    padding:10px 12px;font:12px/1.5 ui-monospace,Menlo,monospace;color:var(--fg);
+    overflow:auto;margin:10px 0}
+  .key{color:var(--accent)} .str{color:var(--accent3)} .com{color:var(--fg-dim)}
+  .num{color:var(--accent2)}
+  .controls-inline{margin:10px 0;display:flex;flex-wrap:wrap;gap:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Synchronization — mutex, semaphore, queue</h1>
+  <p class="lede">Four primitives, four different jobs. Pick the wrong one and you'll either deadlock, corrupt data, or invert priorities.</p>
+
+  <p>Multiple tasks sharing state needs ground rules. The four RTOS primitives — <b>mutex</b>, <b>binary semaphore</b>, <b>counting semaphore</b>, <b>queue</b> — solve different problems despite looking similar. <b>Mutex</b> enforces mutual exclusion: only one task holds it at a time, only the owner can release, and the scheduler can boost the holder's priority (inheritance) if a higher-priority task is waiting. <b>Binary semaphore</b> is a signaling flag with no ownership: ISR <i>gives</i>, task <i>takes</i>. Cheaper than a mutex but no protection against priority inversion — use it for events, not resources. <b>Counting semaphore</b> models a pool of N identical resources (N UART buffers, N camera frames). <b>Queue</b> is a thread-safe FIFO of copies — the canonical producer/consumer pipe. ISR captures a sample, posts to a queue, control task receives and processes. The queue does its own locking; the data is copied, so no shared-pointer hazards.</p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="mutex">Mutex</div>
+    <div class="tab" data-tab="binsem">Binary sem</div>
+    <div class="tab" data-tab="csem">Counting sem</div>
+    <div class="tab" data-tab="queue">Queue</div>
+  </div>
+
+  <!-- MUTEX TAB -->
+  <div class="tab-panel active" id="panel-mutex">
+    <h3>Mutex — mutual exclusion with ownership</h3>
+    <p>Two tasks both want to update a shared <code>position_setpoint</code>. Without a mutex, Task A's "set X=10" might be interleaved with Task B's "set Y=20" mid-struct → torn read. With a mutex, only the holder can write; everyone else blocks.</p>
+    <div class="controls-inline">
+      <button class="btn primary" id="mxStart">▶ Run</button>
+      <button class="btn" id="mxReset">⟲ Reset</button>
+    </div>
+    <svg id="mxSvg" viewBox="0 0 920 240"></svg>
+    <pre class="code"><span class="key">SemaphoreHandle_t</span> mx = xSemaphoreCreateMutex();
+
+<span class="com">// Task A — controller</span>
+xSemaphoreTake(mx, portMAX_DELAY);
+setpoint.x = <span class="num">10.0</span>;          <span class="com">// critical section</span>
+setpoint.y = <span class="num">5.0</span>;           <span class="com">// no preemption mid-struct</span>
+xSemaphoreGive(mx);            <span class="com">// only owner can give</span></pre>
+  </div>
+
+  <!-- BINARY SEMAPHORE TAB -->
+  <div class="tab-panel" id="panel-binsem">
+    <h3>Binary semaphore — ISR-to-task signal</h3>
+    <p>ADC end-of-conversion ISR fires. ISR is short — it just posts a flag. The processing task was blocked on <code>xSemaphoreTake</code>; the scheduler wakes it as soon as the ISR returns.</p>
+    <div class="controls-inline">
+      <button class="btn primary" id="bsStart">▶ Run</button>
+      <button class="btn" id="bsReset">⟲ Reset</button>
+    </div>
+    <svg id="bsSvg" viewBox="0 0 920 240"></svg>
+    <pre class="code"><span class="key">SemaphoreHandle_t</span> sem = xSemaphoreCreateBinary();
+
+<span class="com">// ISR (ADC EOC) — short</span>
+<span class="key">void</span> ADC_IRQHandler(<span class="key">void</span>) {
+  BaseType_t woken = pdFALSE;
+  xSemaphoreGiveFromISR(sem, &woken);
+  portYIELD_FROM_ISR(woken);   <span class="com">// switch immediately if needed</span>
+}
+
+<span class="com">// Task — does the heavy work</span>
+<span class="key">for</span>(;;) {
+  xSemaphoreTake(sem, portMAX_DELAY);   <span class="com">// block until ISR signals</span>
+  run_filter();
+}</pre>
+  </div>
+
+  <!-- COUNTING SEMAPHORE TAB -->
+  <div class="tab-panel" id="panel-csem">
+    <h3>Counting semaphore — resource pool of N</h3>
+    <p>Pool of 3 DMA buffers. Up to 3 tasks may hold one. The 4th blocks until someone gives one back.</p>
+    <div class="controls-inline">
+      <button class="btn primary" id="csStart">▶ Run</button>
+      <button class="btn" id="csReset">⟲ Reset</button>
+    </div>
+    <svg id="csSvg" viewBox="0 0 920 240"></svg>
+    <pre class="code"><span class="key">SemaphoreHandle_t</span> pool = xSemaphoreCreateCounting(<span class="num">3</span>, <span class="num">3</span>);
+<span class="com">// max=3, initial=3 → "3 buffers available"</span>
+
+<span class="com">// Any task that needs a buffer</span>
+xSemaphoreTake(pool, portMAX_DELAY);  <span class="com">// count-- (block if 0)</span>
+buf = grab_free_buffer();
+... fill / use ...
+release_buffer(buf);
+xSemaphoreGive(pool);                  <span class="com">// count++</span></pre>
+  </div>
+
+  <!-- QUEUE TAB -->
+  <div class="tab-panel" id="panel-queue">
+    <h3>Queue — producer / consumer FIFO</h3>
+    <p>ADC ISR posts samples to a 16-deep queue. Filter task reads from queue. If filter is fast, queue stays near 0. If filter slows down (e.g., printf in the loop), queue fills and ISR posts start failing — backpressure signal.</p>
+    <div class="controls-inline">
+      <button class="btn primary" id="qStart">▶ Run</button>
+      <button class="btn" id="qReset">⟲ Reset</button>
+      <span style="font-size:12px;color:var(--fg-dim);align-self:center">
+        Producer rate: <span id="qProdRate">10/s</span> &nbsp;|&nbsp; Consumer rate: <span id="qConsRate">8/s</span>
+      </span>
+    </div>
+    <svg id="qSvg" viewBox="0 0 920 240"></svg>
+    <pre class="code"><span class="key">QueueHandle_t</span> q = xQueueCreate(<span class="num">16</span>, <span class="key">sizeof</span>(sample_t));
+
+<span class="com">// ISR — producer</span>
+xQueueSendFromISR(q, &sample, &woken);
+
+<span class="com">// Task — consumer</span>
+sample_t s;
+xQueueReceive(q, &s, portMAX_DELAY);   <span class="com">// blocks if empty</span>
+process(s);</pre>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Mutex has an owner; semaphore does not</b> — only the task that <i>took</i> the mutex may <i>give</i> it. Any task or ISR can give a semaphore. Confusing the two is the #1 RTOS bug.</li>
+    <li><b>Never call <code>mutex_take</code> from an ISR</b> — ISRs cannot block. Use <code>xSemaphoreGiveFromISR</code> with a binary semaphore to signal a task; let the task own the mutex.</li>
+    <li><b>Queues lock themselves</b> — you don't wrap a queue in a mutex. The queue API is already ISR-safe. Treat the queue as the channel.</li>
+    <li><b>Backpressure = queue fills up</b> — in the queue demo, slow the consumer below the producer rate. The queue saturates at 16, producer's send returns errors. Either drop oldest, drop newest, or speed up consumer; never silently lose data.</li>
+    <li><b>Counting semaphore for pools, not for counting events</b> — if you give faster than you take, count saturates at max and events are lost. Use a queue for event streams.</li>
+    <li><b>Priority inheritance only on mutexes</b> — binary semaphores do NOT boost. If you protect a resource with a binary semaphore, you've shipped a priority-inversion bug.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>WHICH ONE</h3>
+      <dl>
+        <dt>Shared variable</dt><dd>Mutex (priority inheritance)</dd>
+        <dt>ISR → task signal</dt><dd>Binary semaphore</dd>
+        <dt>Pool of N items</dt><dd>Counting semaphore</dd>
+        <dt>Data stream</dt><dd>Queue (copies, FIFO)</dd>
+        <dt>Multi-event flags</dt><dd>Event groups (8 bits)</dd>
+        <dt>Direct task-to-task</dt><dd>Task notification (fastest)</dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>API NAMES (FreeRTOS)</h3>
+      <ul>
+        <li><b>xSemaphoreCreateMutex()</b> — mutex</li>
+        <li><b>xSemaphoreCreateBinary()</b> — binary sem</li>
+        <li><b>xSemaphoreCreateCounting(max, initial)</b></li>
+        <li><b>xQueueCreate(len, itemSize)</b></li>
+        <li><b>...FromISR</b> variants for all of the above</li>
+        <li><b>portYIELD_FROM_ISR(woken)</b> at end of ISR if any *FromISR returned woken=true</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>HAZARDS</h3>
+      <ul>
+        <li><b>Wrapping a queue in a mutex</b> — redundant and a deadlock waiting to happen.</li>
+        <li><b>Binary sem to protect data</b> — no inheritance, priority inversion incoming.</li>
+        <li><b>Forgetting to give back</b> — leaks a slot in counting sem, deadlocks mutex.</li>
+        <li><b>Take in ISR</b> — illegal; ISR cannot block.</li>
+        <li><b>Two mutexes, different order</b> — classic deadlock. Always lock in same global order.</li>
+        <li><b>Big items in a queue</b> — queue copies them. For large objects pass a pointer (and protect the buffer separately).</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 5 — Real-Time Firmware</a> ·
+    Topic: Synchronization primitives
+  </footer>
+</main>
+<script>
+  // Tab switcher
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.addEventListener('click',()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('panel-'+t.dataset.tab).classList.add('active');
+    });
+  });
+
+  // -------- MUTEX ANIM --------
+  function setupMutex(){
+    const svg = document.getElementById('mxSvg');
+    let t=0, anim=null, holder=null, waitQ=[];
+    const events = [
+      {at:5, who:'A', act:'take'},
+      {at:25, who:'B', act:'request'},
+      {at:35, who:'A', act:'give'},
+      {at:55, who:'B', act:'release_after_work'},
+    ];
+    function frame(){
+      t+=0.4;
+      render();
+      if(t>80){ clearInterval(anim); anim=null; document.getElementById('mxStart').textContent='▶ Run'; }
+    }
+    function render(){
+      let html='';
+      // mutex box
+      html += `<text x="460" y="22" text-anchor="middle" fill="#fff" font-family="ui-monospace,monospace" font-size="12" font-weight="bold">Mutex (single slot)</text>`;
+      const mxX=400, mxY=40, mxW=120, mxH=50;
+      const occupied = holder!==null;
+      html += `<rect x="${mxX}" y="${mxY}" width="${mxW}" height="${mxH}" rx="6" fill="${occupied?'#ff7b72':'#1d232c'}" stroke="#2a313c"/>`;
+      html += `<text x="${mxX+mxW/2}" y="${mxY+mxH/2+5}" text-anchor="middle" fill="#fff" font-family="ui-monospace,monospace" font-size="13">${holder?'HELD by '+holder:'FREE'}</text>`;
+      // tasks
+      const tasks = [{id:'A',y:130,col:'#5ec8ff'},{id:'B',y:190,col:'#a3e635'}];
+      tasks.forEach(tk=>{
+        html += `<text x="20" y="${tk.y+8}" fill="${tk.col}" font-family="ui-monospace,monospace" font-size="12">Task ${tk.id}</text>`;
+        let state = 'idle';
+        events.forEach(e=>{
+          if(e.who===tk.id && t>=e.at){
+            if(e.act==='take') state='HOLDING';
+            if(e.act==='request' && holder && holder!==tk.id) state='BLOCKED waiting';
+            if(e.act==='give') state='idle';
+            if(e.act==='release_after_work') state='HOLDING (was waiting)';
+          }
+        });
+        let stateColor = '#8f99a8';
+        if(state==='HOLDING'||state==='HOLDING (was waiting)') stateColor='#ff7b72';
+        if(state.startsWith('BLOCKED')) stateColor='#ffb86c';
+        html += `<rect x="80" y="${tk.y-12}" width="240" height="24" rx="4" fill="${stateColor}" opacity="0.8"/>`;
+        html += `<text x="200" y="${tk.y+4}" text-anchor="middle" fill="#0e1116" font-family="ui-monospace,monospace" font-size="11" font-weight="bold">${state}</text>`;
+        // arrow to mutex when holding
+        if(state.includes('HOLDING')){
+          html += `<line x1="320" y1="${tk.y}" x2="${mxX}" y2="${mxY+mxH/2}" stroke="${tk.col}" stroke-width="2"/>`;
+        }
+      });
+      // time bar
+      html += `<rect x="600" y="50" width="280" height="180" fill="#0e1116" stroke="#2a313c" rx="4"/>`;
+      html += `<text x="740" y="42" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">timeline (cursor=${t.toFixed(0)})</text>`;
+      events.forEach(e=>{
+        const x = 610 + (e.at/80)*260;
+        const colY = e.who==='A'?80:170;
+        const passed = t>=e.at;
+        html += `<line x1="${x}" y1="60" x2="${x}" y2="220" stroke="${passed?'#ffb86c':'#2a313c'}" stroke-dasharray="2,3"/>`;
+        html += `<circle cx="${x}" cy="${colY}" r="6" fill="${passed?(e.who==='A'?'#5ec8ff':'#a3e635'):'#2a313c'}"/>`;
+        html += `<text x="${x}" y="${colY-10}" text-anchor="middle" class="axis-label" font-size="9">${e.act.replace('_',' ')}</text>`;
+      });
+      const xCursor = 610 + (Math.min(t,80)/80)*260;
+      html += `<line x1="${xCursor}" y1="60" x2="${xCursor}" y2="220" stroke="#fff" stroke-width="1.5"/>`;
+
+      // update state for next frame
+      holder=null;
+      events.forEach(e=>{
+        if(t<e.at) return;
+        if(e.act==='take') holder=e.who;
+        if(e.act==='give') holder=null;
+        if(e.act==='release_after_work') holder=e.who;
+      });
+      svg.innerHTML=html;
+    }
+    render();
+    document.getElementById('mxStart').addEventListener('click',()=>{
+      if(anim){ clearInterval(anim); anim=null; document.getElementById('mxStart').textContent='▶ Run'; return; }
+      document.getElementById('mxStart').textContent='■ Pause';
+      anim=setInterval(frame,40);
+    });
+    document.getElementById('mxReset').addEventListener('click',()=>{
+      t=0; render();
+    });
+  }
+
+  // -------- BINARY SEM ANIM --------
+  function setupBinSem(){
+    const svg = document.getElementById('bsSvg');
+    let t=0, anim=null;
+    const isrPulses = [10,30,50,70];
+    function render(){
+      let html='';
+      // ISR row
+      html += `<text x="20" y="40" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="12" font-weight="bold">ISR</text>`;
+      html += `<rect x="80" y="20" width="820" height="30" fill="#0e1116" stroke="#2a313c"/>`;
+      // semaphore "channel"
+      html += `<text x="20" y="120" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="12" font-weight="bold">Sem</text>`;
+      html += `<rect x="80" y="100" width="820" height="30" fill="#0e1116" stroke="#2a313c"/>`;
+      // Task row
+      html += `<text x="20" y="200" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="12" font-weight="bold">Task</text>`;
+      html += `<rect x="80" y="180" width="820" height="30" fill="#0e1116" stroke="#2a313c"/>`;
+      // tick scale
+      for(let s=0;s<=80;s+=10){
+        const x = 80 + (s/80)*820;
+        html += `<line x1="${x}" y1="40" x2="${x}" y2="220" stroke="#222831"/>`;
+      }
+      // ISR pulses (give)
+      isrPulses.forEach(p=>{
+        if(t<p) return;
+        const x = 80 + (p/80)*820;
+        html += `<rect x="${x-6}" y="22" width="12" height="26" fill="#ff7b72"/>`;
+        html += `<text x="${x}" y="38" text-anchor="middle" fill="#0e1116" font-size="9" font-weight="bold">G</text>`;
+        // arrow down to sem
+        html += `<line x1="${x}" y1="50" x2="${x}" y2="100" stroke="#ffb86c" stroke-width="1.5" stroke-dasharray="2,2"/>`;
+        // sem flash (instantaneous, then task takes)
+        if(t>=p+1){
+          html += `<rect x="${x-4}" y="102" width="8" height="26" fill="#ffb86c"/>`;
+        } else {
+          html += `<rect x="${x-4}" y="102" width="8" height="26" fill="#ffb86c" opacity="0.5"/>`;
+        }
+        // task wakes
+        if(t>=p+2){
+          const xt = 80 + ((p+2)/80)*820;
+          const xe = 80 + Math.min((p+8)/80,1)*820;
+          html += `<rect x="${xt}" y="182" width="${xe-xt}" height="26" fill="#5ec8ff" opacity="0.85"/>`;
+          html += `<text x="${(xt+xe)/2}" y="200" text-anchor="middle" fill="#0e1116" font-size="10" font-weight="bold">process</text>`;
+          html += `<line x1="${x}" y1="130" x2="${xt}" y2="180" stroke="#5ec8ff" stroke-width="1" stroke-dasharray="2,2"/>`;
+        }
+      });
+      // task blocking line (between events)
+      html += `<text x="490" y="226" text-anchor="middle" fill="#8f99a8" font-size="10">task BLOCKED waiting on xSemaphoreTake</text>`;
+      // cursor
+      const xc = 80 + (Math.min(t,80)/80)*820;
+      html += `<line x1="${xc}" y1="20" x2="${xc}" y2="210" stroke="#fff" stroke-width="1"/>`;
+      svg.innerHTML=html;
+    }
+    function frame(){
+      t+=0.5;
+      render();
+      if(t>80){ clearInterval(anim); anim=null; document.getElementById('bsStart').textContent='▶ Run'; }
+    }
+    render();
+    document.getElementById('bsStart').addEventListener('click',()=>{
+      if(anim){ clearInterval(anim); anim=null; document.getElementById('bsStart').textContent='▶ Run'; return; }
+      document.getElementById('bsStart').textContent='■ Pause';
+      anim=setInterval(frame,40);
+    });
+    document.getElementById('bsReset').addEventListener('click',()=>{
+      t=0; render();
+    });
+  }
+
+  // -------- COUNTING SEM ANIM --------
+  function setupCountSem(){
+    const svg = document.getElementById('csSvg');
+    let t=0, anim=null;
+    // 4 tasks each take a buffer at some time, release after some duration
+    const reqs = [
+      {who:'T1', take:5, hold:25},
+      {who:'T2', take:10, hold:20},
+      {who:'T3', take:15, hold:30},
+      {who:'T4', take:20, hold:15},
+    ];
+    function getState(){
+      // compute current holders and count
+      const holders=[];
+      let count=3;
+      const pending=[];
+      reqs.forEach(r=>{
+        if(t < r.take) return;
+        const reqTime = r.take;
+        // determine when this task actually gets a buffer:
+        // Process sequentially in time order; track free count.
+        // For visualization we just do a sim each render.
+      });
+      // simpler sim by stepping through time deterministically
+      const tl=[];
+      let c=3;
+      const queue=[];
+      const events = [];
+      reqs.forEach(r=>events.push({at:r.take, kind:'req', who:r.who, dur:r.hold}));
+      events.sort((a,b)=>a.at-b.at);
+      const holdersTL = [];
+      events.forEach(e=>{
+        // resolve
+        if(c>0){
+          c--; holdersTL.push({who:e.who, from:e.at, to:e.at+e.dur});
+        } else {
+          // wait until earliest holder releases
+          let earliest = Infinity, idx=-1;
+          holdersTL.forEach((h,i)=>{ if(h.to<earliest){earliest=h.to; idx=i;} });
+          const grantAt = Math.max(e.at, earliest);
+          // free up
+          c++;
+          c--; holdersTL.push({who:e.who, from:grantAt, to:grantAt+e.dur});
+        }
+      });
+      return holdersTL;
+    }
+    function render(){
+      const holdersTL = getState();
+      let html='';
+      // 3 buffer slots
+      html += `<text x="460" y="20" text-anchor="middle" fill="#fff" font-family="ui-monospace,monospace" font-size="12" font-weight="bold">Counting semaphore — 3 buffer pool</text>`;
+      const slotsY=40;
+      let activeHolders = holdersTL.filter(h=>t>=h.from && t<h.to);
+      for(let i=0;i<3;i++){
+        const x = 280 + i*120;
+        const h = activeHolders[i];
+        const fill = h?'#a3e635':'#1d232c';
+        html += `<rect x="${x}" y="${slotsY}" width="100" height="50" rx="6" fill="${fill}" stroke="#2a313c"/>`;
+        html += `<text x="${x+50}" y="${slotsY+30}" text-anchor="middle" fill="#0e1116" font-family="ui-monospace,monospace" font-size="12" font-weight="bold">${h?h.who:'free'}</text>`;
+      }
+      const remain = 3 - activeHolders.length;
+      html += `<text x="460" y="110" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="12">count = ${remain}</text>`;
+
+      // task lanes
+      reqs.forEach((r,i)=>{
+        const y = 140 + i*22;
+        html += `<text x="20" y="${y+5}" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">${r.who}</text>`;
+        html += `<rect x="70" y="${y-8}" width="830" height="16" fill="#0e1116" stroke="#2a313c"/>`;
+        const myHold = holdersTL.find(h=>h.who===r.who);
+        if(!myHold) return;
+        // waiting region (from take to from)
+        if(myHold.from > r.take){
+          const xw0 = 70 + (r.take/80)*830;
+          const xw1 = 70 + (Math.min(t,myHold.from)/80)*830;
+          if(xw1>xw0) html += `<rect x="${xw0}" y="${y-6}" width="${xw1-xw0}" height="12" fill="#ffb86c" opacity="0.5"/>`;
+        }
+        // hold region
+        if(t>=myHold.from){
+          const xh0 = 70 + (myHold.from/80)*830;
+          const xh1 = 70 + (Math.min(t,myHold.to)/80)*830;
+          html += `<rect x="${xh0}" y="${y-6}" width="${Math.max(xh1-xh0,2)}" height="12" fill="#a3e635" opacity="0.85"/>`;
+        }
+      });
+      const xc = 70 + (Math.min(t,80)/80)*830;
+      html += `<line x1="${xc}" y1="135" x2="${xc}" y2="230" stroke="#fff" stroke-width="1"/>`;
+      html += `<text x="490" y="240" text-anchor="middle" fill="#8f99a8" font-size="10">orange = blocked, green = holding</text>`;
+      svg.innerHTML=html;
+    }
+    function frame(){
+      t+=0.6; render();
+      if(t>80){ clearInterval(anim); anim=null; document.getElementById('csStart').textContent='▶ Run'; }
+    }
+    render();
+    document.getElementById('csStart').addEventListener('click',()=>{
+      if(anim){ clearInterval(anim); anim=null; document.getElementById('csStart').textContent='▶ Run'; return; }
+      document.getElementById('csStart').textContent='■ Pause';
+      anim=setInterval(frame,40);
+    });
+    document.getElementById('csReset').addEventListener('click',()=>{
+      t=0; render();
+    });
+  }
+
+  // -------- QUEUE ANIM --------
+  function setupQueue(){
+    const svg = document.getElementById('qSvg');
+    let t=0, anim=null;
+    const QCAP=16;
+    let queue=[]; // array of sample IDs
+    let nextId=1;
+    let prodAcc=0, consAcc=0;
+    const prodRate=10, consRate=8; // per second of sim time (1 sim sec = 1 "unit" = ~5s wall)
+    function reset(){ t=0; queue=[]; nextId=1; prodAcc=0; consAcc=0; render(); }
+    function step(dt){
+      prodAcc += dt*prodRate;
+      consAcc += dt*consRate;
+      while(prodAcc>=1){
+        prodAcc--;
+        if(queue.length<QCAP){ queue.push(nextId++); }
+        else { /* drop */ }
+      }
+      while(consAcc>=1){
+        consAcc--;
+        if(queue.length>0){ queue.shift(); }
+      }
+    }
+    function render(){
+      let html='';
+      html += `<text x="460" y="20" text-anchor="middle" fill="#fff" font-family="ui-monospace,monospace" font-size="12" font-weight="bold">Queue (capacity 16)</text>`;
+      // producer label
+      html += `<text x="40" y="100" fill="#a3e635" font-family="ui-monospace,monospace" font-size="12" font-weight="bold">PRODUCER</text>`;
+      html += `<text x="40" y="118" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">ISR @ 10/s</text>`;
+      html += `<line x1="120" y1="105" x2="200" y2="105" stroke="#a3e635" stroke-width="2" marker-end="url(#qArr)"/>`;
+      html += `<defs><marker id="qArr" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><polygon points="0 0,8 4,0 8" fill="#a3e635"/></marker></defs>`;
+      // queue slots
+      const qX=200, qY=70, slotW=37, slotH=70;
+      for(let i=0;i<QCAP;i++){
+        const x = qX + i*slotW;
+        const filled = i < queue.length;
+        html += `<rect x="${x}" y="${qY}" width="${slotW-2}" height="${slotH}" rx="3" fill="${filled?'#5ec8ff':'#1d232c'}" stroke="#2a313c"/>`;
+        if(filled){
+          html += `<text x="${x+slotW/2-1}" y="${qY+slotH/2+5}" text-anchor="middle" fill="#0e1116" font-family="ui-monospace,monospace" font-size="11" font-weight="bold">${queue[i]}</text>`;
+        }
+      }
+      // consumer
+      const cX = qX + QCAP*slotW + 10;
+      html += `<line x1="${cX}" y1="105" x2="${cX+50}" y2="105" stroke="#ffb86c" stroke-width="2" marker-end="url(#qArr2)"/>`;
+      html += `<defs><marker id="qArr2" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><polygon points="0 0,8 4,0 8" fill="#ffb86c"/></marker></defs>`;
+      html += `<text x="${cX+30}" y="140" text-anchor="middle" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="12" font-weight="bold">CONSUMER</text>`;
+      html += `<text x="${cX+30}" y="156" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">Task @ 8/s</text>`;
+      // depth indicator
+      const pct = queue.length/QCAP;
+      const barCol = pct<0.5?'#a3e635':pct<0.9?'#ffb86c':'#ff7b72';
+      html += `<text x="460" y="190" text-anchor="middle" fill="#fff" font-family="ui-monospace,monospace" font-size="11">depth: ${queue.length}/${QCAP}</text>`;
+      html += `<rect x="240" y="200" width="440" height="20" fill="#0e1116" stroke="#2a313c"/>`;
+      html += `<rect x="240" y="200" width="${pct*440}" height="20" fill="${barCol}"/>`;
+      if(pct>=1){
+        html += `<text x="460" y="234" text-anchor="middle" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="12" font-weight="bold">FULL — producer sends will fail!</text>`;
+      }
+      svg.innerHTML=html;
+    }
+    document.getElementById('qProdRate').textContent = prodRate+'/s';
+    document.getElementById('qConsRate').textContent = consRate+'/s';
+    render();
+    document.getElementById('qStart').addEventListener('click',()=>{
+      if(anim){ clearInterval(anim); anim=null; document.getElementById('qStart').textContent='▶ Run'; return; }
+      document.getElementById('qStart').textContent='■ Pause';
+      anim=setInterval(()=>{ step(0.05); render(); }, 50);
+    });
+    document.getElementById('qReset').addEventListener('click',reset);
+  }
+
+  setupMutex();
+  setupBinSem();
+  setupCountSem();
+  setupQueue();
+</script>
+</body>
+</html>

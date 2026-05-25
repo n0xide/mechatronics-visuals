@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DC Motor Fundamentals — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px;margin:12px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px}
+  .stat .lbl{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 16px ui-monospace,monospace;color:var(--accent);margin-top:4px}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Brushed DC Motor — Torque, Speed, Power</h1>
+  <p class="lede">One linear equation describes the whole machine: V = Ke·ω + I·R. From it falls torque-speed, peak power at half speed, and peak efficiency somewhere else.</p>
+
+  <p>A permanent-magnet brushed DC motor is the simplest electromechanical converter you will ever own. A rotating armature winding, fed current through a commutator and brushes, sits in a fixed magnetic field. Two constants describe it: <b>Kt</b> (torque per amp, N·m/A) and <b>Ke</b> (back-EMF per radian/sec, V·s/rad). In SI units they are numerically equal — the same physics that turns current into torque turns rotation into voltage. Drive the motor at voltage V and the armature accelerates until back-EMF Ke·ω plus the I·R drop equal V. Slow it down by loading the shaft: ω falls, BEMF falls, current and torque rise. At stall the BEMF is zero, all V drops across R, and current is dangerously high.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>V — applied voltage: <span class="readout" id="vRead">12.0 V</span></label>
+      <input id="v" type="range" min="3" max="24" step="0.1" value="12">
+    </div>
+    <div class="control">
+      <label>Kt = Ke — motor constant: <span class="readout" id="ktRead">0.020 N·m/A</span></label>
+      <input id="kt" type="range" min="0.005" max="0.10" step="0.001" value="0.020">
+    </div>
+    <div class="control">
+      <label>R — winding resistance: <span class="readout" id="rRead">2.00 Ω</span></label>
+      <input id="r" type="range" min="0.2" max="10" step="0.05" value="2">
+    </div>
+    <div class="control">
+      <label>Load torque T_L: <span class="readout" id="tlRead">0.040 N·m</span></label>
+      <input id="tl" type="range" min="0" max="0.30" step="0.001" value="0.040">
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Torque-speed-power-efficiency curves</h3>
+    <svg id="tsSvg" viewBox="0 0 700 320" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <!-- axes -->
+      <line x1="60" y1="30" x2="60" y2="280" class="axis"/>
+      <line x1="60" y1="280" x2="680" y2="280" class="axis"/>
+      <text x="60" y="22" class="axis-label" text-anchor="middle">T / P / η</text>
+      <text x="685" y="295" class="axis-label">ω</text>
+      <text x="55" y="285" class="axis-label" text-anchor="end">0</text>
+      <text x="60" y="297" class="axis-label" text-anchor="middle">0</text>
+      <text x="680" y="297" class="axis-label" text-anchor="middle" id="wnlLbl">ω_no_load</text>
+
+      <!-- grid -->
+      <line x1="60" y1="155" x2="680" y2="155" class="grid-line" stroke-dasharray="2,3"/>
+      <line x1="370" y1="30" x2="370" y2="280" class="grid-line" stroke-dasharray="2,3"/>
+      <text x="370" y="20" class="axis-label" text-anchor="middle">ω/2 (peak P)</text>
+
+      <!-- torque trace (linear from T_stall at ω=0 to 0 at ω_no_load) -->
+      <line id="tTrace" x1="60" y1="60" x2="680" y2="280" stroke="var(--accent)" stroke-width="2"/>
+      <text x="70" y="55" class="label" fill="var(--accent)">Torque T(ω)</text>
+
+      <!-- power trace (parabola P = T·ω) -->
+      <polyline id="pTrace" class="trace trace-2" points=""/>
+      <text x="380" y="120" class="label" fill="var(--accent2)">Power P(ω)</text>
+
+      <!-- efficiency trace -->
+      <polyline id="eTrace" class="trace trace-3" points=""/>
+      <text x="500" y="80" class="label" fill="var(--accent3)">Efficiency η(ω)</text>
+
+      <!-- operating point marker -->
+      <circle id="opDot" cx="200" cy="180" r="6" fill="var(--warn)" stroke="var(--bg)" stroke-width="2"/>
+      <text id="opLabel" x="210" y="178" class="label" fill="var(--warn)">op point</text>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>Torque (linear, T_stall → 0)</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>Mechanical power P = T·ω (peaks at ω/2)</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>Efficiency η = P_out/P_in (peaks past ω/2, near no-load)</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>Current operating point</span>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Operating point — computed values</h3>
+    <div class="stat-grid">
+      <div class="stat"><div class="lbl">ω_no_load</div><div class="val" id="statWnl">600 rad/s</div></div>
+      <div class="stat"><div class="lbl">T_stall</div><div class="val" id="statTst">0.120 N·m</div></div>
+      <div class="stat"><div class="lbl">I_stall</div><div class="val" id="statIst">6.00 A</div></div>
+      <div class="stat"><div class="lbl">ω (op)</div><div class="val" id="statW">400 rad/s</div></div>
+      <div class="stat"><div class="lbl">I (op)</div><div class="val" id="statI">2.00 A</div></div>
+      <div class="stat"><div class="lbl">P_out (op)</div><div class="val" id="statPout">16.0 W</div></div>
+      <div class="stat"><div class="lbl">η (op)</div><div class="val" id="statEff">67%</div></div>
+      <div class="stat"><div class="lbl">P_diss (heat)</div><div class="val" id="statPdiss">8.0 W</div></div>
+    </div>
+    <p style="margin-top:12px;font-size:12px;color:var(--fg-dim)">
+      Formulas: <code>V = Ke·ω + I·R</code> · <code>T = Kt·I</code> · <code>ω = (V − T/Kt·R)/Ke</code> when steady-state with T = T_L · <code>η = T·ω / (V·I)</code>
+    </p>
+  </div>
+
+  <div class="figure">
+    <h3>Commutator + brushes — current reversal in the rotating armature</h3>
+    <svg viewBox="0 0 700 240" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <!-- Stator N-S poles -->
+      <rect x="80" y="60" width="50" height="120" fill="rgba(94,200,255,0.20)" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="105" y="125" class="label" fill="var(--accent)" text-anchor="middle">N</text>
+      <text x="105" y="55" class="label-dim" text-anchor="middle">stator</text>
+
+      <rect x="510" y="60" width="50" height="120" fill="rgba(255,123,114,0.20)" stroke="var(--warn)" stroke-width="1.5"/>
+      <text x="535" y="125" class="label" fill="var(--warn)" text-anchor="middle">S</text>
+
+      <!-- Field arrows N → S -->
+      <line x1="135" y1="90" x2="505" y2="90" stroke="var(--fg-dim)" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#a)"/>
+      <line x1="135" y1="120" x2="505" y2="120" stroke="var(--fg-dim)" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#a)"/>
+      <line x1="135" y1="150" x2="505" y2="150" stroke="var(--fg-dim)" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#a)"/>
+      <text x="320" y="80" class="label-dim" text-anchor="middle">B field</text>
+
+      <!-- Rotor circle -->
+      <circle cx="320" cy="120" r="55" fill="var(--bg-elev2)" stroke="var(--fg)" stroke-width="2"/>
+      <text x="320" y="195" class="label-dim" text-anchor="middle">armature (rotor)</text>
+
+      <!-- Rotor coil (rotating) -->
+      <g id="rotor" transform="rotate(0 320 120)">
+        <line x1="320" y1="75" x2="320" y2="165" stroke="var(--accent2)" stroke-width="3"/>
+        <circle cx="320" cy="75" r="6" fill="var(--accent2)"/>
+        <text x="320" y="79" class="label" fill="var(--bg)" text-anchor="middle" font-size="10">×</text>
+        <circle cx="320" cy="165" r="6" fill="var(--accent2)"/>
+        <text x="320" y="169" class="label" fill="var(--bg)" text-anchor="middle" font-size="10">·</text>
+      </g>
+
+      <!-- Commutator segments -->
+      <rect x="300" y="115" width="9" height="10" fill="var(--accent3)" stroke="var(--fg)" stroke-width="0.8"/>
+      <rect x="331" y="115" width="9" height="10" fill="var(--accent2)" stroke="var(--fg)" stroke-width="0.8"/>
+      <text x="320" y="105" class="label-dim" text-anchor="middle" font-size="10">commutator</text>
+
+      <!-- Brushes -->
+      <rect x="296" y="100" width="6" height="12" fill="var(--fg)"/>
+      <rect x="338" y="100" width="6" height="12" fill="var(--fg)"/>
+      <text x="280" y="98" class="label-dim" text-anchor="end" font-size="10">brush −</text>
+      <text x="360" y="98" class="label-dim" font-size="10">brush +</text>
+
+      <!-- Force arrows -->
+      <line x1="320" y1="75" x2="270" y2="75" stroke="var(--accent3)" stroke-width="2" marker-end="url(#a2)"/>
+      <text x="225" y="72" class="label" fill="var(--accent3)" font-size="11">F = IL×B (down half)</text>
+      <line x1="320" y1="165" x2="370" y2="165" stroke="var(--accent3)" stroke-width="2" marker-end="url(#a2)"/>
+      <text x="380" y="170" class="label" fill="var(--accent3)" font-size="11">F (up half)</text>
+
+      <defs>
+        <marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--fg-dim)"/>
+        </marker>
+        <marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent3)"/>
+        </marker>
+      </defs>
+    </svg>
+    <p style="margin-top:8px;font-size:12px;color:var(--fg-dim)">
+      Every half-turn the commutator swaps which brush feeds which coil end. The current through the wire stays oriented the same way relative to the B-field, so force is always tangential and torque is unidirectional. Brushes wear; this is why brushed motors are eventually replaced by BLDC in long-life applications.
+    </p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Torque-speed is a straight line</b> — slope = −Kt²/R. Two anchor points fully define it: stall (ω=0, T=T_stall) and no-load (T=0, ω=V/Ke). Everything else follows.</li>
+    <li><b>Peak power sits at half speed, half torque</b> — P = T·ω is a parabola; its apex is at ω = ω_no_load/2. Useful, because <b>peak power is rarely the operating point</b> — it is exactly where heat dissipation also peaks.</li>
+    <li><b>Peak efficiency is well past peak power</b> — efficiency rises toward no-load because losses are I²R and BEMF is doing more of the voltage drop. At stall, efficiency is zero (all electrical input becomes heat).</li>
+    <li><b>Stall current is V/R, often 10–30× rated</b> — held for more than a second or two, the winding burns out. Always current-limit your driver, or fuse the supply, before connecting an untested motor.</li>
+    <li><b>Back-EMF makes the motor a generator</b> — disconnect the supply and let the shaft spin: voltage appears across the terminals. This is how DC motors short-brake (short the terminals → BEMF drives circulating current → braking torque).</li>
+    <li><b>Gearbox shifts the operating point</b> — output torque ×N, output speed ÷N. Choose N to put the <b>motor</b> near its high-efficiency zone while the load sees what it needs. Reflected load inertia drops by N².</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Circuit</dt><dd><span class="eq">V = Ke·ω + I·R</span></dd>
+        <dt>Torque</dt><dd><span class="eq">T = Kt·I</span></dd>
+        <dt>No-load ω</dt><dd><span class="eq">ω₀ = V / Ke</span></dd>
+        <dt>Stall T</dt><dd><span class="eq">T_s = V·Kt / R</span></dd>
+        <dt>Peak power</dt><dd><span class="eq">P_max = V²·Kt / (4·R·Ke)</span><span class="eq-note">at ω = ω₀/2</span></dd>
+        <dt>Efficiency</dt><dd><span class="eq">η = T·ω / (V·I)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>Kt = Ke in SI</b> — N·m/A and V·s/rad are the same number.</li>
+        <li><b>Peak P at ω/2</b> — never the steady operating point.</li>
+        <li><b>η peaks near no-load</b> — light loading is efficient, not heavy.</li>
+        <li><b>Gear ratio N</b> — T×N, ω÷N, J_load÷N² reflected to shaft.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Stall = burnout</b> — I_stall = V/R lasts seconds, not minutes.</li>
+        <li><b>"Bigger motor" is wrong</b> — usually you need a different gear ratio, not more motor.</li>
+        <li><b>Reading rated power as max</b> — peak P is 2–4× rated, but only for seconds.</li>
+        <li><b>Forgetting brush life</b> — brushed motors die at 1000–5000 hrs continuous; pick BLDC if duty cycle is high.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 2 — Actuators</a> ·
+    Topic: Brushed DC Motor Fundamentals
+  </footer>
+</main>
+<script>
+  const vEl=document.getElementById('v');
+  const ktEl=document.getElementById('kt');
+  const rEl=document.getElementById('r');
+  const tlEl=document.getElementById('tl');
+
+  const tTrace=document.getElementById('tTrace');
+  const pTrace=document.getElementById('pTrace');
+  const eTrace=document.getElementById('eTrace');
+  const opDot=document.getElementById('opDot');
+  const opLabel=document.getElementById('opLabel');
+  const wnlLbl=document.getElementById('wnlLbl');
+
+  function fmt(v, unit, dec=2){
+    if(Math.abs(v)>=1000) return (v/1000).toFixed(dec)+' k'+unit;
+    if(Math.abs(v)<1 && Math.abs(v)>0.001) return (v*1000).toFixed(dec)+' m'+unit;
+    return v.toFixed(dec)+' '+unit;
+  }
+
+  function update(){
+    const V=parseFloat(vEl.value);
+    const K=parseFloat(ktEl.value);      // Kt = Ke
+    const R=parseFloat(rEl.value);
+    let TL=parseFloat(tlEl.value);
+
+    // No-load and stall
+    const Wnl = V/K;                      // rad/s
+    const Tst = V*K/R;                    // N·m
+    const Ist = V/R;
+    if(TL>Tst) TL = Tst;
+
+    // Steady-state operating point: T_L = T_motor, so I = TL/K, ω = (V - I·R)/K
+    const Iop = TL/K;
+    const Wop = (V - Iop*R)/K;
+    const Pout = TL*Wop;
+    const Pin = V*Iop;
+    const eff = Pin>0 ? Pout/Pin : 0;
+    const Pdiss = Pin - Pout;
+
+    // readouts
+    document.getElementById('vRead').textContent = V.toFixed(1)+' V';
+    document.getElementById('ktRead').textContent = K.toFixed(3)+' N·m/A';
+    document.getElementById('rRead').textContent = R.toFixed(2)+' Ω';
+    document.getElementById('tlRead').textContent = TL.toFixed(3)+' N·m';
+
+    document.getElementById('statWnl').textContent = Wnl.toFixed(0)+' rad/s';
+    document.getElementById('statTst').textContent = Tst.toFixed(3)+' N·m';
+    document.getElementById('statIst').textContent = Ist.toFixed(2)+' A';
+    document.getElementById('statW').textContent = Wop.toFixed(0)+' rad/s';
+    document.getElementById('statI').textContent = Iop.toFixed(2)+' A';
+    document.getElementById('statPout').textContent = Pout.toFixed(2)+' W';
+    document.getElementById('statEff').textContent = (eff*100).toFixed(0)+'%';
+    document.getElementById('statPdiss').textContent = Pdiss.toFixed(2)+' W';
+
+    wnlLbl.textContent = `ω₀ = ${Wnl.toFixed(0)}`;
+
+    // Draw curves: torque-speed (line), power (parabola), efficiency (curve)
+    const xL=60, xR=680, yT=30, yB=280;
+    const xRange=xR-xL, yRange=yB-yT;
+    // x axis: 0 .. Wnl
+    const xOf = w => xL + (w/Wnl)*xRange;
+    // y axis: shared. We scale torque so T_stall maps to top.
+    // Power and efficiency get rescaled independently and overlaid.
+
+    // Torque line: from (0, T_stall) -> (Wnl, 0)
+    const yOfT = t => yB - (t/Tst)*yRange;
+    tTrace.setAttribute('x1', xL);
+    tTrace.setAttribute('y1', yOfT(Tst));
+    tTrace.setAttribute('x2', xR);
+    tTrace.setAttribute('y2', yOfT(0));
+
+    // Power curve: P(ω) = (V/Ke − ω/Ke·R)... using T = Kt·(V−Ke·ω)/R
+    const pPoints=[];
+    const ePoints=[];
+    const Pmax = V*V*K/(4*R*K); // = V²/(4R) actually
+    const yOfP = p => yB - (p/Pmax)*yRange;
+    const yOfE = e => yB - e*yRange; // η in [0,1]
+    for(let i=0;i<=60;i++){
+      const w = (i/60)*Wnl;
+      const I = (V - K*w)/R;
+      const Tm = K*I;
+      const P = Tm*w;
+      const eta = (V*I)>0 ? P/(V*I) : 0;
+      pPoints.push(`${xOf(w).toFixed(1)},${yOfP(Math.max(P,0)).toFixed(1)}`);
+      ePoints.push(`${xOf(w).toFixed(1)},${yOfE(Math.max(eta,0)).toFixed(1)}`);
+    }
+    pTrace.setAttribute('points', pPoints.join(' '));
+    eTrace.setAttribute('points', ePoints.join(' '));
+
+    // Operating point marker (on torque line)
+    const opX = xOf(Math.max(Wop,0));
+    const opY = yOfT(TL);
+    opDot.setAttribute('cx', opX);
+    opDot.setAttribute('cy', opY);
+    opLabel.setAttribute('x', opX+10);
+    opLabel.setAttribute('y', opY-6);
+    opLabel.textContent = `op: T=${TL.toFixed(3)}, ω=${Wop.toFixed(0)}`;
+  }
+
+  [vEl,ktEl,rEl,tlEl].forEach(el=>el.addEventListener('input',update));
+
+  // Animate rotor + commutator swap
+  let angle=0;
+  const rotor=document.getElementById('rotor');
+  setInterval(()=>{
+    const V=parseFloat(vEl.value);
+    const K=parseFloat(ktEl.value);
+    const TL=parseFloat(tlEl.value);
+    const R=parseFloat(rEl.value);
+    const Iop = Math.max(TL,0.001)/K;
+    const Wop = Math.max((V - Iop*R)/K, 0);
+    angle = (angle + Math.min(Wop*0.002, 10)) % 360;
+    rotor.setAttribute('transform', `rotate(${angle} 320 120)`);
+  }, 50);
+
+  update();
+</script>
+</body>
+</html>

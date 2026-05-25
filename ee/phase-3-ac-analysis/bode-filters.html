@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bode Plots — First-order RC & Second-order RLC Filters — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .stat{display:inline-block;margin-right:14px;font-family:ui-monospace,monospace;font-size:13px}
+  .stat b{color:var(--fg-bright)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Bode Plots — RC & RLC Filters</h1>
+  <p class="lede">A Bode plot turns a frequency-response curve into two straight-line asymptotes that meet at a corner frequency. The true curve deviates from the asymptote by exactly 3 dB at the corner — that's where the "−3 dB point" name comes from. Switch between low-pass, high-pass, and bandpass tabs and watch the slopes flip and the phase swing.</p>
+
+  <h3>What this teaches</h3>
+  <p>Every first-order pole gives a <code>−20 dB/decade</code> slope and a 90° phase shift, smeared over about a decade on each side of the corner. A second-order resonant peak gives <code>−40 dB/decade</code> rolloff (or in the bandpass case, ±20 dB/decade on each side of f₀) and up to 180° of total phase shift. The straight-line approximations let you sketch any filter response in seconds; the live curve overlay shows exactly when the approximation is "close enough" and when it isn't.</p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="lp">RC low-pass</div>
+    <div class="tab" data-tab="hp">RC high-pass</div>
+    <div class="tab" data-tab="bp">RLC bandpass</div>
+  </div>
+
+  <div class="tab-panel active" id="panel-lp">
+    <p style="margin:0 0 10px"><b>RC low-pass:</b> <code>H(jω) = 1 / (1 + jωRC)</code>. Pole at <code>f_c = 1/(2πRC)</code>. Below f_c: flat 0 dB, phase ≈ 0°. Above f_c: −20 dB/decade, phase → −90°.</p>
+    <section class="controls">
+      <div class="control">
+        <label>R — <span class="readout" id="lp_rR">1.0</span> kΩ</label>
+        <input type="range" id="lp_sR" min="0.01" max="100" step="0.01" value="1">
+      </div>
+      <div class="control">
+        <label>C — <span class="readout" id="lp_rC">100</span> nF</label>
+        <input type="range" id="lp_sC" min="1" max="10000" step="1" value="100">
+      </div>
+      <div class="control" style="grid-column:1/-1">
+        <span class="stat">f_c = <b><span class="readout" id="lp_fc">1592</span> Hz</b></span>
+        <span class="stat">τ = RC = <span class="readout" id="lp_tau">100</span> µs</span>
+        <span class="stat">slope above f_c: <b>−20 dB/decade</b></span>
+        <span class="stat">error at f_c: <b>−3 dB</b>, phase = <b>−45°</b></span>
+      </div>
+    </section>
+    <div class="figure">
+      <svg id="lp_magSvg" viewBox="0 0 720 280" width="100%"></svg>
+      <svg id="lp_phSvg" viewBox="0 0 720 220" width="100%" style="margin-top:8px"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>True magnitude / phase</span>
+        <span><span class="swatch" style="background:var(--accent2);height:3px;border-top:1px dashed var(--accent2)"></span>Asymptote (straight-line Bode)</span>
+        <span><span class="swatch" style="background:var(--warn)"></span>f_c marker (−3 dB error)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panel-hp">
+    <p style="margin:0 0 10px"><b>RC high-pass:</b> <code>H(jω) = jωRC / (1 + jωRC)</code>. Zero at DC, pole at <code>f_c = 1/(2πRC)</code>. Below f_c: rising at +20 dB/decade, phase near +90°. Above f_c: flat 0 dB, phase → 0°.</p>
+    <section class="controls">
+      <div class="control">
+        <label>R — <span class="readout" id="hp_rR">1.0</span> kΩ</label>
+        <input type="range" id="hp_sR" min="0.01" max="100" step="0.01" value="1">
+      </div>
+      <div class="control">
+        <label>C — <span class="readout" id="hp_rC">100</span> nF</label>
+        <input type="range" id="hp_sC" min="1" max="10000" step="1" value="100">
+      </div>
+      <div class="control" style="grid-column:1/-1">
+        <span class="stat">f_c = <b><span class="readout" id="hp_fc">1592</span> Hz</b></span>
+        <span class="stat">τ = RC = <span class="readout" id="hp_tau">100</span> µs</span>
+        <span class="stat">slope below f_c: <b>+20 dB/decade</b></span>
+        <span class="stat">error at f_c: <b>−3 dB</b>, phase = <b>+45°</b></span>
+      </div>
+    </section>
+    <div class="figure">
+      <svg id="hp_magSvg" viewBox="0 0 720 280" width="100%"></svg>
+      <svg id="hp_phSvg" viewBox="0 0 720 220" width="100%" style="margin-top:8px"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>True magnitude / phase</span>
+        <span><span class="swatch" style="background:var(--accent2)"></span>Asymptote (straight-line Bode)</span>
+        <span><span class="swatch" style="background:var(--warn)"></span>f_c marker (−3 dB error)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panel-bp">
+    <p style="margin:0 0 10px"><b>Series RLC bandpass</b> (output across R): <code>H(jω) = R / (R + jωL + 1/(jωC))</code>. Peak at <code>f₀ = 1/(2π√LC)</code> where H = 1 (0 dB). Skirts roll off at ±20 dB/decade. Quality factor <code>Q = (1/R)·√(L/C)</code> sets bandwidth <code>BW = f₀/Q</code>. Phase sweeps from +90° through 0° at f₀ to −90°.</p>
+    <section class="controls">
+      <div class="control">
+        <label>R — <span class="readout" id="bp_rR">10</span> Ω</label>
+        <input type="range" id="bp_sR" min="0.1" max="1000" step="0.1" value="10">
+      </div>
+      <div class="control">
+        <label>L — <span class="readout" id="bp_rL">10</span> mH</label>
+        <input type="range" id="bp_sL" min="0.01" max="100" step="0.01" value="10">
+      </div>
+      <div class="control">
+        <label>C — <span class="readout" id="bp_rC">1.0</span> µF</label>
+        <input type="range" id="bp_sC" min="0.001" max="100" step="0.001" value="1">
+      </div>
+      <div class="control" style="grid-column:1/-1">
+        <span class="stat">f₀ = <b><span class="readout" id="bp_f0">1592</span> Hz</b></span>
+        <span class="stat">Q = <b><span class="readout" id="bp_Q">10.0</span></b></span>
+        <span class="stat">BW (−3dB) = <b><span class="readout" id="bp_BW">159</span> Hz</b></span>
+        <span class="stat">skirt slope: <b>±20 dB/decade</b> (peak then ±40 deeper for off-resonance composites)</span>
+      </div>
+    </section>
+    <div class="figure">
+      <svg id="bp_magSvg" viewBox="0 0 720 280" width="100%"></svg>
+      <svg id="bp_phSvg" viewBox="0 0 720 220" width="100%" style="margin-top:8px"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>True magnitude / phase</span>
+        <span><span class="swatch" style="background:var(--accent2)"></span>Asymptotes (+20 / 0 / −20 dB/dec)</span>
+        <span><span class="swatch" style="background:var(--warn)"></span>f₀ peak, ±3dB band edges</span>
+      </div>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>The corner frequency is a "knee"</b> — below f_c the asymptote is one slope, above it another. The true curve eases through the knee, sitting exactly 3 dB below where the two straight lines intersect. That's not coincidence: at f=f_c the magnitude is 1/√2 of the passband, and 20·log₁₀(1/√2) = −3.01 dB.</li>
+    <li><b>20 dB per decade = 6 dB per octave</b> — a decade is ×10 in frequency, an octave is ×2. log₁₀(2) ≈ 0.301, so 20×0.301 ≈ 6 dB per octave. Audio engineers prefer octaves; controls engineers prefer decades. Same slope, two units.</li>
+    <li><b>Phase is "smeared" over two decades</b> — the full 90° shift of a first-order pole happens approximately between f_c/10 (≈−5.7°) and 10·f_c (≈−84°). At f_c itself, phase is exactly halfway: ±45°. This is why a fast slider sweep makes the phase plot look gentle but the magnitude knee look sharp.</li>
+    <li><b>Sliding R and C trades for the same f_c</b> — if you halve R and double C, f_c = 1/(2πRC) is unchanged. Same Bode plot. The current draw and impedance change, but the frequency response doesn't. This is why filter design has a degree of freedom called impedance scaling.</li>
+    <li><b>RLC bandpass: Q sharpens the peak, doesn't move it</b> — f₀ depends only on √(LC). Q = (1/R)·√(L/C) controls the height and narrowness. Drop R and the peak gets pointier and taller (more amplification at f₀, narrower BW). Raise R and the peak melts into a broad bump.</li>
+    <li><b>Second-order rolloff is twice as steep</b> — at f much greater than f₀ the bandpass falls at −20 dB/decade (only one reactive element dominates), but a low-pass second-order rolls at −40 dB/decade because both L and C contribute. More reactive elements = steeper slope = sharper filter.</li>
+    <li><b>The asymptote breaks down near the corner</b> — the straight-line Bode is a sketcher's tool. For exact specs (anti-aliasing margins, EMI compliance) you compute the true curve. The visual shows the gap clearly: it's largest right at f_c.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>dB</dt><dd><span class="eq">dB = 20·log₁₀|H|</span></dd>
+        <dt>f_c (RC)</dt><dd><span class="eq">f_c = 1 / (2πRC)</span></dd>
+        <dt>slope</dt><dd><span class="eq">−20 dB/dec per pole</span></dd>
+        <dt>phase</dt><dd><span class="eq">−90° per pole (total)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>−3 dB ≈ 0.707×</b> amplitude — the half-power corner.</li>
+        <li><b>Corner = asymptote intersection</b> — true curve sits 3 dB below.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Asymptotes lie at the knee</b> — true mag is off by ±3 dB at f_c.</li>
+        <li><b>Phase smears ~1 decade either side</b> of corner — don't read it as a step.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 3 — AC Circuit Analysis</a> ·
+    Topic: Bode Plots & Filters
+  </footer>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+
+  // Tab switching
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+    });
+  });
+
+  // Frequency range: 1 Hz .. 100 kHz (5 decades)
+  const FMIN=1, FMAX=1e5, DECADES=5;
+  const FLABELS=['1','10','100','1k','10k','100k'];
+
+  // Magnitude plot: −60 dB .. +20 dB (80 dB span)
+  const DBMIN=-60, DBMAX=20, DBSPAN=80;
+
+  // Plot dims
+  const MW=720, MH=280;
+  const ML=60, MR=20, MT=20, MB=40;
+  const MPW = MW-ML-MR, MPH = MH-MT-MB;
+
+  const PW=720, PH=220;
+  const PL=60, PR=20, PT=20, PB=40;
+  const PPW = PW-PL-PR, PPH = PH-PT-PB;
+
+  function fToX(f){ return ML + (Math.log10(f)-Math.log10(FMIN))/DECADES*MPW; }
+  function dbToY(db){
+    if (db < DBMIN) db = DBMIN;
+    if (db > DBMAX) db = DBMAX;
+    return MT + (DBMAX - db)/DBSPAN*MPH;
+  }
+  function fToXp(f){ return PL + (Math.log10(f)-Math.log10(FMIN))/DECADES*PPW; }
+  function angToYp(a, range){
+    // range is total span: 180 for first-order (-90..+90), 360 for second-order (-180..+180)
+    return PT + (range/2 - a)/range * PPH;
+  }
+
+  function buildMagStatic(svg){
+    let s='';
+    // vertical decade grid
+    for (let d=0; d<=DECADES; d++){
+      const x = ML + d/DECADES*MPW;
+      s += `<line x1="${x}" y1="${MT}" x2="${x}" y2="${MT+MPH}" class="grid-line"/>`;
+      s += `<text x="${x}" y="${MH-22}" class="axis-label" text-anchor="middle">${FLABELS[d]}</text>`;
+    }
+    // horizontal dB grid every 20 dB
+    for (let db=DBMIN; db<=DBMAX; db+=20){
+      const y = dbToY(db);
+      s += `<line x1="${ML}" y1="${y}" x2="${ML+MPW}" y2="${y}" class="grid-line"/>`;
+      s += `<text x="${ML-6}" y="${y+4}" class="axis-label" text-anchor="end">${db}</text>`;
+    }
+    // 0 dB line
+    s += `<line x1="${ML}" y1="${dbToY(0)}" x2="${ML+MPW}" y2="${dbToY(0)}" stroke="var(--fg-dim)" stroke-width="1" stroke-dasharray="2,3"/>`;
+    s += `<line x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT+MPH}" class="axis"/>`;
+    s += `<line x1="${ML}" y1="${MT+MPH}" x2="${ML+MPW}" y2="${MT+MPH}" class="axis"/>`;
+    s += `<text x="${ML+MPW/2}" y="${MH-6}" class="axis-label" text-anchor="middle">frequency (Hz, log) →</text>`;
+    s += `<text x="14" y="${MT+MPH/2}" class="axis-label" text-anchor="middle" transform="rotate(-90 14 ${MT+MPH/2})">|H| (dB)</text>`;
+    svg.innerHTML = s + '<g class="dyn"></g>';
+  }
+  function buildPhStatic(svg, range){
+    let s='';
+    for (let d=0; d<=DECADES; d++){
+      const x = PL + d/DECADES*PPW;
+      s += `<line x1="${x}" y1="${PT}" x2="${x}" y2="${PT+PPH}" class="grid-line"/>`;
+      s += `<text x="${x}" y="${PH-22}" class="axis-label" text-anchor="middle">${FLABELS[d]}</text>`;
+    }
+    const angs = (range===180) ? [90,45,0,-45,-90] : [180,90,0,-90,-180];
+    for (const a of angs){
+      const y = angToYp(a, range);
+      s += `<line x1="${PL}" y1="${y}" x2="${PL+PPW}" y2="${y}" class="grid-line"/>`;
+      s += `<text x="${PL-6}" y="${y+4}" class="axis-label" text-anchor="end">${a}°</text>`;
+    }
+    s += `<line x1="${PL}" y1="${angToYp(0,range)}" x2="${PL+PPW}" y2="${angToYp(0,range)}" stroke="var(--fg-dim)" stroke-width="1" stroke-dasharray="2,3"/>`;
+    s += `<line x1="${PL}" y1="${PT}" x2="${PL}" y2="${PT+PPH}" class="axis"/>`;
+    s += `<line x1="${PL}" y1="${PT+PPH}" x2="${PL+PPW}" y2="${PT+PPH}" class="axis"/>`;
+    s += `<text x="${PL+PPW/2}" y="${PH-6}" class="axis-label" text-anchor="middle">frequency (Hz, log) →</text>`;
+    s += `<text x="14" y="${PT+PPH/2}" class="axis-label" text-anchor="middle" transform="rotate(-90 14 ${PT+PPH/2})">∠H (deg)</text>`;
+    svg.innerHTML = s + '<g class="dyn"></g>';
+  }
+
+  // ========== Low-pass ==========
+  const lp_magSvg=$('lp_magSvg'), lp_phSvg=$('lp_phSvg');
+  buildMagStatic(lp_magSvg); buildPhStatic(lp_phSvg, 180);
+
+  function drawLP(){
+    const R = +$('lp_sR').value * 1000;     // kΩ → Ω
+    const C = +$('lp_sC').value * 1e-9;     // nF → F
+    $('lp_rR').textContent = (+$('lp_sR').value).toFixed(2);
+    $('lp_rC').textContent = (+$('lp_sC').value).toFixed(0);
+    const fc = 1/(2*Math.PI*R*C);
+    const tau = R*C;
+    $('lp_fc').textContent = fc < 1000 ? fc.toFixed(1) : fc < 1e6 ? (fc/1000).toFixed(2)+'k' : (fc/1e6).toFixed(2)+'M';
+    $('lp_tau').textContent = tau < 1e-3 ? (tau*1e6).toFixed(1)+' µs' : tau < 1 ? (tau*1e3).toFixed(2)+' ms' : tau.toFixed(2)+' s';
+
+    const N=400;
+    let pTrue='', pAsy='', aTrue='', aAsy='';
+    for (let i=0;i<=N;i++){
+      const f = FMIN * Math.pow(10, i/N * DECADES);
+      const r = f/fc;
+      const mag = 1/Math.sqrt(1+r*r);
+      const db = 20*Math.log10(mag);
+      const ph = -Math.atan(r)*180/Math.PI;
+      const x = fToX(f), xp = fToXp(f);
+      pTrue += (i===0?'M':'L') + x.toFixed(1)+' '+dbToY(db).toFixed(1)+' ';
+      aTrue += (i===0?'M':'L') + xp.toFixed(1)+' '+angToYp(ph,180).toFixed(1)+' ';
+      // Asymptote: 0 dB below fc, -20 dB/decade above
+      const dbAsy = (f<=fc) ? 0 : -20*Math.log10(f/fc);
+      pAsy += (i===0?'M':'L') + x.toFixed(1)+' '+dbToY(dbAsy).toFixed(1)+' ';
+      // Phase asymptote: 0° below fc/10, -90° above 10*fc, linear log between
+      let phAsy = 0;
+      if (f <= fc/10) phAsy = 0;
+      else if (f >= 10*fc) phAsy = -90;
+      else phAsy = -45 * (Math.log10(f/fc) + 1); // -45 at fc
+      aAsy += (i===0?'M':'L') + xp.toFixed(1)+' '+angToYp(phAsy,180).toFixed(1)+' ';
+    }
+
+    let mL='';
+    mL += `<path d="${pAsy}" stroke="var(--accent2)" stroke-width="2" stroke-dasharray="6,4" fill="none"/>`;
+    mL += `<path d="${pTrue}" stroke="var(--accent)" stroke-width="2.5" fill="none"/>`;
+    // fc marker
+    if (fc>=FMIN && fc<=FMAX){
+      const xfc = fToX(fc);
+      mL += `<line x1="${xfc}" y1="${MT}" x2="${xfc}" y2="${MT+MPH}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="4,3"/>`;
+      mL += `<circle cx="${xfc}" cy="${dbToY(-3.01)}" r="4" fill="var(--warn)"/>`;
+      mL += `<text x="${xfc+6}" y="${dbToY(-3.01)-6}" class="label" fill="var(--warn)">f_c, −3 dB</text>`;
+      mL += `<text x="${xfc+6}" y="${MT+14}" class="axis-label">f_c = ${fc<1000?fc.toFixed(1):fc<1e6?(fc/1000).toFixed(2)+'k':(fc/1e6).toFixed(2)+'M'} Hz</text>`;
+      // slope label
+      const xs = fToX(Math.min(fc*30, FMAX*0.6));
+      mL += `<text x="${xs}" y="${dbToY(-30)}" class="label" fill="var(--accent2)">−20 dB/decade</text>`;
+    }
+    lp_magSvg.querySelector('.dyn').innerHTML = mL;
+
+    let pL_str='';
+    pL_str += `<path d="${aAsy}" stroke="var(--accent2)" stroke-width="2" stroke-dasharray="6,4" fill="none"/>`;
+    pL_str += `<path d="${aTrue}" stroke="var(--accent)" stroke-width="2.5" fill="none"/>`;
+    if (fc>=FMIN && fc<=FMAX){
+      const xfc = fToXp(fc);
+      pL_str += `<line x1="${xfc}" y1="${PT}" x2="${xfc}" y2="${PT+PPH}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="4,3"/>`;
+      pL_str += `<circle cx="${xfc}" cy="${angToYp(-45,180)}" r="4" fill="var(--warn)"/>`;
+      pL_str += `<text x="${xfc+6}" y="${angToYp(-45,180)-6}" class="label" fill="var(--warn)">−45° at f_c</text>`;
+    }
+    lp_phSvg.querySelector('.dyn').innerHTML = pL_str;
+  }
+  for (const id of ['lp_sR','lp_sC']) $(id).addEventListener('input', drawLP);
+  drawLP();
+
+  // ========== High-pass ==========
+  const hp_magSvg=$('hp_magSvg'), hp_phSvg=$('hp_phSvg');
+  buildMagStatic(hp_magSvg); buildPhStatic(hp_phSvg, 180);
+
+  function drawHP(){
+    const R = +$('hp_sR').value * 1000;
+    const C = +$('hp_sC').value * 1e-9;
+    $('hp_rR').textContent = (+$('hp_sR').value).toFixed(2);
+    $('hp_rC').textContent = (+$('hp_sC').value).toFixed(0);
+    const fc = 1/(2*Math.PI*R*C);
+    const tau = R*C;
+    $('hp_fc').textContent = fc < 1000 ? fc.toFixed(1) : fc < 1e6 ? (fc/1000).toFixed(2)+'k' : (fc/1e6).toFixed(2)+'M';
+    $('hp_tau').textContent = tau < 1e-3 ? (tau*1e6).toFixed(1)+' µs' : tau < 1 ? (tau*1e3).toFixed(2)+' ms' : tau.toFixed(2)+' s';
+
+    const N=400;
+    let pTrue='', pAsy='', aTrue='', aAsy='';
+    for (let i=0;i<=N;i++){
+      const f = FMIN * Math.pow(10, i/N * DECADES);
+      const r = f/fc;
+      const mag = r/Math.sqrt(1+r*r);
+      const db = 20*Math.log10(mag);
+      const ph = 90 - Math.atan(r)*180/Math.PI;
+      const x = fToX(f), xp = fToXp(f);
+      pTrue += (i===0?'M':'L') + x.toFixed(1)+' '+dbToY(db).toFixed(1)+' ';
+      aTrue += (i===0?'M':'L') + xp.toFixed(1)+' '+angToYp(ph,180).toFixed(1)+' ';
+      // Asymptote: +20 dB/dec below fc (passes through 0 dB at fc), 0 above
+      const dbAsy = (f>=fc) ? 0 : 20*Math.log10(f/fc);
+      pAsy += (i===0?'M':'L') + x.toFixed(1)+' '+dbToY(dbAsy).toFixed(1)+' ';
+      let phAsy = 0;
+      if (f >= 10*fc) phAsy = 0;
+      else if (f <= fc/10) phAsy = 90;
+      else phAsy = 45 - 45 * (Math.log10(f/fc)); // +45 at fc
+      aAsy += (i===0?'M':'L') + xp.toFixed(1)+' '+angToYp(phAsy,180).toFixed(1)+' ';
+    }
+
+    let mL='';
+    mL += `<path d="${pAsy}" stroke="var(--accent2)" stroke-width="2" stroke-dasharray="6,4" fill="none"/>`;
+    mL += `<path d="${pTrue}" stroke="var(--accent)" stroke-width="2.5" fill="none"/>`;
+    if (fc>=FMIN && fc<=FMAX){
+      const xfc = fToX(fc);
+      mL += `<line x1="${xfc}" y1="${MT}" x2="${xfc}" y2="${MT+MPH}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="4,3"/>`;
+      mL += `<circle cx="${xfc}" cy="${dbToY(-3.01)}" r="4" fill="var(--warn)"/>`;
+      mL += `<text x="${xfc+6}" y="${dbToY(-3.01)-6}" class="label" fill="var(--warn)">f_c, −3 dB</text>`;
+      mL += `<text x="${xfc-6}" y="${MT+14}" class="axis-label" text-anchor="end">f_c = ${fc<1000?fc.toFixed(1):fc<1e6?(fc/1000).toFixed(2)+'k':(fc/1e6).toFixed(2)+'M'} Hz</text>`;
+      const xs = fToX(Math.max(fc/30, FMIN*1.5));
+      mL += `<text x="${xs}" y="${dbToY(-30)}" class="label" fill="var(--accent2)">+20 dB/decade</text>`;
+    }
+    hp_magSvg.querySelector('.dyn').innerHTML = mL;
+
+    let pL_str='';
+    pL_str += `<path d="${aAsy}" stroke="var(--accent2)" stroke-width="2" stroke-dasharray="6,4" fill="none"/>`;
+    pL_str += `<path d="${aTrue}" stroke="var(--accent)" stroke-width="2.5" fill="none"/>`;
+    if (fc>=FMIN && fc<=FMAX){
+      const xfc = fToXp(fc);
+      pL_str += `<line x1="${xfc}" y1="${PT}" x2="${xfc}" y2="${PT+PPH}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="4,3"/>`;
+      pL_str += `<circle cx="${xfc}" cy="${angToYp(45,180)}" r="4" fill="var(--warn)"/>`;
+      pL_str += `<text x="${xfc+6}" y="${angToYp(45,180)-6}" class="label" fill="var(--warn)">+45° at f_c</text>`;
+    }
+    hp_phSvg.querySelector('.dyn').innerHTML = pL_str;
+  }
+  for (const id of ['hp_sR','hp_sC']) $(id).addEventListener('input', drawHP);
+  drawHP();
+
+  // ========== Bandpass RLC ==========
+  const bp_magSvg=$('bp_magSvg'), bp_phSvg=$('bp_phSvg');
+  buildMagStatic(bp_magSvg); buildPhStatic(bp_phSvg, 180);
+
+  function drawBP(){
+    const R = +$('bp_sR').value;
+    const L = +$('bp_sL').value * 1e-3;     // mH → H
+    const C = +$('bp_sC').value * 1e-6;     // µF → F
+    $('bp_rR').textContent = R.toFixed(1);
+    $('bp_rL').textContent = (+$('bp_sL').value).toFixed(2);
+    $('bp_rC').textContent = (+$('bp_sC').value).toFixed(3);
+    const f0 = 1/(2*Math.PI*Math.sqrt(L*C));
+    const Q = (1/R) * Math.sqrt(L/C);
+    const BW = f0/Q;
+    $('bp_f0').textContent = f0 < 1000 ? f0.toFixed(1) : f0 < 1e6 ? (f0/1000).toFixed(2)+'k' : (f0/1e6).toFixed(2)+'M';
+    $('bp_Q').textContent = Q.toFixed(2);
+    $('bp_BW').textContent = BW < 1000 ? BW.toFixed(1) : BW < 1e6 ? (BW/1000).toFixed(2)+'k' : (BW/1e6).toFixed(2)+'M';
+
+    const N=600;
+    let pTrue='', pAsy='', aTrue='', aAsy='';
+    for (let i=0;i<=N;i++){
+      const f = FMIN * Math.pow(10, i/N * DECADES);
+      const w = 2*Math.PI*f;
+      // H = R / (R + j(wL - 1/wC))
+      const X = w*L - 1/(w*C);
+      const mag = R/Math.sqrt(R*R + X*X);
+      const db = 20*Math.log10(mag);
+      const ph = -Math.atan2(X, R)*180/Math.PI;
+      const x = fToX(f), xp = fToXp(f);
+      pTrue += (i===0?'M':'L') + x.toFixed(1)+' '+dbToY(db).toFixed(1)+' ';
+      aTrue += (i===0?'M':'L') + xp.toFixed(1)+' '+angToYp(ph,180).toFixed(1)+' ';
+      // Asymptotes for bandpass: +20 dB/dec below f0/Q (low corner), 0 dB in band, -20 dB/dec above Q*f0
+      const fL = f0/Q/Math.SQRT2; // approximate band edge — using simple corner model
+      const fH = f0*Q*Math.SQRT2;
+      // Simpler approach: at f much less than f0, |H| ≈ R*w*C; at f much greater than f0, |H| ≈ R/(wL)
+      let dbAsy;
+      if (f < f0){
+        const lowDb = 20*Math.log10(R*w*C); // rises +20/dec
+        dbAsy = Math.min(0, lowDb);
+      } else {
+        const highDb = 20*Math.log10(R/(w*L)); // falls -20/dec
+        dbAsy = Math.min(0, highDb);
+      }
+      pAsy += (i===0?'M':'L') + x.toFixed(1)+' '+dbToY(dbAsy).toFixed(1)+' ';
+      // phase asymptote: +90 well below, 0 at f0, -90 well above
+      let phAsy;
+      const lo = f0/10, hi = f0*10;
+      if (f <= lo) phAsy = 90;
+      else if (f >= hi) phAsy = -90;
+      else phAsy = -90 * Math.log10(f/f0); // -90 at 10*f0, +90 at f0/10, 0 at f0
+      aAsy += (i===0?'M':'L') + xp.toFixed(1)+' '+angToYp(phAsy,180).toFixed(1)+' ';
+    }
+
+    let mL='';
+    mL += `<path d="${pAsy}" stroke="var(--accent2)" stroke-width="2" stroke-dasharray="6,4" fill="none"/>`;
+    mL += `<path d="${pTrue}" stroke="var(--accent)" stroke-width="2.5" fill="none"/>`;
+    if (f0>=FMIN && f0<=FMAX){
+      const xf0 = fToX(f0);
+      mL += `<line x1="${xf0}" y1="${MT}" x2="${xf0}" y2="${MT+MPH}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="4,3"/>`;
+      mL += `<circle cx="${xf0}" cy="${dbToY(0)}" r="5" fill="var(--warn)"/>`;
+      mL += `<text x="${xf0+8}" y="${dbToY(0)-6}" class="label" fill="var(--warn)">f₀, 0 dB peak</text>`;
+      mL += `<text x="${xf0+8}" y="${MT+14}" class="axis-label">f₀=${f0<1000?f0.toFixed(1):f0<1e6?(f0/1000).toFixed(2)+'k':(f0/1e6).toFixed(2)+'M'} Hz, Q=${Q.toFixed(2)}</text>`;
+      // -3 dB band edges
+      const fA = f0 * (Math.sqrt(1 + 1/(4*Q*Q)) - 1/(2*Q));
+      const fB = f0 * (Math.sqrt(1 + 1/(4*Q*Q)) + 1/(2*Q));
+      if (fA>=FMIN && fA<=FMAX){
+        const xfA = fToX(fA);
+        mL += `<line x1="${xfA}" y1="${dbToY(-3.01)}" x2="${xfA}" y2="${MT+MPH}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="2,3" opacity="0.6"/>`;
+        mL += `<circle cx="${xfA}" cy="${dbToY(-3.01)}" r="3" fill="var(--warn)" opacity="0.7"/>`;
+      }
+      if (fB>=FMIN && fB<=FMAX){
+        const xfB = fToX(fB);
+        mL += `<line x1="${xfB}" y1="${dbToY(-3.01)}" x2="${xfB}" y2="${MT+MPH}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="2,3" opacity="0.6"/>`;
+        mL += `<circle cx="${xfB}" cy="${dbToY(-3.01)}" r="3" fill="var(--warn)" opacity="0.7"/>`;
+      }
+      mL += `<text x="${fToX(Math.max(f0/30,FMIN*1.5))}" y="${dbToY(-30)}" class="label" fill="var(--accent2)">+20 dB/dec</text>`;
+      mL += `<text x="${fToX(Math.min(f0*30,FMAX*0.6))}" y="${dbToY(-30)}" class="label" fill="var(--accent2)" text-anchor="end">−20 dB/dec</text>`;
+    }
+    bp_magSvg.querySelector('.dyn').innerHTML = mL;
+
+    let pL_str='';
+    pL_str += `<path d="${aAsy}" stroke="var(--accent2)" stroke-width="2" stroke-dasharray="6,4" fill="none"/>`;
+    pL_str += `<path d="${aTrue}" stroke="var(--accent)" stroke-width="2.5" fill="none"/>`;
+    if (f0>=FMIN && f0<=FMAX){
+      const xf0 = fToXp(f0);
+      pL_str += `<line x1="${xf0}" y1="${PT}" x2="${xf0}" y2="${PT+PPH}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="4,3"/>`;
+      pL_str += `<circle cx="${xf0}" cy="${angToYp(0,180)}" r="4" fill="var(--warn)"/>`;
+      pL_str += `<text x="${xf0+6}" y="${angToYp(0,180)-6}" class="label" fill="var(--warn)">0° at f₀</text>`;
+    }
+    bp_phSvg.querySelector('.dyn').innerHTML = pL_str;
+  }
+  for (const id of ['bp_sR','bp_sL','bp_sC']) $(id).addEventListener('input', drawBP);
+  drawBP();
+})();
+</script>
+</body>
+</html>

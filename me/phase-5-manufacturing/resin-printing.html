@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resin printing — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+
+  .state-banner{padding:10px 14px;border-radius:6px;font:13px ui-monospace,monospace;
+    margin:10px 0;text-align:center;font-weight:600}
+  .state-under{background:rgba(94,200,255,0.15);border:1px solid var(--accent);color:var(--accent)}
+  .state-ideal{background:rgba(163,230,53,0.15);border:1px solid var(--accent3);color:var(--accent3)}
+  .state-over{background:rgba(255,123,114,0.15);border:1px solid var(--warn);color:var(--warn)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Resin printing — MSLA exposure calibration</h1>
+  <p class="lede">Resin printing trades layer-line visibility for a different problem: the right exposure time is a knife-edge between delamination (too little UV) and bloated, lost detail (too much). Calibration prints exist for exactly this reason. Drag the slider to see how exposure shapes a small feature row.</p>
+
+  <div class="controls">
+    <div class="control">
+      <label>Exposure time per layer: <span class="readout" id="rExp">2.5</span> s</label>
+      <input type="range" id="sExp" min="1.0" max="5.0" step="0.1" value="2.5">
+    </div>
+    <div class="control">
+      <label>Layer height: <span class="readout" id="rLayer">0.05</span> mm</label>
+      <select id="sLayer">
+        <option value="0.025">0.025 mm (fine)</option>
+        <option value="0.05" selected>0.05 mm (default)</option>
+        <option value="0.1">0.1 mm (fast)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="state-banner" id="banner">Ideal exposure — sharp features, full cure</div>
+
+  <div class="figure">
+    <h3>Test pattern: small text + columns (target ↔ printed)</h3>
+    <svg viewBox="0 0 720 220" xmlns="http://www.w3.org/2000/svg">
+      <!-- Target reference -->
+      <text x="20" y="20" class="label-dim">target geometry</text>
+      <g transform="translate(20,30)">
+        <rect x="0" y="0" width="320" height="60" fill="none" stroke="#8f99a8" stroke-width="1" stroke-dasharray="2,2"/>
+        <!-- columns of varying size -->
+        <rect x="10" y="10" width="3" height="40" fill="#8f99a8"/>
+        <rect x="25" y="10" width="5" height="40" fill="#8f99a8"/>
+        <rect x="45" y="10" width="8" height="40" fill="#8f99a8"/>
+        <rect x="65" y="10" width="12" height="40" fill="#8f99a8"/>
+        <rect x="90" y="10" width="18" height="40" fill="#8f99a8"/>
+        <rect x="120" y="10" width="25" height="40" fill="#8f99a8"/>
+        <!-- text reference -->
+        <text x="160" y="35" class="label" style="font-size:14px">ABC 123</text>
+        <text x="160" y="52" class="label-dim" style="font-size:10px">0.3mm wall</text>
+      </g>
+
+      <!-- Printed result, modulated by exposure -->
+      <text x="360" y="20" class="label-dim">as-printed result <tspan id="bannerInline" fill="#a3e635">(ideal)</tspan></text>
+      <g transform="translate(360,30)" id="resultGroup">
+        <rect x="0" y="0" width="320" height="60" fill="none" stroke="#8f99a8" stroke-width="1" stroke-dasharray="2,2"/>
+        <rect id="col1" x="10" y="10" width="3" height="40" fill="#5ec8ff"/>
+        <rect id="col2" x="25" y="10" width="5" height="40" fill="#5ec8ff"/>
+        <rect id="col3" x="45" y="10" width="8" height="40" fill="#5ec8ff"/>
+        <rect id="col4" x="65" y="10" width="12" height="40" fill="#5ec8ff"/>
+        <rect id="col5" x="90" y="10" width="18" height="40" fill="#5ec8ff"/>
+        <rect id="col6" x="120" y="10" width="25" height="40" fill="#5ec8ff"/>
+        <text id="resTxt" x="160" y="35" class="label" fill="#5ec8ff" style="font-size:14px">ABC 123</text>
+        <text id="resWall" x="160" y="52" class="label-dim" style="font-size:10px">0.3mm wall</text>
+      </g>
+
+      <!-- Cross-section -->
+      <text x="20" y="120" class="label-dim">layer cross-section</text>
+      <g transform="translate(20,130)">
+        <rect x="0" y="0" width="660" height="70" fill="none" stroke="var(--line)" stroke-width="1"/>
+        <g id="layerStack">
+          <!-- 6 stacked layers; will be modified by JS to show delamination / over-cure -->
+          <rect class="layerRect" x="20" y="6" width="620" height="9" fill="#5ec8ff" opacity="0.85"/>
+          <rect class="layerRect" x="20" y="16" width="620" height="9" fill="#5ec8ff" opacity="0.85"/>
+          <rect class="layerRect" x="20" y="26" width="620" height="9" fill="#5ec8ff" opacity="0.85"/>
+          <rect class="layerRect" x="20" y="36" width="620" height="9" fill="#5ec8ff" opacity="0.85"/>
+          <rect class="layerRect" x="20" y="46" width="620" height="9" fill="#5ec8ff" opacity="0.85"/>
+          <rect class="layerRect" x="20" y="56" width="620" height="9" fill="#5ec8ff" opacity="0.85"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <h2>Layer thickness vs print time</h2>
+  <p style="color:var(--fg-dim);font-size:13px">For a 100 mm tall print on an MSLA (whole layer cured at once):</p>
+  <table>
+    <thead><tr><th>Layer height</th><th>Layers (100mm)</th><th>Exposure/layer</th><th>Total print time</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>0.025 mm</td><td>4000</td><td>~2.0 s</td><td>~3 h 30 min</td><td>highest (jewelry, miniatures)</td></tr>
+      <tr><td>0.05 mm</td><td>2000</td><td>~2.5 s</td><td>~1 h 50 min</td><td>practical sweet spot</td></tr>
+      <tr><td>0.1 mm</td><td>1000</td><td>~3.5 s</td><td>~1 h 5 min</td><td>functional parts, fastest</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:12px;color:var(--fg-dim)">Thinner layers need slightly less exposure per layer (less resin to cure), but the total layer count dominates — print time scales nearly linearly with 1/layer-height.</p>
+
+  <h2>Hollowing &amp; drain holes</h2>
+  <p style="color:var(--fg-dim);font-size:13px">Large solid resin prints waste resin and trap pressure. Hollow with 1.5–2 mm walls, then add drain holes: ≥2 at the lowest point during printing, 1 at the top for pressure equalization. Without drains, uncured resin pools inside the hollow and crashes the FEP film off the vat.</p>
+
+  <div class="figure">
+    <svg viewBox="0 0 720 260" xmlns="http://www.w3.org/2000/svg">
+      <!-- BAD: solid -->
+      <g transform="translate(20,20)">
+        <text x="100" y="0" class="label" text-anchor="middle" style="font-weight:600;fill:var(--warn)">Solid (bad)</text>
+        <text x="100" y="16" class="label-dim" text-anchor="middle">200 g resin, traps pressure</text>
+        <rect x="20" y="40" width="160" height="160" fill="#5ec8ff" opacity="0.5" stroke="#5ec8ff" stroke-width="1.5"/>
+        <text x="100" y="130" class="label" text-anchor="middle" fill="#ff7b72" style="font-weight:600">FILLED</text>
+      </g>
+
+      <!-- OK: hollow, no drain -->
+      <g transform="translate(260,20)">
+        <text x="100" y="0" class="label" text-anchor="middle" style="font-weight:600;fill:var(--accent2)">Hollow, no drain (bad)</text>
+        <text x="100" y="16" class="label-dim" text-anchor="middle">trapped uncured resin pools inside</text>
+        <rect x="20" y="40" width="160" height="160" fill="none" stroke="#ffb86c" stroke-width="2"/>
+        <rect x="32" y="52" width="136" height="136" fill="#ffb86c" opacity="0.25" stroke="#ffb86c" stroke-width="1" stroke-dasharray="3,2"/>
+        <text x="100" y="130" class="label" text-anchor="middle" fill="#ffb86c">trapped</text>
+        <text x="100" y="148" class="label" text-anchor="middle" fill="#ffb86c">resin pool</text>
+      </g>
+
+      <!-- GOOD: hollow with drains -->
+      <g transform="translate(500,20)">
+        <text x="100" y="0" class="label" text-anchor="middle" style="font-weight:600;fill:var(--accent3)">Hollow with drains (good)</text>
+        <text x="100" y="16" class="label-dim" text-anchor="middle">2 mm wall, 2 bottom + 1 top drain</text>
+        <rect x="20" y="40" width="160" height="160" fill="none" stroke="#a3e635" stroke-width="2"/>
+        <rect x="32" y="52" width="136" height="136" fill="none" stroke="#a3e635" stroke-width="1" stroke-dasharray="3,2"/>
+        <!-- drain holes: 2 bottom, 1 top -->
+        <circle cx="60" cy="200" r="6" fill="#0e1116" stroke="#a3e635" stroke-width="1.5"/>
+        <circle cx="140" cy="200" r="6" fill="#0e1116" stroke="#a3e635" stroke-width="1.5"/>
+        <circle cx="100" cy="40" r="4" fill="#0e1116" stroke="#a3e635" stroke-width="1.5"/>
+        <line x1="100" y1="44" x2="100" y2="56" stroke="#a3e635" stroke-width="1" stroke-dasharray="2,2"/>
+        <text x="100" y="34" class="label-dim" text-anchor="middle">vent</text>
+        <text x="100" y="220" class="label-dim" text-anchor="middle">drain ×2 (lowest point during print)</text>
+      </g>
+    </svg>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Under-exposed prints delaminate</b> — layers separate because UV light didn't penetrate deep enough to bond the new layer to the one below. Caused by too-short exposure, weak LCD, or cloudy resin.</li>
+    <li><b>Over-exposed prints lose fine detail</b> — UV bleeds laterally beyond the masked area, bloating columns and washing out small text. The narrowest features die first.</li>
+    <li><b>Optimal exposure varies per bottle.</b> Resin age, pigment, and ambient temperature all shift the ideal. Always run an AmeraLabs Town or R_E_R_F test print on a new bottle.</li>
+    <li><b>0.05 mm is the sweet spot</b> — half the layer count of 0.025 mm, but with detail still excellent. Reserve 0.025 mm for jewellery and miniatures.</li>
+    <li><b>Hollow + drain or don't hollow at all.</b> A hollow shell with no drain holes guarantees a resin-trap blowout — uncured resin escapes mid-print and the FEP film pulls free of the vat.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li>Layer: <b>0.025–0.1 mm</b> (sweet spot <b>0.05</b>)</li>
+        <li>Bottom exposure = <b>4–10×</b> normal</li>
+        <li>Min wall: <b>1.5 mm hollow / 2 mm robust</b></li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>DECISION</h3>
+      <ul>
+        <li>Calibrate with <b>AmeraLabs Town</b> test</li>
+        <li><b>Nitrile gloves + ventilation</b> always</li>
+        <li><b>Cure</b> uncured waste before disposal</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li>Over-cure = <b>brittle</b></li>
+        <li>Under-cure = <b>tacky / weak</b></li>
+        <li>Hollow with no drain = <b>trapped resin pocket</b></li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 5 — Manufacturing Processes</a> ·
+    Topic: Resin printing (MSLA exposure, hollowing)
+  </footer>
+</main>
+<script>
+const sExp = document.getElementById("sExp");
+const rExp = document.getElementById("rExp");
+const sLayer = document.getElementById("sLayer");
+const rLayer = document.getElementById("rLayer");
+const banner = document.getElementById("banner");
+const bannerInline = document.getElementById("bannerInline");
+const cols = [1,2,3,4,5,6].map(i => document.getElementById("col"+i));
+const colBase = [3,5,8,12,18,25];
+const resTxt = document.getElementById("resTxt");
+const resWall = document.getElementById("resWall");
+const layerRects = document.querySelectorAll(".layerRect");
+
+function update(){
+  const e = +sExp.value;
+  const l = +sLayer.value;
+  rExp.textContent = e.toFixed(1);
+  rLayer.textContent = l.toFixed(3);
+
+  // Ideal: 2.3–2.8s at 0.05mm; scale with layer height
+  const ideal = 2.5 * (l/0.05);
+  const ratio = e / ideal;
+
+  let state, color, fillCol;
+  if (ratio < 0.85){ state="under"; color="#5ec8ff"; }
+  else if (ratio > 1.20){ state="over"; color="#ff7b72"; }
+  else { state="ideal"; color="#a3e635"; }
+
+  // Update banner
+  banner.className = "state-banner state-" + state;
+  if (state === "under"){
+    banner.textContent = "Under-exposed — layers delaminating, parts soft / green";
+    bannerInline.textContent = "(under-exposed)";
+    bannerInline.setAttribute("fill","#5ec8ff");
+  } else if (state === "over"){
+    banner.textContent = "Over-exposed — features bloated, small detail lost";
+    bannerInline.textContent = "(over-exposed)";
+    bannerInline.setAttribute("fill","#ff7b72");
+  } else {
+    banner.textContent = "Ideal exposure — sharp features, full cure";
+    bannerInline.textContent = "(ideal)";
+    bannerInline.setAttribute("fill","#a3e635");
+  }
+
+  // Adjust column widths based on exposure
+  // Under: columns thinner (under-cure makes them weak/missing). Over: columns wider (bloating).
+  const bloat = (ratio - 1.0) * 4; // px bloat per side
+  cols.forEach((c, idx) => {
+    const base = colBase[idx];
+    const w = Math.max(0, base + bloat);
+    c.setAttribute("width", w);
+    // Center the bloating
+    const origX = parseFloat(c.dataset.x || (10 + colBase.slice(0,idx).reduce((s,v)=>s+v+12,0)));
+    if (!c.dataset.x){
+      // store original x by reading attribute
+      c.dataset.x = c.getAttribute("x");
+    }
+    const ox = parseFloat(c.dataset.x);
+    c.setAttribute("x", ox - bloat/2);
+    c.setAttribute("fill", color);
+  });
+  resTxt.setAttribute("fill", color);
+  resWall.setAttribute("fill", state === "under" ? "#5ec8ff" : (state==="over" ? "#ff7b72" : "#8f99a8"));
+  if (state === "under") resWall.textContent = "0.3mm wall — washed out";
+  else if (state === "over") resWall.textContent = "0.3mm wall — bloated";
+  else resWall.textContent = "0.3mm wall — crisp";
+
+  // Layer stack visualization
+  layerRects.forEach((r, i) => {
+    if (state === "under"){
+      // Gaps between layers (delamination)
+      r.setAttribute("fill","#5ec8ff");
+      r.setAttribute("opacity", 0.55);
+      r.setAttribute("height", 7);
+    } else if (state === "over"){
+      r.setAttribute("fill","#ff7b72");
+      r.setAttribute("opacity", 1.0);
+      r.setAttribute("height", 10);
+    } else {
+      r.setAttribute("fill","#a3e635");
+      r.setAttribute("opacity", 0.85);
+      r.setAttribute("height", 9);
+    }
+  });
+}
+sExp.addEventListener("input", update);
+sLayer.addEventListener("change", update);
+update();
+</script>
+</body>
+</html>

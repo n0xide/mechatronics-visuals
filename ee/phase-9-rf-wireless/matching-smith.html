@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Matching Networks & Smith Chart — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px;margin:12px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px}
+  .stat .lbl{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 16px ui-monospace,monospace;color:var(--accent);margin-top:4px}
+  .smith-circle{fill:none;stroke:var(--grid);stroke-width:1}
+  .smith-r{stroke:var(--accent);stroke-width:1.2;fill:none;opacity:0.45}
+  .smith-x{stroke:var(--accent2);stroke-width:1.2;fill:none;opacity:0.45}
+  .smith-center{fill:var(--accent3)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Matching Networks & Smith Chart</h1>
+  <p class="lede">A simplified Smith chart with an L-network. Slide the components until the impedance trajectory lands at 50 Ω center. Watch VSWR drop.</p>
+
+  <p>A radio's output stage wants to see a specific impedance — usually 50 Ω. An antenna's feedpoint is rarely 50 Ω (quarter-wave monopole ≈ 35 Ω, weird PCB antennas can be anywhere). The mismatch reflects power back into the PA, wastes efficiency, and can damage the transmitter. A <b>matching network</b> — two or three reactive components — transforms the load impedance to look like 50 Ω at the desired frequency. The Smith chart is the graphical tool: it maps any complex impedance to a point inside a unit circle, with 50 Ω at the center. <b>Series inductor</b> moves you clockwise along a constant-resistance circle (increases reactance). <b>Shunt capacitor</b> moves you clockwise along a constant-conductance circle (in admittance space). Combine the two and you can reach any point — including the center.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Load R: <span class="readout" id="rRead">25.0 Ω</span></label>
+      <input id="rl" type="range" min="2" max="500" step="0.5" value="25">
+    </div>
+    <div class="control">
+      <label>Load X (reactance): <span class="readout" id="xRead">+10.0 Ω</span></label>
+      <input id="xl" type="range" min="-200" max="200" step="0.5" value="10">
+    </div>
+    <div class="control">
+      <label>Frequency: <span class="readout" id="fRead">915 MHz</span></label>
+      <input id="fmhz" type="range" min="100" max="6000" step="1" value="915">
+    </div>
+    <div class="control">
+      <label>Series L (nH): <span class="readout" id="lRead">0.0 nH</span></label>
+      <input id="lnh" type="range" min="0" max="100" step="0.1" value="0">
+    </div>
+    <div class="control">
+      <label>Shunt C (pF): <span class="readout" id="cRead">0.0 pF</span></label>
+      <input id="cpf" type="range" min="0" max="20" step="0.05" value="0">
+    </div>
+    <div class="control" style="justify-content:flex-end">
+      <button class="btn primary" id="autoMatch">Auto-match L-network</button>
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Network topology (load on right, source on left)</h3>
+    <svg viewBox="0 0 700 180" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <!-- source 50Ω -->
+      <line x1="30" y1="80" x2="80" y2="80" class="wire"/>
+      <circle cx="50" cy="80" r="10" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="50" y="84" class="label" text-anchor="middle">~</text>
+      <text x="50" y="60" class="label-dim" text-anchor="middle">50 Ω src</text>
+      <line x1="30" y1="80" x2="30" y2="140" class="wire"/>
+      <line x1="30" y1="140" x2="650" y2="140" class="wire"/>
+
+      <!-- Series L -->
+      <line x1="80" y1="80" x2="180" y2="80" class="wire"/>
+      <path d="M 180 80 q 10 -10 20 0 q 10 -10 20 0 q 10 -10 20 0 q 10 -10 20 0" stroke="var(--accent)" stroke-width="2" fill="none"/>
+      <text x="220" y="55" class="label" text-anchor="middle" fill="var(--accent)" id="lLabel">L: 0 nH</text>
+      <line x1="260" y1="80" x2="380" y2="80" class="wire"/>
+
+      <!-- Shunt C -->
+      <line x1="380" y1="80" x2="380" y2="105" class="wire"/>
+      <line x1="365" y1="105" x2="395" y2="105" stroke="var(--fg)" stroke-width="2"/>
+      <line x1="365" y1="113" x2="395" y2="113" stroke="var(--fg)" stroke-width="2"/>
+      <line x1="380" y1="113" x2="380" y2="140" class="wire"/>
+      <text x="405" y="115" class="label" fill="var(--accent2)" id="cLabel">C: 0 pF</text>
+
+      <line x1="380" y1="80" x2="540" y2="80" class="wire"/>
+
+      <!-- Load Z -->
+      <rect x="540" y="65" width="60" height="30" fill="var(--bg-elev2)" stroke="var(--warn)" stroke-width="1.5"/>
+      <text x="570" y="84" class="label" text-anchor="middle" fill="var(--warn)" id="zLoadLabel">25+j10</text>
+      <text x="570" y="55" class="label-dim" text-anchor="middle">Z_load</text>
+      <line x1="600" y1="80" x2="650" y2="80" class="wire"/>
+    </svg>
+  </div>
+
+  <div class="figure">
+    <h3>Simplified Smith chart — trajectory of impedance</h3>
+    <svg viewBox="0 0 500 500" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <!-- Outer circle |Γ|=1 -->
+      <circle cx="250" cy="250" r="220" class="smith-circle" stroke="var(--fg-dim)" stroke-width="1.5"/>
+      <!-- Real axis -->
+      <line x1="30" y1="250" x2="470" y2="250" stroke="var(--grid)" stroke-width="1"/>
+
+      <!-- Constant-resistance circles (r = R/Z0): r=0.2,0.5,1,2,5 -->
+      <!-- center: 250 + (r/(1+r))*220, on x axis; radius = 220/(1+r) -->
+      <g id="rCircles"></g>
+      <!-- Constant-reactance arcs: x=0.5,1,2,5 (upper and lower) -->
+      <!-- centers at (1, 1/x) in Γ-space → (250+220, 250 - 220/x); radius = 220/x -->
+      <g id="xArcs"></g>
+
+      <!-- Labels -->
+      <text x="250" y="245" class="axis-label" text-anchor="middle">50Ω</text>
+      <text x="250" y="265" class="axis-label" text-anchor="middle">center</text>
+      <circle cx="250" cy="250" r="4" class="smith-center"/>
+      <text x="30" y="240" class="axis-label" text-anchor="start">Γ=−1 (short)</text>
+      <text x="470" y="240" class="axis-label" text-anchor="end">Γ=+1 (open)</text>
+      <text x="365" y="248" class="axis-label" text-anchor="middle">r=1</text>
+      <text x="305" y="248" class="axis-label" text-anchor="middle">r=0.5</text>
+      <text x="412" y="248" class="axis-label" text-anchor="middle">r=2</text>
+
+      <!-- VSWR circles -->
+      <circle cx="250" cy="250" r="73" stroke="var(--accent3)" stroke-width="1" stroke-dasharray="3,3" fill="none" opacity="0.4"/>
+      <text x="195" y="195" class="axis-label" fill="var(--accent3)">VSWR=2</text>
+
+      <!-- Trajectory path -->
+      <path id="trajLoadToL" stroke="var(--accent)" stroke-width="2.5" fill="none"/>
+      <path id="trajLToC" stroke="var(--accent2)" stroke-width="2.5" fill="none"/>
+      <!-- Points -->
+      <circle id="ptLoad" r="6" fill="var(--warn)" stroke="var(--bg)" stroke-width="1.5"/>
+      <text id="lblLoad" class="label" fill="var(--warn)">Z_L</text>
+      <circle id="ptAfterL" r="5" fill="var(--accent)" stroke="var(--bg)" stroke-width="1.5"/>
+      <text id="lblAfterL" class="label" fill="var(--accent)">after L</text>
+      <circle id="ptAfterC" r="6" fill="var(--accent3)" stroke="var(--bg)" stroke-width="1.5"/>
+      <text id="lblAfterC" class="label" fill="var(--accent3)">after C (final)</text>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>Series L → moves clockwise on constant-R circle</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>Shunt C → moves clockwise on constant-G circle</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>VSWR=2 reference (acceptable region)</span>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Numbers</h3>
+    <div class="stat-grid">
+      <div class="stat"><div class="lbl">Z_load (raw)</div><div class="val" id="zLoadStat">25 + j10 Ω</div></div>
+      <div class="stat"><div class="lbl">After series L</div><div class="val" id="zAfterLStat">25 + j10 Ω</div></div>
+      <div class="stat"><div class="lbl">After shunt C (final)</div><div class="val" id="zFinalStat">25 + j10 Ω</div></div>
+      <div class="stat"><div class="lbl">Reflection |Γ|</div><div class="val" id="gammaStat">0.34</div></div>
+      <div class="stat"><div class="lbl">VSWR</div><div class="val" id="vswrStat">2.0</div></div>
+      <div class="stat"><div class="lbl">Return loss</div><div class="val" id="rlStat">−9.3 dB</div></div>
+      <div class="stat"><div class="lbl">% power reflected</div><div class="val" id="reflStat">12%</div></div>
+      <div class="stat"><div class="lbl">% delivered</div><div class="val" id="deliverStat">88%</div></div>
+    </div>
+    <p style="margin-top:8px;font-size:12px;color:var(--fg-dim)">
+      Series-L reactance: <code>jωL</code>. Shunt-C admittance: <code>jωC</code>. Goal: drive |Γ| toward 0. VSWR ≤ 1.5 is excellent, ≤ 2.0 is acceptable for most consumer RF.
+    </p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Series components touch reactance; shunt components touch susceptance</b> — adding a series inductor changes <code>X</code> only. Adding a shunt cap changes <code>B</code> only (admittance world). That's why matching usually needs <i>both</i>.</li>
+    <li><b>The center is 50 Ω + j0</b> — every chart point is normalized to <code>Z₀=50</code>. Move the load (R or X sliders) and watch the red dot scoot. The goal is to land that dot on the green center.</li>
+    <li><b>VSWR=2 covers a generous region</b> — anywhere inside the green dashed circle, you're under 12% reflected power. That's fine for ham radio and IoT modules; precision instrumentation wants VSWR ≤ 1.2.</li>
+    <li><b>Match is frequency-specific</b> — L and C are reactances <code>jωL</code> and <code>1/jωC</code>. A match at 915 MHz is partially detuned at 868 MHz; that's why every datasheet specifies "matched at f₀."</li>
+    <li><b>Real L-networks have two solutions</b> — "lowpass L" (series-L + shunt-C) and "highpass L" (series-C + shunt-L). This visual implements the lowpass form, the common LoRa/BLE choice because it also rejects harmonics.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>VSWR = 1</b> — perfect match, 0% reflected.</li>
+        <li><b>VSWR ≤ 2</b> — &lt; 11% reflected, generally OK.</li>
+        <li><b>Right half of Smith chart</b> — inductive (+jX).</li>
+        <li><b>Left half</b> — capacitive (−jX).</li>
+        <li><b>Center</b> — 50 Ω + j0 (matched).</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>DECISION</h3>
+      <ul>
+        <li><b>L-network</b> — 2 components, narrowband, simplest.</li>
+        <li><b>π or T-network</b> — 3 components, higher Q control, better bandwidth tuning.</li>
+        <li><b>λ/4 transformer</b> — when you have PCB real-estate at the target freq.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Lossless match needs resistive load</b> — reactive loads are Q-limited in bandwidth.</li>
+        <li><b>PCB matching is trace-sensitive</b> — pad parasitics shift the match; tune on the real board.</li>
+        <li><b>Match is freq-specific</b> — 915 MHz match is detuned at 868 MHz.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 9 — RF & Wireless</a> ·
+    Topic: Matching & Smith Chart
+  </footer>
+</main>
+<script>
+  // ====== Smith chart constants ======
+  const CX=250, CY=250, R=220; // SVG center and outer radius
+  const Z0=50;
+
+  // Map complex Z (in ohms) → Γ = (Z-Z0)/(Z+Z0) → SVG x,y
+  function ztoSvg(zr, zi){
+    // normalize
+    const r = zr/Z0, x = zi/Z0;
+    // gamma = (z-1)/(z+1), z=r+jx
+    const denomR = (r+1), denomI = x;
+    const numR = (r-1), numI = x;
+    const denMag = denomR*denomR + denomI*denomI;
+    const gr = (numR*denomR + numI*denomI)/denMag;
+    const gi = (numI*denomR - numR*denomI)/denMag;
+    // map to SVG: center at (CX,CY), scale by R; imag axis flipped (upper = positive)
+    return [CX + gr*R, CY - gi*R, gr, gi];
+  }
+
+  // ====== Draw Smith chart constant-r and constant-x curves ======
+  function drawSmithGrid(){
+    const rG = document.getElementById('rCircles');
+    const xG = document.getElementById('xArcs');
+    let rhtml='', xhtml='';
+    // constant-r circles: center (r/(1+r),0), radius 1/(1+r) in Γ-space
+    [0.2,0.5,1,2,5].forEach(r=>{
+      const cxN = r/(1+r);
+      const rad = 1/(1+r);
+      const cx = CX + cxN*R;
+      const cy = CY;
+      rhtml += `<circle cx="${cx}" cy="${cy}" r="${rad*R}" class="smith-r"/>`;
+    });
+    // constant-x arcs: center (1, 1/x), radius 1/|x| - only the part inside the unit circle
+    [0.2,0.5,1,2,5].forEach(x=>{
+      [1,-1].forEach(sign=>{
+        const xa = sign*x;
+        const cxN = 1;
+        const cyN = 1/xa;
+        const rad = 1/Math.abs(xa);
+        const cx = CX + cxN*R;
+        const cy = CY - cyN*R; // upper plane = positive x
+        // We'll draw it as a circle but clip with outer circle. Quick: render as circle.
+        xhtml += `<circle cx="${cx}" cy="${cy}" r="${rad*R}" class="smith-x"/>`;
+      });
+    });
+    rG.innerHTML = rhtml;
+    xG.innerHTML = xhtml;
+  }
+  drawSmithGrid();
+
+  // ====== Update ======
+  const ids = ['rl','xl','fmhz','lnh','cpf'];
+  const els = Object.fromEntries(ids.map(id=>[id,document.getElementById(id)]));
+
+  function update(){
+    const R_L = +els.rl.value;
+    const X_L = +els.xl.value;
+    const f   = +els.fmhz.value * 1e6; // Hz
+    const Lh  = +els.lnh.value * 1e-9; // H
+    const Cf  = +els.cpf.value * 1e-12; // F
+    const w   = 2*Math.PI*f;
+    const XL  = w*Lh;       // series L reactance
+    const BC  = w*Cf;       // shunt C susceptance (positive)
+
+    // Step 1: Z_load
+    const Z1r = R_L, Z1i = X_L;
+    // Step 2: + jXL series
+    const Z2r = Z1r, Z2i = Z1i + XL;
+    // Step 3: shunt C: Y3 = 1/Z2 + jBC ; Z3 = 1/Y3
+    const denY = Z2r*Z2r + Z2i*Z2i;
+    const Y2r = Z2r/denY, Y2i = -Z2i/denY;
+    const Y3r = Y2r, Y3i = Y2i + BC;
+    const denZ = Y3r*Y3r + Y3i*Y3i;
+    const Z3r = Y3r/denZ, Z3i = -Y3i/denZ;
+
+    // VSWR/Γ from final Z3
+    const denG = (Z3r+Z0)*(Z3r+Z0) + Z3i*Z3i;
+    const Gr = ((Z3r-Z0)*(Z3r+Z0) + Z3i*Z3i)/denG;
+    const Gi = (Z3i*(Z3r+Z0) - (Z3r-Z0)*Z3i)/denG;
+    const Gmag = Math.sqrt(Gr*Gr + Gi*Gi);
+    const VSWR = Gmag<0.999 ? (1+Gmag)/(1-Gmag) : 99;
+    const RL_dB = Gmag>1e-6 ? -20*Math.log10(Gmag) : 99;
+
+    // Readouts
+    document.getElementById('rRead').textContent = R_L.toFixed(1)+' Ω';
+    document.getElementById('xRead').textContent = (X_L>=0?'+':'')+X_L.toFixed(1)+' Ω';
+    document.getElementById('fRead').textContent = (f/1e6).toFixed(0)+' MHz';
+    document.getElementById('lRead').textContent = (Lh*1e9).toFixed(1)+' nH';
+    document.getElementById('cRead').textContent = (Cf*1e12).toFixed(2)+' pF';
+    document.getElementById('lLabel').textContent = `L: ${(Lh*1e9).toFixed(1)} nH (jX=${XL.toFixed(1)}Ω)`;
+    document.getElementById('cLabel').textContent = `C: ${(Cf*1e12).toFixed(2)} pF (jB=${(BC*1000).toFixed(2)}mS)`;
+    document.getElementById('zLoadLabel').textContent = `${R_L.toFixed(0)}${X_L>=0?'+j':'-j'}${Math.abs(X_L).toFixed(0)}`;
+
+    document.getElementById('zLoadStat').textContent =
+      `${Z1r.toFixed(1)}${Z1i>=0?' + j':' − j'}${Math.abs(Z1i).toFixed(1)} Ω`;
+    document.getElementById('zAfterLStat').textContent =
+      `${Z2r.toFixed(1)}${Z2i>=0?' + j':' − j'}${Math.abs(Z2i).toFixed(1)} Ω`;
+    document.getElementById('zFinalStat').textContent =
+      `${Z3r.toFixed(1)}${Z3i>=0?' + j':' − j'}${Math.abs(Z3i).toFixed(1)} Ω`;
+    document.getElementById('gammaStat').textContent = Gmag.toFixed(3);
+    document.getElementById('vswrStat').textContent = VSWR>=99?'>>1':VSWR.toFixed(2);
+    document.getElementById('rlStat').textContent = RL_dB>=99?'>40 dB':'−'+RL_dB.toFixed(1)+' dB';
+    document.getElementById('reflStat').textContent = (Gmag*Gmag*100).toFixed(1)+'%';
+    document.getElementById('deliverStat').textContent = ((1-Gmag*Gmag)*100).toFixed(1)+'%';
+
+    const vswrStat=document.getElementById('vswrStat');
+    vswrStat.style.color = VSWR<=1.5 ? 'var(--accent3)' : VSWR<=2.0 ? 'var(--accent2)' : 'var(--warn)';
+
+    // Trajectories: load → after L (constant-R circle in Z, so straight line in Z but arc in Γ)
+    // Path approx: sample 20 points between
+    function pathBetween(r1,i1,r2,i2,segments=24){
+      let pts=[];
+      for(let k=0;k<=segments;k++){
+        const t=k/segments;
+        const zr=r1+(r2-r1)*t, zi=i1+(i2-i1)*t;
+        const p=ztoSvg(zr,zi);
+        pts.push(p[0].toFixed(1)+','+p[1].toFixed(1));
+      }
+      return 'M '+pts.join(' L ');
+    }
+    // For shunt-C, sweep Y from Y2 to Y3 (linear in admittance)
+    function pathAdmittanceBetween(yr1,yi1,yr2,yi2,segments=24){
+      let pts=[];
+      for(let k=0;k<=segments;k++){
+        const t=k/segments;
+        const yr=yr1+(yr2-yr1)*t, yi=yi1+(yi2-yi1)*t;
+        const den=yr*yr+yi*yi;
+        const zr=yr/den, zi=-yi/den;
+        const p=ztoSvg(zr,zi);
+        pts.push(p[0].toFixed(1)+','+p[1].toFixed(1));
+      }
+      return 'M '+pts.join(' L ');
+    }
+
+    document.getElementById('trajLoadToL').setAttribute('d', pathBetween(Z1r,Z1i,Z2r,Z2i));
+    document.getElementById('trajLToC').setAttribute('d', pathAdmittanceBetween(Y2r,Y2i,Y3r,Y3i));
+
+    const p0=ztoSvg(Z1r,Z1i);
+    const p1=ztoSvg(Z2r,Z2i);
+    const p2=ztoSvg(Z3r,Z3i);
+    document.getElementById('ptLoad').setAttribute('cx',p0[0]); document.getElementById('ptLoad').setAttribute('cy',p0[1]);
+    document.getElementById('lblLoad').setAttribute('x',p0[0]+8); document.getElementById('lblLoad').setAttribute('y',p0[1]-8);
+    document.getElementById('ptAfterL').setAttribute('cx',p1[0]); document.getElementById('ptAfterL').setAttribute('cy',p1[1]);
+    document.getElementById('lblAfterL').setAttribute('x',p1[0]+8); document.getElementById('lblAfterL').setAttribute('y',p1[1]-8);
+    document.getElementById('ptAfterC').setAttribute('cx',p2[0]); document.getElementById('ptAfterC').setAttribute('cy',p2[1]);
+    document.getElementById('lblAfterC').setAttribute('x',p2[0]+8); document.getElementById('lblAfterC').setAttribute('y',p2[1]-8);
+  }
+
+  // Auto-match: solve L-network analytically (lowpass form)
+  // For Z_L = R_L + jX_L, match to Z0:
+  // Q = sqrt(Z0/R_L - 1) (assuming R_L < Z0)
+  // X_series = Q*R_L - X_L  (add this much reactance)
+  // X_shunt  = Z0/Q (this is -1/(ωC) for capacitor, so B = Q/Z0)
+  // If R_L > Z0: swap series/shunt order (this implementation puts series before shunt always)
+  document.getElementById('autoMatch').addEventListener('click',()=>{
+    const R_L = +els.rl.value, X_L = +els.xl.value;
+    const f = +els.fmhz.value * 1e6;
+    const w = 2*Math.PI*f;
+    if(R_L >= Z0){
+      // simplified: for R_L > 50 our lowpass form can't always solve; clamp to 50 anyway
+      alert('L > 50: lowpass L-network needs the reverse orientation. Try setting R_L < 50 to demo.');
+      return;
+    }
+    const Q = Math.sqrt(Z0/R_L - 1);
+    const Xs = Q*R_L - X_L; // series inductor reactance needed
+    const Lh = Math.max(0, Xs/w);
+    const Bc = Q/Z0; // shunt cap susceptance
+    const Cf = Math.max(0, Bc/w);
+    els.lnh.value = (Lh*1e9).toFixed(2);
+    els.cpf.value = (Cf*1e12).toFixed(2);
+    update();
+  });
+
+  ids.forEach(id=>els[id].addEventListener('input',update));
+  update();
+</script>
+</body>
+</html>

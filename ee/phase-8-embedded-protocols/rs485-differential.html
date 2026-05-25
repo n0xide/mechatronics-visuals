@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RS-485 Differential — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number],.control input[type=text]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0;flex-wrap:wrap}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>RS-485 Differential Signaling</h1>
+  <p class="lede">Two wires carrying opposite signals. Common-mode noise hits both; the receiver subtracts them; the noise cancels and the signal survives. That's the entire trick.</p>
+
+  <p>RS-485 is what you use when UART has to cross 100 meters of factory floor with motor noise, ground potential differences, and reflections. The standard says nothing about protocol — it's purely electrical. Take a TTL UART, run it through a differential transceiver (MAX485 et al.), terminate the bus correctly, and you've solved the long-distance noisy-link problem.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Data signal: <span class="readout" id="dataRead">01101001</span></label>
+      <input id="dataInput" type="text" value="01101001" maxlength="16">
+    </div>
+    <div class="control">
+      <label>Noise amplitude: <span class="readout" id="noiseRead">1.5 V</span></label>
+      <input id="noiseInput" type="range" min="0" max="3" step="0.1" value="1.5">
+    </div>
+    <div class="control">
+      <label>Common-mode shift: <span class="readout" id="cmRead">+5.0 V</span></label>
+      <input id="cmInput" type="range" min="-25" max="25" step="0.5" value="5">
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>A line · B line · differential A−B</h3>
+    <svg id="diffPlot" viewBox="0 0 900 380" width="100%"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>A line (with noise)</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>B line (with noise)</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>A − B (receiver output)</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>±200 mV decision threshold</span>
+    </div>
+    <p style="color:var(--fg-dim);font-size:12px;margin-top:10px">
+      Noise (electromagnetic interference, ground bounce, capacitive pickup) hits A and B equally because the wires run as a twisted pair.
+      When the receiver computes A − B, the common noise cancels. Only the intentional A vs B difference (driven by the transceiver) survives.
+      Spec: |V_A − V_B| ≥ 200 mV = valid data. Works at up to ±7 V (early spec) or even ±25 V of common-mode shift between nodes.
+    </p>
+  </div>
+
+  <h2>Bus topology and termination</h2>
+  <div class="figure">
+    <svg viewBox="0 0 900 280" width="100%">
+      <text x="20" y="22" class="label" style="font-weight:600">Linear bus with 120Ω termination at each end</text>
+      <text x="20" y="40" class="label-dim">Daisy-chain the transceivers. Match cable Z₀ (typically 120Ω twisted pair) at both ends or get reflections.</text>
+      <!-- Bus -->
+      <line x1="80" y1="120" x2="820" y2="120" class="wire" stroke="var(--accent)" stroke-width="2"/>
+      <text x="60" y="118" class="label" text-anchor="end" style="fill:var(--accent)">A</text>
+      <line x1="80" y1="150" x2="820" y2="150" class="wire" stroke="var(--accent2)" stroke-width="2"/>
+      <text x="60" y="155" class="label" text-anchor="end" style="fill:var(--accent2)">B</text>
+
+      <!-- Termination left -->
+      <line x1="80" y1="120" x2="80" y2="135" class="wire"/>
+      <rect x="70" y="135" width="20" height="20" fill="var(--bg-elev2)" stroke="var(--warn)"/>
+      <text x="96" y="148" class="label" style="fill:var(--warn)">120Ω</text>
+      <line x1="80" y1="155" x2="80" y2="150" class="wire"/>
+
+      <!-- Termination right -->
+      <line x1="820" y1="120" x2="820" y2="135" class="wire"/>
+      <rect x="810" y="135" width="20" height="20" fill="var(--bg-elev2)" stroke="var(--warn)"/>
+      <text x="804" y="148" class="label" style="fill:var(--warn)" text-anchor="end">120Ω</text>
+      <line x1="820" y1="155" x2="820" y2="150" class="wire"/>
+
+      <!-- Stubs (transceiver nodes) -->
+      <!-- node 1 -->
+      <line x1="200" y1="120" x2="200" y2="180" class="wire"/>
+      <line x1="200" y1="150" x2="220" y2="150" class="wire" stroke="var(--accent2)"/>
+      <line x1="200" y1="120" x2="220" y2="120" class="wire" stroke="var(--accent)"/>
+      <rect x="220" y="170" width="80" height="60" fill="var(--bg-elev2)" stroke="var(--fg)"/>
+      <text x="260" y="190" class="label" text-anchor="middle">node 1</text>
+      <text x="260" y="207" class="label-dim" text-anchor="middle">MAX485</text>
+      <text x="260" y="222" class="label-dim" text-anchor="middle">+ MCU</text>
+
+      <!-- node 2 -->
+      <line x1="400" y1="120" x2="400" y2="180" class="wire"/>
+      <rect x="420" y="170" width="80" height="60" fill="var(--bg-elev2)" stroke="var(--fg)"/>
+      <text x="460" y="190" class="label" text-anchor="middle">node 2</text>
+      <text x="460" y="207" class="label-dim" text-anchor="middle">MAX485</text>
+      <text x="460" y="222" class="label-dim" text-anchor="middle">+ MCU</text>
+
+      <!-- node 3 -->
+      <line x1="600" y1="120" x2="600" y2="180" class="wire"/>
+      <rect x="620" y="170" width="80" height="60" fill="var(--bg-elev2)" stroke="var(--fg)"/>
+      <text x="660" y="190" class="label" text-anchor="middle">node 3</text>
+      <text x="660" y="207" class="label-dim" text-anchor="middle">MAX485</text>
+      <text x="660" y="222" class="label-dim" text-anchor="middle">+ MCU</text>
+
+      <text x="20" y="260" class="label-dim">Up to 32 unit loads on classic transceivers; up to 256 with high-impedance modern parts.</text>
+      <text x="20" y="280" class="label-dim">Stub length matters: keep node-to-bus stubs &lt; 30 cm at 100 kbps to avoid reflections.</text>
+    </svg>
+  </div>
+
+  <h2>Half-duplex direction control (DE/RE)</h2>
+  <p>2-wire RS-485 is half-duplex: only one node drives at a time. Each transceiver has two control pins (often tied together): DE (driver enable) and R̄E (receiver enable, active LOW). Pull both HIGH to transmit, both LOW to listen. Software must coordinate "I'm done, line is yours" — usually with a higher-level protocol like Modbus or a master-poll discipline.</p>
+  <div class="figure">
+    <svg viewBox="0 0 900 320" width="100%">
+      <!-- Transceiver block -->
+      <text x="40" y="22" class="label" style="font-weight:600">MAX485 / SN75176 transceiver</text>
+      <rect x="40" y="40" width="180" height="180" fill="var(--bg-elev2)" stroke="var(--fg)"/>
+      <!-- Driver: triangle pointing right -->
+      <polygon points="60,80 100,80 80,110" stroke="var(--fg)" fill="none"/>
+      <text x="80" y="98" class="label-dim" text-anchor="middle" style="font-size:10px">DRV</text>
+      <!-- Receiver: triangle pointing left -->
+      <polygon points="200,180 200,210 160,195" stroke="var(--fg)" fill="none"/>
+      <text x="180" y="200" class="label-dim" text-anchor="middle" style="font-size:10px">RX</text>
+
+      <!-- TX in -->
+      <line x1="20" y1="95" x2="60" y2="95" class="wire"/>
+      <text x="14" y="98" class="label" text-anchor="end">DI</text>
+      <!-- RX out -->
+      <line x1="220" y1="195" x2="260" y2="195" class="wire"/>
+      <text x="266" y="198" class="label">RO</text>
+      <!-- DE pin -->
+      <line x1="20" y1="55" x2="60" y2="55" class="wire" stroke="var(--accent3)"/>
+      <text x="14" y="58" class="label" text-anchor="end" style="fill:var(--accent3)">DE</text>
+      <line x1="60" y1="55" x2="80" y2="55" class="wire" stroke="var(--accent3)"/>
+      <line x1="80" y1="55" x2="80" y2="80" class="wire" stroke="var(--accent3)"/>
+      <!-- R̄E pin (active LOW) -->
+      <line x1="20" y1="235" x2="60" y2="235" class="wire" stroke="var(--warn)"/>
+      <text x="14" y="238" class="label" text-anchor="end" style="fill:var(--warn)">R̄E</text>
+      <line x1="60" y1="235" x2="180" y2="235" class="wire" stroke="var(--warn)"/>
+      <line x1="180" y1="235" x2="180" y2="215" class="wire" stroke="var(--warn)"/>
+      <!-- A and B outputs -->
+      <line x1="100" y1="95" x2="200" y2="95" class="wire"/>
+      <line x1="200" y1="60" x2="200" y2="195" class="wire"/>
+      <line x1="200" y1="60" x2="260" y2="60" class="wire" stroke="var(--accent)"/>
+      <text x="266" y="63" class="label" style="fill:var(--accent)">A</text>
+      <line x1="200" y1="130" x2="260" y2="130" class="wire" stroke="var(--accent2)"/>
+      <text x="266" y="133" class="label" style="fill:var(--accent2)">B</text>
+
+      <!-- Truth table -->
+      <text x="340" y="22" class="label" style="font-weight:600">DE / R̄E truth table</text>
+      <g transform="translate(340,40)">
+        <rect x="0" y="0" width="200" height="160" fill="var(--bg-elev2)" stroke="var(--line)"/>
+        <text x="10" y="20" class="label" style="font-weight:600">DE   R̄E   mode</text>
+        <text x="10" y="50" class="label">0    0    receive only</text>
+        <text x="10" y="70" class="label">0    1    high-Z (idle)</text>
+        <text x="10" y="90" class="label" style="fill:var(--warn)">1    1    transmit only</text>
+        <text x="10" y="110" class="label-dim">1    0    both (rare; echo)</text>
+        <text x="10" y="140" class="label-dim">Common: tie DE and R̄E together.</text>
+        <text x="10" y="156" class="label-dim">HIGH = TX, LOW = RX.</text>
+      </g>
+
+      <!-- Timing diagram -->
+      <text x="580" y="22" class="label" style="font-weight:600">Timing example</text>
+      <g transform="translate(580,40)">
+        <line x1="0" y1="20" x2="280" y2="20" class="grid-line"/>
+        <line x1="0" y1="50" x2="280" y2="50" class="grid-line"/>
+        <line x1="0" y1="80" x2="280" y2="80" class="grid-line"/>
+        <text x="-4" y="24" class="label-dim" text-anchor="end">DE</text>
+        <text x="-4" y="54" class="label-dim" text-anchor="end">A−B</text>
+        <text x="-4" y="84" class="label-dim" text-anchor="end">RO</text>
+        <!-- DE: LOW, then HIGH for TX window, then LOW -->
+        <path d="M0,30 L60,30 L60,10 L200,10 L200,30 L280,30" stroke="var(--accent3)" fill="none" stroke-width="2"/>
+        <!-- A-B: idle, then driven, then idle -->
+        <path d="M0,50 L60,50 L60,40 L80,40 L80,60 L100,60 L100,40 L130,40 L130,60 L160,60 L160,40 L200,40 L200,50 L280,50" stroke="var(--fg)" fill="none" stroke-width="2"/>
+        <!-- RO: tri-stated during TX (dashed), then receives -->
+        <path d="M0,90 L60,90 M60,90 L200,90" stroke="var(--accent2)" fill="none" stroke-width="2" stroke-dasharray="2 4"/>
+        <path d="M200,90 L210,70 L240,70 L240,90 L280,90" stroke="var(--accent2)" fill="none" stroke-width="2"/>
+        <text x="130" y="105" class="label-dim" text-anchor="middle">transmit window</text>
+        <text x="40" y="105" class="label-dim" text-anchor="middle">listening</text>
+        <text x="250" y="105" class="label-dim" text-anchor="middle">received byte</text>
+      </g>
+    </svg>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Noise hits A and B identically</b> — that's the "common-mode" assumption: equal magnetic flux through both wires of the twisted pair, equal capacitive coupling. The subtraction at the receiver cancels what hit both.</li>
+    <li><b>200 mV is the minimum</b> — anything less might be misinterpreted. Drivers typically produce 1.5–2 V differential into a terminated line; that gives roughly 7× margin over the threshold.</li>
+    <li><b>±7 V to ±25 V common-mode range</b> — ground potentials between buildings can differ by volts. RS-485 doesn't care; differential reading is immune.</li>
+    <li><b>Terminate at both ends, not the middle</b> — 120Ω at each end absorbs the wavefront so it doesn't reflect. One termination, or termination at the middle, still produces reflections at the far end.</li>
+    <li><b>DE/R̄E means firmware must release the line</b> — after transmitting the last stop bit, drop DE. Forgetting to drop it = bus collision when the other side tries to reply. Some protocols add a guard time.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>Differential A − B</b> — ±200 mV minimum valid.</li>
+        <li><b>Common-mode</b> — tolerates ±7 to ±25 V (±50 V on rugged parts).</li>
+        <li><b>Up to 32 nodes</b>, 1.2 km @ 100 kbps; trade speed for distance.</li>
+        <li><b>120 Ω termination</b> at BOTH ends (not middle).</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>WIRING DECISION</h3>
+      <ul>
+        <li><b>Half-duplex 2-wire</b> — share A/B; DE/RE flips direction per node.</li>
+        <li><b>Full-duplex 4-wire</b> — separate TX-pair and RX-pair (RS-422 style).</li>
+        <li><b>Twisted pair only</b> — common-mode rejection assumes equal coupling.</li>
+        <li><b>Bias resistors</b> if no driver is active (defines idle state).</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Missing termination</b> — reflections corrupt high baud rates.</li>
+        <li><b>DE/RE polarity confusion</b> — RE is active-LOW, DE active-HIGH; tie them OR drive separately per chip.</li>
+        <li><b>Forgetting to drop DE</b> — bus collision when other side replies.</li>
+        <li><b>No common ground</b> — common-mode range still needs a return path.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 8 — Embedded Interface Protocols</a> ·
+    Topic: RS-485 Differential Signaling
+  </footer>
+</main>
+<script>
+  function drawDiff(){
+    let pat = document.getElementById('dataInput').value.replace(/[^01]/g,'');
+    if(!pat) pat='01101001';
+    const noise = parseFloat(document.getElementById('noiseInput').value);
+    const cm = parseFloat(document.getElementById('cmInput').value);
+    document.getElementById('dataRead').textContent=pat;
+    document.getElementById('noiseRead').textContent=noise.toFixed(1)+" V";
+    document.getElementById('cmRead').textContent=(cm>=0?'+':'')+cm.toFixed(1)+" V";
+
+    const bits = pat.split('').map(Number);
+
+    const svg=document.getElementById('diffPlot');
+    const W=900, H=380, mL=70, mR=30, mT=20, mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const n=bits.length;
+    const cellW = pw/n;
+    // 3 sub-rows
+    const sub = ph/3;
+    // A: range to show cm ± noise ± 2.5V (driver: A high = cm+1.25, low = cm-1.25)
+    const yRange = 12; // ±12 V plot range
+    const ys = (v, baseY)=> baseY + sub/2 - (v/yRange)*(sub/2 - 10);
+
+    let s='';
+    // baselines and labels
+    s+=`<text x="${mL-8}" y="${mT+sub/2+5}" class="label" text-anchor="end">A</text>`;
+    s+=`<text x="${mL-8}" y="${mT+sub+sub/2+5}" class="label" text-anchor="end">B</text>`;
+    s+=`<text x="${mL-8}" y="${mT+2*sub+sub/2+5}" class="label" text-anchor="end">A−B</text>`;
+
+    // grid lines for each sub-plot
+    for(let row=0;row<3;row++){
+      const y0=mT+row*sub;
+      s+=`<line x1="${mL}" y1="${y0+sub/2}" x2="${mL+pw}" y2="${y0+sub/2}" stroke="var(--fg-dim)"/>`;
+      for(let i=0;i<=n;i++){
+        s+=`<line x1="${mL+i*cellW}" y1="${y0+5}" x2="${mL+i*cellW}" y2="${y0+sub-5}" class="grid-line"/>`;
+      }
+    }
+    // ±200 mV threshold on A-B plot
+    const diffY0 = mT+2*sub;
+    s+=`<line x1="${mL}" y1="${ys(0.2, diffY0)}" x2="${mL+pw}" y2="${ys(0.2, diffY0)}" stroke="var(--warn)" stroke-dasharray="3 3"/>`;
+    s+=`<line x1="${mL}" y1="${ys(-0.2, diffY0)}" x2="${mL+pw}" y2="${ys(-0.2, diffY0)}" stroke="var(--warn)" stroke-dasharray="3 3"/>`;
+    s+=`<text x="${mL+pw+4}" y="${ys(0.2, diffY0)+3}" class="label-dim" style="fill:var(--warn)">+200mV</text>`;
+    s+=`<text x="${mL+pw+4}" y="${ys(-0.2, diffY0)+3}" class="label-dim" style="fill:var(--warn)">−200mV</text>`;
+
+    // For each bit, generate A and B levels and accumulate noise samples
+    const samplesPerBit = 30;
+    let pA='', pB='', pD='';
+    // common noise: random low-pass-ish per sample
+    let np=0;
+    function nextNoise(){
+      np = 0.7*np + 0.3*(Math.sin(np*7+Math.random()*0.4)+Math.random()*2-1);
+      return np*noise;
+    }
+    let first=true;
+    for(let i=0;i<n;i++){
+      const bit = bits[i];
+      // Driver: bit=1 -> A=cm+1.25, B=cm-1.25; bit=0 -> A=cm-1.25, B=cm+1.25
+      const Aclean = cm + (bit?1.25:-1.25);
+      const Bclean = cm + (bit?-1.25:1.25);
+      for(let k=0;k<samplesPerBit;k++){
+        const t = (i*samplesPerBit+k)/(n*samplesPerBit);
+        const x = mL + t*pw;
+        const nv = nextNoise();
+        const Av = Aclean + nv;
+        const Bv = Bclean + nv;
+        const Dv = Av - Bv;
+        pA += (first?'M':'L')+x+','+ys(Av, mT)+' ';
+        pB += (first?'M':'L')+x+','+ys(Bv, mT+sub)+' ';
+        pD += (first?'M':'L')+x+','+ys(Dv, mT+2*sub)+' ';
+        first=false;
+      }
+      // bit labels
+      const cx = mL+(i+0.5)*cellW;
+      s+=`<text x="${cx}" y="${mT+sub-2}" class="label-dim" text-anchor="middle">${bit}</text>`;
+    }
+    s+=`<path d="${pA}" stroke="var(--accent)" stroke-width="1.5" fill="none"/>`;
+    s+=`<path d="${pB}" stroke="var(--accent2)" stroke-width="1.5" fill="none"/>`;
+    s+=`<path d="${pD}" stroke="var(--accent3)" stroke-width="2" fill="none"/>`;
+
+    // Axis labels
+    s+=`<text x="${mL-46}" y="${mT+sub/2}" class="axis-label" transform="rotate(-90,${mL-46},${mT+sub/2})" text-anchor="middle">V (with noise)</text>`;
+    s+=`<text x="${mL-46}" y="${mT+2*sub+sub/2}" class="axis-label" transform="rotate(-90,${mL-46},${mT+2*sub+sub/2})" text-anchor="middle">V_diff (clean!)</text>`;
+
+    // y-axis ticks
+    for(let row=0;row<3;row++){
+      const y0=mT+row*sub;
+      const range = row<2 ? 12 : 3;
+      [-range, 0, range].forEach(v=>{
+        const y = ys(v, y0);
+        s+=`<text x="${mL-4}" y="${y+3}" class="axis-label" text-anchor="end">${v>0?'+':''}${v}V</text>`;
+      });
+    }
+    s+=`<text x="${W/2}" y="${H-6}" class="axis-label" text-anchor="middle">A and B carry the same noise; the receiver subtracts and the noise vanishes from A−B</text>`;
+    svg.innerHTML=s;
+  }
+
+  ['dataInput','noiseInput','cmInput'].forEach(id=>
+    document.getElementById(id).addEventListener('input',drawDiff));
+  drawDiff();
+</script>
+</body>
+</html>

@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heat sinks — fin efficiency and sizing — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  /* Common SVG conventions */
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .row2{display:grid;grid-template-columns:1fr;gap:16px}
+  @media (min-width:780px){.row2{grid-template-columns:1fr 1fr}}
+  .big-number{font:600 22px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Heat sinks — fin efficiency, decay, sizing</h1>
+  <p class="lede">A fin is just an extended surface — but only the part near the base sees the full
+  temperature rise. The tip cools faster than the base, so the average ΔT (driving heat into air) is
+  lower than you'd naively expect. Fin efficiency η_f = tanh(mL)/(mL) captures this, where
+  m = √(2h/(k·t)). Slide fin length, thickness, conductivity, and h; watch the temperature decay,
+  then size a required Θ_sa from junction-temp targets.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Fin length L (mm)</label>
+      <input type="range" id="L" min="2" max="60" step="1" value="20">
+      <span class="readout" id="LRO">20 mm</span>
+    </div>
+    <div class="control">
+      <label>Fin thickness t (mm)</label>
+      <input type="range" id="t" min="0.3" max="5" step="0.1" value="1.0">
+      <span class="readout" id="tRO">1.0 mm</span>
+    </div>
+    <div class="control">
+      <label>Conductivity k (W/m·K)</label>
+      <select id="kMat">
+        <option value="400">Copper (400)</option>
+        <option value="205" selected>Aluminum 6061 (205)</option>
+        <option value="50">Steel (50)</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Convection h (W/m²·K)</label>
+      <input type="range" id="h" min="5" max="200" step="1" value="10">
+      <span class="readout" id="hRO">10 W/m²·K (natural)</span>
+    </div>
+    <div class="control">
+      <label>Base ΔT (°C above ambient)</label>
+      <input type="range" id="dT" min="5" max="100" step="1" value="40">
+      <span class="readout" id="dTRO">40 °C</span>
+    </div>
+  </section>
+
+  <div class="row2">
+    <div class="figure">
+      <h3>Temperature decay along fin</h3>
+      <svg id="vFin" viewBox="0 0 420 260" width="100%" height="260"></svg>
+      <p style="margin-top:8px">Fin efficiency η_f = <span class="big-number" id="eta">—</span></p>
+      <p style="font-size:12px;color:var(--fg-dim)">
+        m = √(2h/(k·t)) = <span class="readout" id="mRO">—</span> 1/m ·
+        mL = <span class="readout" id="mLRO">—</span>
+      </p>
+    </div>
+    <div class="figure">
+      <h3>Natural vs forced — same fin geometry</h3>
+      <svg id="vNF" viewBox="0 0 420 260" width="100%" height="260"></svg>
+      <table style="margin-top:8px">
+        <thead><tr><th>Mode</th><th>h</th><th>η_f</th><th>Θ_fin</th></tr></thead>
+        <tbody id="nfTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <h2>Required Θ_sa calculator</h2>
+  <p>Given a junction-temp target and known internal resistances, the heat sink you need must satisfy
+  <code>Θ_sa ≤ (Tj_max − T_a)/P − Θ_jc − Θ_cs</code>. Slide these to see how much budget the sink has.</p>
+  <section class="controls">
+    <div class="control">
+      <label>Tj_max (°C)</label>
+      <input type="range" id="Tjmax" min="60" max="150" step="1" value="100">
+      <span class="readout" id="TjmaxRO">100 °C</span>
+    </div>
+    <div class="control">
+      <label>T_ambient (°C)</label>
+      <input type="range" id="Ta" min="0" max="70" step="1" value="30">
+      <span class="readout" id="TaRO">30 °C</span>
+    </div>
+    <div class="control">
+      <label>Power P (W)</label>
+      <input type="range" id="P" min="0.1" max="20" step="0.1" value="1.5">
+      <span class="readout" id="PRO">1.5 W</span>
+    </div>
+    <div class="control">
+      <label>Θ_jc (°C/W)</label>
+      <input type="range" id="Rjc" min="1" max="60" step="0.5" value="8">
+      <span class="readout" id="RjcRO">8 °C/W</span>
+    </div>
+    <div class="control">
+      <label>Θ_cs (°C/W)</label>
+      <input type="range" id="Rcs" min="0.1" max="20" step="0.1" value="2">
+      <span class="readout" id="RcsRO">2.0 °C/W</span>
+    </div>
+  </section>
+  <div class="figure">
+    <p>Required <code>Θ_sa ≤</code> <span class="big-number" id="RsaReq">—</span> °C/W</p>
+    <p id="picker" style="font-size:13px"></p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Fin efficiency falls as fins get longer or thinner.</b> Past mL ≈ 1.5, you're adding aluminum that mostly sits near ambient — wasted material. The first few mm of fin do most of the work.</li>
+    <li><b>More fins, shorter, beats fewer fins, taller.</b> Total heat removed = η_f · A_fin · h · ΔT_base. Lots of short fins keep η_f near 1; a few tall ones drop η_f and waste area.</li>
+    <li><b>Forced convection changes the optimum.</b> When h jumps from 10 → 50, the optimal fin gets shorter (because heat now leaves faster, so the base-to-tip drop is steeper). Fan-cooled sinks have tight, narrow fins; passive sinks are fewer and chunkier.</li>
+    <li><b>Conductor matters at the base.</b> A copper fin has higher η_f than an aluminum fin of identical geometry — heat carries further down the fin before air cools it. Copper sinks are denser and cost more, but earn back at high power.</li>
+    <li><b>Orientation matters for natural convection.</b> Vertical fins set up a chimney → air rises naturally → h effectively higher. Horizontal-fin sinks trap hot air and lose ~30 % of the natural-convection h. Mount fins vertical when there's no fan.</li>
+    <li><b>If you need Θ_sa &lt; 5 °C/W in still air, you're going to need a big sink or a fan.</b> Below ~3 °C/W passive you're at the limits of natural convection in a normal-sized enclosure. Add airflow.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>fin efficiency</dt><dd><span class="eq">η_f = tanh(mL) / (mL)</span><span class="eq-note">m = √(2h / (k·t))</span></dd>
+        <dt>required</dt><dd><span class="eq">R_sa = (Tj_max − T_amb)/P − R_jc − R_cs</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE / DECIDE</h3>
+      <ul>
+        <li><b>Natural R_sa ~ 10–20 °C/W</b> small sink; <b>forced 2–5 °C/W</b>.</li>
+        <li><b>Vertical fins</b> for passive (chimney effect).</li>
+        <li><b>Anodize black</b> to add radiation contribution.</li>
+        <li><b>R_sa &lt; 5 °C/W → fan</b>.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Horizontal fins trap hot air</b> — loses ~30 % h.</li>
+        <li><b>Too thick / too long fins</b> — η_f drops, wasted metal.</li>
+        <li><b>Forgot R_jc + R_cs</b> — sink alone doesn't set Tj.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 9 — Thermal Engineering</a> ·
+    Topic: Fins, fin efficiency, sink sizing
+  </footer>
+</main>
+<script>
+function nsIn(svg, tag, attrs={}, text=null){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(text!==null) e.textContent = text;
+  svg.appendChild(e);
+  return e;
+}
+function clear(svg){ while(svg.firstChild) svg.removeChild(svg.firstChild); }
+
+let L_mm = 20, t_mm = 1.0, k = 205, h = 10, dTbase = 40;
+
+function tempColor(frac){
+  // 0 (cool, blue) ... 1 (hot, red)
+  const t = Math.max(0, Math.min(1, frac));
+  const r = Math.round(94 + t*(255-94));
+  const g = Math.round(200 - t*120);
+  const b = Math.round(255 - t*200);
+  return `rgb(${r},${g},${b})`;
+}
+
+function finCalc(L_m, t_m, k, h, dTb){
+  // m = sqrt(2h/(k*t))   (per-unit-width fin, 1D)
+  const m = Math.sqrt(2*h/(k*t_m));
+  const mL = m * L_m;
+  const eta = mL > 1e-6 ? Math.tanh(mL)/mL : 1;
+  // T(x) - T_inf = (Tb - T_inf) * cosh(m(L-x))/cosh(mL)  (insulated tip approx)
+  return {m, mL, eta};
+}
+
+function drawFin(){
+  const svg = document.getElementById('vFin');
+  clear(svg);
+  const L_m = L_mm * 1e-3, t_m = t_mm * 1e-3;
+  const {m, mL, eta} = finCalc(L_m, t_m, k, h, dTbase);
+
+  // Draw fin profile (top half) with thickness scaled
+  const x0 = 40, y0 = 130, plotL = 340;
+  const tPx = Math.max(10, t_mm * 8);
+  // Color the fin in gradient
+  const nSeg = 30;
+  for(let i=0;i<nSeg;i++){
+    const f0 = i/nSeg, f1 = (i+1)/nSeg;
+    const xa = x0 + plotL*f0, xb = x0 + plotL*f1;
+    // T/dTbase
+    const xm = (f0+f1)/2 * L_m;
+    const ratio = Math.cosh(m*(L_m - xm))/Math.cosh(mL);
+    nsIn(svg,'rect',{x:xa,y:y0-tPx,width:xb-xa,height:tPx*2,fill:tempColor(ratio),opacity:0.95});
+  }
+  // Outline
+  nsIn(svg,'rect',{x:x0,y:y0-tPx,width:plotL,height:tPx*2,fill:'none',stroke:'#fff','stroke-width':1});
+  // Base block
+  nsIn(svg,'rect',{x:x0-18,y:y0-tPx-4,width:18,height:2*(tPx+4),fill:'#333',stroke:'#888','stroke-width':1});
+  nsIn(svg,'text',{x:x0-9,y:y0-tPx-8,class:'label-dim','text-anchor':'middle'},'base');
+
+  // Temperature curve overlay
+  const yTop = 20, yBot = 100;
+  nsIn(svg,'line',{x1:x0,y1:yTop,x2:x0,y2:yBot,class:'axis'});
+  nsIn(svg,'line',{x1:x0,y1:yBot,x2:x0+plotL,y2:yBot,class:'axis'});
+  nsIn(svg,'text',{x:x0-6,y:yTop+4,class:'axis-label','text-anchor':'end'},`ΔT=${dTbase.toFixed(0)}`);
+  nsIn(svg,'text',{x:x0-6,y:yBot+4,class:'axis-label','text-anchor':'end'},'0');
+  nsIn(svg,'text',{x:x0+plotL,y:yBot+16,class:'axis-label','text-anchor':'end'},`x=L=${L_mm}mm`);
+  let dCurve='';
+  for(let i=0;i<=40;i++){
+    const f = i/40;
+    const xm = f*L_m;
+    const ratio = Math.cosh(m*(L_m - xm))/Math.cosh(mL);
+    const xPx = x0 + plotL*f;
+    const yPx = yBot - (yBot - yTop)*ratio;
+    dCurve += (i===0?'M ':'L ') + xPx.toFixed(1) + ',' + yPx.toFixed(1) + ' ';
+  }
+  nsIn(svg,'path',{d:dCurve,fill:'none',stroke:'#ffb86c','stroke-width':2});
+  // Mean ΔT line (η_f · dT)
+  const yMean = yBot - (yBot-yTop)*eta;
+  nsIn(svg,'line',{x1:x0,y1:yMean,x2:x0+plotL,y2:yMean,stroke:'#a3e635','stroke-width':1.5,'stroke-dasharray':'4 3'});
+  nsIn(svg,'text',{x:x0+plotL-4,y:yMean-4,class:'label-dim','text-anchor':'end',fill:'#a3e635'},`η·ΔT = ${(eta*dTbase).toFixed(1)}°C`);
+
+  nsIn(svg,'text',{x:x0+plotL/2, y:y0+tPx+24, class:'label','text-anchor':'middle'},
+    `tip ΔT = ${(dTbase * 1/Math.cosh(mL)).toFixed(1)}°C  (base = ${dTbase}°C)`);
+
+  document.getElementById('eta').textContent = (eta*100).toFixed(1) + ' %';
+  document.getElementById('mRO').textContent = m.toFixed(1) + ' 1/m';
+  document.getElementById('mLRO').textContent = mL.toFixed(2);
+}
+
+function drawNF(){
+  const svg = document.getElementById('vNF');
+  clear(svg);
+  const L_m = L_mm * 1e-3, t_m = t_mm * 1e-3;
+
+  // Show two sinks: natural (left) with h=10, forced (right) with h=50
+  // Each is a base + N fins; for natural, fewer/thicker fins are visually OK.
+  function drawSink(cx, label, h_local){
+    const {eta} = finCalc(L_m, t_m, k, h_local, dTbase);
+    // base
+    nsIn(svg,'rect',{x:cx-60,y:200,width:120,height:14,fill:'#888'});
+    const nFins = 5;
+    const finH = Math.max(20, L_mm * 2);
+    for(let i=0;i<nFins;i++){
+      const fx = cx - 50 + i*25;
+      // color whole fin by eta (proxy)
+      const baseColor = tempColor(0.85);
+      const tipColor = tempColor(0.85 * (1 - (1 - 1/Math.cosh(Math.sqrt(2*h_local/(k*t_m))*L_m))));
+      // gradient via N stripes
+      for(let s=0;s<8;s++){
+        const f0=s/8, f1=(s+1)/8;
+        const ratio = Math.cosh(Math.sqrt(2*h_local/(k*t_m))*L_m*(1-f0))/Math.cosh(Math.sqrt(2*h_local/(k*t_m))*L_m);
+        nsIn(svg,'rect',{x:fx, y:200-finH+finH*f0, width:14, height:finH/8, fill:tempColor(ratio)});
+      }
+      nsIn(svg,'rect',{x:fx,y:200-finH,width:14,height:finH,fill:'none',stroke:'#fff','stroke-width':0.5});
+    }
+    nsIn(svg,'text',{x:cx, y:230, class:'label','text-anchor':'middle'}, label);
+    nsIn(svg,'text',{x:cx, y:246, class:'label-dim','text-anchor':'middle'}, `η=${(eta*100).toFixed(0)}%`);
+  }
+  drawSink(110, 'Natural (h=10)', 10);
+  drawSink(310, 'Forced (h=50)', 50);
+
+  // Computed Θ_fin = 1 / (η_f · h · A_fin) — we treat fin area = 2 · L · W with W=1cm reference
+  const W_ref = 0.01;
+  const A_fin = 2 * L_m * W_ref; // per fin
+  const nFins = 5;
+  function Rfin(h_local){
+    const {eta} = finCalc(L_m, t_m, k, h_local, dTbase);
+    return 1/(nFins * eta * h_local * A_fin);
+  }
+  const Rn = Rfin(10), Rf = Rfin(50);
+  const tbody = document.getElementById('nfTable');
+  tbody.innerHTML = '';
+  const rows = [
+    ['Natural', '10 W/m²·K', (finCalc(L_m,t_m,k,10,dTbase).eta*100).toFixed(0)+'%', Rn.toFixed(1)+' °C/W'],
+    ['Forced',  '50 W/m²·K', (finCalc(L_m,t_m,k,50,dTbase).eta*100).toFixed(0)+'%', Rf.toFixed(1)+' °C/W'],
+  ];
+  for(const [m_,h_,e,r] of rows){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${m_}</td><td>${h_}</td><td>${e}</td><td>${r}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function update(){
+  document.getElementById('LRO').textContent = L_mm + ' mm';
+  document.getElementById('tRO').textContent = t_mm.toFixed(1) + ' mm';
+  document.getElementById('hRO').textContent = h + ' W/m²·K' + (h<=15 ? ' (natural)' : h<=80 ? ' (small fan)' : ' (strong fan)');
+  document.getElementById('dTRO').textContent = dTbase + ' °C';
+  drawFin();
+  drawNF();
+}
+
+document.getElementById('L').oninput = e=>{ L_mm=+e.target.value; update(); };
+document.getElementById('t').oninput = e=>{ t_mm=+e.target.value; update(); };
+document.getElementById('kMat').onchange = e=>{ k=+e.target.value; update(); };
+document.getElementById('h').oninput = e=>{ h=+e.target.value; update(); };
+document.getElementById('dT').oninput = e=>{ dTbase=+e.target.value; update(); };
+
+// Required Θ_sa calculator
+let Tjmax=100, Ta=30, P=1.5, Rjc=8, Rcs=2;
+function updReq(){
+  document.getElementById('TjmaxRO').textContent = Tjmax + ' °C';
+  document.getElementById('TaRO').textContent = Ta + ' °C';
+  document.getElementById('PRO').textContent = P.toFixed(1) + ' W';
+  document.getElementById('RjcRO').textContent = Rjc.toFixed(1) + ' °C/W';
+  document.getElementById('RcsRO').textContent = Rcs.toFixed(1) + ' °C/W';
+  const Rreq = (Tjmax - Ta)/P - Rjc - Rcs;
+  const out = document.getElementById('RsaReq');
+  out.textContent = Rreq.toFixed(2);
+  const p = document.getElementById('picker');
+  if(Rreq <= 0){
+    out.style.color = '#ff7b72';
+    p.innerHTML = `<span style="color:var(--warn);font-weight:600">No heat sink can save this — Θ_jc + Θ_cs already exceeds the budget. Reduce P, raise Tj_max (different part), or lower T_ambient.</span>`;
+  } else if(Rreq < 2){
+    out.style.color = '#ff7b72';
+    p.innerHTML = `Need a serious sink: <code>Θ_sa &lt; ${Rreq.toFixed(1)} °C/W</code> means liquid-cooled or large forced-air. Hobby aluminum sinks won't get there.`;
+  } else if(Rreq < 10){
+    out.style.color = '#ffb86c';
+    p.innerHTML = `Typical forced-convection extrusion: 12 × 12 × 25 mm finned sink with a 40 mm fan hits ~5 °C/W. Achievable.`;
+  } else if(Rreq < 30){
+    out.style.color = '#a3e635';
+    p.innerHTML = `Natural-convection extrusion territory. A 25 × 25 × 10 mm passive sink (~15 °C/W) or a copper pour on the PCB will do.`;
+  } else {
+    out.style.color = '#a3e635';
+    p.innerHTML = `Very loose budget — a copper pour or thermal vias may be enough; a discrete heat sink may not be needed.`;
+  }
+}
+document.getElementById('Tjmax').oninput = e=>{ Tjmax=+e.target.value; updReq(); };
+document.getElementById('Ta').oninput    = e=>{ Ta=+e.target.value; updReq(); };
+document.getElementById('P').oninput     = e=>{ P=+e.target.value; updReq(); };
+document.getElementById('Rjc').oninput   = e=>{ Rjc=+e.target.value; updReq(); };
+document.getElementById('Rcs').oninput   = e=>{ Rcs=+e.target.value; updReq(); };
+
+update();
+updReq();
+</script>
+</body>
+</html>

@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DOF & Gruebler's equation — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  /* Common SVG conventions */
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .verdict{font:600 14px ui-monospace,monospace;padding:10px 14px;border-radius:6px;
+    margin:10px 0;border:1px solid var(--line)}
+  .v-mech{background:#1a2a1a;color:var(--accent3);border-color:#3a5a3a}
+  .v-struct{background:#1a1f2a;color:var(--accent);border-color:#3a4a5a}
+  .v-under{background:#2a2a1a;color:var(--accent2);border-color:#5a5a3a}
+  .v-over{background:#2a1a1a;color:var(--warn);border-color:#5a3a3a}
+  .joint-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .joint-chip{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,monospace;cursor:pointer}
+  .joint-chip:hover{background:var(--line)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Mechanism DOF — Gruebler's equation</h1>
+  <p class="lede">Pick a preset mechanism (or build your own by adding links and joints) and the
+  calculator applies Gruebler's planar equation <code>F = 3(n−1) − 2·J₁ − J₂</code> to verify whether
+  the mechanism is a structure, a one-DOF machine, underconstrained, or overconstrained.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Preset</label>
+      <select id="preset">
+        <option value="fourbar">Four-bar linkage</option>
+        <option value="slidercrank">Slider-crank</option>
+        <option value="fivebar">Five-bar (2-DOF planar)</option>
+        <option value="scissor">Scissor lift (1 stage)</option>
+        <option value="truss">Triangular truss (structure)</option>
+        <option value="custom">Custom (build below)</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Links n (incl. ground)</label>
+      <input type="number" id="nLinks" min="2" max="20" value="4">
+    </div>
+    <div class="control">
+      <label>Full joints J₁ (R / P)</label>
+      <input type="number" id="nJ1" min="0" max="30" value="4">
+    </div>
+    <div class="control">
+      <label>Half joints J₂ (gear / roll-slide)</label>
+      <input type="number" id="nJ2" min="0" max="30" value="0">
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="diagram" viewBox="0 0 880 380" width="100%" height="380"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>Link</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>Revolute (R) — pin joint, J₁</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Prismatic (P) — slider, J₁</span>
+      <span><span class="swatch" style="background:#ff7b72"></span>Gear / roll-slide — J₂ half joint</span>
+    </div>
+  </div>
+
+  <div id="verdict" class="verdict"></div>
+
+  <h2>Calculation breakdown</h2>
+  <table>
+    <thead><tr><th>Quantity</th><th>Symbol</th><th>Value</th><th>Contribution</th></tr></thead>
+    <tbody id="calcTable"></tbody>
+  </table>
+
+  <h2>Joint type reference</h2>
+  <table>
+    <thead><tr><th>Joint</th><th>Class</th><th>DOF allowed</th><th>DOF removed (planar)</th></tr></thead>
+    <tbody>
+      <tr><td>Revolute (R)</td><td>J₁ (full)</td><td>1 (rotation)</td><td>2</td></tr>
+      <tr><td>Prismatic (P)</td><td>J₁ (full)</td><td>1 (translation)</td><td>2</td></tr>
+      <tr><td>Gear mesh</td><td>J₂ (half)</td><td>2 (roll + slide along teeth)</td><td>1</td></tr>
+      <tr><td>Roll-slide / cam-on-flat</td><td>J₂ (half)</td><td>2 (roll + slide)</td><td>1</td></tr>
+      <tr><td>Pure rolling (no slip)</td><td>J₁ (full)</td><td>1</td><td>2</td></tr>
+    </tbody>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Gruebler counts ground.</b> The fixed frame is link #1. A four-bar has 4 links: ground + crank + coupler + rocker.</li>
+    <li><b>F = 1 is the sweet spot</b> — one input drives one output deterministically. Most machines target this.</li>
+    <li><b>F = 0 is a structure.</b> A triangle truss has 3 links + 3 pins: F = 3(3−1) − 2·3 = 0. No motion is the point.</li>
+    <li><b>F &gt; 1 is underconstrained.</b> A 5-bar with all pin joints has F = 2 — you need two motors to fully specify the pose.</li>
+    <li><b>F &lt; 0 is overconstrained on paper</b> but works in reality when redundant constraints are intentional (rigid frames) or when geometry creates an exception (e.g., parallelogram linkage, which Gruebler counts as F=0 but moves with F=1).</li>
+    <li><b>Half joints (J₂)</b> are gear teeth or a cam riding on a flat — they let two motions (roll + slip) happen at the contact, so they remove only 1 DOF in plane.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Gruebler</dt><dd><span class="eq">F = 3(n−1) − 2J₁ − J₂</span></dd>
+        <dt>n</dt><dd>links incl. ground</dd>
+        <dt>J₁</dt><dd>full joint (R, P) — removes 2 DOF</dd>
+        <dt>J₂</dt><dd>half joint (gear, cam) — removes 1 DOF</dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>VERDICT TABLE</h3>
+      <table>
+        <thead><tr><th>F</th><th>Class</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>Structure (truss)</td></tr>
+          <tr><td>1</td><td>1-DOF mechanism — usual target</td></tr>
+          <tr><td>&gt;1</td><td>Under-constrained — needs F inputs</td></tr>
+          <tr><td>&lt;0</td><td>Over-constrained (rigid frame)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Forgot ground</b> — ground is link #1; four-bar has n=4, not 3.</li>
+        <li><b>Gear pair = 1 joint</b> (J₂), not 2.</li>
+        <li><b>Slider-crank</b>: 3R + 1P = 4 J₁ joints → F=1.</li>
+        <li><b>Parallelogram</b> Gruebler says F=0 but it moves — special geometry exception.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 7 — Mechanisms & Kinematics</a> ·
+    Topic: Degrees of freedom & Gruebler's equation
+  </footer>
+</main>
+<script>
+const svg = document.getElementById('diagram');
+function ns(tag, attrs={}, parent=svg){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(){ while(svg.firstChild) svg.removeChild(svg.firstChild); }
+
+const presets = {
+  fourbar:    {n:4, j1:4, j2:0, label:'Four-bar linkage', draw:drawFourBar},
+  slidercrank:{n:4, j1:4, j2:0, label:'Slider-crank (3R + 1P)', draw:drawSliderCrank},
+  fivebar:    {n:5, j1:5, j2:0, label:'Five-bar (2-DOF planar)', draw:drawFiveBar},
+  scissor:    {n:6, j1:7, j2:0, label:'Scissor lift (single stage)', draw:drawScissor},
+  truss:      {n:3, j1:3, j2:0, label:'Triangular truss (structure)', draw:drawTruss},
+  custom:     {n:4, j1:4, j2:0, label:'Custom', draw:drawCustom},
+};
+
+function gruebler(n, j1, j2){
+  return 3*(n - 1) - 2*j1 - j2;
+}
+
+function classify(F){
+  if(F === 0) return {cls:'v-struct', name:'STRUCTURE', desc:'No motion. The links cannot move relative to each other (or only via elastic deformation). This is what you want in a frame or a truss.'};
+  if(F === 1) return {cls:'v-mech',   name:'1-DOF MECHANISM', desc:'One independent input drives the entire motion. Typical of useful machines: pick the crank angle and every other link\'s position follows.'};
+  if(F  >  1) return {cls:'v-under',  name:`UNDERCONSTRAINED (F = ${F})`, desc:`Needs ${F} independent inputs to fully specify the pose. A 2-DOF planar parallel manipulator, for instance, takes two motor angles.`};
+  return {cls:'v-over', name:`OVERCONSTRAINED (F = ${F})`, desc:`On paper this should not move. Real overconstrained mechanisms either rely on special geometry (parallelogram, Sarrus, Bennett) or are intentionally rigid frames where redundancy adds stiffness.`};
+}
+
+// === Drawing routines for each preset ===
+const W=880, H=380, CX=W/2, CY=H/2;
+
+function drawLink(x1,y1,x2,y2,color='#5ec8ff', width=8){
+  ns('line',{x1,y1,x2,y2,stroke:color,'stroke-width':width,'stroke-linecap':'round',opacity:0.85});
+}
+function drawRevolute(x,y,r=7,label=''){
+  ns('circle',{cx:x,cy:y,r:r,fill:'#ffb86c',stroke:'#fff','stroke-width':1.5});
+  ns('circle',{cx:x,cy:y,r:2,fill:'#0e1116'});
+  if(label) ns('text',{x:x+10,y:y-10,class:'label-dim'}).textContent=label;
+}
+function drawPrismatic(x,y,angle=0,label=''){
+  const ax = Math.cos(angle), ay = Math.sin(angle);
+  const px = -ay, py = ax;
+  const L = 26, T = 12;
+  ns('polygon',{
+    points:`${x-L*ax-T*px},${y-L*ay-T*py} ${x+L*ax-T*px},${y+L*ay-T*py} ${x+L*ax+T*px},${y+L*ay+T*py} ${x-L*ax+T*px},${y-L*ay+T*py}`,
+    fill:'#a3e635',stroke:'#fff','stroke-width':1.5,opacity:0.85});
+  if(label) ns('text',{x:x+12,y:y-16,class:'label-dim'}).textContent=label;
+}
+function drawGround(x,y,w=80){
+  ns('line',{x1:x-w/2,y1:y,x2:x+w/2,y2:y,stroke:'#dde3ec','stroke-width':2});
+  for(let i=-w/2;i<w/2;i+=10){
+    ns('line',{x1:x+i,y1:y,x2:x+i-6,y2:y+10,stroke:'#8f99a8','stroke-width':1});
+  }
+}
+function drawLabel(text,x,y,color='#dde3ec'){
+  ns('text',{x,y,class:'label',fill:color,'text-anchor':'middle'}).textContent=text;
+}
+
+function drawFourBar(){
+  const A = {x:CX-180,y:CY+60}, B = {x:CX-60,y:CY-80}, C = {x:CX+100,y:CY-60}, D = {x:CX+180,y:CY+60};
+  drawLink(A.x,A.y,B.x,B.y);
+  drawLink(B.x,B.y,C.x,C.y);
+  drawLink(C.x,C.y,D.x,D.y);
+  drawLink(A.x,A.y,D.x,D.y,'#3a4a5a',4);
+  drawGround(A.x,A.y+6,40); drawGround(D.x,D.y+6,40);
+  drawRevolute(A.x,A.y); drawRevolute(B.x,B.y); drawRevolute(C.x,C.y); drawRevolute(D.x,D.y);
+  drawLabel('Ground',CX,CY+90,'#8f99a8');
+  drawLabel('Crank',(A.x+B.x)/2-30,(A.y+B.y)/2);
+  drawLabel('Coupler',(B.x+C.x)/2,(B.y+C.y)/2-12);
+  drawLabel('Rocker',(C.x+D.x)/2+30,(C.y+D.y)/2);
+  ns('text',{x:20,y:30,class:'label-dim'}).textContent='Four-bar: 4 links, 4 R joints → F = 3(4−1) − 2·4 = 1';
+}
+
+function drawSliderCrank(){
+  const A = {x:CX-220,y:CY+20}, B = {x:CX-60,y:CY-80}, C = {x:CX+140,y:CY+20};
+  drawLink(A.x,A.y,B.x,B.y);     // crank
+  drawLink(B.x,B.y,C.x,C.y);     // coupler
+  drawLink(CX-260,CY+20,CX+220,CY+20,'#3a4a5a',3);  // ground rail
+  drawGround(A.x,A.y+6,40);
+  ns('line',{x1:CX-260,y1:CY+34,x2:CX+220,y2:CY+34,stroke:'#dde3ec','stroke-width':2});
+  for(let i=CX-260;i<=CX+220;i+=14){
+    ns('line',{x1:i,y1:CY+34,x2:i-6,y2:CY+44,stroke:'#8f99a8','stroke-width':1});
+  }
+  drawRevolute(A.x,A.y); drawRevolute(B.x,B.y); drawRevolute(C.x,C.y);
+  drawPrismatic(C.x,C.y,0);
+  drawLabel('Crank',(A.x+B.x)/2-20,(A.y+B.y)/2);
+  drawLabel('Coupler',(B.x+C.x)/2,(B.y+C.y)/2-12);
+  drawLabel('Slider',C.x,C.y-26,'#a3e635');
+  ns('text',{x:20,y:30,class:'label-dim'}).textContent='Slider-crank: 4 links, 3 R + 1 P → F = 3(4−1) − 2·4 = 1';
+}
+
+function drawFiveBar(){
+  const A = {x:CX-220,y:CY+60}, B = {x:CX-100,y:CY-80}, C = {x:CX,y:CY-30}, D = {x:CX+100,y:CY-80}, E = {x:CX+220,y:CY+60};
+  drawLink(A.x,A.y,B.x,B.y);
+  drawLink(B.x,B.y,C.x,C.y);
+  drawLink(C.x,C.y,D.x,D.y);
+  drawLink(D.x,D.y,E.x,E.y);
+  drawLink(A.x,A.y,E.x,E.y,'#3a4a5a',3);
+  drawGround(A.x,A.y+6,40); drawGround(E.x,E.y+6,40);
+  drawRevolute(A.x,A.y); drawRevolute(B.x,B.y); drawRevolute(C.x,C.y); drawRevolute(D.x,D.y); drawRevolute(E.x,E.y);
+  drawLabel('Ground',CX,CY+90,'#8f99a8');
+  ns('text',{x:20,y:30,class:'label-dim'}).textContent='Five-bar: 5 links, 5 R joints → F = 3(5−1) − 2·5 = 2 (needs 2 inputs)';
+}
+
+function drawScissor(){
+  // 6 links: ground + base + 4 scissor arms; 7 R joints (incl. 2 ground pins, 2 slider pins, mid cross, top pins).
+  // Simplified scissor: 2 X-shaped legs + top platform + ground.
+  const baseY = CY+90, topY = CY-60;
+  // Base ground
+  ns('line',{x1:CX-180,y1:baseY,x2:CX+180,y2:baseY,stroke:'#dde3ec','stroke-width':2});
+  for(let i=CX-180;i<CX+180;i+=12){
+    ns('line',{x1:i,y1:baseY,x2:i-6,y2:baseY+10,stroke:'#8f99a8','stroke-width':1});
+  }
+  // Top platform
+  ns('line',{x1:CX-120,y1:topY,x2:CX+120,y2:topY,stroke:'#5ec8ff','stroke-width':6,'stroke-linecap':'round'});
+  // Scissor arms — 4 arms crossing at center
+  const c = {x:CX, y:(baseY+topY)/2};
+  drawLink(CX-140,baseY,CX+140,topY);
+  drawLink(CX+140,baseY,CX-140,topY);
+  drawRevolute(CX-140,baseY); drawRevolute(CX+140,topY);
+  drawRevolute(CX+140,baseY); drawRevolute(CX-140,topY);
+  drawRevolute(c.x,c.y);
+  drawPrismatic(CX+140,baseY,0);  // one side is a slider
+  drawPrismatic(CX-140,topY,0);
+  ns('text',{x:20,y:30,class:'label-dim'}).textContent='Scissor lift: 4 links + base + ground (6) , mix of R + P joints → F = 1 (single hydraulic input)';
+}
+
+function drawTruss(){
+  const A = {x:CX-150,y:CY+50}, B = {x:CX+150,y:CY+50}, C = {x:CX,y:CY-90};
+  drawLink(A.x,A.y,B.x,B.y);
+  drawLink(B.x,B.y,C.x,C.y);
+  drawLink(C.x,C.y,A.x,A.y);
+  drawGround(A.x,A.y+6,40); drawGround(B.x,B.y+6,40);
+  drawRevolute(A.x,A.y); drawRevolute(B.x,B.y); drawRevolute(C.x,C.y);
+  ns('text',{x:20,y:30,class:'label-dim'}).textContent='Triangle truss: 3 links, 3 R joints → F = 3(3−1) − 2·3 = 0 (structure)';
+  ns('text',{x:20,y:46,class:'label-dim'}).textContent='Same Gruebler logic, with F=0 the desirable answer.';
+}
+
+function drawCustom(){
+  ns('text',{x:CX,y:CY-10,class:'label-dim','text-anchor':'middle'}).textContent='Custom mode — adjust n / J₁ / J₂ controls above.';
+  ns('text',{x:CX,y:CY+14,class:'label-dim','text-anchor':'middle'}).textContent='Sketch your own mechanism on paper; the calculator verifies the count.';
+}
+
+function update(){
+  const presetKey = document.getElementById('preset').value;
+  const preset = presets[presetKey];
+  // If a non-custom preset is picked, sync the inputs to it (only when preset changes — we trigger this via the change handler).
+  const n = parseInt(document.getElementById('nLinks').value);
+  const j1 = parseInt(document.getElementById('nJ1').value);
+  const j2 = parseInt(document.getElementById('nJ2').value);
+  const F = gruebler(n, j1, j2);
+  const v = classify(F);
+
+  clear();
+  preset.draw();
+
+  const verdict = document.getElementById('verdict');
+  verdict.className = 'verdict ' + v.cls;
+  verdict.innerHTML = `<div style="font-size:18px">F = ${F} — ${v.name}</div>` +
+    `<div style="font:400 13px sans-serif;margin-top:6px;opacity:0.85">${v.desc}</div>`;
+
+  const tbody = document.getElementById('calcTable');
+  tbody.innerHTML = '';
+  const rows = [
+    ['Number of links (incl. ground)','n', n, `3·(n−1) = 3·${n-1} = ${3*(n-1)}`],
+    ['Full joints (R, P)','J₁', j1, `−2·J₁ = −${2*j1}`],
+    ['Half joints (gear, roll-slide)','J₂', j2, `−J₂ = −${j2}`],
+    ['Gruebler','F', F, `F = 3(n−1) − 2·J₁ − J₂ = ${3*(n-1)} − ${2*j1} − ${j2} = ${F}`],
+  ];
+  for(const [q,s,v,c] of rows){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${q}</td><td>${s}</td><td>${v}</td><td>${c}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+document.getElementById('preset').addEventListener('change', e=>{
+  const p = presets[e.target.value];
+  if(e.target.value !== 'custom'){
+    document.getElementById('nLinks').value = p.n;
+    document.getElementById('nJ1').value = p.j1;
+    document.getElementById('nJ2').value = p.j2;
+  }
+  update();
+});
+['nLinks','nJ1','nJ2'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', ()=>{
+    document.getElementById('preset').value = 'custom';
+    update();
+  });
+});
+
+update();
+</script>
+</body>
+</html>

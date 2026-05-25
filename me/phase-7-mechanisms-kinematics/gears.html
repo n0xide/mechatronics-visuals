@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gears — spur mesh + types — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  /* Common SVG conventions */
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Gears — spur mesh, ratios, types</h1>
+  <p class="lede">Drive a pair of spur gears with their module and tooth counts. The visual computes
+  the pitch circles, center distance, and ratio, and animates correct mesh velocity. The tooth profile
+  inset shows the involute curve that makes the contact happen along a straight line of action. Tabs
+  cover helical, bevel, worm, and rack-and-pinion variants with characteristic notes.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Module m (mm/tooth)</label>
+      <input type="range" id="modM" min="0.5" max="4" step="0.1" value="1.5">
+      <span class="readout" id="modMRO">1.5</span>
+    </div>
+    <div class="control">
+      <label>Drive teeth z₁</label>
+      <input type="range" id="z1" min="8" max="48" step="1" value="16">
+      <span class="readout" id="z1RO">16</span>
+    </div>
+    <div class="control">
+      <label>Driven teeth z₂</label>
+      <input type="range" id="z2" min="8" max="80" step="1" value="40">
+      <span class="readout" id="z2RO">40</span>
+    </div>
+    <div class="control">
+      <label>Drive speed ω₁</label>
+      <input type="range" id="omega" min="0" max="200" step="1" value="60">
+      <span class="readout" id="omegaRO">60 RPM</span>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="mesh" viewBox="0 0 880 460" width="100%" height="460"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>Pinion (drive)</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>Gear (driven)</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Pitch circles</span>
+      <span><span class="swatch" style="background:#ff7b72"></span>Line of action / mesh point</span>
+    </div>
+  </div>
+
+  <h2>Mesh geometry</h2>
+  <table>
+    <thead><tr><th>Quantity</th><th>Formula</th><th>Value</th></tr></thead>
+    <tbody id="geomTable"></tbody>
+  </table>
+
+  <h2>Gear types</h2>
+  <div class="tabs">
+    <div class="tab active" data-tab="spur">Spur</div>
+    <div class="tab" data-tab="helical">Helical</div>
+    <div class="tab" data-tab="bevel">Bevel</div>
+    <div class="tab" data-tab="worm">Worm</div>
+    <div class="tab" data-tab="rack">Rack & pinion</div>
+  </div>
+  <div class="tab-panel active" data-tab="spur">
+    <svg id="visSpur" viewBox="0 0 800 200" width="100%" height="200"></svg>
+    <p>Parallel shafts. Teeth cut straight across the face. Cheap, simple, noisy at high speed because
+    each tooth pair engages all at once (impulsive load). Standard hobby choice for low-speed reductions
+    (~&lt;3000 rpm). Pressure angle commonly 20°; 14.5° is legacy.</p>
+  </div>
+  <div class="tab-panel" data-tab="helical">
+    <svg id="visHelical" viewBox="0 0 800 200" width="100%" height="200"></svg>
+    <p>Teeth cut at a helix angle (15°–30°). Each tooth enters mesh gradually → quieter, higher contact
+    ratio, smoother torque. Cost: <b>axial thrust force</b> must be absorbed by a thrust bearing
+    (or use a herringbone / double-helical to cancel it). Stronger than a spur of the same width.</p>
+  </div>
+  <div class="tab-panel" data-tab="bevel">
+    <svg id="visBevel" viewBox="0 0 800 200" width="100%" height="200"></svg>
+    <p>Conical pitch surfaces; shafts intersect (usually 90°). Straight bevels are spur-style on a cone
+    — OK below ~5 m/s pitch-line velocity. Spiral bevels are the helical equivalent — quieter, higher
+    capacity, used in differentials. Equal-ratio bevels are called <b>miter gears</b>.</p>
+  </div>
+  <div class="tab-panel" data-tab="worm">
+    <svg id="visWorm" viewBox="0 0 800 200" width="100%" height="200"></svg>
+    <p>Worm (screw) meshes with worm wheel — 90° non-intersecting shafts. Very high single-stage ratio
+    (5:1 to 100:1+). Often <b>self-locking</b> when worm lead angle &lt; friction angle: the wheel can't
+    back-drive the worm — useful for hoists, lifts. Cost: low efficiency (30–80%), heat generation,
+    sliding contact wear (bronze worm wheel + steel worm).</p>
+  </div>
+  <div class="tab-panel" data-tab="rack">
+    <svg id="visRack" viewBox="0 0 800 200" width="100%" height="200"></svg>
+    <p>Rack = a gear with infinite radius — a straight strip of teeth. Pinion turns → rack translates.
+    Linear travel per pinion revolution = z·m·π (= π·d). Used in CNC X/Y axes (long travel),
+    automotive steering, garage doors. Backlash is the dominant accuracy spec.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Module must match.</b> Two gears with different modules will <i>not</i> mesh — teeth won't line up. Module is the "currency" of metric gear design (m = d/z).</li>
+    <li><b>Center distance C = m(z₁+z₂)/2.</b> The exact spacing of the two shafts for backlash-free engagement. Set this wrong by ±0.5 mm and you've added backlash or jammed the mesh.</li>
+    <li><b>Ratio i = z₂/z₁.</b> Output torque is multiplied by i (minus losses); output speed is divided by i. To step up speed instead of torque, reverse drive direction (drive z₂, driven z₁).</li>
+    <li><b>Involute tooth profile</b> makes the contact path a straight line passing through the pitch point at the pressure angle — this is why slight changes in center distance still give constant velocity ratio. (Cycloidal teeth don't have this property.)</li>
+    <li><b>Minimum teeth.</b> A 20°-PA pinion has minimum teeth around 17 before undercutting starts (with full-depth teeth and standard addendum). Below that you need profile-shifted or modified-tooth gears.</li>
+    <li><b>For more reduction than a single mesh can give (~6:1 practical)</b>, use a compound train (gear pair → second pair on the same shaft) or a planetary set. A single 80T:8T pair is theoretically 10:1 but the 8T pinion will have undercut teeth and fragile root sections.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Module</dt><dd><span class="eq">m = d / z</span></dd>
+        <dt>Center dist.</dt><dd><span class="eq">C = m(z₁ + z₂) / 2</span></dd>
+        <dt>Ratio</dt><dd><span class="eq">i = z₂/z₁ = ω₁/ω₂</span></dd>
+        <dt>Torque out</dt><dd><span class="eq">T_out = i · T_in · η</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>Modules must match</b> to mesh — m₁ = m₂ (else teeth incompatible)</li>
+        <li><b>20° pressure angle</b> is the world standard for spur/helical</li>
+        <li><b>Contact ratio ≥ 1.6</b> = quiet operation; &lt;1.0 = skipped teeth</li>
+        <li>Min teeth ≈ <b>17</b> at 20° PA before undercut</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Worm self-locks</b> when lead angle λ &lt; arctan(µ) — irreversible drive (intentional for hoists)</li>
+        <li><b>Backlash</b> required for thermal expansion; precision needs anti-backlash split gears or duplex worms</li>
+        <li>Single-stage limit ≈ 6:1; chain stages for higher ratios</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 7 — Mechanisms & Kinematics</a> ·
+    Topic: Spur gears, mesh geometry, gear-type taxonomy
+  </footer>
+</main>
+<script>
+const meshSvg = document.getElementById('mesh');
+function nsIn(svg, tag, attrs={}){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  svg.appendChild(e);
+  return e;
+}
+function clear(svg){ while(svg.firstChild) svg.removeChild(svg.firstChild); }
+
+let m = 1.5, z1 = 16, z2 = 40, omega = 60;
+let theta1 = 0;
+
+// Simple involute tooth approximation as a "wedge" tooth shape — visually plausible, exact for layout purposes.
+function gearShape(svg, cx, cy, r_pitch, z, m_mod, rotation, color){
+  const ra = r_pitch + m_mod;       // addendum circle
+  const rd = r_pitch - 1.25 * m_mod; // dedendum circle
+  // Tooth thickness on pitch circle ≈ π m / 2 (half tooth). Angular thickness = thickness / r_pitch.
+  const toothAngular = Math.PI / z; // each tooth + each gap = 2π/z; tooth = half of that
+  // For each tooth: build a quadrilateral-ish shape: at pitch circle the tooth has angular width toothAngular;
+  // at addendum it's narrower (toothAngular * 0.6); at dedendum it's wider (toothAngular * 0.95)
+  const points = [];
+  for(let i=0; i<z; i++){
+    const baseAngle = rotation + (i * 2*Math.PI / z);
+    // tooth corners (CCW order): root-left, pitch-left, top-left, top-right, pitch-right, root-right
+    const wD = toothAngular * 0.5;
+    const wP = toothAngular * 0.45;
+    const wT = toothAngular * 0.28;
+    const ang_rootL = baseAngle - wD;
+    const ang_pitchL = baseAngle - wP;
+    const ang_topL = baseAngle - wT;
+    const ang_topR = baseAngle + wT;
+    const ang_pitchR = baseAngle + wP;
+    const ang_rootR = baseAngle + wD;
+    points.push([cx + rd*Math.cos(ang_rootL),  cy + rd*Math.sin(ang_rootL)]);
+    points.push([cx + r_pitch*Math.cos(ang_pitchL), cy + r_pitch*Math.sin(ang_pitchL)]);
+    points.push([cx + ra*Math.cos(ang_topL),   cy + ra*Math.sin(ang_topL)]);
+    points.push([cx + ra*Math.cos(ang_topR),   cy + ra*Math.sin(ang_topR)]);
+    points.push([cx + r_pitch*Math.cos(ang_pitchR), cy + r_pitch*Math.sin(ang_pitchR)]);
+    points.push([cx + rd*Math.cos(ang_rootR),  cy + rd*Math.sin(ang_rootR)]);
+  }
+  const pathStr = 'M ' + points.map(p => p[0].toFixed(1)+','+p[1].toFixed(1)).join(' L ') + ' Z';
+  nsIn(svg, 'path', {d:pathStr, fill:color+'30', stroke:color, 'stroke-width':1.5});
+  // Pitch circle (dashed)
+  nsIn(svg, 'circle', {cx,cy,r:r_pitch,fill:'none',stroke:'#a3e635','stroke-width':1,'stroke-dasharray':'3 3',opacity:0.7});
+  // Hub
+  nsIn(svg, 'circle', {cx,cy,r:Math.max(6, r_pitch*0.15),fill:'#0e1116',stroke:color,'stroke-width':1.5});
+  nsIn(svg, 'circle', {cx,cy,r:3,fill:color});
+}
+
+function renderMesh(){
+  clear(meshSvg);
+  const W = 880, H = 460;
+  // Pitch radii in pixels (scale module to a fixed pixel scale)
+  const PX_PER_MM = 4;
+  const r1 = m * z1 / 2 * PX_PER_MM;
+  const r2 = m * z2 / 2 * PX_PER_MM;
+  const C  = r1 + r2;
+  // Position drive on left, driven on right
+  const CX1 = W/2 - C/2, CY1 = H/2;
+  const CX2 = W/2 + C/2, CY2 = H/2;
+
+  // Gear shape rotated. To mesh visually: when teeth on pinion at right side rotate CCW into mesh,
+  // the gear's teeth at left side must align. If pinion rotates by theta1, gear rotates by -theta1*(z1/z2).
+  const theta2 = -theta1 * z1/z2;
+  // Phase adjustment so teeth interlock cleanly. The teeth are evenly spaced; we add a half-tooth offset to gear so a gap aligns with a tooth.
+  const phase2 = Math.PI/z2; // half-tooth offset
+  gearShape(meshSvg, CX1, CY1, r1, z1, m*PX_PER_MM, theta1, '#5ec8ff');
+  gearShape(meshSvg, CX2, CY2, r2, z2, m*PX_PER_MM, theta2 + phase2 + Math.PI, '#ffb86c');
+
+  // Line of centers
+  nsIn(meshSvg, 'line', {x1:CX1,y1:CY1,x2:CX2,y2:CY2,stroke:'#3a4a5a','stroke-width':1,'stroke-dasharray':'4 4'});
+  // Pitch point
+  const PP_X = (CX1*r2 + CX2*r1)/(r1+r2);  // weighted toward smaller gear? No — pitch point is at r1 from gear1.
+  const ppX = CX1 + r1;
+  nsIn(meshSvg, 'circle', {cx:ppX, cy:CY1, r:4, fill:'#ff7b72', stroke:'#fff','stroke-width':1.5});
+  // Line of action (at pressure angle 20° from line tangent to pitch circles)
+  const PA = 20 * Math.PI/180;
+  const lax1 = ppX - 60*Math.cos(PA), lay1 = CY1 - 60*Math.sin(PA);
+  const lax2 = ppX + 60*Math.cos(PA), lay2 = CY1 + 60*Math.sin(PA);
+  nsIn(meshSvg, 'line', {x1:lax1,y1:lay1,x2:lax2,y2:lay2,stroke:'#ff7b72','stroke-width':1.5,'stroke-dasharray':'2 3',opacity:0.8});
+  nsIn(meshSvg, 'text', {x:ppX+10,y:CY1-12,class:'label',fill:'#ff7b72'}).textContent='Line of action (20°)';
+  nsIn(meshSvg, 'text', {x:ppX-20,y:CY1+18,class:'label-dim'}).textContent='Pitch point';
+
+  // Labels
+  nsIn(meshSvg, 'text', {x:CX1,y:CY1+r1+24,class:'label','text-anchor':'middle',fill:'#5ec8ff'}).textContent=`z₁=${z1} · d₁=${(m*z1).toFixed(1)} mm`;
+  nsIn(meshSvg, 'text', {x:CX2,y:CY2+r2+24,class:'label','text-anchor':'middle',fill:'#ffb86c'}).textContent=`z₂=${z2} · d₂=${(m*z2).toFixed(1)} mm`;
+  nsIn(meshSvg, 'text', {x:(CX1+CX2)/2,y:CY1-Math.max(r1,r2)-20,class:'label','text-anchor':'middle'}).textContent=`C = ${(m*(z1+z2)/2).toFixed(1)} mm`;
+
+  // Direction arrows
+  const r_arrow = Math.min(r1, r2) * 0.5;
+  // CCW on drive
+  nsIn(meshSvg, 'path', {d:`M ${CX1+r_arrow},${CY1} A ${r_arrow} ${r_arrow} 0 0 0 ${CX1},${CY1-r_arrow}`,
+    fill:'none', stroke:'#5ec8ff', 'stroke-width':2});
+  nsIn(meshSvg, 'polygon', {points:`${CX1},${CY1-r_arrow} ${CX1-5},${CY1-r_arrow+8} ${CX1+5},${CY1-r_arrow+8}`,
+    fill:'#5ec8ff'});
+  // CW on driven
+  nsIn(meshSvg, 'path', {d:`M ${CX2-r_arrow},${CY2} A ${r_arrow*0.7} ${r_arrow*0.7} 0 0 0 ${CX2},${CY2-r_arrow*0.7}`,
+    fill:'none', stroke:'#ffb86c', 'stroke-width':2});
+  nsIn(meshSvg, 'polygon', {points:`${CX2},${CY2-r_arrow*0.7} ${CX2-5},${CY2-r_arrow*0.7+8} ${CX2+5},${CY2-r_arrow*0.7+8}`,
+    fill:'#ffb86c'});
+
+  // Involute tooth inset (top right corner)
+  drawInvoluteInset(meshSvg, 740, 70);
+
+  // Update table
+  const tbody = document.getElementById('geomTable');
+  tbody.innerHTML = '';
+  const omega2 = omega * z1/z2;
+  const rows = [
+    ['Module m', 'set', `${m.toFixed(2)} mm/tooth`],
+    ['Pitch diameter d₁', 'd₁ = m · z₁', `${(m*z1).toFixed(2)} mm`],
+    ['Pitch diameter d₂', 'd₂ = m · z₂', `${(m*z2).toFixed(2)} mm`],
+    ['Center distance C', 'C = m(z₁+z₂)/2', `${(m*(z1+z2)/2).toFixed(2)} mm`],
+    ['Gear ratio i', 'i = z₂ / z₁', `${(z2/z1).toFixed(3)}`],
+    ['Output speed ω₂', 'ω₂ = ω₁ / i', `${omega2.toFixed(2)} RPM`],
+    ['Output torque (vs input)', 'T₂ = T₁ · i · η', `× ${(z2/z1).toFixed(2)} (ignoring losses)`],
+    ['Circular pitch p', 'p = π·m', `${(Math.PI*m).toFixed(2)} mm`],
+    ['Addendum / dedendum', '1·m / 1.25·m', `${m.toFixed(2)} / ${(1.25*m).toFixed(2)} mm`],
+  ];
+  for(const [q,f,v] of rows){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${q}</td><td>${f}</td><td>${v}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function drawInvoluteInset(svg, cx, cy){
+  // Mini diagram of involute curve — base circle + involute traced for ~0.7 rad
+  const r = 26;
+  nsIn(svg, 'rect', {x:cx-50,y:cy-44,width:120,height:90,fill:'#0e1116',stroke:'#2a313c','stroke-width':1,rx:4});
+  nsIn(svg, 'text', {x:cx+10,y:cy-32,class:'label-dim','text-anchor':'middle'}).textContent='Involute tooth';
+  nsIn(svg, 'circle', {cx:cx,cy:cy,r:r,fill:'none',stroke:'#a3e635','stroke-width':1,opacity:0.5});
+  // Involute: x(t) = r(cos t + t sin t), y(t) = r(sin t − t cos t)
+  let path = '';
+  for(let t=0; t<1.0; t+=0.05){
+    const x = cx + r*(Math.cos(t) + t*Math.sin(t));
+    const y = cy + r*(Math.sin(t) - t*Math.cos(t));
+    path += (t===0?'M ':'L ') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+  }
+  nsIn(svg, 'path', {d:path, fill:'none', stroke:'#ff7b72', 'stroke-width':2});
+  nsIn(svg, 'text', {x:cx-44,y:cy+40,class:'label-dim'}).textContent='unwound thread';
+}
+
+// Tabs
+const visSpur = document.getElementById('visSpur');
+const visHelical = document.getElementById('visHelical');
+const visBevel = document.getElementById('visBevel');
+const visWorm = document.getElementById('visWorm');
+const visRack = document.getElementById('visRack');
+function drawSmallGear(svg, cx, cy, r, z, color, rot=0){
+  gearShape(svg, cx, cy, r, z, r*2/z, rot, color);
+}
+function drawSpurType(){
+  drawSmallGear(visSpur, 240, 100, 40, 14, '#5ec8ff');
+  drawSmallGear(visSpur, 360, 100, 60, 21, '#ffb86c', Math.PI/21);
+  nsIn(visSpur,'text',{x:400,y:65,class:'label-dim'}).textContent='Parallel shafts · straight teeth';
+  nsIn(visSpur,'text',{x:400,y:82,class:'label-dim'}).textContent='Cheap, simple, noisy at high RPM';
+  nsIn(visSpur,'text',{x:400,y:99,class:'label-dim'}).textContent='Contact ratio ~ 1.4–1.6';
+  nsIn(visSpur,'text',{x:400,y:116,class:'label-dim'}).textContent='Typical use: hobby reductions, printer Z, slow drives';
+}
+function drawHelicalType(){
+  // Approximation: same gear shape with diagonal lines indicating helix
+  const cx = 240, cy = 100, r = 40;
+  nsIn(visHelical,'circle',{cx,cy,r:r,fill:'none',stroke:'#5ec8ff','stroke-width':2});
+  nsIn(visHelical,'ellipse',{cx,cy,rx:r,ry:r*0.3,fill:'#1f3a4a',stroke:'#5ec8ff','stroke-width':2});
+  // Helix lines
+  for(let i=0;i<14;i++){
+    const a = i*2*Math.PI/14;
+    const x1 = cx + r*Math.cos(a), y1 = cy + r*0.3*Math.sin(a);
+    const x2 = cx + r*Math.cos(a+0.6), y2 = cy + r*0.3*Math.sin(a+0.6) + 30;
+    nsIn(visHelical,'line',{x1,y1,x2,y2,stroke:'#5ec8ff','stroke-width':1,opacity:0.6});
+  }
+  nsIn(visHelical,'ellipse',{cx,cy:cy+30,rx:r,ry:r*0.3,fill:'#1f3a4a',stroke:'#5ec8ff','stroke-width':2});
+  // Companion gear
+  const cx2 = 360, cy2 = 100;
+  nsIn(visHelical,'ellipse',{cx:cx2,cy:cy2,rx:55,ry:55*0.3,fill:'#3a2a1f',stroke:'#ffb86c','stroke-width':2});
+  for(let i=0;i<21;i++){
+    const a = i*2*Math.PI/21;
+    const x1 = cx2 + 55*Math.cos(a), y1 = cy2 + 55*0.3*Math.sin(a);
+    const x2 = cx2 + 55*Math.cos(a-0.5), y2 = cy2 + 55*0.3*Math.sin(a-0.5) + 30;
+    nsIn(visHelical,'line',{x1,y1,x2,y2,stroke:'#ffb86c','stroke-width':1,opacity:0.6});
+  }
+  nsIn(visHelical,'ellipse',{cx:cx2,cy:cy2+30,rx:55,ry:55*0.3,fill:'#3a2a1f',stroke:'#ffb86c','stroke-width':2});
+
+  nsIn(visHelical,'text',{x:480,y:65,class:'label-dim'}).textContent='Helix angle 15°–30°';
+  nsIn(visHelical,'text',{x:480,y:82,class:'label-dim'}).textContent='Quieter, smoother, higher contact ratio';
+  nsIn(visHelical,'text',{x:480,y:99,class:'label-dim'}).textContent='Generates axial thrust → thrust bearing required';
+  nsIn(visHelical,'text',{x:480,y:116,class:'label-dim'}).textContent='Use: automotive transmissions, machine tools';
+}
+function drawBevelType(){
+  // Two cones with axes at 90°
+  const cx1 = 220, cy1 = 110;
+  // Cone 1 (vertical axis from above-left)
+  nsIn(visBevel,'polygon',{points:`${cx1},${cy1-50} ${cx1-40},${cy1+30} ${cx1+40},${cy1+30}`,
+    fill:'#1f3a4a',stroke:'#5ec8ff','stroke-width':2});
+  // Teeth lines on cone
+  for(let i=0;i<10;i++){
+    const t = i/10 - 0.5;
+    nsIn(visBevel,'line',{x1:cx1+t*80,y1:cy1+30,x2:cx1+t*8,y2:cy1-50,stroke:'#5ec8ff','stroke-width':1,opacity:0.5});
+  }
+  // Cone 2 (horizontal axis from right)
+  const cx2 = 300, cy2 = 110;
+  nsIn(visBevel,'polygon',{points:`${cx2+50},${cy2} ${cx2-30},${cy2-40} ${cx2-30},${cy2+40}`,
+    fill:'#3a2a1f',stroke:'#ffb86c','stroke-width':2});
+  for(let i=0;i<10;i++){
+    const t = i/10 - 0.5;
+    nsIn(visBevel,'line',{x1:cx2-30,y1:cy2+t*80,x2:cx2+50,y2:cy2+t*8,stroke:'#ffb86c','stroke-width':1,opacity:0.5});
+  }
+  nsIn(visBevel,'text',{x:420,y:65,class:'label-dim'}).textContent='Intersecting shafts (usually 90°)';
+  nsIn(visBevel,'text',{x:420,y:82,class:'label-dim'}).textContent='Straight bevel: low speed (<5 m/s)';
+  nsIn(visBevel,'text',{x:420,y:99,class:'label-dim'}).textContent='Spiral bevel: quiet, high speed (cars/diffs)';
+  nsIn(visBevel,'text',{x:420,y:116,class:'label-dim'}).textContent='Equal-ratio bevels = miter gears';
+}
+function drawWormType(){
+  // Worm (horizontal screw) + worm wheel (circular gear)
+  const cx = 230, cy = 100;
+  // Worm wheel
+  nsIn(visWorm,'circle',{cx,cy,r:42,fill:'none',stroke:'#ffb86c','stroke-width':2});
+  for(let i=0;i<24;i++){
+    const a = i * 2*Math.PI/24;
+    nsIn(visWorm,'line',{x1:cx + 38*Math.cos(a),y1:cy + 38*Math.sin(a),x2:cx + 46*Math.cos(a),y2:cy + 46*Math.sin(a),stroke:'#ffb86c','stroke-width':1.5});
+  }
+  // Worm (along Y axis through wheel center)
+  nsIn(visWorm,'rect',{x:cx-12,y:cy-80,width:24,height:160,fill:'#1f3a4a',stroke:'#5ec8ff','stroke-width':2,rx:3});
+  // Helix thread
+  for(let i=-5;i<5;i++){
+    const y = cy + i*16;
+    nsIn(visWorm,'path',{d:`M ${cx-12} ${y} Q ${cx} ${y+8} ${cx+12} ${y}`, fill:'none',stroke:'#5ec8ff','stroke-width':1.5});
+  }
+  nsIn(visWorm,'text',{x:380,y:65,class:'label-dim'}).textContent='90° non-intersecting shafts';
+  nsIn(visWorm,'text',{x:380,y:82,class:'label-dim'}).textContent='Very high single-stage ratio (5:1 to 100:1+)';
+  nsIn(visWorm,'text',{x:380,y:99,class:'label-dim'}).textContent='Self-locking when λ < φ (motor not needed to hold)';
+  nsIn(visWorm,'text',{x:380,y:116,class:'label-dim'}).textContent='Low efficiency, heat → bronze wheel + steel worm';
+}
+function drawRackType(){
+  // Pinion on left, rack horizontal across
+  const cx = 200, cy = 80;
+  drawSmallGear(visRack, cx, cy, 40, 14, '#5ec8ff');
+  // Rack: a horizontal strip of teeth
+  nsIn(visRack,'rect',{x:60,y:130,width:680,height:40,fill:'#3a2a1f',stroke:'#ffb86c','stroke-width':2});
+  for(let i=80;i<730;i+=24){
+    nsIn(visRack,'polygon',{points:`${i},130 ${i+12},115 ${i+24},130`,fill:'#3a2a1f',stroke:'#ffb86c','stroke-width':1.5});
+  }
+  nsIn(visRack,'text',{x:480,y:55,class:'label-dim'}).textContent='Pinion rotates → rack translates';
+  nsIn(visRack,'text',{x:480,y:72,class:'label-dim'}).textContent='Linear travel / rev = π · d_pinion = z · m · π';
+  nsIn(visRack,'text',{x:480,y:89,class:'label-dim'}).textContent='Use: CNC long travel, steering, gates';
+  nsIn(visRack,'text',{x:480,y:106,class:'label-dim'}).textContent='Backlash is the main accuracy spec';
+}
+drawSpurType(); drawHelicalType(); drawBevelType(); drawWormType(); drawRackType();
+
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick = ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.querySelector(`.tab-panel[data-tab="${t.dataset.tab}"]`).classList.add('active');
+  };
+});
+
+// Controls
+document.getElementById('modM').oninput = e=>{
+  m = parseFloat(e.target.value);
+  document.getElementById('modMRO').textContent = m.toFixed(2);
+  renderMesh();
+};
+document.getElementById('z1').oninput = e=>{
+  z1 = parseInt(e.target.value);
+  document.getElementById('z1RO').textContent = z1;
+  renderMesh();
+};
+document.getElementById('z2').oninput = e=>{
+  z2 = parseInt(e.target.value);
+  document.getElementById('z2RO').textContent = z2;
+  renderMesh();
+};
+document.getElementById('omega').oninput = e=>{
+  omega = parseInt(e.target.value);
+  document.getElementById('omegaRO').textContent = omega + ' RPM';
+  renderMesh();
+};
+
+// Animate the mesh
+let lastT = 0;
+function animate(t){
+  const dt = lastT ? (t - lastT)/1000 : 0;
+  theta1 += dt * (omega / 60) * 2*Math.PI; // omega in RPM → rad/s
+  renderMesh();
+  lastT = t;
+  requestAnimationFrame(animate);
+}
+renderMesh();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

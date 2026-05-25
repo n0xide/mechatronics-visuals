@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RC / RL time constant — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .panel-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:10px}
+  @media (max-width:720px){.panel-row{grid-template-columns:1fr}}
+  .marker-line{stroke:var(--warn);stroke-width:1;stroke-dasharray:3 3}
+  .marker-dot{fill:var(--warn);stroke:var(--bg);stroke-width:1.5}
+  .target-line{stroke:var(--fg-dim);stroke-width:1;stroke-dasharray:2 4}
+  .anim-dot{fill:var(--accent3);stroke:var(--bg);stroke-width:1.5}
+  .tau-readout{font:600 16px ui-monospace,Menlo,monospace;color:var(--accent3);
+    text-align:center;padding:10px;background:var(--bg-elev2);
+    border-radius:6px;margin:10px 0}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>RC / RL time constant</h1>
+  <p class="lede">τ is the heartbeat of any first-order analog circuit — debounce, anti-alias, reset, motor coil. Move the sliders, watch the 63%/86%/99.3% markers shift, and flip RC ↔ RL to see why the same exponential law shows up in two very different physical setups.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Mode: <span class="readout" id="modeReadout">RC</span></label>
+      <button class="btn primary" id="modeBtn">Switch to RL (τ = L/R)</button>
+    </div>
+    <div class="control">
+      <label>R = <span class="readout" id="rR">1.00 kΩ</span></label>
+      <input type="range" id="sR" min="10" max="1000000" value="1000" step="1">
+    </div>
+    <div class="control" id="cWrap">
+      <label>C = <span class="readout" id="rC">1.00 µF</span></label>
+      <input type="range" id="sC" min="-9" max="-3" value="-6" step="0.01">
+    </div>
+    <div class="control" id="lWrap" style="display:none">
+      <label>L = <span class="readout" id="rL">1.00 mH</span></label>
+      <input type="range" id="sL" min="-6" max="0" value="-3" step="0.01">
+    </div>
+    <div class="control">
+      <label>V_final = <span class="readout" id="rVf">5.0 V</span></label>
+      <input type="range" id="sVf" min="1" max="15" value="5" step="0.1">
+    </div>
+  </section>
+
+  <div class="tau-readout" id="tauReadout">τ = 1.00 ms · 5τ = 5.00 ms · f_c = 159 Hz</div>
+
+  <div class="panel-row">
+    <div class="figure">
+      <h3 id="chargeTitle" style="margin-top:0">Charging</h3>
+      <svg id="chargeSvg" viewBox="0 0 440 280" width="100%" height="280" aria-label="Charge curve"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>v(t) or i(t)</span>
+        <span><span class="swatch" style="background:var(--warn)"></span>τ, 2τ, 5τ markers</span>
+      </div>
+    </div>
+    <div class="figure">
+      <h3 id="dischargeTitle" style="margin-top:0">Discharging</h3>
+      <svg id="dischargeSvg" viewBox="0 0 440 280" width="100%" height="280" aria-label="Discharge curve"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent2)"></span>v(t) or i(t)</span>
+        <span><span class="swatch" style="background:var(--warn)"></span>τ, 2τ, 5τ markers</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3 style="margin-top:0">Frequency-domain view — low-pass magnitude (Bode)</h3>
+    <svg id="bodeSvg" viewBox="0 0 880 220" width="100%" height="220" aria-label="Bode magnitude"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent3)"></span>|H(f)| dB</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>f_c = 1/(2πτ)</span>
+      <span>-3 dB at f_c, -20 dB/decade roll-off after</span>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>τ is the only thing that matters</b> — Whether R is 1 kΩ + 1 µF or 1 MΩ + 1 nF, both give τ = 1 ms and look identical. The product RC sets the speed; the individual values are free design knobs (impedance, noise, leakage).</li>
+    <li><b>63 / 86 / 99.3 — memorize these</b> — At t = τ you've covered 63% of the gap, at 2τ 86%, at 5τ you're within 0.7%. "Wait 5τ for the transient to settle" is the working engineer's heuristic.</li>
+    <li><b>Same shape, different physics</b> — RC stores energy in an E-field (½CV²), RL stores it in a B-field (½LI²). For RC τ = R·C grows with both R and C; for RL τ = L/R grows with L but <i>shrinks</i> with R. Toggle the mode and watch the slider direction flip meaning.</li>
+    <li><b>Time-domain ↔ frequency-domain</b> — A slow RC (large τ) is a low-cutoff low-pass: f_c = 1/(2πτ). Pulling τ from 1 ms to 100 µs moves f_c from 160 Hz to 1.6 kHz — exactly how you tune an anti-alias filter to the ADC sample rate.</li>
+    <li><b>The peak current at t=0</b> — For RC charging the inrush is V/R (cap looks like a short). For RL the kickback when you open the switch is L·(di/dt) — limited by snubber, freewheel diode, or flying arc. Plan for it.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>τ (RC)</dt><dd><span class="eq">τ = R · C</span></dd>
+        <dt>τ (RL)</dt><dd><span class="eq">τ = L / R</span></dd>
+        <dt>step</dt><dd><span class="eq">V(t) = V_f · (1 − e^(−t/τ))</span></dd>
+        <dt>decay</dt><dd><span class="eq">V(t) = V_0 · e^(−t/τ)</span></dd>
+        <dt>f_c</dt><dd><span class="eq">f_c = 1 / (2π·R·C)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>1τ</b> — 63 % of final value.</li>
+        <li><b>2τ</b> — 86 %.</li>
+        <li><b>3τ</b> — 95 %.</li>
+        <li><b>5τ</b> — 99.3 % (≈ "settled").</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>5τ ≠ instant</b> — code/ADC sequences must wait at least 5τ before sampling.</li>
+        <li><b>Peak inrush</b> — RC charging draws V/R at t = 0; size the source/switch for it.</li>
+        <li><b>RL kickback</b> — opening an L mid-current creates a huge voltage spike; need a freewheel diode.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 2 — Passive Components</a> ·
+    Topic: RC and RL time constant, first-order step response, equivalent low-pass cutoff
+  </footer>
+</main>
+<script>
+  const $ = id => document.getElementById(id);
+  const state = {
+    mode: 'RC',      // 'RC' or 'RL'
+    R: 1000,         // ohms
+    C: 1e-6,         // farads
+    L: 1e-3,         // henries
+    Vf: 5            // V (or A in RL — we just use as "final value")
+  };
+
+  function fmtSec(t){
+    if (t >= 1) return t.toFixed(2) + ' s';
+    if (t >= 1e-3) return (t*1e3).toFixed(2) + ' ms';
+    if (t >= 1e-6) return (t*1e6).toFixed(2) + ' µs';
+    if (t >= 1e-9) return (t*1e9).toFixed(2) + ' ns';
+    return t.toExponential(2) + ' s';
+  }
+  function fmtOhm(v){
+    if (v >= 1e6) return (v/1e6).toFixed(2).replace(/\.?0+$/,'') + ' MΩ';
+    if (v >= 1e3) return (v/1e3).toFixed(2).replace(/\.?0+$/,'') + ' kΩ';
+    return v.toFixed(0) + ' Ω';
+  }
+  function fmtFarad(c){
+    if (c >= 1e-3) return (c*1e3).toFixed(2) + ' mF';
+    if (c >= 1e-6) return (c*1e6).toFixed(2) + ' µF';
+    if (c >= 1e-9) return (c*1e9).toFixed(2) + ' nF';
+    return (c*1e12).toFixed(2) + ' pF';
+  }
+  function fmtHenry(l){
+    if (l >= 1)    return l.toFixed(2) + ' H';
+    if (l >= 1e-3) return (l*1e3).toFixed(2) + ' mH';
+    if (l >= 1e-6) return (l*1e6).toFixed(2) + ' µH';
+    return (l*1e9).toFixed(2) + ' nH';
+  }
+  function fmtHz(f){
+    if (f >= 1e9) return (f/1e9).toFixed(2) + ' GHz';
+    if (f >= 1e6) return (f/1e6).toFixed(2) + ' MHz';
+    if (f >= 1e3) return (f/1e3).toFixed(2) + ' kHz';
+    if (f >= 1)   return f.toFixed(1) + ' Hz';
+    return f.toFixed(3) + ' Hz';
+  }
+  function fmtUnit(v, isCurrent){
+    return v.toFixed(2) + (isCurrent ? ' A' : ' V');
+  }
+
+  function tau(){ return state.mode === 'RC' ? state.R * state.C : state.L / state.R; }
+
+  // ----- Curve plotting helpers (returns SVG path d string) -----
+  function buildPath(fn, t0, t1, w, h, padL, padR, padT, padB, ymin, ymax){
+    const plotW = w - padL - padR;
+    const plotH = h - padT - padB;
+    let d = '';
+    const N = 200;
+    for (let i = 0; i <= N; i++){
+      const t = t0 + (t1 - t0) * (i / N);
+      const y = fn(t);
+      const px = padL + (t - t0) / (t1 - t0) * plotW;
+      const py = padT + plotH - (y - ymin) / (ymax - ymin) * plotH;
+      d += (i === 0 ? 'M' : 'L') + px.toFixed(2) + ',' + py.toFixed(2);
+    }
+    return d;
+  }
+
+  function drawCurve(svgId, charging){
+    const svg = $(svgId);
+    svg.innerHTML = '';
+    const W = 440, H = 280;
+    const padL = 46, padR = 16, padT = 14, padB = 36;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+    const t = tau();
+    const tEnd = 6 * t;
+    const Vf = state.Vf;
+    const ymin = 0, ymax = Vf * 1.05;
+    const isCurrent = state.mode === 'RL';
+    const unit = isCurrent ? 'A' : 'V';
+
+    // gridlines (5 horizontal, 6 vertical for τ markers + 0)
+    for (let i = 0; i <= 5; i++){
+      const y = padT + (plotH * i / 5);
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('class','grid-line');
+      ln.setAttribute('x1',padL); ln.setAttribute('x2',W-padR);
+      ln.setAttribute('y1',y); ln.setAttribute('y2',y);
+      svg.appendChild(ln);
+      const pct = 100 - i*20;
+      const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('class','axis-label');
+      lbl.setAttribute('x',padL-6); lbl.setAttribute('y',y+3);
+      lbl.setAttribute('text-anchor','end');
+      lbl.textContent = (Vf * pct / 100).toFixed(1) + unit;
+      svg.appendChild(lbl);
+    }
+    // vertical τ gridlines
+    for (let k = 0; k <= 5; k++){
+      const x = padL + (k/6) * plotW;
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('class','grid-line');
+      ln.setAttribute('x1',x); ln.setAttribute('x2',x);
+      ln.setAttribute('y1',padT); ln.setAttribute('y2',padT+plotH);
+      svg.appendChild(ln);
+      const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('class','axis-label');
+      lbl.setAttribute('x',x); lbl.setAttribute('y',H-padB+14);
+      lbl.setAttribute('text-anchor','middle');
+      lbl.textContent = k + 'τ';
+      svg.appendChild(lbl);
+    }
+
+    // axes
+    const xax = document.createElementNS('http://www.w3.org/2000/svg','line');
+    xax.setAttribute('class','axis');
+    xax.setAttribute('x1',padL); xax.setAttribute('x2',W-padR);
+    xax.setAttribute('y1',padT+plotH); xax.setAttribute('y2',padT+plotH);
+    svg.appendChild(xax);
+    const yax = document.createElementNS('http://www.w3.org/2000/svg','line');
+    yax.setAttribute('class','axis');
+    yax.setAttribute('x1',padL); yax.setAttribute('x2',padL);
+    yax.setAttribute('y1',padT); yax.setAttribute('y2',padT+plotH);
+    svg.appendChild(yax);
+
+    // axis label x
+    const xlab = document.createElementNS('http://www.w3.org/2000/svg','text');
+    xlab.setAttribute('class','axis-label');
+    xlab.setAttribute('x', (padL + (W-padR))/2);
+    xlab.setAttribute('y', H-4);
+    xlab.setAttribute('text-anchor','middle');
+    xlab.textContent = 'time (τ = ' + fmtSec(t) + ')';
+    svg.appendChild(xlab);
+
+    // curve function
+    const fn = charging
+      ? (tt) => Vf * (1 - Math.exp(-tt / t))
+      : (tt) => Vf * Math.exp(-tt / t);
+
+    // trace
+    const d = buildPath(fn, 0, tEnd, W, H, padL, padR, padT, padB, ymin, ymax);
+    const tr = document.createElementNS('http://www.w3.org/2000/svg','path');
+    tr.setAttribute('class','trace ' + (charging ? 'trace-1' : 'trace-2'));
+    tr.setAttribute('d', d);
+    svg.appendChild(tr);
+
+    // markers at τ, 2τ, 5τ
+    const marks = [
+      {k:1, label:'63%', val: charging ? 0.6321 : 0.3679},
+      {k:2, label:'86%', val: charging ? 0.8647 : 0.1353},
+      {k:5, label:'99.3%', val: charging ? 0.9933 : 0.0067}
+    ];
+    marks.forEach(m => {
+      const px = padL + (m.k/6) * plotW;
+      const py = padT + plotH - (m.val * Vf - ymin) / (ymax - ymin) * plotH;
+      // vertical guide
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('class','marker-line');
+      ln.setAttribute('x1',px); ln.setAttribute('x2',px);
+      ln.setAttribute('y1',py); ln.setAttribute('y2',padT+plotH);
+      svg.appendChild(ln);
+      const ln2 = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln2.setAttribute('class','marker-line');
+      ln2.setAttribute('x1',padL); ln2.setAttribute('x2',px);
+      ln2.setAttribute('y1',py); ln2.setAttribute('y2',py);
+      svg.appendChild(ln2);
+      const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      dot.setAttribute('class','marker-dot');
+      dot.setAttribute('cx',px); dot.setAttribute('cy',py); dot.setAttribute('r',4);
+      svg.appendChild(dot);
+      const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('class','label');
+      lbl.setAttribute('x', px + 6); lbl.setAttribute('y', py - 6);
+      lbl.setAttribute('fill','var(--warn)');
+      lbl.textContent = m.label;
+      svg.appendChild(lbl);
+    });
+
+    // animated dot
+    const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('class','anim-dot');
+    dot.setAttribute('r',5);
+    dot.setAttribute('id', svgId + '-animDot');
+    svg.appendChild(dot);
+  }
+
+  function drawBode(){
+    const svg = $('bodeSvg');
+    svg.innerHTML = '';
+    const W = 880, H = 220;
+    const padL = 56, padR = 16, padT = 14, padB = 40;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+    const t = tau();
+    const fc = 1 / (2 * Math.PI * t);
+    // x is log10(f); choose 4 decades around fc
+    const logFc = Math.log10(fc);
+    const fmin = logFc - 3, fmax = logFc + 3;
+    const ymin = -60, ymax = 5;
+
+    // gridlines (dB horizontal)
+    for (let dB = ymax; dB >= ymin; dB -= 10){
+      const y = padT + (ymax - dB) / (ymax - ymin) * plotH;
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('class','grid-line');
+      ln.setAttribute('x1',padL); ln.setAttribute('x2',W-padR);
+      ln.setAttribute('y1',y); ln.setAttribute('y2',y);
+      svg.appendChild(ln);
+      const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('class','axis-label');
+      lbl.setAttribute('x',padL-6); lbl.setAttribute('y',y+3);
+      lbl.setAttribute('text-anchor','end');
+      lbl.textContent = dB + ' dB';
+      svg.appendChild(lbl);
+    }
+    // vertical decade gridlines
+    for (let d = Math.ceil(fmin); d <= Math.floor(fmax); d++){
+      const x = padL + (d - fmin) / (fmax - fmin) * plotW;
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('class','grid-line');
+      ln.setAttribute('x1',x); ln.setAttribute('x2',x);
+      ln.setAttribute('y1',padT); ln.setAttribute('y2',padT+plotH);
+      svg.appendChild(ln);
+      const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('class','axis-label');
+      lbl.setAttribute('x',x); lbl.setAttribute('y',H-padB+14);
+      lbl.setAttribute('text-anchor','middle');
+      lbl.textContent = fmtHz(Math.pow(10,d));
+      svg.appendChild(lbl);
+    }
+
+    // x axis label
+    const xlab = document.createElementNS('http://www.w3.org/2000/svg','text');
+    xlab.setAttribute('class','axis-label');
+    xlab.setAttribute('x', (padL + (W-padR))/2);
+    xlab.setAttribute('y', H-6);
+    xlab.setAttribute('text-anchor','middle');
+    xlab.textContent = 'frequency (log scale)';
+    svg.appendChild(xlab);
+
+    // axes
+    ['x','y'].forEach(axis => {
+      const ax = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ax.setAttribute('class','axis');
+      if (axis === 'x'){
+        ax.setAttribute('x1',padL); ax.setAttribute('x2',W-padR);
+        ax.setAttribute('y1',padT+plotH); ax.setAttribute('y2',padT+plotH);
+      } else {
+        ax.setAttribute('x1',padL); ax.setAttribute('x2',padL);
+        ax.setAttribute('y1',padT); ax.setAttribute('y2',padT+plotH);
+      }
+      svg.appendChild(ax);
+    });
+
+    // |H(f)| = 1/sqrt(1 + (f/fc)^2)
+    let d = '';
+    const N = 400;
+    for (let i = 0; i <= N; i++){
+      const logF = fmin + (fmax - fmin) * i / N;
+      const f = Math.pow(10, logF);
+      const mag = 1 / Math.sqrt(1 + Math.pow(f/fc, 2));
+      const dB = 20 * Math.log10(mag);
+      const px = padL + (logF - fmin) / (fmax - fmin) * plotW;
+      const py = padT + (ymax - Math.max(ymin, dB)) / (ymax - ymin) * plotH;
+      d += (i === 0 ? 'M' : 'L') + px.toFixed(2) + ',' + py.toFixed(2);
+    }
+    const tr = document.createElementNS('http://www.w3.org/2000/svg','path');
+    tr.setAttribute('class','trace trace-3');
+    tr.setAttribute('d', d);
+    svg.appendChild(tr);
+
+    // fc marker
+    const xfc = padL + (logFc - fmin) / (fmax - fmin) * plotW;
+    const yfc = padT + (ymax - (-3)) / (ymax - ymin) * plotH;
+    const lnFc = document.createElementNS('http://www.w3.org/2000/svg','line');
+    lnFc.setAttribute('class','marker-line');
+    lnFc.setAttribute('x1',xfc); lnFc.setAttribute('x2',xfc);
+    lnFc.setAttribute('y1',padT); lnFc.setAttribute('y2',padT+plotH);
+    svg.appendChild(lnFc);
+    const dotFc = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dotFc.setAttribute('class','marker-dot');
+    dotFc.setAttribute('cx',xfc); dotFc.setAttribute('cy',yfc); dotFc.setAttribute('r',5);
+    svg.appendChild(dotFc);
+    const lblFc = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lblFc.setAttribute('class','label');
+    lblFc.setAttribute('x', xfc + 8); lblFc.setAttribute('y', yfc + 4);
+    lblFc.setAttribute('fill','var(--warn)');
+    lblFc.textContent = 'f_c = ' + fmtHz(fc) + '  (-3 dB)';
+    svg.appendChild(lblFc);
+  }
+
+  // ----- Animation -----
+  let animStart = null;
+  function animate(ts){
+    if (animStart === null) animStart = ts;
+    const t = tau();
+    const tEnd = 6 * t;
+    const phase = ((ts - animStart) / (tEnd * 1500)) % 2; // each curve takes 1.5s of real time
+    const realT = (phase % 1) * tEnd;
+    const Vf = state.Vf;
+    const charging = phase < 1;
+    const dotCharge = $('chargeSvg-animDot');
+    const dotDisch  = $('dischargeSvg-animDot');
+    if (dotCharge && dotDisch){
+      const W = 440, padL = 46, padR = 16, padT = 14, padB = 36;
+      const plotW = W - padL - padR;
+      const plotH = 280 - padT - padB;
+      const ymin = 0, ymax = Vf * 1.05;
+      const px = padL + (realT / tEnd) * plotW;
+      // charge curve
+      const yC = Vf * (1 - Math.exp(-realT / t));
+      const pyC = padT + plotH - (yC - ymin) / (ymax - ymin) * plotH;
+      // discharge curve
+      const yD = Vf * Math.exp(-realT / t);
+      const pyD = padT + plotH - (yD - ymin) / (ymax - ymin) * plotH;
+      // both dots always move; one is the "active" one
+      dotCharge.setAttribute('cx',px); dotCharge.setAttribute('cy',pyC);
+      dotDisch.setAttribute('cx',px); dotDisch.setAttribute('cy',pyD);
+      dotCharge.style.opacity = charging ? 1 : 0.25;
+      dotDisch.style.opacity  = charging ? 0.25 : 1;
+    }
+    requestAnimationFrame(animate);
+  }
+
+  // ----- Update / wiring -----
+  function update(){
+    const t = tau();
+    const fc = 1/(2*Math.PI*t);
+    const isCurrent = state.mode === 'RL';
+    $('rR').textContent = fmtOhm(state.R);
+    $('rC').textContent = fmtFarad(state.C);
+    $('rL').textContent = fmtHenry(state.L);
+    $('rVf').textContent = state.Vf.toFixed(1) + (isCurrent ? ' (≡ V/R → final A)' : ' V');
+    $('modeReadout').textContent = state.mode + (isCurrent ? ' — τ = L/R' : ' — τ = R·C');
+    $('tauReadout').textContent = 'τ = ' + fmtSec(t) + ' · 5τ = ' + fmtSec(5*t) + ' · f_c = ' + fmtHz(fc);
+    $('chargeTitle').textContent = isCurrent ? 'Current build-up: i(t) = I_f(1 - e^(-t/τ))' : 'Charging: v(t) = V_f(1 - e^(-t/τ))';
+    $('dischargeTitle').textContent = isCurrent ? 'Current decay: i(t) = I_0·e^(-t/τ)' : 'Discharging: v(t) = V_0·e^(-t/τ)';
+    drawCurve('chargeSvg', true);
+    drawCurve('dischargeSvg', false);
+    drawBode();
+  }
+
+  $('sR').addEventListener('input', e => {
+    // logarithmic feel — value range 10 to 1e6 with linear step gives wide range
+    state.R = parseFloat(e.target.value);
+    update();
+  });
+  $('sC').addEventListener('input', e => {
+    state.C = Math.pow(10, parseFloat(e.target.value));
+    update();
+  });
+  $('sL').addEventListener('input', e => {
+    state.L = Math.pow(10, parseFloat(e.target.value));
+    update();
+  });
+  $('sVf').addEventListener('input', e => {
+    state.Vf = parseFloat(e.target.value);
+    update();
+  });
+  $('modeBtn').addEventListener('click', () => {
+    state.mode = state.mode === 'RC' ? 'RL' : 'RC';
+    $('modeBtn').textContent = state.mode === 'RC'
+      ? 'Switch to RL (τ = L/R)'
+      : 'Switch to RC (τ = R·C)';
+    $('cWrap').style.display = state.mode === 'RC' ? '' : 'none';
+    $('lWrap').style.display = state.mode === 'RL' ? '' : 'none';
+    update();
+  });
+
+  // Make R slider logarithmic by mapping linear -> log
+  $('sR').setAttribute('min','1');     // log10(10)=1
+  $('sR').setAttribute('max','6');     // log10(1e6)=6
+  $('sR').setAttribute('step','0.01');
+  $('sR').value = '3';                  // 1k
+  $('sR').addEventListener('input', e => {
+    state.R = Math.pow(10, parseFloat(e.target.value));
+    update();
+  });
+
+  update();
+  requestAnimationFrame(animate);
+</script>
+</body>
+</html>

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Series vs. Parallel Explorer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:780px){.pair{grid-template-columns:1fr}}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Series vs. Parallel Explorer</h1>
+  <p class="lede">Same three resistors, two topologies. Toggle between series and parallel. Watch R_total, V across each, I through each, and P in each recompute. Confirm power-sum closure.</p>
+
+  <p>This visual teaches the <b>resistor-network reflex</b>: given any combination, you can find every voltage, current, and power without algebra panic. Series resistors share current; parallel resistors share voltage. The two topologies are mirror images. Once you've internalised that, ladders and bridges become bookkeeping.</p>
+
+  <section class="controls">
+    <div class="control"><label>V_supply: <span class="readout" id="vRead">12.00 V</span></label><input id="v" type="range" min="1" max="24" step="0.5" value="12"></div>
+    <div class="control"><label>R1: <span class="readout" id="r1Read">100 Ω</span></label><input id="r1" type="range" min="0" max="11" step="1" value="4"></div>
+    <div class="control"><label>R2: <span class="readout" id="r2Read">220 Ω</span></label><input id="r2" type="range" min="0" max="11" step="1" value="5"></div>
+    <div class="control"><label>R3: <span class="readout" id="r3Read">470 Ω</span></label><input id="r3" type="range" min="0" max="11" step="1" value="8"></div>
+    <div class="control">
+      <label>Topology</label>
+      <select id="topo">
+        <option value="series" selected>Series</option>
+        <option value="parallel">Parallel</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="circuit" viewBox="0 0 600 260" width="100%"></svg>
+    <table id="tbl">
+      <tr><th>Resistor</th><th>R</th><th>V across</th><th>I through</th><th>P</th></tr>
+      <tr><td>R1</td><td id="tR1">100 Ω</td><td id="tV1">4.0 V</td><td id="tI1">15 mA</td><td id="tP1">60 mW</td></tr>
+      <tr><td>R2</td><td id="tR2">220 Ω</td><td id="tV2">3.3 V</td><td id="tI2">15 mA</td><td id="tP2">50 mW</td></tr>
+      <tr><td>R3</td><td id="tR3">470 Ω</td><td id="tV3">4.7 V</td><td id="tI3">15 mA</td><td id="tP3">70 mW</td></tr>
+      <tr style="background:var(--bg-elev2)"><td><b>Total</b></td><td id="tRT">790 Ω</td><td id="tVT">12.0 V</td><td id="tIT">15 mA</td><td id="tPT">180 mW</td></tr>
+    </table>
+
+    <div class="vd" id="vdiv">
+      <b>Voltage divider (series only):</b> V_R2 = V_in × R2 / (R1 + R2 + R3) = <span id="vdCalc">12 × 220 / 790 = 3.34 V</span>
+    </div>
+
+    <div class="crosslink">
+      <h4>Real uses</h4>
+      <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+        <li><b style="color:var(--fg)">LED current limit (series)</b> — Pico 3.3V → R_series → LED (Vf=2.1V). Pick R so I≈10 mA. R = (3.3−2.1)/0.010 = 120 Ω.</li>
+        <li><b style="color:var(--fg)">Pull-up sizing (series w/ device input)</b> — 10k pull-up from rail to GPIO input; when device pulls LOW, that 10k limits sink current to V/R.</li>
+        <li><b style="color:var(--fg)">Decoupling caps (parallel)</b> — multiple values (100 nF + 10 µF) in parallel cover wide frequency range. Each branch is independent.</li>
+        <li><b style="color:var(--fg)">I²C pull-ups (parallel)</b> — two 4.7 kΩ pull-ups on the same bus = 2.35 kΩ effective. Sink current at 3.3 V is 1.4 mA — within spec.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Series: same current, voltage divides</b> — the smallest R sees the smallest V; the largest R sees the most. Sum of voltages = V_supply (KVL).</li>
+    <li><b>Parallel: same voltage, current divides</b> — the smallest R takes the most current. Sum of currents = I_total (KCL).</li>
+    <li><b>R_parallel is always less than the smallest R</b> — adding paths can only increase current, never decrease it. Three 100 Ω in parallel = 33 Ω.</li>
+    <li><b>R_series is always more than the largest R</b> — adding resistance in series can only reduce current, never increase it.</li>
+    <li><b>Power sums regardless of topology</b> — P_total = ΣP_i. Verify by summing the P column and comparing to the Total row.</li>
+    <li><b>The voltage-divider formula is just Ohm's Law applied twice</b> — V_R2 = I·R2 = (V_in / R_total) · R2. Memorise the shortcut; understand the derivation.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Series</dt><dd><span class="eq">R_s = R₁ + R₂ + … + R_n</span></dd>
+        <dt>Parallel</dt><dd><span class="eq">1/R_p = Σ 1/R_i</span></dd>
+        <dt>2 in ‖</dt><dd><span class="eq">R_p = R₁·R₂ / (R₁ + R₂)</span></dd>
+        <dt>V-divider</dt><dd><span class="eq">V_out = V_in · R₂ / (R₁ + R₂)</span></dd>
+        <dt>I-divider</dt><dd><span class="eq">I_k = I_tot · (R_p / R_k)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SHORTCUTS</h3>
+      <ul>
+        <li><b>R_parallel &lt; smallest branch</b> — always. Two equal R's in ‖ = R/2; N equal = R/N.</li>
+        <li><b>R_series &gt; largest</b> — always.</li>
+        <li><b>Series</b>: same I, V divides by R-ratio.</li>
+        <li><b>Parallel</b>: same V, I divides <i>inversely</i> by R-ratio.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Current divider is inverted</b> — the <i>smaller</i> R takes <i>more</i> current. Opposite of the voltage divider.</li>
+        <li><b>V-divider formula</b> — numerator is the resistor you're tapping <i>across</i>, not adjacent to. Easy to swap R₁ and R₂.</li>
+        <li><b>1/R sum</b> — students drop the reciprocal step and get nonsense. Add reciprocals, <i>then</i> invert.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 1 — DC Circuit Foundations</a> ·
+    Topic: Series & Parallel Circuits
+  </footer>
+</main>
+<script>
+  const E12vals=[10,12,15,18,22,27,33,39,47,56,68,82,100,120,150,180,220,270,330,390,470,560,680,820,1000,1500,2200,3300,4700,10000];
+  function rOf(i){return E12vals[Math.min(E12vals.length-1, Math.max(0, parseInt(i)))]}
+  function fmtR(r){
+    if(r>=1e6) return (r/1e6).toFixed(2)+" MΩ";
+    if(r>=1e3) return (r/1e3).toFixed(2)+" kΩ";
+    return r.toFixed(0)+" Ω";
+  }
+  function fmtI(i){
+    if(Math.abs(i)<1e-3) return (i*1e6).toFixed(1)+" µA";
+    if(Math.abs(i)<1) return (i*1e3).toFixed(2)+" mA";
+    return i.toFixed(3)+" A";
+  }
+  function fmtP(p){
+    if(Math.abs(p)<1e-3) return (p*1e6).toFixed(1)+" µW";
+    if(Math.abs(p)<1) return (p*1e3).toFixed(2)+" mW";
+    return p.toFixed(3)+" W";
+  }
+
+  const ids=['v','r1','r2','r3','topo'];
+  const els={};
+  ids.forEach(k=>els[k]=document.getElementById(k));
+
+  function batterySVG(x,y,V){
+    return `
+      <line x1="${x-5}" y1="${y-10}" x2="${x+5}" y2="${y-10}" stroke="var(--fg)" stroke-width="3"/>
+      <line x1="${x-10}" y1="${y}" x2="${x+10}" y2="${y}" stroke="var(--fg)" stroke-width="2"/>
+      <text x="${x-15}" y="${y-8}" class="label" text-anchor="end">+</text>
+      <text x="${x-15}" y="${y+5}" class="label" text-anchor="end">−</text>
+      <text x="${x-30}" y="${y-2}" class="label" text-anchor="end">${V.toFixed(1)}V</text>`;
+  }
+
+  function drawSeries(V,R1,R2,R3){
+    const svg=document.getElementById('circuit');
+    const Rs=R1+R2+R3;
+    const I=V/Rs;
+    const V1=I*R1, V2=I*R2, V3=I*R3;
+    svg.innerHTML=`
+      <path class="wire" d="M 60 200 L 60 80 L 540 80 L 540 200 L 60 200" fill="none"/>
+      ${batterySVG(60,140,V)}
+      <rect x="130" y="70" width="60" height="20" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="160" y="62" class="label" text-anchor="middle">R1=${fmtR(R1)}</text>
+      <text x="160" y="105" class="label-dim" text-anchor="middle">V=${V1.toFixed(2)}V</text>
+      <rect x="270" y="70" width="60" height="20" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="300" y="62" class="label" text-anchor="middle">R2=${fmtR(R2)}</text>
+      <text x="300" y="105" class="label-dim" text-anchor="middle">V=${V2.toFixed(2)}V</text>
+      <rect x="410" y="70" width="60" height="20" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="440" y="62" class="label" text-anchor="middle">R3=${fmtR(R3)}</text>
+      <text x="440" y="105" class="label-dim" text-anchor="middle">V=${V3.toFixed(2)}V</text>
+      <text x="300" y="230" class="label" text-anchor="middle">I = ${fmtI(I)} (same throughout)</text>
+      <text x="300" y="248" class="label-dim" text-anchor="middle">R_total = R1+R2+R3 = ${fmtR(Rs)}</text>`;
+
+    document.getElementById('tR1').textContent=fmtR(R1);
+    document.getElementById('tR2').textContent=fmtR(R2);
+    document.getElementById('tR3').textContent=fmtR(R3);
+    document.getElementById('tV1').textContent=V1.toFixed(3)+" V";
+    document.getElementById('tV2').textContent=V2.toFixed(3)+" V";
+    document.getElementById('tV3').textContent=V3.toFixed(3)+" V";
+    document.getElementById('tI1').textContent=fmtI(I);
+    document.getElementById('tI2').textContent=fmtI(I);
+    document.getElementById('tI3').textContent=fmtI(I);
+    const P1=V1*I, P2=V2*I, P3=V3*I, PT=V*I;
+    document.getElementById('tP1').textContent=fmtP(P1);
+    document.getElementById('tP2').textContent=fmtP(P2);
+    document.getElementById('tP3').textContent=fmtP(P3);
+    document.getElementById('tRT').textContent=fmtR(Rs);
+    document.getElementById('tVT').textContent=V.toFixed(2)+" V";
+    document.getElementById('tIT').textContent=fmtI(I);
+    document.getElementById('tPT').textContent=fmtP(PT)+` (Σ=${fmtP(P1+P2+P3)})`;
+
+    document.getElementById('vdiv').style.display='block';
+    document.getElementById('vdCalc').textContent=
+      `${V.toFixed(1)} × ${R2} / ${Rs} = ${V2.toFixed(3)} V`;
+  }
+
+  function drawParallel(V,R1,R2,R3){
+    const svg=document.getElementById('circuit');
+    const I1=V/R1, I2=V/R2, I3=V/R3, Itot=I1+I2+I3;
+    const Rp=V/Itot;
+    svg.innerHTML=`
+      ${batterySVG(60,140,V)}
+      <line x1="60" y1="130" x2="60" y2="60" class="wire"/>
+      <line x1="60" y1="60" x2="500" y2="60" class="wire"/>
+      <line x1="60" y1="200" x2="500" y2="200" class="wire"/>
+      <line x1="60" y1="150" x2="60" y2="200" class="wire"/>
+      <line x1="180" y1="60" x2="180" y2="100" class="wire"/>
+      <rect x="160" y="100" width="40" height="60" fill="var(--bg-elev2)" stroke="var(--accent2)" stroke-width="1.5"/>
+      <line x1="180" y1="160" x2="180" y2="200" class="wire"/>
+      <text x="180" y="135" class="label" text-anchor="middle">${fmtR(R1)}</text>
+      <text x="180" y="180" class="label-dim" text-anchor="middle">${fmtI(I1)}</text>
+      <line x1="320" y1="60" x2="320" y2="100" class="wire"/>
+      <rect x="300" y="100" width="40" height="60" fill="var(--bg-elev2)" stroke="var(--accent2)" stroke-width="1.5"/>
+      <line x1="320" y1="160" x2="320" y2="200" class="wire"/>
+      <text x="320" y="135" class="label" text-anchor="middle">${fmtR(R2)}</text>
+      <text x="320" y="180" class="label-dim" text-anchor="middle">${fmtI(I2)}</text>
+      <line x1="460" y1="60" x2="460" y2="100" class="wire"/>
+      <rect x="440" y="100" width="40" height="60" fill="var(--bg-elev2)" stroke="var(--accent2)" stroke-width="1.5"/>
+      <line x1="460" y1="160" x2="460" y2="200" class="wire"/>
+      <text x="460" y="135" class="label" text-anchor="middle">${fmtR(R3)}</text>
+      <text x="460" y="180" class="label-dim" text-anchor="middle">${fmtI(I3)}</text>
+      <text x="300" y="232" class="label" text-anchor="middle">V = ${V.toFixed(2)}V across all branches</text>
+      <text x="300" y="248" class="label-dim" text-anchor="middle">R_parallel = ${fmtR(Rp)} &lt; smallest R (${fmtR(Math.min(R1,R2,R3))})</text>`;
+
+    document.getElementById('tR1').textContent=fmtR(R1);
+    document.getElementById('tR2').textContent=fmtR(R2);
+    document.getElementById('tR3').textContent=fmtR(R3);
+    document.getElementById('tV1').textContent=V.toFixed(2)+" V";
+    document.getElementById('tV2').textContent=V.toFixed(2)+" V";
+    document.getElementById('tV3').textContent=V.toFixed(2)+" V";
+    document.getElementById('tI1').textContent=fmtI(I1);
+    document.getElementById('tI2').textContent=fmtI(I2);
+    document.getElementById('tI3').textContent=fmtI(I3);
+    const P1=V*I1, P2=V*I2, P3=V*I3, PT=V*Itot;
+    document.getElementById('tP1').textContent=fmtP(P1);
+    document.getElementById('tP2').textContent=fmtP(P2);
+    document.getElementById('tP3').textContent=fmtP(P3);
+    document.getElementById('tRT').textContent=fmtR(Rp);
+    document.getElementById('tVT').textContent=V.toFixed(2)+" V";
+    document.getElementById('tIT').textContent=fmtI(Itot);
+    document.getElementById('tPT').textContent=fmtP(PT)+` (Σ=${fmtP(P1+P2+P3)})`;
+
+    document.getElementById('vdiv').style.display='none';
+  }
+
+  function update(){
+    const V=parseFloat(els.v.value);
+    const R1=rOf(els.r1.value), R2=rOf(els.r2.value), R3=rOf(els.r3.value);
+    document.getElementById('vRead').textContent=V.toFixed(2)+" V";
+    document.getElementById('r1Read').textContent=fmtR(R1);
+    document.getElementById('r2Read').textContent=fmtR(R2);
+    document.getElementById('r3Read').textContent=fmtR(R3);
+    if(els.topo.value==='series') drawSeries(V,R1,R2,R3);
+    else drawParallel(V,R1,R2,R3);
+  }
+  ids.forEach(k=>els[k].addEventListener('input',update));
+  els.topo.addEventListener('change',update);
+  update();
+</script>
+</body>
+</html>

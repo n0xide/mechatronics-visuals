@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moments & Couples — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .panels{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:720px){.panels{grid-template-columns:1fr}}
+  .panel-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px}
+  .panel-card h3{margin-top:0}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font:11px ui-monospace,monospace;
+    background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line)}
+  .handle{cursor:grab}
+  .handle:active{cursor:grabbing}
+  .ro-box{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;
+    padding:10px 12px;margin-top:8px;font:12px ui-monospace,monospace;line-height:1.7}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Moments & Couples — Lever Arm and Free Vectors</h1>
+  <p class="lede">A moment is force times perpendicular distance. The left panel shows a single force
+  about a pivot you choose; drag the pivot to change the lever arm. The right panel shows a pure
+  couple — two equal-and-opposite forces — whose moment is the same about <em>every</em> point.
+  That's what makes a couple a free vector.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Force magnitude F (N)</label>
+      <input type="range" id="forceMag" min="20" max="200" step="5" value="100">
+      <span class="readout" id="forceMagRO">100 N</span>
+    </div>
+    <div class="control">
+      <label>Force direction (deg, 0=+x, 90=up)</label>
+      <input type="range" id="forceDir" min="0" max="360" step="5" value="270">
+      <span class="readout" id="forceDirRO">270°</span>
+    </div>
+    <div class="control">
+      <label>Couple arm distance d (mm)</label>
+      <input type="range" id="coupleD" min="40" max="160" step="2" value="100">
+      <span class="readout" id="coupleDRO">100 mm</span>
+    </div>
+    <div class="control">
+      <label>Right-panel reference pivot</label>
+      <select id="couplePivot">
+        <option value="A" selected>Point A (between forces)</option>
+        <option value="B">Point B (left of both)</option>
+        <option value="C">Point C (right of both)</option>
+        <option value="D">Point D (way off-screen)</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="panels">
+    <!-- LEFT PANEL: single force about a pivot -->
+    <div class="panel-card">
+      <h3>Single Force — M = F·d</h3>
+      <svg id="svgL" viewBox="0 0 420 360" width="100%" height="360"></svg>
+      <div class="ro-box" id="roL"></div>
+      <p style="font-size:12px;color:var(--fg-dim);margin-top:6px">
+        Drag the <b style="color:var(--accent3)">green pivot</b> dot. The perpendicular distance d
+        (dashed) drops a normal from the pivot onto the force's line of action.
+      </p>
+    </div>
+
+    <!-- RIGHT PANEL: pure couple -->
+    <div class="panel-card">
+      <h3>Pure Couple — M = F·d (free vector)</h3>
+      <svg id="svgR" viewBox="0 0 420 360" width="100%" height="360"></svg>
+      <div class="ro-box" id="roR"></div>
+      <p style="font-size:12px;color:var(--fg-dim);margin-top:6px">
+        Two equal-and-opposite forces separated by d. Net force = 0. The moment is the same
+        regardless of which pivot you measure it about — change the pivot above and watch.
+      </p>
+    </div>
+  </div>
+
+  <h2>Right-Hand Rule for Moment Direction</h2>
+  <div class="figure">
+    <svg id="svgRHR" viewBox="0 0 880 200" width="100%" height="200"></svg>
+    <p style="font-size:12px;color:var(--fg-dim);margin-top:4px">
+      Curl your right hand's fingers from r toward F. Your thumb points along M⃗.
+      For 2D moments (CCW positive in screen plane), M⃗ points <b style="color:var(--accent)">out of the page (+z)</b>;
+      CW moments point <b style="color:var(--warn)">into the page (−z)</b>.
+    </p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Lever arm is the <i>perpendicular</i> distance.</b> Not the straight-line distance from pivot to where you push — only the component perpendicular to the line of action counts. M = F·d_⊥ = |r||F|sin(θ).</li>
+    <li><b>Move the pivot along the line of action and d stays the same.</b> A force is a sliding vector: you can slide it anywhere along its own line without changing the moment about any external point.</li>
+    <li><b>A couple has zero net force.</b> Equal-and-opposite, so ΣF = 0. But the two forces aren't collinear, so they twist the body — pure rotation tendency, no translation.</li>
+    <li><b>A couple's moment is independent of reference point.</b> Change the pivot (the dropdown above): the moment from the couple stays at F·d. That's what "free vector" means — it acts the same anywhere.</li>
+    <li><b>Right-hand rule gives the moment's vector direction.</b> r × F: curl fingers from r into F, thumb is M. In 2D, CCW = +ẑ (out of page); CW = −ẑ.</li>
+    <li><b>Varignon's theorem.</b> If you resolve F into components, M = M_x + M_y. The moment of a resultant equals the sum of moments of its components — handy when d is hard to read directly but the components' lever arms are obvious.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>scalar</dt><dd><span class="eq">M = F · d</span><span class="eq-note">d ⊥ to line of F</span></dd>
+        <dt>vector</dt><dd><span class="eq">M⃗ = r⃗ × F⃗</span></dd>
+        <dt>magnitude</dt><dd><span class="eq">|M| = |r|·|F|·sinθ</span></dd>
+        <dt>couple</dt><dd><span class="eq">M = F · d</span><span class="eq-note">free vector — same about any point</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>right-hand rule</b> — curl fingers r → F, thumb is M direction.</li>
+        <li><b>Varignon</b> — M of resultant = ΣM of components.</li>
+        <li><b>2D sign</b> — CCW = +, CW = −.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>d ≠ line-of-sight</b> — use the perpendicular distance from pivot to line of F.</li>
+        <li><b>couple is free</b> — its moment is independent of pivot; apply anywhere on the body.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 3 — Statics</a> ·
+    Topic: Moments, couples, right-hand rule
+  </footer>
+</main>
+<script>
+const svgL = document.getElementById('svgL');
+const svgR = document.getElementById('svgR');
+const svgRHR = document.getElementById('svgRHR');
+
+let F = 100;
+let dir = 270;       // degrees, 0 = +x, 90 = up (math convention)
+let coupleD = 100;   // pixels (also serves as "mm" label)
+let pivotL = {x:140, y:200};  // draggable pivot for left panel
+let referencePivot = 'A';
+
+const Fapp = {x:280, y:200};  // application point of force in left panel (fixed)
+
+function ns(svg, tag, attrs={}, parent=null){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  (parent||svg).appendChild(e);
+  return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+// Convert math-angle (0=+x, 90=up) to SVG-angle (y inverted)
+function mathToSvg(deg){
+  return -deg * Math.PI/180;
+}
+
+function drawArrow(svg, x1,y1,x2,y2,color,width=2){
+  const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy);
+  if(len<0.1) return;
+  const ux=dx/len, uy=dy/len;
+  const bx = x2 - 9*ux, by = y2 - 9*uy;
+  const px = -uy, py = ux;
+  ns(svg,'line', {x1, y1, x2:bx, y2:by, stroke:color, 'stroke-width':width});
+  ns(svg,'polygon', {points:`${x2},${y2} ${bx+5*px},${by+5*py} ${bx-5*px},${by-5*py}`,
+    fill:color});
+}
+
+function drawMomentArc(svg, cx, cy, r, color, ccw){
+  const a0 = ccw ? -Math.PI*0.85 : Math.PI*0.85;
+  const a1 = ccw ? Math.PI*0.85 : -Math.PI*0.85;
+  const x0=cx+r*Math.cos(a0), y0=cy+r*Math.sin(a0);
+  const x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
+  const sweep = ccw ? 1 : 0;
+  ns(svg,'path', {d:`M ${x0} ${y0} A ${r} ${r} 0 1 ${sweep} ${x1} ${y1}`,
+    fill:'none', stroke:color, 'stroke-width':2});
+  const ta = ccw ? a1+Math.PI/2 : a1-Math.PI/2;
+  const px=Math.cos(ta+Math.PI/2)*4, py=Math.sin(ta+Math.PI/2)*4;
+  ns(svg,'polygon', {points:`${x1+px*1.2},${y1+py*1.2} ${x1-px},${y1-py} ${x1+8*Math.cos(ta)},${y1+8*Math.sin(ta)}`,
+    fill:color});
+}
+
+// Distance from point P to line through A with direction (dx,dy) (signed perpendicular)
+function perpDist(P, A, ux, uy){
+  // perpendicular: rotate (ux,uy) 90 CCW = (-uy, ux). Signed distance = (P-A)·(-uy,ux)
+  return (P.x - A.x) * (-uy) + (P.y - A.y) * (ux);
+}
+
+function renderLeft(){
+  clear(svgL);
+  // background grid
+  for(let g=20; g<420; g+=20){
+    ns(svgL,'line',{x1:g,y1:0,x2:g,y2:360,stroke:'#1a1f27','stroke-width':0.5});
+    ns(svgL,'line',{x1:0,y1:g,x2:420,y2:g,stroke:'#1a1f27','stroke-width':0.5});
+  }
+  // origin / coordinate frame
+  ns(svgL,'line',{x1:20,y1:340,x2:50,y2:340,stroke:'#5ec8ff','stroke-width':1.5});
+  ns(svgL,'line',{x1:20,y1:340,x2:20,y2:310,stroke:'#a3e635','stroke-width':1.5});
+  ns(svgL,'text',{x:52,y:343,class:'label-dim'}).textContent='x';
+  ns(svgL,'text',{x:14,y:304,class:'label-dim'}).textContent='y';
+
+  // The body — a simple rigid lever bar from (80,200) to (340,200)
+  ns(svgL,'rect',{x:80,y:194,width:260,height:12,fill:'#1d232c',stroke:'#dde3ec','stroke-width':1.5,rx:2});
+  ns(svgL,'text',{x:210,y:188,'text-anchor':'middle',class:'label-dim'}).textContent='rigid body';
+
+  // Compute force direction unit vector in SVG coords
+  const a = mathToSvg(dir);
+  const ux = Math.cos(a), uy = Math.sin(a);
+  // Force vector visualized at Fapp
+  const Fscale = 0.7;  // px per N
+  const fx = Fapp.x + ux*F*Fscale;
+  const fy = Fapp.y + uy*F*Fscale;
+  drawArrow(svgL, Fapp.x, Fapp.y, fx, fy, '#ffb86c', 2.5);
+  ns(svgL,'text',{x:fx+6, y:fy-4, class:'label', fill:'#ffb86c'}).textContent=`F=${F} N`;
+  ns(svgL,'circle',{cx:Fapp.x, cy:Fapp.y, r:3, fill:'#ffb86c'});
+
+  // Line of action (dashed, extend through Fapp in both directions)
+  ns(svgL,'line',{x1:Fapp.x - ux*400, y1:Fapp.y - uy*400, x2:Fapp.x + ux*400, y2:Fapp.y + uy*400,
+    stroke:'#ffb86c', 'stroke-width':1, 'stroke-dasharray':'3 4', opacity:0.45});
+
+  // Perpendicular from pivot to line of action
+  // Foot of perpendicular = Fapp + ((pivot-Fapp)·u)*u
+  const dot = (pivotL.x - Fapp.x)*ux + (pivotL.y - Fapp.y)*uy;
+  const footx = Fapp.x + dot*ux;
+  const footy = Fapp.y + dot*uy;
+  // d (perpendicular distance)
+  const d_signed = perpDist(pivotL, Fapp, ux, uy);
+  const d = Math.abs(d_signed);
+  // dashed perpendicular line from pivot to foot
+  ns(svgL,'line',{x1:pivotL.x, y1:pivotL.y, x2:footx, y2:footy,
+    stroke:'#a3e635', 'stroke-width':1.5, 'stroke-dasharray':'4 4'});
+  // label d at midpoint
+  ns(svgL,'text',{x:(pivotL.x+footx)/2+6, y:(pivotL.y+footy)/2-4,
+    class:'label', fill:'#a3e635'}).textContent=`d = ${d.toFixed(0)} mm`;
+
+  // Pivot dot (draggable)
+  ns(svgL,'circle',{cx:pivotL.x, cy:pivotL.y, r:9, fill:'#0e1116',
+    stroke:'#a3e635','stroke-width':2.5, class:'handle', id:'pivotHandle'});
+  ns(svgL,'text',{x:pivotL.x-4, y:pivotL.y+30, class:'label', fill:'#a3e635'}).textContent='O';
+  ns(svgL,'text',{x:pivotL.x-50, y:pivotL.y+45, class:'label-dim'}).textContent='(drag pivot)';
+
+  // Moment arc at pivot (if d > 5)
+  if(d > 5){
+    // Sign: cross product r × F where r = Fapp - pivot. r × F (z-component) = rx*fy - ry*fx
+    // Our SVG y points DOWN, so screen "CCW" = math "CW" if we naively read it.
+    // Math sign: rx*fy_math - ry_math*fx where y_math = -y_svg.
+    const rx = Fapp.x - pivotL.x;
+    const ry_svg = Fapp.y - pivotL.y;
+    const fx_math = ux, fy_math = -uy;  // flip
+    const rz = rx * fy_math - (-ry_svg) * fx_math;  // r_y_math = -ry_svg
+    const ccw = rz > 0;  // in screen view, ccw if rz > 0
+    drawMomentArc(svgL, pivotL.x, pivotL.y, 22, ccw ? '#5ec8ff' : '#ff7b72', !ccw);
+    const M = F * d;
+    const dirLbl = ccw ? 'CCW (+ẑ, out)' : 'CW (−ẑ, into page)';
+    document.getElementById('roL').innerHTML =
+      `<b>M = F · d</b> = ${F} · ${d.toFixed(0)} = <span class="readout">${M.toFixed(0)} N·mm</span><br>` +
+      `<b>Direction:</b> <span style="color:${ccw?'#5ec8ff':'#ff7b72'}">${dirLbl}</span><br>` +
+      `<span style="color:var(--fg-dim)">Slide the pivot <i>along</i> the orange dashed line — d (and M) stays the same.</span>`;
+  } else {
+    document.getElementById('roL').innerHTML =
+      `<b>M = F · d</b> ≈ 0  ·  <span style="color:var(--fg-dim)">The pivot is on the line of action: zero lever arm.</span>`;
+  }
+}
+
+function renderRight(){
+  clear(svgR);
+  // grid
+  for(let g=20; g<420; g+=20){
+    ns(svgR,'line',{x1:g,y1:0,x2:g,y2:360,stroke:'#1a1f27','stroke-width':0.5});
+    ns(svgR,'line',{x1:0,y1:g,x2:420,y2:g,stroke:'#1a1f27','stroke-width':0.5});
+  }
+  ns(svgR,'line',{x1:20,y1:340,x2:50,y2:340,stroke:'#5ec8ff','stroke-width':1.5});
+  ns(svgR,'line',{x1:20,y1:340,x2:20,y2:310,stroke:'#a3e635','stroke-width':1.5});
+  ns(svgR,'text',{x:52,y:343,class:'label-dim'}).textContent='x';
+  ns(svgR,'text',{x:14,y:304,class:'label-dim'}).textContent='y';
+
+  // Body (rigid plate)
+  ns(svgR,'rect',{x:60,y:140,width:300,height:120,fill:'#1d232c',stroke:'#dde3ec','stroke-width':1.5,rx:4});
+  ns(svgR,'text',{x:210,y:134,'text-anchor':'middle',class:'label-dim'}).textContent='rigid body';
+
+  // Two forces — equal and opposite, separated by d (vertical separation here)
+  // Force 1: at (210 - d/2, 180), pointing +x (right)
+  // Force 2: at (210 + d/2, 220), pointing -x (left)
+  // Actually let's separate them horizontally and have forces vertical to make it visual
+  const cx = 210;
+  const x1 = cx - coupleD/2;
+  const x2 = cx + coupleD/2;
+  const yA = 200;
+  // Force at x1: pointing UP (−y in screen)
+  drawArrow(svgR, x1, yA+50, x1, yA-50, '#ffb86c', 2.5);
+  ns(svgR,'text',{x:x1-30, y:yA-55, class:'label', fill:'#ffb86c'}).textContent=`F=${F} N`;
+  // Force at x2: pointing DOWN (+y)
+  drawArrow(svgR, x2, yA-50, x2, yA+50, '#ffb86c', 2.5);
+  ns(svgR,'text',{x:x2+6, y:yA+60, class:'label', fill:'#ffb86c'}).textContent=`F=${F} N`;
+  // Application dots
+  ns(svgR,'circle',{cx:x1, cy:yA, r:3, fill:'#ffb86c'});
+  ns(svgR,'circle',{cx:x2, cy:yA, r:3, fill:'#ffb86c'});
+
+  // d separation marker
+  ns(svgR,'line',{x1:x1, y1:yA+85, x2:x2, y2:yA+85, stroke:'#a3e635', 'stroke-width':1.2});
+  ns(svgR,'line',{x1:x1, y1:yA+80, x2:x1, y2:yA+90, stroke:'#a3e635', 'stroke-width':1.2});
+  ns(svgR,'line',{x1:x2, y1:yA+80, x2:x2, y2:yA+90, stroke:'#a3e635', 'stroke-width':1.2});
+  ns(svgR,'text',{x:(x1+x2)/2, y:yA+102, 'text-anchor':'middle', class:'label', fill:'#a3e635'}).textContent=`d = ${coupleD.toFixed(0)} mm`;
+
+  // Pivots
+  const pivots = {
+    A: {x:cx,  y:yA, lbl:'A'},
+    B: {x:80,  y:yA, lbl:'B'},
+    C: {x:340, y:yA, lbl:'C'},
+    D: {x:380, y:300, lbl:'D'}
+  };
+  for(const k in pivots){
+    const p = pivots[k];
+    const active = k===referencePivot;
+    ns(svgR,'circle',{cx:p.x, cy:p.y, r:active?9:5,
+      fill:active?'#0e1116':'#5ec8ff', stroke:active?'#5ec8ff':'none', 'stroke-width':2.5});
+    ns(svgR,'text',{x:p.x+10, y:p.y-8, class:'label',
+      fill:active?'#5ec8ff':'#8f99a8'}).textContent=p.lbl;
+  }
+
+  // Moment arc at active pivot — couple is CCW (force at x1 up, force at x2 down → CCW about any point)
+  const pa = pivots[referencePivot];
+  // Compute M about pa: r1 × F1 + r2 × F2
+  // F1 at x1 pointing up (math y = +1): r1 = (x1 - pa.x, -(yA - pa.y)). z-comp = (x1-pa.x)*F*1 - (-(yA-pa.y))*0
+  //   M1 = (x1 - pa.x) * F
+  // F2 at x2 pointing down (math y = -1): M2 = (x2 - pa.x) * (-F)
+  // Total = F*(x1 - pa.x) - F*(x2 - pa.x) = F*(x1 - x2) = -F*coupleD  (negative because x1 < x2)
+  // BUT! Sign convention: math CCW positive. F1 up and to the LEFT of F2 down → CCW rotation.
+  // The math gives negative because in math frame y is flipped. Easier: visualize: top of couple
+  // tries to push the right side down, lift the left side up → CCW about any point. So we draw CCW.
+  const M_couple = F * coupleD;
+  drawMomentArc(svgR, pa.x, pa.y, 26, '#5ec8ff', true);
+  ns(svgR,'text',{x:pa.x-18, y:pa.y-38, class:'label', fill:'#5ec8ff'}).textContent=`M=${M_couple.toFixed(0)}`;
+
+  document.getElementById('roR').innerHTML =
+    `<b>Net force:</b> <span class="readout">ΣF = 0</span> (forces cancel)<br>` +
+    `<b>Couple moment about ${referencePivot}:</b> M = F · d = ${F} · ${coupleD.toFixed(0)} = <span class="readout">${M_couple.toFixed(0)} N·mm</span> (CCW, +ẑ)<br>` +
+    `<span style="color:var(--fg-dim)">Try changing the pivot — A, B, C, or D — the moment value never changes. <b>That's a free vector.</b></span>`;
+}
+
+function renderRHR(){
+  clear(svgRHR);
+  // Two side panels: CCW (+z out) and CW (-z in)
+  // Left half: CCW
+  ns(svgRHR,'rect',{x:10,y:10,width:420,height:180,fill:'#1d232c',stroke:'#2a313c'});
+  ns(svgRHR,'text',{x:220,y:30,'text-anchor':'middle',class:'label-dim'}).textContent='CCW rotation → M⃗ out of page (+ẑ)';
+  // r vector from origin
+  const ox=130, oy=120;
+  drawArrow(svgRHR, ox, oy, ox+80, oy, '#a3e635', 2.5);
+  ns(svgRHR,'text',{x:ox+85, y:oy+4, class:'label', fill:'#a3e635'}).textContent='r';
+  // F vector
+  drawArrow(svgRHR, ox+80, oy, ox+80, oy-60, '#ffb86c', 2.5);
+  ns(svgRHR,'text',{x:ox+88, y:oy-50, class:'label', fill:'#ffb86c'}).textContent='F';
+  // arc showing curl
+  drawMomentArc(svgRHR, ox+30, oy-15, 28, '#5ec8ff', true);
+  // M⃗ out of page (circle with dot)
+  ns(svgRHR,'circle',{cx:ox+220, cy:oy-20, r:18, fill:'none', stroke:'#5ec8ff', 'stroke-width':2});
+  ns(svgRHR,'circle',{cx:ox+220, cy:oy-20, r:4, fill:'#5ec8ff'});
+  ns(svgRHR,'text',{x:ox+205, y:oy+18, class:'label', fill:'#5ec8ff'}).textContent='M⃗ = +ẑ';
+  // Hand schematic
+  ns(svgRHR,'text',{x:ox+205, y:oy+38, class:'label-dim'}).textContent='thumb out';
+
+  // Right half: CW
+  ns(svgRHR,'rect',{x:450,y:10,width:420,height:180,fill:'#1d232c',stroke:'#2a313c'});
+  ns(svgRHR,'text',{x:660,y:30,'text-anchor':'middle',class:'label-dim'}).textContent='CW rotation → M⃗ into page (−ẑ)';
+  const ox2=580, oy2=120;
+  drawArrow(svgRHR, ox2, oy2, ox2+80, oy2, '#a3e635', 2.5);
+  ns(svgRHR,'text',{x:ox2+85, y:oy2+4, class:'label', fill:'#a3e635'}).textContent='r';
+  drawArrow(svgRHR, ox2+80, oy2, ox2+80, oy2+60, '#ffb86c', 2.5);
+  ns(svgRHR,'text',{x:ox2+88, y:oy2+50, class:'label', fill:'#ffb86c'}).textContent='F';
+  drawMomentArc(svgRHR, ox2+30, oy2+15, 28, '#ff7b72', false);
+  // M⃗ into page (circle with X)
+  ns(svgRHR,'circle',{cx:ox2+220, cy:oy2-20, r:18, fill:'none', stroke:'#ff7b72', 'stroke-width':2});
+  ns(svgRHR,'line',{x1:ox2+208, y1:oy2-32, x2:ox2+232, y2:oy2-8, stroke:'#ff7b72', 'stroke-width':2});
+  ns(svgRHR,'line',{x1:ox2+208, y1:oy2-8,  x2:ox2+232, y2:oy2-32, stroke:'#ff7b72', 'stroke-width':2});
+  ns(svgRHR,'text',{x:ox2+205, y:oy2+18, class:'label', fill:'#ff7b72'}).textContent='M⃗ = −ẑ';
+  ns(svgRHR,'text',{x:ox2+202, y:oy2+38, class:'label-dim'}).textContent='thumb into page';
+}
+
+// Drag the pivot in the left panel
+let dragging = false;
+svgL.addEventListener('mousedown', e=>{
+  const pt = svgL.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  const m = svgL.getScreenCTM().inverse();
+  const lp = pt.matrixTransform(m);
+  if(Math.hypot(lp.x - pivotL.x, lp.y - pivotL.y) < 16){
+    dragging = true;
+  }
+});
+window.addEventListener('mousemove', e=>{
+  if(!dragging) return;
+  const pt = svgL.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  const m = svgL.getScreenCTM().inverse();
+  const lp = pt.matrixTransform(m);
+  pivotL.x = Math.max(30, Math.min(390, lp.x));
+  pivotL.y = Math.max(30, Math.min(330, lp.y));
+  renderLeft();
+});
+window.addEventListener('mouseup', ()=>{dragging=false;});
+// touch support
+svgL.addEventListener('touchstart', e=>{
+  const t = e.touches[0];
+  const pt = svgL.createSVGPoint();
+  pt.x = t.clientX; pt.y = t.clientY;
+  const m = svgL.getScreenCTM().inverse();
+  const lp = pt.matrixTransform(m);
+  if(Math.hypot(lp.x - pivotL.x, lp.y - pivotL.y) < 24){
+    dragging = true; e.preventDefault();
+  }
+}, {passive:false});
+svgL.addEventListener('touchmove', e=>{
+  if(!dragging) return;
+  const t = e.touches[0];
+  const pt = svgL.createSVGPoint();
+  pt.x = t.clientX; pt.y = t.clientY;
+  const m = svgL.getScreenCTM().inverse();
+  const lp = pt.matrixTransform(m);
+  pivotL.x = Math.max(30, Math.min(390, lp.x));
+  pivotL.y = Math.max(30, Math.min(330, lp.y));
+  renderLeft();
+  e.preventDefault();
+}, {passive:false});
+svgL.addEventListener('touchend', ()=>{dragging=false;});
+
+document.getElementById('forceMag').oninput = e => {
+  F = parseInt(e.target.value);
+  document.getElementById('forceMagRO').textContent = F + ' N';
+  renderLeft(); renderRight();
+};
+document.getElementById('forceDir').oninput = e => {
+  dir = parseInt(e.target.value);
+  document.getElementById('forceDirRO').textContent = dir + '°';
+  renderLeft();
+};
+document.getElementById('coupleD').oninput = e => {
+  coupleD = parseInt(e.target.value);
+  document.getElementById('coupleDRO').textContent = coupleD + ' mm';
+  renderRight();
+};
+document.getElementById('couplePivot').onchange = e => {
+  referencePivot = e.target.value;
+  renderRight();
+};
+
+renderLeft();
+renderRight();
+renderRHR();
+</script>
+</body>
+</html>

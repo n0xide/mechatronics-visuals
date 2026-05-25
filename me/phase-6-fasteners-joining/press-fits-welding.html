@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Press fits &amp; welding overview — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace;vertical-align:top}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+
+  .readout-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+    gap:8px;margin:10px 0}
+  .ro-card{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:4px;padding:8px 12px}
+  .ro-card .lb{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .ro-card .v{font:600 18px ui-monospace,monospace;color:var(--accent);display:block;margin-top:2px}
+
+  .pill{display:inline-block;padding:1px 7px;border-radius:10px;
+    font:11px ui-monospace,monospace;border:1px solid currentColor}
+  .pill.good{color:var(--accent3)}
+  .pill.mid{color:var(--accent2)}
+  .pill.bad{color:var(--warn)}
+
+  td.good{background:rgba(163,230,53,0.15);color:var(--accent3)}
+  td.mid {background:rgba(255,184,108,0.15);color:var(--accent2)}
+  td.bad {background:rgba(255,123,114,0.15);color:var(--warn)}
+
+  .flow{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:14px;margin:14px 0}
+  .flow svg{display:block;max-width:100%;height:auto}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Press fits &amp; welding overview</h1>
+  <p class="lede">Two ways to join two parts without bolts: (a) <b>interference fits</b> where the shaft
+  is slightly bigger than the hole and friction holds it; (b) <b>welding/brazing</b>, which makes the joint
+  metallurgically permanent. The press-fit calculator below uses the thin-walled hub approximation;
+  the welding table compares MIG / TIG / spot / brazing / soldering for typical hobbyist work.</p>
+
+  <h2>Press-fit visualizer</h2>
+
+  <section class="controls">
+    <div class="control">
+      <label>Shaft diameter d <span class="readout" id="rD">10 mm</span></label>
+      <input type="range" id="sD" min="3" max="30" step="0.5" value="10">
+    </div>
+    <div class="control">
+      <label>Interference δ <span class="readout" id="rDelta">20 µm</span></label>
+      <input type="range" id="sDelta" min="-30" max="80" step="1" value="20">
+    </div>
+    <div class="control">
+      <label>Engagement length L <span class="readout" id="rL">15 mm</span></label>
+      <input type="range" id="sL" min="3" max="50" step="1" value="15">
+    </div>
+    <div class="control">
+      <label>Materials <span class="readout" id="rMat">steel ⇆ steel</span></label>
+      <select id="selMat">
+        <option value="ss" selected>steel shaft → steel hub (E=200 GPa, f=0.15)</option>
+        <option value="sa">steel shaft → aluminum hub (E=70 GPa, f=0.15)</option>
+        <option value="aa">aluminum → aluminum (E=70 GPa, f=0.20)</option>
+        <option value="sp">steel → PETG (E=2 GPa, f=0.25)</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Cross-section + fit category</h3>
+    <svg viewBox="0 0 760 220" id="svgFit" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="readout-grid">
+      <div class="ro-card"><span class="lb">Fit class</span><span class="v" id="vFit">interference</span></div>
+      <div class="ro-card"><span class="lb">Interface pressure p</span><span class="v" id="vP">—</span></div>
+      <div class="ro-card"><span class="lb">Press-in force F</span><span class="v" id="vF">—</span></div>
+      <div class="ro-card"><span class="lb">Hoop stress on hub</span><span class="v" id="vHoop">—</span></div>
+    </div>
+  </div>
+
+  <p style="font-size:12px;color:var(--fg-dim);margin:6px 0">
+    Equations used (simplified Lamé for thin-walled hub):
+    <code>p ≈ E·δ / d</code> ·
+    <code>F ≈ π·d·L·p·f</code> ·
+    <code>σ_hoop ≈ p·(d_hub² + d²)/(d_hub² − d²)</code> (hub OD assumed 3×d).
+    Fit boundaries (ISO): δ &lt; 0 = clearance, 0–5 µm = transition, &gt; 5 µm = interference (light to heavy press).
+  </p>
+
+  <h2>Welding / joining process comparison</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Process</th>
+        <th>Temp</th>
+        <th>Metals</th>
+        <th>Skill</th>
+        <th>Distortion</th>
+        <th>Joint strength</th>
+        <th>Typical use</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>MIG (GMAW)</b></td>
+        <td class="mid">~1500°C</td>
+        <td>steel · Al (spool gun)</td>
+        <td class="good">low–med</td>
+        <td class="bad">high (thin sheet)</td>
+        <td class="good">full parent strength</td>
+        <td>fabrication, structural, mild steel</td>
+      </tr>
+      <tr>
+        <td><b>TIG (GTAW)</b></td>
+        <td class="mid">~1800°C</td>
+        <td>steel · Al · stainless · Ti</td>
+        <td class="bad">high</td>
+        <td class="mid">low–med (controlled)</td>
+        <td class="good">full, very clean</td>
+        <td>precision, aluminum, exotic alloys</td>
+      </tr>
+      <tr>
+        <td><b>Spot welding</b></td>
+        <td class="mid">localized</td>
+        <td>sheet steel (≤3 mm)</td>
+        <td class="good">low</td>
+        <td class="good">very low</td>
+        <td class="mid">shear-dominated, brittle in tension</td>
+        <td>automotive body, battery tabs</td>
+      </tr>
+      <tr>
+        <td><b>Brazing</b></td>
+        <td class="good">450–900°C</td>
+        <td>steel, brass, copper, carbide</td>
+        <td class="mid">med</td>
+        <td class="good">very low (no parent melt)</td>
+        <td class="mid">~50–70% parent</td>
+        <td>dissimilar metals, bike frames, tool joining</td>
+      </tr>
+      <tr>
+        <td><b>Soldering</b></td>
+        <td class="good">~200–300°C</td>
+        <td>copper, PCB, plumbing</td>
+        <td class="good">low</td>
+        <td class="good">none</td>
+        <td class="bad">low (electrical, sealing only)</td>
+        <td>electronics, plumbing, sheet metal</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>When to weld vs. fasten — flowchart</h2>
+  <div class="flow">
+    <svg viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M0,0 L10,5 L0,10 Z" fill="var(--fg-dim)"/>
+        </marker>
+      </defs>
+      <style>
+        .node-box{fill:var(--bg-elev2);stroke:var(--line);stroke-width:1.5}
+        .node-box.q{stroke:var(--accent)}
+        .node-box.fast{stroke:var(--accent3)}
+        .node-box.weld{stroke:var(--accent2)}
+        .node-box.adh{stroke:var(--warn)}
+        .arr{stroke:var(--fg-dim);stroke-width:1.5;fill:none;marker-end:url(#arr)}
+        .qt{fill:var(--accent);font:12px ui-monospace,monospace;text-anchor:middle}
+        .nt{fill:var(--fg);font:12px ui-monospace,monospace;text-anchor:middle}
+        .et{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+      </style>
+
+      <!-- Q1: needs disassembly? -->
+      <rect class="node-box q" x="280" y="10" width="200" height="50" rx="6"/>
+      <text class="qt" x="380" y="30">Will you ever</text>
+      <text class="qt" x="380" y="46">disassemble?</text>
+
+      <!-- yes → fasten -->
+      <rect class="node-box fast" x="20" y="100" width="180" height="50" rx="6"/>
+      <text class="nt" x="110" y="120" style="fill:var(--accent3);font-weight:600">FASTEN</text>
+      <text class="nt" x="110" y="138" style="font-size:11px">bolts / screws / clips</text>
+      <line class="arr" x1="320" y1="50" x2="155" y2="100"/>
+      <text class="et" x="200" y="78">yes</text>
+
+      <!-- no → Q2: high stress / waterproof? -->
+      <rect class="node-box q" x="280" y="100" width="200" height="50" rx="6"/>
+      <text class="qt" x="380" y="120">High stress OR</text>
+      <text class="qt" x="380" y="136">waterproof needed?</text>
+      <line class="arr" x1="380" y1="60" x2="380" y2="100"/>
+      <text class="et" x="390" y="80">no</text>
+
+      <!-- no → adhesive -->
+      <rect class="node-box adh" x="560" y="100" width="180" height="50" rx="6"/>
+      <text class="nt" x="650" y="120" style="fill:var(--warn);font-weight:600">ADHESIVE</text>
+      <text class="nt" x="650" y="138" style="font-size:11px">epoxy / CA / VHB</text>
+      <line class="arr" x1="480" y1="125" x2="560" y2="125"/>
+      <text class="et" x="495" y="118">no</text>
+
+      <!-- yes → Q3: heat-sensitive nearby? -->
+      <rect class="node-box q" x="280" y="190" width="200" height="50" rx="6"/>
+      <text class="qt" x="380" y="210">Heat-sensitive parts</text>
+      <text class="qt" x="380" y="226">nearby (plastic / electr)?</text>
+      <line class="arr" x1="380" y1="150" x2="380" y2="190"/>
+      <text class="et" x="390" y="170">yes</text>
+
+      <!-- yes → brazing / soldering -->
+      <rect class="node-box weld" x="20" y="280" width="180" height="60" rx="6"/>
+      <text class="nt" x="110" y="300" style="fill:var(--accent2);font-weight:600">BRAZE / SOLDER</text>
+      <text class="nt" x="110" y="318" style="font-size:11px">low-temp joining,</text>
+      <text class="nt" x="110" y="332" style="font-size:11px">no parent-metal melt</text>
+      <line class="arr" x1="310" y1="240" x2="155" y2="280"/>
+      <text class="et" x="190" y="265">yes</text>
+
+      <!-- no → Q4: alloy? -->
+      <rect class="node-box q" x="280" y="280" width="200" height="60" rx="6"/>
+      <text class="qt" x="380" y="300">Aluminum, stainless,</text>
+      <text class="qt" x="380" y="316">thin-wall, or precision?</text>
+      <line class="arr" x1="380" y1="240" x2="380" y2="280"/>
+      <text class="et" x="390" y="265">no</text>
+
+      <!-- yes → TIG -->
+      <rect class="node-box weld" x="560" y="220" width="180" height="60" rx="6"/>
+      <text class="nt" x="650" y="240" style="fill:var(--accent2);font-weight:600">TIG WELD</text>
+      <text class="nt" x="650" y="258" style="font-size:11px">precise, all metals,</text>
+      <text class="nt" x="650" y="272" style="font-size:11px">slower / higher skill</text>
+      <line class="arr" x1="480" y1="305" x2="560" y2="270"/>
+      <text class="et" x="495" y="285">yes</text>
+
+      <!-- no → MIG -->
+      <rect class="node-box weld" x="560" y="305" width="180" height="50" rx="6"/>
+      <text class="nt" x="650" y="325" style="fill:var(--accent2);font-weight:600">MIG WELD</text>
+      <text class="nt" x="650" y="343" style="font-size:11px">fast, mild steel, beginner</text>
+      <line class="arr" x1="480" y1="320" x2="560" y2="330"/>
+      <text class="et" x="495" y="315">no</text>
+    </svg>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>p ∝ E·δ/d</b> — interface pressure scales linearly with both Young's modulus and interference. A 20 µm interference on a steel hub gives ~p ≈ 400 MPa; the same on a PETG hub gives ~p ≈ 4 MPa.</li>
+    <li><b>Press-in force scales with d, L, AND p.</b> Doubling the engagement length doubles the press force. A 10 mm × 15 mm steel-on-steel light press typically wants several kN — arbor press territory.</li>
+    <li><b>Hoop stress is the limit, not friction.</b> Push interference too high and the hub yields radially before the friction limit is reached. The Lamé equation says σ_hoop ≈ p × geometry factor; check against hub yield, NOT just bolt loads.</li>
+    <li><b>FDM press fits behave differently.</b> Effective interference must be much larger (0.2–0.4 mm) because surface asperities collapse and the PETG hub creeps. Too tight and the hub splits along layer lines.</li>
+    <li><b>Bearings: outer race clearance, inner race press.</b> The rotating ring (inner) gets the press fit so it doesn't creep relative to the shaft; the stationary outer ring just sits in its housing.</li>
+    <li><b>Welding is permanent and changes parent properties.</b> 6061-T6 loses ~50% strength in the heat-affected zone (HAZ); a "welded T6 frame" is structurally a different alloy at the joint. Post-weld heat-treatment is required to recover.</li>
+    <li><b>Brazing fills the dissimilar-metals gap.</b> Bike frame lugs, carbide tool tips, and copper pipes are joined by brazing because the parent metals don't melt — you can join steel to brass, copper to silver, etc.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE — ISO fits</h3>
+      <table>
+        <tr><th>Fit</th><th>Use</th></tr>
+        <tr><td>H7/h6</td><td>sliding</td></tr>
+        <tr><td>H7/g6</td><td>clearance run</td></tr>
+        <tr><td>H7/p6</td><td>light press (hand)</td></tr>
+        <tr><td>H7/s6</td><td>heavy press (heat)</td></tr>
+      </table>
+      <span class="eq">F ≈ π · d · L · p · f</span>
+    </div>
+    <div class="cheat-card">
+      <h3>DECISION — welding</h3>
+      <ul>
+        <li><b>MIG</b> — fast, cheap, mild steel</li>
+        <li><b>TIG</b> — precise, clean, all metals (Al, SS, Ti)</li>
+        <li><b>Spot</b> — auto body, battery tabs</li>
+        <li><b>Braze</b> — dissimilar metals, low temp</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li>Welding <b>6061-T6</b> → HAZ drops to ~T4 (−50% strength)</li>
+        <li>FDM press-fit needs <b>0.2–0.4 mm</b> interference</li>
+        <li>Bearing: inner race press, outer race clearance</li>
+        <li>Hoop stress limits press, not friction</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 6 — Fasteners &amp; Joining</a> ·
+    Topic: Press-fit interference / pressure / force, welding process comparison, weld-vs-fasten flowchart
+  </footer>
+</main>
+<script>
+const MATS = {
+  ss: {Eshaft:200e9, Ehub:200e9, f:0.15, label:"steel ⇆ steel",        hubYield:250e6},
+  sa: {Eshaft:200e9, Ehub:70e9,  f:0.15, label:"steel → aluminum",     hubYield:275e6},
+  aa: {Eshaft:70e9,  Ehub:70e9,  f:0.20, label:"aluminum ⇆ aluminum",  hubYield:275e6},
+  sp: {Eshaft:200e9, Ehub:2e9,   f:0.25, label:"steel → PETG",         hubYield:50e6},
+};
+
+const sD = document.getElementById("sD");
+const sDelta = document.getElementById("sDelta");
+const sL = document.getElementById("sL");
+const selMat = document.getElementById("selMat");
+const rD = document.getElementById("rD");
+const rDelta = document.getElementById("rDelta");
+const rL = document.getElementById("rL");
+const rMat = document.getElementById("rMat");
+
+function fmt(v, unit){
+  if (Math.abs(v) >= 1e6) return (v/1e6).toFixed(2) + " M" + unit;
+  if (Math.abs(v) >= 1e3) return (v/1e3).toFixed(2) + " k" + unit;
+  if (Math.abs(v) >= 1)   return v.toFixed(2) + " " + unit;
+  return v.toFixed(3) + " " + unit;
+}
+
+function update(){
+  const d_mm = +sD.value;
+  const delta_um = +sDelta.value;
+  const L_mm = +sL.value;
+  const mat = MATS[selMat.value];
+  rD.textContent = `${d_mm.toFixed(1)} mm`;
+  rDelta.textContent = `${delta_um} µm`;
+  rL.textContent = `${L_mm} mm`;
+  rMat.textContent = mat.label;
+
+  // Convert to SI
+  const d = d_mm / 1000;       // m
+  const delta = delta_um * 1e-6; // m
+  const L = L_mm / 1000;       // m
+
+  // Fit class
+  let fitClass = "clearance";
+  if (delta_um < 0) fitClass = "clearance";
+  else if (delta_um <= 5) fitClass = "transition";
+  else if (delta_um <= 25) fitClass = "interference (light)";
+  else fitClass = "interference (heavy)";
+
+  // Interface pressure (simplified, thin-walled hub approximation)
+  // Effective E ≈ (1/E_shaft + 1/E_hub)^-1 / 2 (rough averaging)
+  const Eeff = (mat.Eshaft * mat.Ehub) / (mat.Eshaft + mat.Ehub);  // ≈ harmonic mean
+  let p = 0; // Pa
+  if (delta > 0) p = Eeff * delta / d;
+
+  // Press-in force F ≈ π·d·L·p·f
+  const F = Math.PI * d * L * p * mat.f;
+
+  // Hoop stress on hub (thick-wall Lamé with outer/inner ratio = 3 by assumption)
+  const k = 3; // hub OD / shaft OD
+  const sigma_hoop = p > 0 ? p * (k*k + 1) / (k*k - 1) : 0;
+
+  document.getElementById("vFit").textContent = fitClass;
+  const fitColor = delta_um < 0 ? "var(--accent3)" : delta_um <= 5 ? "var(--accent)" : delta_um <= 25 ? "var(--accent2)" : "var(--warn)";
+  document.getElementById("vFit").style.color = fitColor;
+  document.getElementById("vP").textContent = p > 0 ? fmt(p, "Pa") : "—";
+  document.getElementById("vF").textContent = F > 0 ? fmt(F, "N") : "—";
+  document.getElementById("vHoop").textContent = sigma_hoop > 0 ? fmt(sigma_hoop, "Pa") : "—";
+  document.getElementById("vHoop").style.color = sigma_hoop > mat.hubYield ? "var(--warn)" : "var(--accent)";
+
+  drawFit(d_mm, delta_um, L_mm, mat);
+}
+
+function drawFit(d_mm, delta_um, L_mm, mat){
+  const svg = document.getElementById("svgFit");
+  const W=760, H=220;
+  // Cross-section view: hub (large square), hole, shaft inside
+  const cx = 260, cy = H/2;
+  const scale = 4; // px/mm
+  const dpx = d_mm * scale;
+  const hubOD = d_mm * 3 * scale;
+  const holeD = (d_mm - delta_um/1000) * scale; // slightly smaller for interference
+  let html = "";
+  // hub
+  html += `<rect x="${cx - hubOD/2}" y="${cy - hubOD/2}" width="${hubOD}" height="${hubOD}" fill="#2a313c" stroke="var(--fg-dim)"/>`;
+  // hole
+  html += `<circle cx="${cx}" cy="${cy}" r="${holeD/2}" fill="var(--bg)" stroke="var(--fg-dim)" stroke-dasharray="3 2"/>`;
+  // shaft (sized at nominal d)
+  const shaftColor = delta_um >= 0 ? "var(--accent2)" : "var(--accent)";
+  html += `<circle cx="${cx}" cy="${cy}" r="${dpx/2}" fill="${shaftColor}" opacity="0.5" stroke="${shaftColor}" stroke-width="2"/>`;
+  html += `<text x="${cx}" y="${cy - hubOD/2 - 8}" class="label" text-anchor="middle">hub OD ≈ 3·d</text>`;
+  html += `<text x="${cx}" y="${cy + hubOD/2 + 18}" class="label-dim" text-anchor="middle" font-size="11">cross-section (looking down axis)</text>`;
+  // dimension δ arrow
+  if (delta_um !== 0){
+    html += `<text x="${cx}" y="${cy - dpx/2 - 6}" class="label" text-anchor="middle" fill="${shaftColor}" font-size="11">δ = ${delta_um} µm (${delta_um>=0?"shaft >":"hole >"} hole)</text>`;
+  }
+
+  // Axial view (right side): shaft + hub with engagement length L
+  const axX = 510;
+  const axCY = cy;
+  // hub box (axial)
+  const Lpx = L_mm * scale;
+  const hubH = hubOD;
+  html += `<rect x="${axX}" y="${axCY - hubH/2}" width="${Lpx}" height="${hubH}" fill="#2a313c" stroke="var(--fg-dim)"/>`;
+  // shaft (extends past hub on both sides)
+  html += `<rect x="${axX - 30}" y="${axCY - dpx/2}" width="${Lpx + 60}" height="${dpx}" fill="${shaftColor}" opacity="0.5" stroke="${shaftColor}"/>`;
+  // L dimension
+  html += `<line x1="${axX}" y1="${axCY + hubH/2 + 10}" x2="${axX + Lpx}" y2="${axCY + hubH/2 + 10}" stroke="var(--accent3)" stroke-width="1.5"/>`;
+  html += `<line x1="${axX}" y1="${axCY + hubH/2 + 6}" x2="${axX}" y2="${axCY + hubH/2 + 14}" stroke="var(--accent3)"/>`;
+  html += `<line x1="${axX + Lpx}" y1="${axCY + hubH/2 + 6}" x2="${axX + Lpx}" y2="${axCY + hubH/2 + 14}" stroke="var(--accent3)"/>`;
+  html += `<text x="${axX + Lpx/2}" y="${axCY + hubH/2 + 26}" class="label" fill="var(--accent3)" text-anchor="middle">L = ${L_mm} mm</text>`;
+  // axis line
+  html += `<line x1="${axX - 30}" y1="${axCY}" x2="${axX + Lpx + 30}" y2="${axCY}" stroke="var(--fg-dim)" stroke-dasharray="3 3"/>`;
+  html += `<text x="${axX + Lpx/2}" y="${axCY - hubH/2 - 8}" class="label" text-anchor="middle">axial (engagement)</text>`;
+
+  // Fit-class strip at bottom showing where current δ sits
+  const stripY = H - 14;
+  const stripX = 40, stripW = W - 80;
+  html += `<text x="${stripX}" y="${stripY - 14}" class="label-dim" font-size="11">fit classes ↓</text>`;
+  const ranges = [
+    {lo:-30, hi:0,  name:"clearance",          col:"var(--accent3)"},
+    {lo:0,   hi:5,  name:"transition",         col:"var(--accent)"},
+    {lo:5,   hi:25, name:"interference (light)", col:"var(--accent2)"},
+    {lo:25,  hi:80, name:"interference (heavy)", col:"var(--warn)"},
+  ];
+  const totalLo = -30, totalHi = 80;
+  for (const r of ranges){
+    const x0 = stripX + ((r.lo - totalLo)/(totalHi-totalLo)) * stripW;
+    const x1 = stripX + ((r.hi - totalLo)/(totalHi-totalLo)) * stripW;
+    html += `<rect x="${x0}" y="${stripY-8}" width="${x1-x0}" height="10" fill="${r.col}" opacity="0.35" stroke="${r.col}"/>`;
+    html += `<text x="${(x0+x1)/2}" y="${stripY + 12}" class="label-dim" text-anchor="middle" font-size="10">${r.name}</text>`;
+  }
+  // marker for current delta
+  const markX = stripX + ((delta_um - totalLo)/(totalHi-totalLo)) * stripW;
+  html += `<line x1="${markX}" y1="${stripY-14}" x2="${markX}" y2="${stripY+4}" stroke="var(--fg-bright)" stroke-width="2"/>`;
+  html += `<text x="${markX}" y="${stripY-18}" class="label" text-anchor="middle" fill="var(--fg-bright)" font-size="11">${delta_um} µm</text>`;
+
+  svg.innerHTML = html;
+}
+
+sD.addEventListener("input", update);
+sDelta.addEventListener("input", update);
+sL.addEventListener("input", update);
+selMat.addEventListener("change", update);
+
+update();
+</script>
+</body>
+</html>

@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Denavit-Hartenberg parameters — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto;margin:0 auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .matrix{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 14px;margin:8px 0;
+    font:12px ui-monospace,Menlo,monospace;color:var(--fg);white-space:pre;overflow-x:auto}
+  .matrix .hi{color:var(--accent3)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .dh-table input{width:60px;background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:3px 6px;
+    font:12px ui-monospace,Menlo,monospace}
+  .dh-table .pres-row{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+</style>
+</head>
+<body>
+<main>
+  <h1>Denavit-Hartenberg parameters</h1>
+  <p class="lede">Four numbers per joint (a, α, d, θ) describe any serial-chain robot arm. Each row builds a
+  single 4×4 homogeneous transform T_{i-1}^{i}. Multiplying them base-to-tool gives the entire forward
+  kinematics. This visual lets you edit the table directly and watch a 3D-projected arm reshape.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Preset</label>
+      <select id="preset">
+        <option value="planar3">3-link planar (all α=0)</option>
+        <option value="anthro" selected>Anthropomorphic (shoulder + elbow)</option>
+        <option value="puma">PUMA-like 3-link wrist-positioner</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Highlight joint</label>
+      <select id="hi">
+        <option value="-1">none</option>
+        <option value="0">joint 1</option>
+        <option value="1">joint 2</option>
+        <option value="2">joint 3</option>
+      </select>
+    </div>
+    <div class="control" style="grid-column:1/-1">
+      <label>Sweep joint angle θᵢ to see how each transform contributes</label>
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <label>θ₁ <input type="range" id="t0" min="-180" max="180" value="0" step="1"></label>
+        <label>θ₂ <input type="range" id="t1" min="-180" max="180" value="0" step="1"></label>
+        <label>θ₃ <input type="range" id="t2" min="-180" max="180" value="0" step="1"></label>
+      </div>
+    </div>
+  </section>
+
+  <h2>DH table (edit directly)</h2>
+  <table class="dh-table" id="dhTable">
+    <thead>
+      <tr><th>i</th><th>a (link length)</th><th>α (link twist, deg)</th><th>d (link offset)</th><th>θ offset (deg)</th><th>type</th></tr>
+    </thead>
+    <tbody id="dhBody"></tbody>
+  </table>
+
+  <h2>3D arm preview</h2>
+  <div class="figure">
+    <svg id="armSvg" viewBox="0 0 880 460" width="100%" height="460"></svg>
+  </div>
+
+  <h2>Per-row transform T_{i-1}^{i}</h2>
+  <div class="matrix" id="rowMatrix"></div>
+
+  <h2>Base→tool transform (product of all rows)</h2>
+  <div class="matrix" id="totalMatrix"></div>
+
+  <h2>The DH row in one formula</h2>
+  <p>Each row builds: <code>T = Rot_z(θ) · Trans_z(d) · Trans_x(a) · Rot_x(α)</code>. Expanded:</p>
+  <div class="matrix">[ cosθ    -sinθ·cosα    sinθ·sinα     a·cosθ ]
+[ sinθ     cosθ·cosα   -cosθ·sinα     a·sinθ ]
+[  0          sinα         cosα           d   ]
+[  0           0            0             1   ]</div>
+  <p>This is the "standard" (distal) DH convention. There's also a "modified" (Craig / proximal) convention
+  used in some textbooks where the rotation is applied first; pick one and stick with it — URDFs assume
+  modified DH internally but most papers use standard.</p>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>α (twist) is the angle between successive joint axes.</b> α = 0 → both axes parallel (planar arm). α = 90° → perpendicular (typical between shoulder and elbow on an anthropomorphic arm).</li>
+    <li><b>a (link length) is the common perpendicular between axes.</b> Not the same as the visual "length of the link" you might draw — it's a geometric distance along the x-axis after the rotation.</li>
+    <li><b>θ is the only variable for a revolute joint.</b> The other three (a, α, d) are constants from the mechanical design. For a prismatic joint, swap: d is the variable, θ is the constant.</li>
+    <li><b>The base→tool transform's translation column is the tool position (x, y, z) — exactly what FK computes.</b> The 3×3 rotation block is the tool orientation.</li>
+    <li><b>Changing one θ ripples through every downstream link.</b> The matrix product is non-commutative: order matters. Swap two rows and you get a different robot.</li>
+    <li><b>URDF + tf2 hides this from you.</b> When you publish joint states in ROS 2, tf2 internally builds and chains these transforms. Knowing DH lets you debug "why is my tool frame off by a constant" — usually a wrong α or d.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>THE 4 DH PARAMETERS</h3>
+      <dl>
+        <dt>a</dt><dd>link length — common perpendicular dist. between axis i and i+1</dd>
+        <dt>α</dt><dd>link twist — angle between consecutive axes about common perp</dd>
+        <dt>d</dt><dd>link offset — dist. along axis i between common perpendiculars</dd>
+        <dt>θ</dt><dd>joint angle — rotation about axis i (variable for revolute)</dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>BUILDING A DH TABLE</h3>
+      <ul>
+        <li><b>Step 1</b> — assign z-axes along each joint motion axis.</li>
+        <li><b>Step 2</b> — locate x-axis perpendicular to z_{i-1} and z_i.</li>
+        <li><b>Step 3</b> — measure a, α, d, θ from the geometry.</li>
+        <li><b>Step 4</b> — fill one row per joint, including base→1 if needed.</li>
+        <li><b>Sanity check</b> — plug zero joints; tool should be at "home" pose.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li><b>Standard vs modified DH</b> — different multiplication order. Don't mix conventions in one project.</li>
+        <li><b>α only takes 0, ±90°, 180° on most industrial arms</b> — geometry is designed for clean kinematics. Weird α values usually mean you assigned frames wrong.</li>
+        <li><b>Tool offset</b> — DH ends at the wrist; add a final tool transform for end-effector / TCP.</li>
+        <li><b>URDF translates to modified-DH internally</b> — checking with tf2 echo is the ground truth.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 8 — Robotics &amp; Mechatronics Systems</a> ·
+    Topic: Denavit-Hartenberg parameters, homogeneous transforms, serial chains
+  </footer>
+</main>
+<script>
+const svg = document.getElementById('armSvg');
+function ns(tag, attrs={}, parent){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+// 4x4 matrix helpers
+function ident(){ const m=Array(16).fill(0); for(let i=0;i<4;i++) m[i*5]=1; return m; }
+function mul(a,b){
+  const r=Array(16).fill(0);
+  for(let i=0;i<4;i++) for(let j=0;j<4;j++){
+    let s=0; for(let k=0;k<4;k++) s+=a[i*4+k]*b[k*4+j];
+    r[i*4+j]=s;
+  }
+  return r;
+}
+function dhMatrix(a,alpha,d,theta){
+  const ca=Math.cos(theta),sa=Math.sin(theta);
+  const cA=Math.cos(alpha),sA=Math.sin(alpha);
+  return [
+    ca, -sa*cA,  sa*sA, a*ca,
+    sa,  ca*cA, -ca*sA, a*sa,
+    0,     sA,     cA,    d,
+    0,      0,      0,    1
+  ];
+}
+
+const presets = {
+  planar3: [
+    {a:0.6, alpha:0, d:0, thetaOff:0, type:'R'},
+    {a:0.4, alpha:0, d:0, thetaOff:0, type:'R'},
+    {a:0.25, alpha:0, d:0, thetaOff:0, type:'R'}
+  ],
+  anthro: [
+    {a:0,    alpha:90, d:0.3,  thetaOff:0, type:'R'},
+    {a:0.5,  alpha:0,  d:0,    thetaOff:0, type:'R'},
+    {a:0.4,  alpha:0,  d:0,    thetaOff:0, type:'R'}
+  ],
+  puma: [
+    {a:0,    alpha:90, d:0.4, thetaOff:0, type:'R'},
+    {a:0.5,  alpha:0,  d:0,   thetaOff:0, type:'R'},
+    {a:0,    alpha:90, d:0,   thetaOff:0, type:'R'}
+  ]
+};
+let table = presets.anthro.map(r=>({...r}));
+let jointTheta=[0,0,0];
+let highlight=-1;
+
+function fmtTable(){
+  const body=document.getElementById('dhBody'); body.innerHTML='';
+  table.forEach((row,i)=>{
+    const tr=document.createElement('tr');
+    if(i===highlight) tr.style.background='#1d232c';
+    tr.innerHTML=`<td>${i+1}</td>
+      <td><input data-idx="${i}" data-k="a" value="${row.a.toFixed(2)}"></td>
+      <td><input data-idx="${i}" data-k="alpha" value="${row.alpha.toFixed(0)}"></td>
+      <td><input data-idx="${i}" data-k="d" value="${row.d.toFixed(2)}"></td>
+      <td><input data-idx="${i}" data-k="thetaOff" value="${row.thetaOff.toFixed(0)}"></td>
+      <td>${row.type}</td>`;
+    body.appendChild(tr);
+  });
+  body.querySelectorAll('input').forEach(inp=>{
+    inp.oninput=()=>{
+      const idx=+inp.dataset.idx, k=inp.dataset.k;
+      const v=parseFloat(inp.value);
+      if(!isNaN(v)){ table[idx][k]=v; redraw(); }
+    };
+  });
+}
+
+function project(p){
+  // simple isometric: x_screen = x - 0.5*y, y_screen = z - 0.4*y
+  return [p[0] - 0.5*p[1], p[2] - 0.4*p[1]];
+}
+
+function redraw(){
+  // compute chained transforms
+  let T = ident();
+  const positions=[[0,0,0]];
+  const frames=[T.slice()];
+  for(let i=0;i<table.length;i++){
+    const r=table[i];
+    const thRad=(r.thetaOff + jointTheta[i])*Math.PI/180;
+    const aRad=r.alpha*Math.PI/180;
+    T = mul(T, dhMatrix(r.a, aRad, r.d, thRad));
+    positions.push([T[3],T[7],T[11]]);
+    frames.push(T.slice());
+  }
+
+  // draw arm
+  clear(svg);
+  const W=880,H=460,CX=W*0.45,CY=H*0.7;
+  const scale=170;
+  function px(p){
+    const ip=project(p);
+    return [CX + ip[0]*scale, CY - ip[1]*scale];
+  }
+  // grid floor
+  for(let gx=-1.5;gx<=1.5;gx+=0.25){
+    const [x1,y1]=px([gx,-1.5,0]),[x2,y2]=px([gx,1.5,0]);
+    ns('line',{x1,y1,x2,y2,stroke:'#222831','stroke-width':0.6},svg);
+  }
+  for(let gy=-1.5;gy<=1.5;gy+=0.25){
+    const [x1,y1]=px([-1.5,gy,0]),[x2,y2]=px([1.5,gy,0]);
+    ns('line',{x1,y1,x2,y2,stroke:'#222831','stroke-width':0.6},svg);
+  }
+  // axes
+  const [ax0,ay0]=px([0,0,0]);
+  function arrow(p1,p2,color,label){
+    const [x1,y1]=px(p1),[x2,y2]=px(p2);
+    ns('line',{x1,y1,x2,y2,stroke:color,'stroke-width':1.5},svg);
+    ns('text',{x:x2+4,y:y2-3,fill:color,font:'11px ui-monospace'},svg).textContent=label;
+  }
+  arrow([0,0,0],[0.3,0,0],'#ff7b72','x');
+  arrow([0,0,0],[0,0.3,0],'#a3e635','y');
+  arrow([0,0,0],[0,0,0.3],'#5ec8ff','z');
+
+  // links
+  for(let i=0;i<positions.length-1;i++){
+    const [x1,y1]=px(positions[i]),[x2,y2]=px(positions[i+1]);
+    const color=(i===highlight)?'#a3e635':(i%2===0?'#5ec8ff':'#ffb86c');
+    ns('line',{x1,y1,x2,y2,stroke:color,'stroke-width':7,'stroke-linecap':'round',opacity: i===highlight?1:0.85},svg);
+  }
+  // joint frames (z-axis only, since z is along joint motion)
+  positions.forEach((p,i)=>{
+    const [cx,cy]=px(p);
+    const T=frames[i];
+    const zEnd=[p[0]+T[2]*0.12, p[1]+T[6]*0.12, p[2]+T[10]*0.12];
+    const xEnd=[p[0]+T[0]*0.12, p[1]+T[4]*0.12, p[2]+T[8]*0.12];
+    const [zx,zy]=px(zEnd);
+    const [xx,xy]=px(xEnd);
+    ns('line',{x1:cx,y1:cy,x2:zx,y2:zy,stroke:'#5ec8ff','stroke-width':2},svg);
+    ns('line',{x1:cx,y1:cy,x2:xx,y2:xy,stroke:'#ff7b72','stroke-width':2},svg);
+    ns('circle',{cx,cy,r:6,fill:'#1d232c',stroke:'#dde3ec','stroke-width':1.5},svg);
+    if(i>0) ns('text',{x:cx+8,y:cy-8,fill:'#dde3ec',font:'11px ui-monospace'},svg).textContent='{'+i+'}';
+  });
+  const tip=positions[positions.length-1];
+  const [tx,ty]=px(tip);
+  ns('circle',{cx:tx,cy:ty,r:7,fill:'#a3e635',stroke:'#0e1116','stroke-width':1.5},svg);
+  ns('text',{x:tx+10,y:ty,fill:'#a3e635',font:'12px ui-monospace'},svg).textContent='tool ('+tip[0].toFixed(2)+', '+tip[1].toFixed(2)+', '+tip[2].toFixed(2)+')';
+
+  // matrices
+  function fmtM(M){
+    const lines=[];
+    for(let i=0;i<4;i++){
+      const cells=[];
+      for(let j=0;j<4;j++){
+        const v=M[i*4+j];
+        cells.push(v.toFixed(3).padStart(7));
+      }
+      lines.push('['+cells.join(' ')+' ]');
+    }
+    return lines.join('\n');
+  }
+  // row to display
+  let rowIdx = highlight>=0?highlight:0;
+  const r=table[rowIdx];
+  const thRad=(r.thetaOff+jointTheta[rowIdx])*Math.PI/180;
+  const aRad=r.alpha*Math.PI/180;
+  const Tr = dhMatrix(r.a,aRad,r.d,thRad);
+  document.getElementById('rowMatrix').textContent =
+    `Joint ${rowIdx+1}:  a=${r.a.toFixed(2)}, α=${r.alpha}°, d=${r.d.toFixed(2)}, θ=${(r.thetaOff+jointTheta[rowIdx]).toFixed(0)}°\n\n`+fmtM(Tr);
+  document.getElementById('totalMatrix').textContent =
+    `T_base→tool =\n\n`+fmtM(T);
+
+  fmtTable();
+}
+
+document.getElementById('preset').onchange = e=>{
+  table = presets[e.target.value].map(r=>({...r}));
+  jointTheta=[0,0,0];
+  for(let i=0;i<3;i++) document.getElementById('t'+i).value=0;
+  redraw();
+};
+document.getElementById('hi').onchange = e=>{ highlight=+e.target.value; redraw(); };
+for(let i=0;i<3;i++){
+  document.getElementById('t'+i).oninput = e=>{
+    jointTheta[i]=parseFloat(e.target.value); redraw();
+  };
+}
+redraw();
+</script>
+</body>
+</html>

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PWM Motor Speed — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:10px;margin:12px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px}
+  .stat .lbl{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 16px ui-monospace,monospace;color:var(--accent);margin-top:4px}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>PWM Motor Speed Control</h1>
+  <p class="lede">Chop the supply with a transistor. The motor inductance averages the pulses into a near-DC current. Duty cycle ≈ speed.</p>
+
+  <p>A brushed DC motor doesn't care that its supply is being switched on and off thousands of times a second — its winding inductance acts as a low-pass filter, smoothing the chopped voltage into an average current that produces average torque. The duty cycle sets the average voltage (V_avg = D · V_supply), which sets the no-load speed (ω ≈ V_avg / K_e). Pick the PWM frequency high enough to keep current ripple small and noise inaudible, but not so high that switching losses dominate. Standard band for hobby motors: 16–25 kHz (above human hearing, below most MOSFET-comfort limits).</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Duty cycle: <span class="readout" id="dRead">50%</span></label>
+      <input id="duty" type="range" min="0" max="100" step="1" value="50">
+    </div>
+    <div class="control">
+      <label>V_supply: <span class="readout" id="vRead">12.0 V</span></label>
+      <input id="vsup" type="range" min="3" max="24" step="0.1" value="12">
+    </div>
+    <div class="control">
+      <label>f_PWM: <span class="readout" id="fRead">20 kHz</span></label>
+      <input id="fpwm" type="range" min="0.5" max="50" step="0.5" value="20">
+    </div>
+    <div class="control">
+      <label>Motor L: <span class="readout" id="lRead">2.0 mH</span></label>
+      <input id="lm" type="range" min="0.1" max="10" step="0.1" value="2">
+    </div>
+    <div class="control">
+      <label>Motor R: <span class="readout" id="rRead">2.0 Ω</span></label>
+      <input id="rm" type="range" min="0.2" max="10" step="0.1" value="2">
+    </div>
+    <div class="control">
+      <label>K_e (V/krpm): <span class="readout" id="keRead">2.0</span></label>
+      <input id="ke" type="range" min="0.5" max="10" step="0.1" value="2">
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>PWM waveform → average voltage</h3>
+    <svg viewBox="0 0 700 220" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <line x1="50" y1="20" x2="50" y2="200" class="axis"/>
+      <line x1="50" y1="200" x2="680" y2="200" class="axis"/>
+      <text x="40" y="30" class="axis-label" text-anchor="end">V_sup</text>
+      <text x="40" y="205" class="axis-label" text-anchor="end">0</text>
+      <text x="685" y="215" class="axis-label">t</text>
+      <polyline id="vTrace" class="trace trace-1" points=""/>
+      <line id="vAvg" x1="50" y1="100" x2="680" y2="100" stroke="var(--accent2)" stroke-dasharray="4,3" stroke-width="2"/>
+      <text id="vAvgLabel" x="600" y="95" class="label" fill="var(--accent2)" text-anchor="end">V_avg</text>
+    </svg>
+  </div>
+
+  <div class="figure">
+    <h3>Motor current — triangle ripple at f_PWM riding on DC</h3>
+    <svg viewBox="0 0 700 220" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <line x1="50" y1="20" x2="50" y2="200" class="axis"/>
+      <line x1="50" y1="200" x2="680" y2="200" class="axis"/>
+      <text x="40" y="30" class="axis-label" text-anchor="end">I_pk</text>
+      <text x="685" y="215" class="axis-label">t</text>
+      <line id="iAvg" x1="50" y1="120" x2="680" y2="120" stroke="var(--accent3)" stroke-dasharray="4,3" stroke-width="2"/>
+      <text id="iAvgLabel" x="600" y="115" class="label" fill="var(--accent3)" text-anchor="end">I_avg</text>
+      <polyline id="iTrace" class="trace trace-2" points=""/>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent2)"></span>I_motor(t) — exponential charge/discharge through L/R</span>
+      <span><span class="swatch" style="background:var(--accent3);height:2px;border:1px dashed var(--accent3)"></span>I_avg = V_avg / R</span>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Computed values</h3>
+    <div class="stat-grid">
+      <div class="stat"><div class="lbl">V_avg</div><div class="val" id="statVavg">6.0 V</div></div>
+      <div class="stat"><div class="lbl">I_avg (no load)</div><div class="val" id="statIavg">0 A</div></div>
+      <div class="stat"><div class="lbl">I_stall</div><div class="val" id="statIstall">3.0 A</div></div>
+      <div class="stat"><div class="lbl">ω (no load)</div><div class="val" id="statRpm">3000 rpm</div></div>
+      <div class="stat"><div class="lbl">ΔI ripple (p-p)</div><div class="val" id="statRipple">150 mA</div></div>
+      <div class="stat"><div class="lbl">τ_elec = L/R</div><div class="val" id="statTau">1.0 ms</div></div>
+      <div class="stat"><div class="lbl">T_PWM</div><div class="val" id="statT">50 µs</div></div>
+      <div class="stat"><div class="lbl">τ / T_PWM</div><div class="val" id="statRatio">20×</div></div>
+    </div>
+    <p style="margin-top:12px;font-size:12px;color:var(--fg-dim)">
+      Want τ/T &gt; 5–10 for smooth current. <code>ΔI ≈ V_sup·D·(1−D) / (f·L)</code> ·
+      <code>ω_NL = V_avg / K_e</code> · <code>I_stall = V_sup / R</code>
+    </p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Duty cycle → speed, almost linearly</b> — once friction is overcome, ω ≈ D · V_supply / K_e. Below a "deadband" duty (motor can't break static friction), the motor sits still and just hums.</li>
+    <li><b>The motor inductance is the filter</b> — there's no external cap or inductor; the winding's L/R time constant determines how much current ripple you see. Cheap RC-car motors (0.1 mH, 0.1 Ω) ripple wildly; precision gear motors (5 mH, 5 Ω) self-smooth.</li>
+    <li><b>Ripple peaks at D=50%</b> — formula ΔI ∝ D(1−D), max at half-duty. At 0% and 100%, ripple is zero (DC).</li>
+    <li><b>Frequency trade-off</b> — too low (&lt;1 kHz): audible whine, big ripple, torque pulsations. Too high (&gt;100 kHz): switching losses cook the FET. Sweet spot: 16–25 kHz (above hearing).</li>
+    <li><b>The motor draws I_stall at startup</b> — when ω=0, back-EMF=0, current = V_avg/R. A 12 V / 2 Ω motor at 50% duty pulls 3 A peak at startup, even if it draws 0.2 A running. Size your H-bridge for stall, not steady-state.</li>
+    <li><b>Coast vs brake during PWM-off</b> — sync-rectified low-side ON during off-time recirculates current and acts like braking (fast current decay). All-OFF lets the diode handle freewheel and decay is slower. Most drivers default to slow-decay; some let you pick.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Avg V</dt><dd><span class="eq">V_avg = D · V_supply</span></dd>
+        <dt>Avg I</dt><dd><span class="eq">I_avg = (V_avg − K_e·ω) / R</span></dd>
+        <dt>Ripple</dt><dd><span class="eq">ΔI ≈ V_sup·D·(1−D) / (f·L)</span></dd>
+        <dt>Stall I</dt><dd><span class="eq">I_stall = V_sup / R</span></dd>
+        <dt>No-load ω</dt><dd><span class="eq">ω_NL = V_avg / K_e</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>f_PWM</b> — 16–25 kHz for brushed DC (above hearing).</li>
+        <li><b>τ_elec = L/R</b> — want &gt; 5·T_PWM for smooth I.</li>
+        <li><b>Ripple max at D=50%</b> — design ΔI budget there.</li>
+        <li><b>Size for I_stall</b> — startup &gt;&gt; running current.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Deadband</b> — &lt;5–15% duty often = no motion; firmware should snap to zero or skip past it.</li>
+        <li><b>1 kHz audible PWM</b> — sounds like a banshee under load; users hate it.</li>
+        <li><b>Slow body diode</b> — wastes power & causes reverse-recovery EMI in synchronous rectification.</li>
+        <li><b>Confusing V_avg with V_RMS</b> — for motor torque the average matters; for resistor heating use RMS.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 3 — Motor Control</a> ·
+    Topic: PWM Motor Speed Control
+  </footer>
+</main>
+<script>
+  const dutyEl=document.getElementById('duty');
+  const vEl=document.getElementById('vsup');
+  const fEl=document.getElementById('fpwm');
+  const lEl=document.getElementById('lm');
+  const rEl=document.getElementById('rm');
+  const keEl=document.getElementById('ke');
+
+  function fmtSI(v,unit,dec=2){
+    const a=Math.abs(v);
+    if(a===0) return '0 '+unit;
+    if(a>=1e6) return (v/1e6).toFixed(dec)+' M'+unit;
+    if(a>=1e3) return (v/1e3).toFixed(dec)+' k'+unit;
+    if(a>=1) return v.toFixed(dec)+' '+unit;
+    if(a>=1e-3) return (v*1e3).toFixed(dec)+' m'+unit;
+    if(a>=1e-6) return (v*1e6).toFixed(dec)+' µ'+unit;
+    return (v*1e9).toFixed(dec)+' n'+unit;
+  }
+
+  function update(){
+    const D=parseFloat(dutyEl.value)/100;
+    const V=parseFloat(vEl.value);
+    const f=parseFloat(fEl.value)*1e3;
+    const L=parseFloat(lEl.value)*1e-3;
+    const R=parseFloat(rEl.value);
+    const Ke=parseFloat(keEl.value); // V per krpm
+
+    document.getElementById('dRead').textContent=(D*100).toFixed(0)+'%';
+    document.getElementById('vRead').textContent=V.toFixed(1)+' V';
+    document.getElementById('fRead').textContent=(f/1e3).toFixed(1)+' kHz';
+    document.getElementById('lRead').textContent=(L*1e3).toFixed(1)+' mH';
+    document.getElementById('rRead').textContent=R.toFixed(1)+' Ω';
+    document.getElementById('keRead').textContent=Ke.toFixed(1);
+
+    const Vavg = D*V;
+    const Iavg_noload = 0; // at no-load, back-EMF = V_avg, current ~0
+    const Istall = V/R;
+    const omegaNL_rpm = Vavg/Ke*1000;
+    const dI = V*D*(1-D)/(f*L);
+    const tau = L/R;
+    const T = 1/f;
+
+    document.getElementById('statVavg').textContent=Vavg.toFixed(2)+' V';
+    document.getElementById('statIavg').textContent='≈0 A';
+    document.getElementById('statIstall').textContent=Istall.toFixed(2)+' A';
+    document.getElementById('statRpm').textContent=omegaNL_rpm.toFixed(0)+' rpm';
+    document.getElementById('statRipple').textContent=fmtSI(dI,'A');
+    document.getElementById('statTau').textContent=fmtSI(tau,'s');
+    document.getElementById('statT').textContent=fmtSI(T,'s');
+    document.getElementById('statRatio').textContent=(tau/T).toFixed(1)+'×';
+
+    // PWM voltage plot
+    const xL=50,xR=680;
+    const yTop=30,yBot=200;
+    const N=600;
+    const cycles=5;
+    const periodFrac=1/cycles;
+    let vpts=[];
+    for(let i=0;i<=N;i++){
+      const t=i/N;
+      const p=(t/periodFrac)%1;
+      const high = p<D;
+      const x=xL+t*(xR-xL);
+      vpts.push(`${x},${high?yTop:yBot}`);
+    }
+    document.getElementById('vTrace').setAttribute('points',vpts.join(' '));
+    const yAvg = yBot - D*(yBot-yTop);
+    const vAvg=document.getElementById('vAvg');
+    vAvg.setAttribute('y1',yAvg);vAvg.setAttribute('y2',yAvg);
+    document.getElementById('vAvgLabel').setAttribute('y',yAvg-4);
+    document.getElementById('vAvgLabel').textContent=`V_avg = ${Vavg.toFixed(2)} V`;
+
+    // Current waveform: exponential ramp during ON to V/R asymptote (start from Imin),
+    // exponential decay during OFF toward 0. Stitch many cycles, find steady-state.
+    // Use simplified per-cycle exponentials. Plot 5 cycles.
+    // Steady-state: solve for Imin, Imax such that
+    //  Imax = Imin + (V/R - Imin)*(1-exp(-ton/tau))
+    //  Imin = Imax*exp(-toff/tau)
+    const ton = D*T, toff = (1-D)*T;
+    const Iss = V/R;
+    const A = Math.exp(-ton/tau);
+    const B = Math.exp(-toff/tau);
+    const Imin = Iss*(1-A)*B/(1-A*B);
+    const Imax = Imin/B;
+    const Iavg = (Imin+Imax)/2;
+
+    // y scale: full range 0..max(Imax, Iss)*1.2
+    const Iy0=200, Iy1=30;
+    const Imax_scale = Math.max(Imax, Iavg)*1.3 || 1;
+    const yI = (i)=> Iy0 - i/Imax_scale*(Iy0-Iy1);
+
+    let ipts=[];
+    const M=600;
+    for(let i=0;i<=M;i++){
+      const t=i/M; // 0..1 covers 'cycles' periods
+      const tt = t*T*cycles;
+      const cyc = Math.floor(tt/T);
+      const inCyc = tt - cyc*T;
+      let I;
+      if(inCyc < ton){
+        // charging from Imin toward Iss
+        I = Iss + (Imin - Iss)*Math.exp(-inCyc/tau);
+      } else {
+        // discharging from Imax toward 0
+        const td = inCyc - ton;
+        I = Imax*Math.exp(-td/tau);
+      }
+      const x=xL+t*(xR-xL);
+      ipts.push(`${x},${yI(I)}`);
+    }
+    document.getElementById('iTrace').setAttribute('points',ipts.join(' '));
+
+    const yIavg = yI(Iavg);
+    const iAvgLine=document.getElementById('iAvg');
+    iAvgLine.setAttribute('y1',yIavg);iAvgLine.setAttribute('y2',yIavg);
+    document.getElementById('iAvgLabel').setAttribute('y',yIavg-4);
+    document.getElementById('iAvgLabel').textContent=`I_avg = ${Iavg.toFixed(3)} A (stall load)`;
+  }
+
+  [dutyEl,vEl,fEl,lEl,rEl,keEl].forEach(el=>el.addEventListener('input',update));
+  update();
+</script>
+</body>
+</html>

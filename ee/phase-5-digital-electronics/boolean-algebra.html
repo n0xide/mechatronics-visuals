@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boolean Algebra — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .id-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin:12px 0}
+  .id-card{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+  .id-card .name{font:11px ui-monospace,monospace;color:var(--fg-dim);text-transform:uppercase}
+  .id-card .law{font:600 15px ui-monospace,monospace;color:var(--fg-bright);margin:4px 0}
+  .id-card .demo{font:12px ui-monospace,monospace;color:var(--accent2)}
+  .demorgan-wrap{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:12px 0}
+  @media(max-width:700px){.demorgan-wrap{grid-template-columns:1fr}}
+  .demorgan-card{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;padding:12px}
+  .canon-row{display:flex;gap:6px;align-items:center;margin:4px 0;
+    font:13px ui-monospace,monospace}
+  .canon-row .bit{width:24px;text-align:center;color:var(--fg-dim)}
+  .canon-row.one{color:var(--accent3)}
+  .canon-row.zero{color:var(--warn)}
+  .min-form{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;
+    padding:10px;font:14px ui-monospace,monospace;color:var(--accent);margin:8px 0}
+  .nand-anim{display:flex;flex-direction:column;gap:10px;margin:12px 0}
+  .step-bar{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;
+    padding:8px;font:12px ui-monospace,monospace;color:var(--fg-dim);display:flex;
+    align-items:center;justify-content:space-between}
+  .step-bar.active{color:var(--accent);border-color:var(--accent)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Boolean Algebra</h1>
+  <p class="lede">Eight identities you must internalize. De Morgan's theorems shown as gate substitution. SOP / POS form generator for any 3-variable function.</p>
+
+  <p>Boolean algebra is the algebra of <b>true / false</b>, or in hardware, <b>HIGH / LOW</b>. The identities below let you simplify a logic expression before it ever becomes silicon — fewer terms means fewer gates, lower power, shorter critical path. De Morgan's theorems specifically explain why a single gate type (NAND or NOR) is enough to build everything.</p>
+
+  <h2>Eight fundamental identities</h2>
+  <div class="id-grid">
+    <div class="id-card">
+      <div class="name">Identity</div>
+      <div class="law">A · 1 = A   |   A + 0 = A</div>
+      <div class="demo">ANDing with 1 or ORing with 0 has no effect.</div>
+    </div>
+    <div class="id-card">
+      <div class="name">Null</div>
+      <div class="law">A · 0 = 0   |   A + 1 = 1</div>
+      <div class="demo">ANDing with 0 forces 0; ORing with 1 forces 1.</div>
+    </div>
+    <div class="id-card">
+      <div class="name">Idempotent</div>
+      <div class="law">A · A = A   |   A + A = A</div>
+      <div class="demo">A variable ANDed/ORed with itself is itself.</div>
+    </div>
+    <div class="id-card">
+      <div class="name">Complement</div>
+      <div class="law">A · Ā = 0   |   A + Ā = 1</div>
+      <div class="demo">A variable and its inverse can never both be true.</div>
+    </div>
+    <div class="id-card">
+      <div class="name">Involution</div>
+      <div class="law">¬(¬A) = A</div>
+      <div class="demo">Double negation cancels.</div>
+    </div>
+    <div class="id-card">
+      <div class="name">Commutative</div>
+      <div class="law">A·B = B·A   |   A+B = B+A</div>
+      <div class="demo">Order of operands does not matter.</div>
+    </div>
+    <div class="id-card">
+      <div class="name">Associative</div>
+      <div class="law">(A·B)·C = A·(B·C)<br>(A+B)+C = A+(B+C)</div>
+      <div class="demo">Grouping does not matter.</div>
+    </div>
+    <div class="id-card">
+      <div class="name">Distributive</div>
+      <div class="law">A·(B+C) = A·B + A·C<br>A+(B·C) = (A+B)·(A+C)</div>
+      <div class="demo">AND distributes over OR, and vice versa.</div>
+    </div>
+  </div>
+
+  <h2>De Morgan's theorems</h2>
+  <p style="font-size:13px">The bridge between AND and OR — invert the operator, invert each input, invert the whole thing.</p>
+  <div class="demorgan-wrap">
+    <div class="demorgan-card">
+      <div style="font:600 16px ui-monospace,monospace;color:var(--accent);margin-bottom:8px">¬(A · B) = Ā + B̄</div>
+      <table>
+        <tr><th>A</th><th>B</th><th>¬(A·B)</th><th>Ā + B̄</th></tr>
+        <tr><td>0</td><td>0</td><td>1</td><td>1</td></tr>
+        <tr><td>0</td><td>1</td><td>1</td><td>1</td></tr>
+        <tr><td>1</td><td>0</td><td>1</td><td>1</td></tr>
+        <tr><td>1</td><td>1</td><td>0</td><td>0</td></tr>
+      </table>
+      <div style="font:11px ui-monospace,monospace;color:var(--fg-dim);margin-top:6px">"NAND of A,B equals OR of inverted inputs"</div>
+    </div>
+    <div class="demorgan-card">
+      <div style="font:600 16px ui-monospace,monospace;color:var(--accent);margin-bottom:8px">¬(A + B) = Ā · B̄</div>
+      <table>
+        <tr><th>A</th><th>B</th><th>¬(A+B)</th><th>Ā · B̄</th></tr>
+        <tr><td>0</td><td>0</td><td>1</td><td>1</td></tr>
+        <tr><td>0</td><td>1</td><td>0</td><td>0</td></tr>
+        <tr><td>1</td><td>0</td><td>0</td><td>0</td></tr>
+        <tr><td>1</td><td>1</td><td>0</td><td>0</td></tr>
+      </table>
+      <div style="font:11px ui-monospace,monospace;color:var(--fg-dim);margin-top:6px">"NOR of A,B equals AND of inverted inputs"</div>
+    </div>
+  </div>
+
+  <h2>NAND as the universal gate</h2>
+  <p style="font-size:13px">Walk through how every basic gate reduces to NANDs only — the foundation of CMOS logic libraries.</p>
+  <div class="figure">
+    <div class="tabs">
+      <div class="tab active" data-tab="not">NOT from NAND</div>
+      <div class="tab" data-tab="and">AND from NAND</div>
+      <div class="tab" data-tab="or">OR from NAND</div>
+    </div>
+
+    <div class="tab-panel active" data-panel="not">
+      <p style="font-size:13px">Tie both inputs of a NAND together: <code>NAND(A,A) = ¬(A·A) = ¬A</code></p>
+      <svg viewBox="0 0 360 100" width="100%">
+        <line x1="20" y1="50" x2="80" y2="50" class="wire"/>
+        <line x1="60" y1="50" x2="100" y2="40" class="wire"/>
+        <line x1="60" y1="50" x2="100" y2="60" class="wire"/>
+        <path d="M100,25 L100,75 Q150,75 165,50 Q150,25 100,25 Z" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <circle cx="172" cy="50" r="5" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="177" y1="50" x2="240" y2="50" class="wire"/>
+        <text x="10" y="54" class="label">A</text>
+        <text x="250" y="54" class="label">¬A</text>
+        <text x="135" y="55" class="label-dim" text-anchor="middle">NAND</text>
+      </svg>
+    </div>
+
+    <div class="tab-panel" data-panel="and">
+      <p style="font-size:13px">NAND followed by an inverter (itself a NAND): <code>¬(¬(A·B)) = A·B</code></p>
+      <svg viewBox="0 0 460 100" width="100%">
+        <line x1="20" y1="35" x2="80" y2="35" class="wire"/>
+        <line x1="20" y1="65" x2="80" y2="65" class="wire"/>
+        <path d="M80,15 L80,85 Q130,85 145,50 Q130,15 80,15 Z" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <circle cx="152" cy="50" r="5" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="157" y1="50" x2="200" y2="50" class="wire"/>
+        <line x1="180" y1="50" x2="220" y2="40" class="wire"/>
+        <line x1="180" y1="50" x2="220" y2="60" class="wire"/>
+        <path d="M220,25 L220,75 Q270,75 285,50 Q270,25 220,25 Z" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <circle cx="292" cy="50" r="5" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="297" y1="50" x2="360" y2="50" class="wire"/>
+        <text x="10" y="39" class="label">A</text>
+        <text x="10" y="69" class="label">B</text>
+        <text x="370" y="54" class="label">A·B</text>
+        <text x="115" y="55" class="label-dim" text-anchor="middle">NAND</text>
+        <text x="255" y="55" class="label-dim" text-anchor="middle">NAND (as NOT)</text>
+      </svg>
+    </div>
+
+    <div class="tab-panel" data-panel="or">
+      <p style="font-size:13px">Invert each input, then NAND: <code>NAND(¬A, ¬B) = ¬(¬A·¬B) = A + B</code> by De Morgan</p>
+      <svg viewBox="0 0 500 130" width="100%">
+        <line x1="20" y1="30" x2="60" y2="30" class="wire"/>
+        <line x1="50" y1="30" x2="80" y2="22" class="wire"/>
+        <line x1="50" y1="30" x2="80" y2="38" class="wire"/>
+        <path d="M80,10 L80,50 Q120,50 132,30 Q120,10 80,10 Z" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <circle cx="139" cy="30" r="4" fill="none" stroke="var(--fg)" stroke-width="2"/>
+
+        <line x1="20" y1="90" x2="60" y2="90" class="wire"/>
+        <line x1="50" y1="90" x2="80" y2="82" class="wire"/>
+        <line x1="50" y1="90" x2="80" y2="98" class="wire"/>
+        <path d="M80,70 L80,110 Q120,110 132,90 Q120,70 80,70 Z" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <circle cx="139" cy="90" r="4" fill="none" stroke="var(--fg)" stroke-width="2"/>
+
+        <line x1="143" y1="30" x2="240" y2="30" class="wire"/>
+        <line x1="240" y1="30" x2="240" y2="50" class="wire"/>
+        <line x1="143" y1="90" x2="240" y2="90" class="wire"/>
+        <line x1="240" y1="90" x2="240" y2="70" class="wire"/>
+        <line x1="240" y1="50" x2="280" y2="50" class="wire"/>
+        <line x1="240" y1="70" x2="280" y2="70" class="wire"/>
+        <path d="M280,30 L280,90 Q340,90 360,60 Q340,30 280,30 Z" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <circle cx="367" cy="60" r="5" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="372" y1="60" x2="440" y2="60" class="wire"/>
+
+        <text x="10" y="34" class="label">A</text>
+        <text x="10" y="94" class="label">B</text>
+        <text x="445" y="64" class="label">A+B</text>
+      </svg>
+    </div>
+  </div>
+
+  <h2>Canonical forms: SOP and POS converter (3 variables)</h2>
+  <p style="font-size:13px">Click each row's output to toggle 0/1. The minterms (SOP) and maxterms (POS) regenerate live.</p>
+  <div class="figure">
+    <table id="tt3" style="max-width:560px">
+      <thead>
+        <tr><th>row</th><th>A</th><th>B</th><th>C</th><th>F</th><th>minterm / maxterm</th></tr>
+      </thead>
+      <tbody id="tt3Body"></tbody>
+    </table>
+
+    <h3>Sum of Products (SOP) — OR of minterms where F=1</h3>
+    <div class="min-form" id="sopForm">F = 0</div>
+
+    <h3>Product of Sums (POS) — AND of maxterms where F=0</h3>
+    <div class="min-form" id="posForm">F = 1</div>
+
+    <div style="margin-top:12px">
+      <button class="btn" onclick="loadPreset([0,0,0,1,0,1,1,1])">Majority (3-input)</button>
+      <button class="btn" onclick="loadPreset([0,1,1,0,1,0,0,1])">XOR (3-input)</button>
+      <button class="btn" onclick="loadPreset([1,0,0,1,0,1,1,0])">XNOR (3-input)</button>
+      <button class="btn" onclick="loadPreset([0,0,0,0,0,0,0,0])">All zeros</button>
+      <button class="btn" onclick="loadPreset([1,1,1,1,1,1,1,1])">All ones</button>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Identities come in dual pairs</b> — every AND-rule has an OR-rule with 0/1 swapped. This duality is why the algebra has half as many facts as it looks like.</li>
+    <li><b>De Morgan is the operator-swap trick</b> — to push a NOT through, flip · ↔ + and complement each operand. This is the workhorse of gate-library substitution.</li>
+    <li><b>NAND alone is universal</b> — that is why 74-series and CMOS libraries are full of NAND. Routing a single cell type is cheaper than mixing AND/OR/NOT.</li>
+    <li><b>SOP fits when F has few 1s</b>, <b>POS fits when F has few 0s</b> — pick the canonical form that gives the shorter expression.</li>
+    <li><b>Canonical ≠ minimal</b> — the SOP/POS expressions shown here are not optimized. K-maps (next visual) reduce them.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>IDENTITIES</h3>
+      <dl>
+        <dt>Null</dt><dd><span class="eq">A·0 = 0</span><span class="eq">A+1 = 1</span></dd>
+        <dt>Identity</dt><dd><span class="eq">A·1 = A</span><span class="eq">A+0 = A</span></dd>
+        <dt>Idempotent</dt><dd><span class="eq">A·A = A</span><span class="eq">A+A = A</span></dd>
+        <dt>Complement</dt><dd><span class="eq">A·Ā = 0</span><span class="eq">A+Ā = 1</span></dd>
+        <dt>De Morgan</dt><dd><span class="eq">¬(A·B) = Ā+B̄</span><span class="eq">¬(A+B) = Ā·B̄</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>NAND is universal</b> — every gate buildable from NAND alone (NOR too).</li>
+        <li><b>Precedence</b> — NOT &gt; AND &gt; OR. Parenthesize when mixing.</li>
+        <li><b>Bubble pushing</b> — De Morgan in symbol form: invert gate type, flip bubbles.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>! vs ~</b> — in C, <code>!x</code> is logical (0/1), <code>~x</code> is bitwise NOT.</li>
+        <li><b>= vs ==</b> — Boolean equality, not assignment.</li>
+        <li><b>"A and not B"</b> — write <code>A·B̄</code>, not <code>¬(A·B)</code>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 5 — Digital Electronics</a> ·
+    Topic: Boolean Algebra
+  </footer>
+</main>
+<script>
+  // Tabs
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.onclick = ()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      document.querySelector(`.tab-panel[data-panel="${t.dataset.tab}"]`).classList.add('active');
+    };
+  });
+
+  // 3-variable truth table
+  let F = [0,0,0,1,0,1,1,1]; // majority by default
+  const body = document.getElementById('tt3Body');
+
+  function render(){
+    body.innerHTML = '';
+    for(let i=0;i<8;i++){
+      const a=(i>>2)&1, b=(i>>1)&1, c=i&1;
+      const tr = document.createElement('tr');
+      const lit = (v,n) => v ? n : `${n}̄`;
+      const mt = `${lit(a,'A')}${lit(b,'B')}${lit(c,'C')}`;
+      const Mt = `(${lit(a^1,'A')}+${lit(b^1,'B')}+${lit(c^1,'C')})`;
+      const labelText = F[i]===1 ? 'm'+i+' = '+mt : 'M'+i+' = '+Mt;
+      tr.innerHTML = `<td>${i}</td><td>${a}</td><td>${b}</td><td>${c}</td>`
+        + `<td style="cursor:pointer;background:${F[i]?'var(--accent3)':'var(--warn)'};color:var(--bg);font-weight:600" data-i="${i}">${F[i]}</td>`
+        + `<td style="font-size:11px">${labelText}</td>`;
+      body.appendChild(tr);
+    }
+    body.querySelectorAll('td[data-i]').forEach(td=>{
+      td.onclick = ()=>{ F[parseInt(td.dataset.i)] ^= 1; render(); };
+    });
+
+    // Build SOP
+    const lit = (v,n) => v ? n : `${n}̄`;
+    const minterms = [];
+    const maxterms = [];
+    for(let i=0;i<8;i++){
+      const a=(i>>2)&1, b=(i>>1)&1, c=i&1;
+      if(F[i]===1) minterms.push(`${lit(a,'A')}${lit(b,'B')}${lit(c,'C')}`);
+      else maxterms.push(`(${lit(a^1,'A')}+${lit(b^1,'B')}+${lit(c^1,'C')})`);
+    }
+    document.getElementById('sopForm').textContent =
+      minterms.length === 0 ? 'F = 0  (always false)'
+      : minterms.length === 8 ? 'F = 1  (always true — collapses)'
+      : 'F = ' + minterms.join(' + ');
+    document.getElementById('posForm').textContent =
+      maxterms.length === 0 ? 'F = 1  (always true)'
+      : maxterms.length === 8 ? 'F = 0  (always false — collapses)'
+      : 'F = ' + maxterms.join(' · ');
+  }
+
+  function loadPreset(arr){ F = arr.slice(); render(); }
+  render();
+</script>
+</body>
+</html>

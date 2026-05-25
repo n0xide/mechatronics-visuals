@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forced vibration & isolation — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  /* Common SVG conventions */
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Forced vibration — magnification, resonance, isolation</h1>
+  <p class="lede">A mass-spring-damper is driven by F(t) = F₀·cos(Ωt). The magnification factor MF
+  shows how much bigger the response is than the static deflection F₀/k; transmissibility T shows
+  how much of the driving force reaches the supporting structure. Sliders let you sweep frequency
+  ratio r = Ω/ωn and damping ζ. Resonance lives at r ≈ 1; isolation lives beyond r = √2.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Frequency ratio r = Ω/ωn</label>
+      <input type="range" id="r" min="0.05" max="4" step="0.01" value="1.0">
+      <span class="readout" id="rRO">1.00</span>
+    </div>
+    <div class="control">
+      <label>Damping ratio ζ</label>
+      <input type="range" id="zeta" min="0.005" max="1" step="0.005" value="0.05">
+      <span class="readout" id="zetaRO">0.050</span>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="mfSvg" viewBox="0 0 880 320" width="100%" height="320"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>MF — magnification factor</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>T — transmissibility</span>
+      <span><span class="swatch" style="background:#a3e635"></span>r = √2 (isolation onset)</span>
+      <span><span class="swatch" style="background:#ff7b72"></span>r = 1 (resonance)</span>
+    </div>
+  </div>
+
+  <div id="mfSummary" class="figure" style="padding:14px 18px;font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>
+
+  <h2>Live response — phase between F(t) and x(t)</h2>
+  <div class="figure">
+    <svg id="phaseSvg" viewBox="0 0 880 240" width="100%" height="240"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#ffb86c"></span>F(t) = F₀·cos(Ωt)</span>
+      <span><span class="swatch" style="background:#5ec8ff"></span>x(t) = X·cos(Ωt − φ)</span>
+    </div>
+  </div>
+
+  <h2>Vibration isolation design</h2>
+  <p>You have a known excitation Ω (e.g., a 7200 RPM fan = 120 Hz = 754 rad/s) and a target
+  transmissibility T_target (e.g., 0.1 = 10× reduction). Pick T_target → required r → required ωn.</p>
+  <section class="controls">
+    <div class="control">
+      <label>Excitation frequency Ω (Hz)</label>
+      <input type="range" id="excHz" min="10" max="500" step="1" value="120">
+      <span class="readout" id="excHzRO">120 Hz</span>
+    </div>
+    <div class="control">
+      <label>Target transmissibility T_target</label>
+      <input type="range" id="tTarget" min="0.05" max="0.9" step="0.01" value="0.1">
+      <span class="readout" id="tTargetRO">0.10</span>
+    </div>
+  </section>
+  <div id="isoSummary" class="figure" style="padding:14px 18px;font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Resonance peak height ≈ 1/(2ζ).</b> At r = 1 with ζ = 0.05 (lightly damped), MF ≈ 10. With ζ = 0.01, MF ≈ 50. Tiny damping → catastrophic amplification.</li>
+    <li><b>r = √2 ≈ 1.414 is the isolation threshold.</b> Below it, the mount makes vibration worse (T &gt; 1). Above it, the mount actually isolates.</li>
+    <li><b>Isolation = soft mount.</b> To isolate from a high Ω, you need low ωn → low k or high m. The contradiction with stiffness is real: vibration mounts are deliberately wobbly.</li>
+    <li><b>More damping helps near resonance but hurts in the isolation region.</b> ζ rises → resonance peak falls, but transmissibility for r &gt;&gt; 1 actually increases too. Pick ζ for the regime you're operating in.</li>
+    <li><b>Phase between F(t) and x(t)</b>: 0° below resonance, −90° at resonance, −180° well above. Phase tells you what the mass is "feeling" instant to instant.</li>
+    <li><b>Rule of thumb (lightly damped):</b> ωn ≤ Ω/3 gives roughly T ≤ 0.1 for most engineered isolators. Useful first-pass design number.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS (r = Ω/ω_n)</h3>
+      <dl>
+        <dt>Magnification</dt><dd><span class="eq">MF = 1 / √((1−r²)² + (2ζr)²)</span></dd>
+        <dt>Transmiss.</dt><dd><span class="eq">T = √((1+(2ζr)²) / ((1−r²)² + (2ζr)²))</span></dd>
+        <dt>Peak MF</dt><dd><span class="eq">≈ 1 / (2ζ)</span> <span class="eq-note">at r ≈ 1</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>REGIME MAP</h3>
+      <ul>
+        <li><b>r &lt; 1</b>: stiffness-controlled, MF → 1</li>
+        <li><b>r = 1</b>: <b>resonance</b> — MF peaks ≈ 1/(2ζ)</li>
+        <li><b>r = √2</b>: T = 1, isolation crossover</li>
+        <li><b>r &gt; √2</b>: isolation works (T &lt; 1); aim for r ≥ 3</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Isolating below √2 makes it WORSE</b> — soft mount amplifies forcing</li>
+        <li>High damping flattens the resonance peak but <b>worsens isolation</b> at r &gt;&gt; 1</li>
+        <li>ω_n <b>shifts if mass changes</b> — re-check r after loading the platform</li>
+        <li>Isolator mount = deliberately wobbly — don't fight stiffness vs. isolation trade-off</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 8 — Dynamics</a> ·
+    Topic: Forced vibration, magnification factor, transmissibility, isolation
+  </footer>
+</main>
+<script>
+const mfSvg = document.getElementById('mfSvg');
+const phaseSvg = document.getElementById('phaseSvg');
+function ns(tag, attrs={}, parent){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+let r = 1.0, zeta = 0.05;
+let simT = 0;
+let lastT = 0;
+
+function MF(r, z){
+  return 1 / Math.sqrt((1-r*r)*(1-r*r) + (2*z*r)*(2*z*r));
+}
+function transmiss(r, z){
+  return Math.sqrt((1 + (2*z*r)*(2*z*r)) / ((1-r*r)*(1-r*r) + (2*z*r)*(2*z*r)));
+}
+function phaseAngle(r, z){
+  return Math.atan2(2*z*r, 1 - r*r);  // [0, π]
+}
+
+function drawMF(){
+  clear(mfSvg);
+  const W=880, H=320;
+  const PAD_L = 60, PAD_R = 30, PAD_T = 30, PAD_B = 50;
+  const rMin = 0, rMax = 4;
+  const yMax = 12;  // cap
+
+  // Axes
+  ns('line',{x1:PAD_L,y1:H-PAD_B,x2:W-PAD_R,y2:H-PAD_B,stroke:'#8f99a8','stroke-width':1},mfSvg);
+  ns('line',{x1:PAD_L,y1:PAD_T,x2:PAD_L,y2:H-PAD_B,stroke:'#8f99a8','stroke-width':1},mfSvg);
+  // Horizontal at y = 1
+  function xPx(rv){ return PAD_L + (rv/rMax) * (W-PAD_L-PAD_R); }
+  function yPx(yv){ return H-PAD_B - (yv/yMax) * (H-PAD_T-PAD_B); }
+  ns('line',{x1:PAD_L,y1:yPx(1),x2:W-PAD_R,y2:yPx(1),stroke:'#2a313c','stroke-width':1,'stroke-dasharray':'4 4'},mfSvg);
+  ns('text',{x:W-PAD_R-4,y:yPx(1)-4,class:'label-dim','text-anchor':'end'},mfSvg).textContent='MF = T = 1';
+  // Ticks
+  for(let i=0;i<=8;i++){
+    const rv = i*0.5;
+    const x = xPx(rv);
+    ns('line',{x1:x,y1:H-PAD_B,x2:x,y2:H-PAD_B+5,stroke:'#8f99a8'},mfSvg);
+    ns('text',{x,y:H-PAD_B+18,class:'label-dim','text-anchor':'middle'},mfSvg).textContent=rv.toFixed(1);
+  }
+  for(let i=0;i<=6;i++){
+    const yv = i*2;
+    const y = yPx(yv);
+    ns('line',{x1:PAD_L-5,y1:y,x2:PAD_L,y2:y,stroke:'#8f99a8'},mfSvg);
+    ns('text',{x:PAD_L-8,y:y+4,class:'label-dim','text-anchor':'end'},mfSvg).textContent=yv.toFixed(0);
+  }
+  ns('text',{x:(W)/2,y:H-12,class:'label-dim','text-anchor':'middle'},mfSvg).textContent='r = Ω / ωn (frequency ratio)';
+
+  // r = √2 line (isolation onset)
+  const xSqrt2 = xPx(Math.sqrt(2));
+  ns('line',{x1:xSqrt2,y1:PAD_T,x2:xSqrt2,y2:H-PAD_B,stroke:'#a3e635','stroke-width':1,'stroke-dasharray':'3 3',opacity:0.6},mfSvg);
+  ns('text',{x:xSqrt2+4,y:PAD_T+12,class:'label-dim',fill:'#a3e635'},mfSvg).textContent='r = √2';
+  // r = 1 line
+  const xOne = xPx(1);
+  ns('line',{x1:xOne,y1:PAD_T,x2:xOne,y2:H-PAD_B,stroke:'#ff7b72','stroke-width':1,'stroke-dasharray':'3 3',opacity:0.6},mfSvg);
+  ns('text',{x:xOne+4,y:PAD_T+12,class:'label-dim',fill:'#ff7b72'},mfSvg).textContent='r = 1';
+  // Shade isolation region
+  ns('rect',{x:xSqrt2,y:PAD_T,width:(W-PAD_R)-xSqrt2,height:(yPx(1)-PAD_T),fill:'#a3e635',opacity:0.04},mfSvg);
+  ns('text',{x:(xSqrt2 + W-PAD_R)/2, y:PAD_T+30, class:'label-dim','text-anchor':'middle',fill:'#a3e635'},mfSvg).textContent='isolation region (T < 1)';
+
+  // Plot MF and T curves
+  let pathMF = '', pathT = '';
+  for(let i=0;i<=400;i++){
+    const rv = rMin + (rMax-rMin)*i/400;
+    const mfV = Math.min(yMax, MF(rv, zeta));
+    const tV = Math.min(yMax, transmiss(rv, zeta));
+    if(i===0){ pathMF = `M ${xPx(rv)},${yPx(mfV)}`; pathT = `M ${xPx(rv)},${yPx(tV)}`; }
+    else { pathMF += ` L ${xPx(rv)},${yPx(mfV)}`; pathT += ` L ${xPx(rv)},${yPx(tV)}`; }
+  }
+  ns('path',{d:pathMF,fill:'none',stroke:'#5ec8ff','stroke-width':2.5},mfSvg);
+  ns('path',{d:pathT,fill:'none',stroke:'#ffb86c','stroke-width':2.5,'stroke-dasharray':'5 3'},mfSvg);
+
+  // Current point
+  const mfNow = MF(r, zeta);
+  const tNow = transmiss(r, zeta);
+  ns('circle',{cx:xPx(r),cy:yPx(Math.min(yMax,mfNow)),r:5,fill:'#5ec8ff'},mfSvg);
+  ns('circle',{cx:xPx(r),cy:yPx(Math.min(yMax,tNow)),r:5,fill:'#ffb86c'},mfSvg);
+  ns('line',{x1:xPx(r),y1:PAD_T,x2:xPx(r),y2:H-PAD_B,stroke:'#fff','stroke-width':1,'stroke-dasharray':'4 4',opacity:0.3},mfSvg);
+
+  document.getElementById('mfSummary').innerHTML =
+    `<b>At r = ${r.toFixed(2)}, ζ = ${zeta.toFixed(3)}:  MF = ${mfNow.toFixed(3)},  T = ${tNow.toFixed(3)},  phase = ${(phaseAngle(r,zeta)*180/Math.PI).toFixed(1)}°</b><br>` +
+    `<span style="color:var(--fg-dim)">Resonance peak (at r=1): MF_peak ≈ 1/(2ζ) = ${(1/(2*zeta)).toFixed(2)}. Isolation onset at r = √2 ≈ 1.414 — below it, T &gt; 1.</span>`;
+}
+
+function drawPhase(){
+  clear(phaseSvg);
+  const W=880, H=240;
+  const PAD_L=50, PAD_R=20, PAD_T=20, PAD_B=40;
+  // Two cycles of Ω
+  const tMax = 2 * 2*Math.PI;  // in units of Ωt
+  function xPx(t){ return PAD_L + (t/tMax) * (W-PAD_L-PAD_R); }
+  function yPx(y, scale=1){ return (H-PAD_B+PAD_T)/2 - y * 70 * scale; }
+  const yMid = (H-PAD_B+PAD_T)/2;
+
+  // axes
+  ns('line',{x1:PAD_L,y1:yMid,x2:W-PAD_R,y2:yMid,stroke:'#2a313c','stroke-width':1},phaseSvg);
+  ns('line',{x1:PAD_L,y1:PAD_T,x2:PAD_L,y2:H-PAD_B,stroke:'#8f99a8','stroke-width':1},phaseSvg);
+  ns('text',{x:14,y:yMid+4,class:'label-dim'},phaseSvg).textContent='0';
+  ns('text',{x:14,y:yMid-65,class:'label-dim'},phaseSvg).textContent='+';
+  ns('text',{x:14,y:yMid+72,class:'label-dim'},phaseSvg).textContent='−';
+
+  // F(t)
+  const phi = phaseAngle(r, zeta);
+  const mfNow = MF(r, zeta);
+  let pF = '', pX = '';
+  for(let i=0;i<=400;i++){
+    const t = i/400 * tMax;
+    const f = Math.cos(t);
+    const xv = mfNow * Math.cos(t - phi);
+    // Normalize x to a similar scale; if mfNow huge, clip
+    const xScaled = xv / Math.max(1, mfNow);
+    if(i===0){ pF = `M ${xPx(t)},${yPx(f)}`; pX = `M ${xPx(t)},${yPx(xScaled)}`; }
+    else { pF += ` L ${xPx(t)},${yPx(f)}`; pX += ` L ${xPx(t)},${yPx(xScaled)}`; }
+  }
+  ns('path',{d:pF,fill:'none',stroke:'#ffb86c','stroke-width':2,'stroke-dasharray':'4 3',opacity:0.85},phaseSvg);
+  ns('path',{d:pX,fill:'none',stroke:'#5ec8ff','stroke-width':2.5},phaseSvg);
+
+  // X-axis ticks
+  for(let i=0;i<=4;i++){
+    const t = i*Math.PI;
+    const x = xPx(t);
+    ns('line',{x1:x,y1:H-PAD_B,x2:x,y2:H-PAD_B+5,stroke:'#8f99a8'},phaseSvg);
+    ns('text',{x,y:H-PAD_B+18,class:'label-dim','text-anchor':'middle'},phaseSvg).textContent=`${i}π`;
+  }
+  ns('text',{x:(W+PAD_L)/2-30,y:H-12,class:'label-dim'},phaseSvg).textContent='Ωt';
+  ns('text',{x:W-PAD_R-200,y:PAD_T+14,class:'label',fill:'#dde3ec'},phaseSvg).textContent=
+    `phase lag φ = ${(phi*180/Math.PI).toFixed(1)}°,  MF = ${mfNow.toFixed(2)} (x scaled to ±1 for display)`;
+}
+
+function updateIso(){
+  const exc = parseFloat(document.getElementById('excHz').value);
+  const tT = parseFloat(document.getElementById('tTarget').value);
+  // For lightly damped, well-isolated region: T ≈ 1/(r²-1) so r = √(1/T + 1)
+  const rReq = Math.sqrt(1/tT + 1);
+  const omegaExc = 2*Math.PI*exc;
+  const omega_n_max = omegaExc / rReq;
+  const fn_max = omega_n_max / (2*Math.PI);
+  document.getElementById('isoSummary').innerHTML =
+    `<b>Excitation: Ω = ${exc} Hz = ${omegaExc.toFixed(1)} rad/s.  Target T = ${tT.toFixed(2)} (${(1/tT).toFixed(1)}× reduction).</b><br>` +
+    `<span style="color:var(--fg-dim)">Required r = √(1/T + 1) = ${rReq.toFixed(2)}.  ⟹ Mount must have ωn ≤ ${omega_n_max.toFixed(1)} rad/s = ${fn_max.toFixed(1)} Hz.  For mass m: stiffness k ≤ m·ωn² (e.g., for m = 0.005 kg fan, k ≤ ${(0.005*omega_n_max*omega_n_max).toFixed(2)} N/m total; ÷4 grommets ≈ ${(0.005*omega_n_max*omega_n_max/4).toFixed(2)} N/m each).</span>`;
+}
+
+// Controls
+document.getElementById('r').oninput = e=>{
+  r = parseFloat(e.target.value);
+  document.getElementById('rRO').textContent = r.toFixed(2);
+  drawMF(); drawPhase();
+};
+document.getElementById('zeta').oninput = e=>{
+  zeta = parseFloat(e.target.value);
+  document.getElementById('zetaRO').textContent = zeta.toFixed(3);
+  drawMF(); drawPhase();
+};
+document.getElementById('excHz').oninput = e=>{
+  document.getElementById('excHzRO').textContent = e.target.value + ' Hz';
+  updateIso();
+};
+document.getElementById('tTarget').oninput = e=>{
+  document.getElementById('tTargetRO').textContent = parseFloat(e.target.value).toFixed(2);
+  updateIso();
+};
+drawMF();
+drawPhase();
+updateIso();
+</script>
+</body>
+</html>

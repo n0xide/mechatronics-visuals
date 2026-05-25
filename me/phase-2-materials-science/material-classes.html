@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Material classes — Ashby chart</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .mat-dot{cursor:pointer;stroke:#000;stroke-opacity:0.3;stroke-width:0.5}
+  .mat-dot:hover{stroke:var(--fg-bright);stroke-width:2;stroke-opacity:1}
+  .tooltip{position:absolute;background:var(--bg-elev2);border:1px solid var(--accent);
+    border-radius:4px;padding:8px 10px;font:12px ui-monospace,monospace;
+    pointer-events:none;display:none;color:var(--fg);min-width:160px;z-index:5;
+    box-shadow:0 4px 12px rgba(0,0,0,0.5)}
+  .tooltip h4{margin:0 0 4px;color:var(--fg-bright);font:600 13px ui-monospace,monospace}
+  .tooltip .row{display:flex;justify-content:space-between;gap:10px;font-size:11px}
+  .tooltip .row span:first-child{color:var(--fg-dim)}
+  .tooltip .row span:last-child{color:var(--accent2)}
+  .index-line{stroke:var(--accent3);stroke-width:1.3;stroke-dasharray:4 3;fill:none;opacity:0.7}
+  .index-label{fill:var(--accent3);font:10px ui-monospace,monospace}
+  .class-metal{fill:#5ec8ff}
+  .class-polymer{fill:#ffb86c}
+  .class-ceramic{fill:#ff7b72}
+  .class-composite{fill:#a3e635}
+  .class-natural{fill:#c084fc}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Material classes — Ashby chart</h1>
+  <p class="lede">Plot 20 common engineering materials on log-log axes to see how class boundaries and
+  performance-index lines drive material selection. Hover any point for a spec readout; toggle the axis
+  pair to see which materials win for different design objectives.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label for="axisPair">Axis pair</label>
+      <select id="axisPair">
+        <option value="E_rho">Young's modulus E vs density ρ (stiffness)</option>
+        <option value="Sy_rho">Yield strength Sy vs density ρ (strength)</option>
+        <option value="cost_Sy">Cost vs Yield strength Sy (value)</option>
+      </select>
+    </div>
+    <div class="control">
+      <label for="indexLine">Performance index overlay</label>
+      <select id="indexLine">
+        <option value="none">None</option>
+        <option value="E_rho">E/ρ — tie rod (axial stiffness)</option>
+        <option value="E05_rho">E^(1/2)/ρ — beam stiffness</option>
+        <option value="E033_rho">E^(1/3)/ρ — plate stiffness</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Selected: <span id="selName" class="readout">hover a dot</span></label>
+    </div>
+  </section>
+
+  <div class="figure" style="position:relative">
+    <svg id="ashby" viewBox="0 0 880 520" width="100%">
+      <g id="gridG"></g>
+      <g id="axisG"></g>
+      <g id="indexG"></g>
+      <g id="dotsG"></g>
+      <text class="axis-label" x="440" y="510" text-anchor="middle" id="xLabel">density ρ (kg/m³)</text>
+      <text class="axis-label" x="14" y="270" text-anchor="middle" transform="rotate(-90 14 270)" id="yLabel">Young's modulus E (GPa)</text>
+    </svg>
+    <div class="tooltip" id="tip"></div>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>metals</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>polymers</span>
+      <span><span class="swatch" style="background:#ff7b72"></span>ceramics / glass</span>
+      <span><span class="swatch" style="background:#a3e635"></span>composites (CFRP/GFRP/FR4)</span>
+      <span><span class="swatch" style="background:#c084fc"></span>natural (wood, concrete)</span>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Each class clusters.</b> Metals dominate the upper-right (stiff and dense), polymers sit lower-left (light and compliant), ceramics top-center (stiff and moderately dense).</li>
+    <li><b>Performance-index lines slope by index exponent.</b> For tension members (E/ρ) the line slopes 1:1 on log-log; beams (E^0.5/ρ) slope 2:1; plates (E^0.333/ρ) slope 3:1. Materials *above* the line beat materials below it for that loading.</li>
+    <li><b>Wood and CFRP beat metals on beam stiffness per weight.</b> Switch to "beam stiffness" overlay and notice wood sits above 1018 steel — the reason fishing rods and aircraft spars are not made of solid steel.</li>
+    <li><b>FDM plastics (PLA / PETG / ABS / PA12) cluster tightly.</b> They differ in HDT and toughness, not stiffness. Don't pick a filament by E.</li>
+    <li><b>Strength chart (Sy vs ρ) reshuffles winners.</b> Titanium Ti-6Al-4V and CFRP dominate; PLA looks competitive only because we plot bulk specimens, not layer-bonded prints.</li>
+    <li><b>Cost vs strength reveals "engineering reality."</b> 6061-T6 sits in the value sweet spot; titanium is 30× more expensive per MPa of Sy.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>CLASS SIGNATURES</h3>
+      <ul>
+        <li><b>metals</b> — high E, ductile, yield before fracture.</li>
+        <li><b>polymers</b> — low E, viscoelastic, HDT matters.</li>
+        <li><b>ceramics</b> — high E, brittle, fail at elastic limit.</li>
+        <li><b>composites</b> — anisotropic; strong along fibre.</li>
+      </ul>
+    </div>
+    <div class="cheat-card formulas">
+      <h3>ASHBY INDICES</h3>
+      <dl>
+        <dt>stiffness tie</dt><dd><span class="eq">E / ρ</span></dd>
+        <dt>strength tie</dt><dd><span class="eq">Sy / ρ</span></dd>
+        <dt>beam stiff</dt><dd><span class="eq">E^½ / ρ</span></dd>
+        <dt>plate stiff</dt><dd><span class="eq">E^⅓ / ρ</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>FDM ≠ bulk</b> — printed PETG strength ≪ injection-molded.</li>
+        <li><b>CF-filled</b> — changes E, Sy, fatigue dramatically.</li>
+        <li><b>anisotropy</b> — bulk values assume isotropic; FDM/CFRP aren't.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 2 — Materials Science</a> ·
+    Topic: Material classes (Ashby selection)
+  </footer>
+</main>
+<script>
+// ----- Material database (representative bulk-property values) ---------------
+// Properties: rho kg/m^3, E GPa, Sy MPa, cost USD/kg (rough order-of-magnitude)
+const MATERIALS = [
+  // metals
+  {n:"Steel 1018",       cls:"metal",  rho:7850, E:200, Sy:370, cost:1.0,  note:"plain carbon, cheap, weldable"},
+  {n:"Steel 304 SS",     cls:"metal",  rho:8000, E:193, Sy:215, cost:4.0,  note:"corrosion-resistant"},
+  {n:"Steel A36",        cls:"metal",  rho:7850, E:200, Sy:250, cost:0.9,  note:"structural mild steel"},
+  {n:"Al 6061-T6",       cls:"metal",  rho:2700, E:68.9,Sy:276, cost:3.0,  note:"weldable structural Al"},
+  {n:"Al 7075-T6",       cls:"metal",  rho:2810, E:71.7,Sy:503, cost:6.5,  note:"high-strength Al, aerospace"},
+  {n:"Ti-6Al-4V",        cls:"metal",  rho:4430, E:113, Sy:880, cost:35,   note:"Grade 5 titanium"},
+  {n:"Brass 360",        cls:"metal",  rho:8500, E:97,  Sy:125, cost:6.0,  note:"free-cutting brass"},
+  {n:"Copper C110",      cls:"metal",  rho:8940, E:117, Sy:69,  cost:8.0,  note:"electrolytic Cu"},
+  // polymers
+  {n:"PLA (FDM)",        cls:"polymer",rho:1240, E:3.5, Sy:50,  cost:25,   note:"easy print, brittle, HDT 60°C"},
+  {n:"PETG (FDM)",       cls:"polymer",rho:1270, E:2.2, Sy:50,  cost:28,   note:"tough, HDT 80°C"},
+  {n:"ABS",              cls:"polymer",rho:1050, E:2.3, Sy:40,  cost:22,   note:"warps without enclosure"},
+  {n:"ASA",              cls:"polymer",rho:1070, E:2.3, Sy:45,  cost:35,   note:"UV-stable outdoor"},
+  {n:"Nylon PA12",       cls:"polymer",rho:1010, E:1.6, Sy:48,  cost:55,   note:"tough, hygroscopic"},
+  {n:"TPU 95A",          cls:"polymer",rho:1210, E:0.03,Sy:25,  cost:40,   note:"flexible filament"},
+  // ceramics & glass
+  {n:"Alumina Al2O3",    cls:"ceramic",rho:3960, E:380, Sy:300, cost:30,   note:"brittle, hard, refractory"},
+  {n:"Soda-lime glass",  cls:"ceramic",rho:2500, E:70,  Sy:50,  cost:1.5,  note:"window glass, brittle"},
+  // composites
+  {n:"CFRP (UD epoxy)",  cls:"composite",rho:1600,E:135,Sy:1500,cost:60,   note:"in-fiber direction"},
+  {n:"GFRP (E-glass)",   cls:"composite",rho:2000,E:40, Sy:900, cost:8.0,  note:"glass-fiber laminate"},
+  {n:"FR4 PCB",          cls:"composite",rho:1850,E:22, Sy:280, cost:15,   note:"woven glass + epoxy"},
+  // natural
+  {n:"Pine (along grain)",cls:"natural",rho:520, E:11,  Sy:40,  cost:1.0,  note:"softwood, anisotropic"},
+  {n:"Concrete",         cls:"natural",rho:2400, E:25,  Sy:30,  cost:0.1,  note:"compression-only"},
+];
+
+const W=880, H=520;
+const PAD={l:80, r:30, t:30, b:60};
+const PLOT_W = W - PAD.l - PAD.r, PLOT_H = H - PAD.t - PAD.b;
+
+// log10 helper
+const lg = x => Math.log10(x);
+
+// axis pair config: {x:{key,min,max,label}, y:{key,min,max,label}}
+const AXIS_PAIRS = {
+  E_rho:   {x:{key:"rho", min:300,   max:20000, label:"density ρ (kg/m³)"},
+            y:{key:"E",   min:0.01,  max:1000,  label:"Young's modulus E (GPa)"}},
+  Sy_rho:  {x:{key:"rho", min:300,   max:20000, label:"density ρ (kg/m³)"},
+            y:{key:"Sy",  min:10,    max:3000,  label:"yield strength Sy (MPa)"}},
+  cost_Sy: {x:{key:"Sy",  min:10,    max:3000,  label:"yield strength Sy (MPa)"},
+            y:{key:"cost",min:0.05,  max:200,   label:"cost (USD / kg, rough)"}},
+};
+
+// Index lines (drawn in E vs rho space only): y = C * x^slope, with slope chosen to match index
+// E/rho => slope 1 (line y = C * x)
+// E^(1/2)/rho => y^0.5 = C*x => y = C^2 * x^2 (slope 2)
+// E^(1/3)/rho => y^(1/3)=C*x => y = C^3 * x^3 (slope 3)
+const INDEX_LINES = {
+  E_rho:    {slope:1, label:"E / ρ"},
+  E05_rho:  {slope:2, label:"E½ / ρ"},
+  E033_rho: {slope:3, label:"E⅓ / ρ"},
+};
+
+const svg = document.getElementById("ashby");
+const tip = document.getElementById("tip");
+const selName = document.getElementById("selName");
+const xLabel = document.getElementById("xLabel");
+const yLabel = document.getElementById("yLabel");
+
+function xMap(v, xMin, xMax){ return PAD.l + (lg(v)-lg(xMin))/(lg(xMax)-lg(xMin)) * PLOT_W; }
+function yMap(v, yMin, yMax){ return PAD.t + (1 - (lg(v)-lg(yMin))/(lg(yMax)-lg(yMin))) * PLOT_H; }
+
+function tickValues(min, max){
+  const out=[];
+  const lo = Math.floor(lg(min)), hi = Math.ceil(lg(max));
+  for (let p=lo; p<=hi; p++){
+    for (let m of [1,2,5]){
+      const v = m * Math.pow(10,p);
+      if (v>=min && v<=max) out.push(v);
+    }
+  }
+  return out;
+}
+
+function fmt(v){
+  if (v >= 1000) return v.toLocaleString("en-US",{maximumSignificantDigits:3});
+  if (v >= 1) return v.toFixed(v<10?1:0);
+  return v.toString();
+}
+
+function render(){
+  const pair = document.getElementById("axisPair").value;
+  const idx  = document.getElementById("indexLine").value;
+  const ax = AXIS_PAIRS[pair];
+  xLabel.textContent = ax.x.label;
+  yLabel.textContent = ax.y.label;
+
+  // grid
+  const gridG = document.getElementById("gridG");
+  gridG.innerHTML = "";
+  const axisG = document.getElementById("axisG");
+  axisG.innerHTML = "";
+
+  const xTicks = tickValues(ax.x.min, ax.x.max);
+  const yTicks = tickValues(ax.y.min, ax.y.max);
+  for (const tv of xTicks){
+    const x = xMap(tv, ax.x.min, ax.x.max);
+    gridG.innerHTML += `<line class="grid-line" x1="${x}" x2="${x}" y1="${PAD.t}" y2="${PAD.t+PLOT_H}"/>`;
+    axisG.innerHTML += `<text class="axis-label" x="${x}" y="${PAD.t+PLOT_H+14}" text-anchor="middle">${fmt(tv)}</text>`;
+  }
+  for (const tv of yTicks){
+    const y = yMap(tv, ax.y.min, ax.y.max);
+    gridG.innerHTML += `<line class="grid-line" x1="${PAD.l}" x2="${PAD.l+PLOT_W}" y1="${y}" y2="${y}"/>`;
+    axisG.innerHTML += `<text class="axis-label" x="${PAD.l-6}" y="${y+3}" text-anchor="end">${fmt(tv)}</text>`;
+  }
+  // axes
+  axisG.innerHTML += `<line class="axis" x1="${PAD.l}" x2="${PAD.l+PLOT_W}" y1="${PAD.t+PLOT_H}" y2="${PAD.t+PLOT_H}"/>`;
+  axisG.innerHTML += `<line class="axis" x1="${PAD.l}" x2="${PAD.l}" y1="${PAD.t}" y2="${PAD.t+PLOT_H}"/>`;
+
+  // index lines — only when on E vs rho
+  const indexG = document.getElementById("indexG");
+  indexG.innerHTML = "";
+  if (pair === "E_rho" && idx !== "none"){
+    const slope = INDEX_LINES[idx].slope;
+    const label = INDEX_LINES[idx].label;
+    // draw 3 parallel lines at different C constants
+    // line: log E = slope * log rho + log C   => E = C * rho^slope (in our plot variables)
+    // but in chart: y=E, x=rho. We want slope in log-log space = `slope`.
+    const cs = [1e-4, 1e-7, 1e-10];
+    if (slope === 2) cs.splice(0, cs.length, 1e-2, 1e-5, 1e-8);
+    if (slope === 3) cs.splice(0, cs.length, 1e-1, 1e-4, 1e-7);
+    if (slope === 1) cs.splice(0, cs.length, 1e-3, 1e-2, 1e-1);
+    for (const C of cs){
+      // sample over x range
+      let pts=[];
+      for (let i=0;i<=40;i++){
+        const t=i/40;
+        const x = ax.x.min * Math.pow(ax.x.max/ax.x.min, t);
+        const y = C * Math.pow(x, slope);
+        if (y>=ax.y.min && y<=ax.y.max) pts.push([xMap(x,ax.x.min,ax.x.max), yMap(y,ax.y.min,ax.y.max)]);
+      }
+      if (pts.length>1){
+        let d = "M"+pts.map(p=>p.join(",")).join(" L");
+        indexG.innerHTML += `<path class="index-line" d="${d}"/>`;
+      }
+    }
+    indexG.innerHTML += `<text class="index-label" x="${PAD.l+PLOT_W-8}" y="${PAD.t+14}" text-anchor="end">index: ${label} ↗ (higher = better)</text>`;
+  }
+
+  // dots
+  const dotsG = document.getElementById("dotsG");
+  dotsG.innerHTML = "";
+  for (const m of MATERIALS){
+    const xv = m[ax.x.key], yv = m[ax.y.key];
+    if (xv == null || yv == null) continue;
+    if (xv < ax.x.min || xv > ax.x.max || yv < ax.y.min || yv > ax.y.max) continue;
+    const cx = xMap(xv, ax.x.min, ax.x.max);
+    const cy = yMap(yv, ax.y.min, ax.y.max);
+    const cls = "class-" + m.cls;
+    dotsG.innerHTML += `<circle class="mat-dot ${cls}" cx="${cx}" cy="${cy}" r="7" data-name="${m.n}"/>`
+                    + `<text class="label-dim" x="${cx+10}" y="${cy+4}" style="pointer-events:none">${m.n}</text>`;
+  }
+  // attach hover
+  for (const c of dotsG.querySelectorAll("circle")){
+    c.addEventListener("mouseenter", e=>{
+      const name = e.target.getAttribute("data-name");
+      const m = MATERIALS.find(x=>x.n===name);
+      selName.textContent = m.n;
+      tip.innerHTML = `<h4>${m.n}</h4>
+        <div class="row"><span>class</span><span>${m.cls}</span></div>
+        <div class="row"><span>ρ</span><span>${m.rho} kg/m³</span></div>
+        <div class="row"><span>E</span><span>${m.E} GPa</span></div>
+        <div class="row"><span>Sy</span><span>${m.Sy} MPa</span></div>
+        <div class="row"><span>cost</span><span>≈ $${m.cost}/kg</span></div>
+        <div class="row" style="margin-top:4px;color:var(--fg-dim);font-size:10px">${m.note}</div>`;
+      tip.style.display = "block";
+    });
+    c.addEventListener("mousemove", e=>{
+      const figure = svg.parentElement.getBoundingClientRect();
+      tip.style.left = (e.clientX - figure.left + 14)+"px";
+      tip.style.top  = (e.clientY - figure.top + 14)+"px";
+    });
+    c.addEventListener("mouseleave", ()=>{ tip.style.display="none"; });
+  }
+}
+
+document.getElementById("axisPair").addEventListener("change", render);
+document.getElementById("indexLine").addEventListener("change", render);
+render();
+</script>
+</body>
+</html>

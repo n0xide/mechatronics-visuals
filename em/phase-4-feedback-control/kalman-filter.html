@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kalman filter — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Kalman filter — predict, then update</h1>
+  <p class="lede">A Kalman filter fuses two noisy estimates of the same quantity — one from a process model
+  (prediction), one from a sensor (measurement) — into a single estimate that is more confident than either input.
+  The math reduces to weighting by inverse variance, then iterating. This visual shows the Gaussian-merge
+  intuition and a full 1-D tracking simulation against truth.</p>
+
+  <h2>Gaussian fusion — the geometric intuition</h2>
+  <p>The prior (blue) represents what the model believes about the state right now. The likelihood
+  (orange) represents what the sensor just measured. The posterior (green) is the product of the two
+  Gaussians, normalised — always sharper than either input. The Kalman gain <code>K</code> is just
+  the ratio that says how far to move from prior toward measurement.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Prior mean μ_prior</label>
+      <input type="range" id="mp" min="-5" max="5" step="0.1" value="-1">
+      <span class="readout" id="mpRO">-1.0</span>
+    </div>
+    <div class="control">
+      <label>Prior variance σ²_prior</label>
+      <input type="range" id="sp" min="0.1" max="5" step="0.05" value="1.0">
+      <span class="readout" id="spRO">1.00</span>
+    </div>
+    <div class="control">
+      <label>Measurement z</label>
+      <input type="range" id="mz" min="-5" max="5" step="0.1" value="2">
+      <span class="readout" id="mzRO">2.0</span>
+    </div>
+    <div class="control">
+      <label>Measurement variance σ²_meas (R)</label>
+      <input type="range" id="sz" min="0.1" max="5" step="0.05" value="1.0">
+      <span class="readout" id="szRO">1.00</span>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="gaussSvg" viewBox="0 0 880 320" width="100%" height="320"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>Prior (from model)</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>Likelihood (from sensor)</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Posterior (sharper than either)</span>
+    </div>
+  </div>
+  <div id="gainBox" class="figure" style="padding:14px 18px;font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>
+
+  <h2>1-D tracking simulation: position from noisy sensor + constant-velocity model</h2>
+  <p>The true target moves with constant velocity. The sensor only sees position, very noisy.
+  The Kalman filter knows the constant-velocity model (process noise σ² = Q) and the sensor noise
+  (σ² = R), and fuses both into a smoothed estimate that tracks truth far better than raw measurements.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Process noise Q (model uncertainty)</label>
+      <input type="range" id="Q" min="0.001" max="1.0" step="0.005" value="0.05">
+      <span class="readout" id="QRO">0.050</span>
+    </div>
+    <div class="control">
+      <label>Measurement noise R</label>
+      <input type="range" id="R" min="0.05" max="5" step="0.05" value="1.0">
+      <span class="readout" id="RRO">1.00</span>
+    </div>
+    <div class="control">
+      <label>True velocity (m/s)</label>
+      <input type="range" id="vTrue" min="-2" max="2" step="0.05" value="0.5">
+      <span class="readout" id="vTrueRO">0.50</span>
+    </div>
+    <div class="control">
+      <label>Reseed noise</label>
+      <button class="btn" id="reseed">New noise sample</button>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="trackSvg" viewBox="0 0 880 340" width="100%" height="340"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#a3e635"></span>True position</span>
+      <span><span class="swatch" style="background:#ff7b72"></span>Raw measurements (noisy)</span>
+      <span><span class="swatch" style="background:#5ec8ff"></span>Kalman estimate</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>Complementary filter (fixed K)</span>
+    </div>
+  </div>
+
+  <h2>The two-step cycle</h2>
+  <table>
+    <thead><tr><th>Step</th><th>Predict</th><th>Update</th></tr></thead>
+    <tbody>
+      <tr><td>Operation</td><td>Advance state estimate using model</td><td>Correct estimate with new measurement</td></tr>
+      <tr><td>State eq.</td><td>x̂_k|k-1 = A·x̂_{k-1} + B·u_{k-1}</td><td>x̂_k = x̂_k|k-1 + K·(z_k − H·x̂_k|k-1)</td></tr>
+      <tr><td>Covariance</td><td>P_k|k-1 = A·P_{k-1}·Aᵀ + Q</td><td>P_k = (I − K·H)·P_k|k-1</td></tr>
+      <tr><td>Gain</td><td>—</td><td>K = P_k|k-1·Hᵀ · (H·P_k|k-1·Hᵀ + R)⁻¹</td></tr>
+      <tr><td>Effect</td><td>Uncertainty (P) <b>grows</b></td><td>Uncertainty <b>shrinks</b></td></tr>
+    </tbody>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>The posterior is always narrower than either input.</b> That's the magic: fusion always gains information. Two noisy estimates of the same quantity are more confident together than apart.</li>
+    <li><b>Kalman gain K balances trust.</b> When sensor variance R is small, K → 1 and the filter trusts the measurement (jumps to it). When R is large, K → 0 and the filter sticks with its model prediction. Slide R from low to high to feel this.</li>
+    <li><b>Q is your trust in the model.</b> If Q is small, the filter believes the model strongly — smooth output, but slow to react to true changes. Crank Q up and the filter chases every measurement.</li>
+    <li><b>The complementary filter is a fixed-gain Kalman.</b> α·model + (1−α)·measurement, with α hand-tuned. Cheap, fast, no covariance bookkeeping. Used everywhere in IMU fusion when proper Kalman is overkill.</li>
+    <li><b>EKF for nonlinear systems.</b> Linearise around the current state estimate every step using Jacobians. The math is the same; the linearisation is the assumption. Falls over if nonlinearity is severe — UKF or particle filter then.</li>
+    <li><b>The filter is recursive.</b> No history needed beyond the current state + covariance. Tiny memory footprint, runs on microcontrollers. The reason Apollo could land on the Moon with a 64 KiB computer.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>1-D KALMAN (SCALAR)</h3>
+      <dl>
+        <dt>Predict</dt><dd><span class="eq">x̂_pri = x̂_{k-1} + u·dt</span></dd>
+        <dt></dt><dd><span class="eq">P_pri = P_{k-1} + Q</span></dd>
+        <dt>Gain</dt><dd><span class="eq">K = P_pri / (P_pri + R)</span></dd>
+        <dt>Update</dt><dd><span class="eq">x̂_k = x̂_pri + K·(z − x̂_pri)</span></dd>
+        <dt></dt><dd><span class="eq">P_k = (1 − K)·P_pri</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>WHAT THE KNOBS DO</h3>
+      <ul>
+        <li><b>Q small</b> → trusts model → smooth but laggy</li>
+        <li><b>R small</b> → trusts sensor → jittery but responsive</li>
+        <li><b>P</b> auto-adjusts; you tune Q and R only</li>
+        <li><b>Complementary filter</b> α ≈ steady-state K of the Kalman</li>
+        <li><b>EKF</b> — replace A, H with Jacobians ∂f/∂x, ∂h/∂x</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li><b>Wrong R</b> (sensor variance miscalibrated) — filter trusts the wrong source</li>
+        <li><b>Wrong Q</b> — filter diverges from truth or is too sluggish to react</li>
+        <li><b>Non-Gaussian noise</b> (sun glints, outliers) — basic Kalman is fooled; use robust variants</li>
+        <li><b>Severe nonlinearity</b> — EKF linearisation breaks; consider UKF or particle filter</li>
+        <li><b>Unobservable state</b> — filter never converges (revisit observability matrix)</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 4 — Feedback Control</a> ·
+    Topic: Kalman filter, Gaussian fusion, complementary filter, EKF
+  </footer>
+</main>
+<script>
+function ns(tag, attrs={}, parent){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+// =========== Gaussian fusion ===========
+let mp=-1, sp=1.0, mz=2, sz=1.0;
+
+function gauss(x, mu, sigma2){
+  return 1/Math.sqrt(2*Math.PI*sigma2) * Math.exp(-0.5 * (x-mu)*(x-mu) / sigma2);
+}
+
+function drawGauss(){
+  const svg = document.getElementById('gaussSvg');
+  clear(svg);
+  const W=880, H=320, PAD_L=50, PAD_R=20, PAD_T=20, PAD_B=40;
+  const xMin = -8, xMax = 8;
+  // Posterior parameters
+  const K = sp / (sp + sz);  // scalar gain
+  const muPost = mp + K*(mz - mp);
+  const sigmaPost = (1 - K)*sp;
+  // pdf maxima
+  const yMaxGuess = Math.max(gauss(mp,mp,sp), gauss(mz,mz,sz), gauss(muPost,muPost,sigmaPost));
+  const yMax = yMaxGuess * 1.15;
+
+  for(let i=0;i<=8;i++){
+    const yy = PAD_T + i/8*(H-PAD_T-PAD_B);
+    ns('line',{x1:PAD_L,y1:yy,x2:W-PAD_R,y2:yy,stroke:'#222831'},svg);
+  }
+  ns('line',{x1:PAD_L,y1:H-PAD_B,x2:W-PAD_R,y2:H-PAD_B,stroke:'#8f99a8'},svg);
+  ns('line',{x1:PAD_L,y1:PAD_T,x2:PAD_L,y2:H-PAD_B,stroke:'#8f99a8'},svg);
+
+  function xPx(x){ return PAD_L + (x-xMin)/(xMax-xMin)*(W-PAD_L-PAD_R); }
+  function yPx(y){ return H-PAD_B - y/yMax*(H-PAD_T-PAD_B); }
+  for(let v=-8;v<=8;v+=2){
+    ns('text',{x:xPx(v),y:H-PAD_B+18,class:'label-dim','text-anchor':'middle'},svg).textContent=v.toString();
+  }
+
+  function plot(mu, sigma2, color, fillOp){
+    let p = '';
+    const N = 300;
+    for(let i=0;i<=N;i++){
+      const x = xMin + (xMax-xMin)*i/N;
+      const y = gauss(x, mu, sigma2);
+      if(i===0) p = `M ${xPx(x)},${yPx(y)}`;
+      else p += ` L ${xPx(x)},${yPx(y)}`;
+    }
+    // close to baseline for fill
+    const pFill = p + ` L ${xPx(xMax)},${yPx(0)} L ${xPx(xMin)},${yPx(0)} Z`;
+    if(fillOp) ns('path',{d:pFill,fill:color,opacity:fillOp},svg);
+    ns('path',{d:p,fill:'none',stroke:color,'stroke-width':2.5},svg);
+    // mu line
+    ns('line',{x1:xPx(mu),y1:yPx(0),x2:xPx(mu),y2:yPx(gauss(mu,mu,sigma2)),stroke:color,'stroke-width':1,'stroke-dasharray':'3 3',opacity:0.6},svg);
+  }
+  plot(mp, sp, '#5ec8ff', 0.10);
+  plot(mz, sz, '#ffb86c', 0.10);
+  plot(muPost, sigmaPost, '#a3e635', 0.20);
+
+  // labels at peaks
+  ns('text',{x:xPx(mp),y:yPx(gauss(mp,mp,sp))-6,class:'label-dim','text-anchor':'middle',fill:'#5ec8ff'},svg).textContent='prior μ='+mp.toFixed(1);
+  ns('text',{x:xPx(mz),y:yPx(gauss(mz,mz,sz))-6,class:'label-dim','text-anchor':'middle',fill:'#ffb86c'},svg).textContent='meas z='+mz.toFixed(1);
+  ns('text',{x:xPx(muPost),y:yPx(gauss(muPost,muPost,sigmaPost))-6,class:'label-dim','text-anchor':'middle',fill:'#a3e635'},svg).textContent='posterior μ='+muPost.toFixed(2);
+
+  document.getElementById('gainBox').innerHTML =
+    `<b>K = σ²_prior / (σ²_prior + σ²_meas) = ${sp.toFixed(2)} / (${sp.toFixed(2)} + ${sz.toFixed(2)}) = ${K.toFixed(3)}</b><br>` +
+    `<span style="color:var(--accent3)">Posterior mean = μ_prior + K·(z − μ_prior) = ${mp.toFixed(2)} + ${K.toFixed(3)}·(${mz.toFixed(2)} − ${mp.toFixed(2)}) = ${muPost.toFixed(3)}</span><br>` +
+    `<span style="color:var(--accent3)">Posterior variance = (1 − K)·σ²_prior = ${sigmaPost.toFixed(3)}  (smaller than both prior ${sp.toFixed(2)} and measurement ${sz.toFixed(2)})</span><br>` +
+    `<span style="color:var(--fg-dim)">When R is small → K → 1 → trust the measurement. When P is small → K → 0 → trust the model.</span>`;
+}
+
+document.getElementById('mp').oninput = e=>{ mp=parseFloat(e.target.value); document.getElementById('mpRO').textContent=mp.toFixed(1); drawGauss(); };
+document.getElementById('sp').oninput = e=>{ sp=parseFloat(e.target.value); document.getElementById('spRO').textContent=sp.toFixed(2); drawGauss(); };
+document.getElementById('mz').oninput = e=>{ mz=parseFloat(e.target.value); document.getElementById('mzRO').textContent=mz.toFixed(1); drawGauss(); };
+document.getElementById('sz').oninput = e=>{ sz=parseFloat(e.target.value); document.getElementById('szRO').textContent=sz.toFixed(2); drawGauss(); };
+
+drawGauss();
+
+// =========== Tracking simulation ===========
+let Q = 0.05, R = 1.0, vTrue = 0.5;
+let seed = 73841;
+function rng(){ seed = (seed*1103515245 + 12345) & 0x7fffffff; return seed/0x7fffffff; }
+function gaussRand(){
+  // Box-Muller
+  let u1 = rng(), u2 = rng();
+  return Math.sqrt(-2*Math.log(u1+1e-9))*Math.cos(2*Math.PI*u2);
+}
+
+function simTrack(){
+  const T = 15, dt = 0.1;
+  const N = Math.floor(T/dt);
+  // truth
+  const tArr = new Float32Array(N), truth = new Float32Array(N), meas = new Float32Array(N),
+    kf = new Float32Array(N), comp = new Float32Array(N);
+  // Kalman state (1D position, model: x_k = x_{k-1} + v·dt, with v assumed = vTrue but uncertain)
+  let xHat = 0, P = 1.0;
+  // Complementary fixed-K
+  let compEst = 0;
+  const alpha = 0.85;  // fixed K for complementary
+  let pos = 0;
+  for(let i=0;i<N;i++){
+    pos = vTrue * (i*dt);
+    const z = pos + Math.sqrt(R)*gaussRand();
+    // Kalman predict
+    xHat = xHat + vTrue*dt;
+    P = P + Q;
+    // Kalman update
+    const Kgain = P / (P + R);
+    xHat = xHat + Kgain*(z - xHat);
+    P = (1 - Kgain)*P;
+    // Complementary: blend model + measurement with fixed weight
+    const compPred = compEst + vTrue*dt;
+    compEst = alpha*compPred + (1-alpha)*z;
+
+    tArr[i] = i*dt; truth[i] = pos; meas[i] = z; kf[i] = xHat; comp[i] = compEst;
+  }
+  return {tArr, truth, meas, kf, comp};
+}
+
+function drawTrack(){
+  const svg = document.getElementById('trackSvg');
+  clear(svg);
+  const W=880, H=340, PAD_L=50, PAD_R=20, PAD_T=20, PAD_B=40;
+  const tMax = 15;
+  // compute y range from data
+  const sim = simTrack();
+  let yMin = Infinity, yMax = -Infinity;
+  for(let i=0;i<sim.tArr.length;i++){
+    yMin = Math.min(yMin, sim.meas[i], sim.truth[i], sim.kf[i], sim.comp[i]);
+    yMax = Math.max(yMax, sim.meas[i], sim.truth[i], sim.kf[i], sim.comp[i]);
+  }
+  const span = yMax - yMin;
+  yMax += span*0.1; yMin -= span*0.1;
+
+  for(let i=0;i<=6;i++){
+    const yy = PAD_T + i/6*(H-PAD_T-PAD_B);
+    ns('line',{x1:PAD_L,y1:yy,x2:W-PAD_R,y2:yy,stroke:'#222831'},svg);
+  }
+  ns('line',{x1:PAD_L,y1:H-PAD_B,x2:W-PAD_R,y2:H-PAD_B,stroke:'#8f99a8'},svg);
+  ns('line',{x1:PAD_L,y1:PAD_T,x2:PAD_L,y2:H-PAD_B,stroke:'#8f99a8'},svg);
+
+  function xPx(t){ return PAD_L + t/tMax*(W-PAD_L-PAD_R); }
+  function yPx(y){ return H-PAD_B - (y-yMin)/(yMax-yMin)*(H-PAD_T-PAD_B); }
+  for(let i=0;i<=15;i+=3){
+    ns('text',{x:xPx(i),y:H-PAD_B+18,class:'label-dim','text-anchor':'middle'},svg).textContent=i+'s';
+  }
+  for(let i=0;i<=4;i++){
+    const yv = yMin + (yMax-yMin)*i/4;
+    ns('text',{x:PAD_L-5,y:yPx(yv)+4,class:'label-dim','text-anchor':'end'},svg).textContent=yv.toFixed(1);
+  }
+  ns('text',{x:PAD_L-40,y:PAD_T+12,class:'label-dim'},svg).textContent='pos';
+
+  // measurements: scatter dots
+  for(let i=0;i<sim.tArr.length;i++){
+    ns('circle',{cx:xPx(sim.tArr[i]),cy:yPx(sim.meas[i]),r:2.5,fill:'#ff7b72',opacity:0.5},svg);
+  }
+
+  function trace(arr, color, w, dash){
+    let p = '';
+    for(let i=0;i<sim.tArr.length;i++){
+      if(i===0) p = `M ${xPx(sim.tArr[i])},${yPx(arr[i])}`;
+      else p += ` L ${xPx(sim.tArr[i])},${yPx(arr[i])}`;
+    }
+    const attrs = {d:p,fill:'none',stroke:color,'stroke-width':w};
+    if(dash) attrs['stroke-dasharray'] = dash;
+    ns('path',attrs,svg);
+  }
+  trace(sim.truth, '#a3e635', 1.5, '5 4');
+  trace(sim.comp, '#ffb86c', 1.8);
+  trace(sim.kf, '#5ec8ff', 2.5);
+
+  // compute RMSEs
+  function rmse(est){
+    let s = 0;
+    for(let i=0;i<sim.tArr.length;i++) s += (est[i]-sim.truth[i])**2;
+    return Math.sqrt(s/sim.tArr.length);
+  }
+  const rmseMeas = rmse(sim.meas);
+  const rmseKF = rmse(sim.kf);
+  const rmseComp = rmse(sim.comp);
+  // Annotate
+  ns('text',{x:W-PAD_R-180,y:PAD_T+20,class:'label-dim',fill:'#ff7b72'},svg).textContent='Raw RMSE = '+rmseMeas.toFixed(3);
+  ns('text',{x:W-PAD_R-180,y:PAD_T+36,class:'label-dim',fill:'#5ec8ff'},svg).textContent='Kalman RMSE = '+rmseKF.toFixed(3);
+  ns('text',{x:W-PAD_R-180,y:PAD_T+52,class:'label-dim',fill:'#ffb86c'},svg).textContent='Comp RMSE = '+rmseComp.toFixed(3);
+}
+
+document.getElementById('Q').oninput = e=>{ Q=parseFloat(e.target.value); document.getElementById('QRO').textContent=Q.toFixed(3); drawTrack(); };
+document.getElementById('R').oninput = e=>{ R=parseFloat(e.target.value); document.getElementById('RRO').textContent=R.toFixed(2); drawTrack(); };
+document.getElementById('vTrue').oninput = e=>{ vTrue=parseFloat(e.target.value); document.getElementById('vTrueRO').textContent=vTrue.toFixed(2); drawTrack(); };
+document.getElementById('reseed').onclick = ()=>{ seed = Math.floor(Math.random()*1e9); drawTrack(); };
+
+drawTrack();
+</script>
+</body>
+</html>

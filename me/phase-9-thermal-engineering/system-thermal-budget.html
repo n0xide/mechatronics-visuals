@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System thermal budget — enclosure-level — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  /* Common SVG conventions */
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .row2{display:grid;grid-template-columns:1fr;gap:16px}
+  @media (min-width:780px){.row2{grid-template-columns:1.5fr 1fr}}
+  .big-number{font:600 22px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  .pass{color:var(--accent3);font-weight:600}
+  .warn{color:var(--accent2);font-weight:600}
+  .fail{color:var(--warn);font-weight:600}
+  tr.fail-row td{background:rgba(255,123,114,0.15)}
+  tr.warn-row td{background:rgba(255,184,108,0.10)}
+  input.cell{width:70px;background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:3px;padding:2px 5px;
+    font:12px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>System thermal budget — enclosure-level</h1>
+  <p class="lede">Every component dumps heat into the same enclosure. The internal air rises above
+  external ambient by an amount proportional to total power times the enclosure's thermal resistance.
+  Then each component sits at <code>Tj = T_internal + P · Θ_ja</code>. Sweep the inputs, watch the
+  tightest-margin component turn red, then try a mitigation: vent the case, add a sink, derate, or
+  switch material. Mirrors the fold-p4-pico cyberdeck budget from Phase 9 Exercise 10.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>T_ambient external (°C)</label>
+      <input type="range" id="Text" min="-10" max="60" step="1" value="30">
+      <span class="readout" id="TextRO">30 °C</span>
+    </div>
+    <div class="control">
+      <label>Enclosure Θ (°C/W)</label>
+      <input type="range" id="Renc" min="0.5" max="20" step="0.5" value="8">
+      <span class="readout" id="RencRO">8 °C/W (sealed PETG)</span>
+    </div>
+    <div class="control">
+      <label>Enclosure type</label>
+      <select id="encType">
+        <option value="sealed">Sealed PETG / ABS</option>
+        <option value="vented">Passive vent (slots)</option>
+        <option value="fan">Active fan inside</option>
+        <option value="metal">Metal enclosure (Al)</option>
+      </select>
+    </div>
+  </section>
+
+  <h2>Components</h2>
+  <p class="lede">Edit any cell; budget recomputes. Click <b>Add row</b> for more components, or
+  use a mitigation preset below.</p>
+  <table id="cTable">
+    <thead><tr>
+      <th>Component</th><th>P (W)</th><th>Θ_ja (°C/W)</th><th>Tj_max (°C)</th>
+      <th>Tj (°C)</th><th>Margin</th><th></th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+  <button class="btn" id="addRow">+ Add component</button>
+  <button class="btn" id="resetBtn">Reset to cyberdeck preset</button>
+
+  <h2>Enclosure & summary</h2>
+  <div class="row2">
+    <div class="figure">
+      <svg id="vEnc" viewBox="0 0 480 280" width="100%" height="280"></svg>
+    </div>
+    <div class="figure">
+      <p>Total power dissipated: <span class="big-number" id="ptot">— W</span></p>
+      <p>Internal ambient: <span class="big-number" id="tint">— °C</span></p>
+      <p>Tightest margin: <span class="big-number" id="tightest">—</span></p>
+      <p id="verdict" style="font-size:13px;margin-top:8px"></p>
+    </div>
+  </div>
+
+  <h2>Mitigation presets</h2>
+  <p>Each button reapplies the relevant change to the enclosure or component Θ values.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">
+    <button class="btn" id="mitVent">Add vent → Θ_enc 3 °C/W</button>
+    <button class="btn" id="mitFan">Add fan → Θ_enc 1 °C/W</button>
+    <button class="btn" id="mitMetal">Metal case → Θ_enc 1.5 °C/W</button>
+    <button class="btn" id="mitSinkRP">Add sink to RP2350 (Θ_ja 25 → 12)</button>
+    <button class="btn" id="mitDerate">Derate RP2350 (0.8 → 0.4 W)</button>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Internal ambient is the silent killer.</b> An enclosure with Θ_enc = 8 °C/W full of 1.5 W of electronics warms its <i>own</i> air by 12 °C — before any component-specific heating. Components see 42 °C ambient even when the room is 30 °C.</li>
+    <li><b>The component with the lowest Tj_max usually loses first.</b> An ILI9488 display (Tj_max ≈ 70 °C) breaks before an RP2350 (85 °C) or TPS61023 (125 °C). Plan around the weakest member.</li>
+    <li><b>LiPo cells aren't "components" but they care about ambient.</b> Keep their cell temp below 45 °C for cycle-life. They have no Tj_max in the IC sense — they have a lifetime-vs-temperature curve, and they age <i>faster</i> the hotter they sit.</li>
+    <li><b>Venting beats heatsinking at the enclosure level.</b> A few well-placed slots drop Θ_enc from 8 to ~3 (a 5 °C drop in internal air for 1.5 W). That's cheaper than every IC-level sink combined.</li>
+    <li><b>Worst-case stacks.</b> Hot room (40 °C) + sealed enclosure + heavy load + dusty TIM = catastrophic. Design at worst-case, not nominal. 15 °C of headroom is the usual rule.</li>
+    <li><b>Mitigation order: vent → derate → IC sinks.</b> Vents are cheap and improve every component at once. IC-level sinks help one component and add mass and assembly cost.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>internal amb</dt><dd><span class="eq">T_int = T_ext + P_total · R_enc</span></dd>
+        <dt>junction</dt><dd><span class="eq">Tj = T_amb + P · R_ja</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE / DECIDE</h3>
+      <ul>
+        <li><b>Margin ≥ 15–20 °C</b> Tj_max − Tj at worst case.</li>
+        <li><b>Sealed R_enc ~ 5–10 °C/W·W</b>; <b>vented ~ 3</b>.</li>
+        <li><b>LiPo &lt; 45 °C</b> — lifetime halves per +10 °C above 25.</li>
+        <li><b>Mitigation order</b>: vent → heatsink → fan → derate.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Budgeting at nominal</b> — worst case stacks max amb + load + aged TIM.</li>
+        <li><b>Weakest Tj_max wins</b> — display (70 °C) breaks before MCU (85 °C).</li>
+        <li><b>Forgot enclosure rise</b> — components see internal air, not room.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 9 — Thermal Engineering</a> ·
+    Topic: System thermal budget, enclosure analysis, mitigation
+  </footer>
+</main>
+<script>
+function nsIn(svg, tag, attrs={}, text=null){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(text!==null) e.textContent = text;
+  svg.appendChild(e);
+  return e;
+}
+function clear(svg){ while(svg.firstChild) svg.removeChild(svg.firstChild); }
+
+let Text = 30, Renc = 8;
+const PRESET = [
+  {name:'RP2350',    P:0.8, Rja:25, Tjmax:85},
+  {name:'ILI9488',   P:0.3, Rja:35, Tjmax:70},
+  {name:'TPS61023',  P:0.2, Rja:65, Tjmax:125},
+  {name:'LiPo cell', P:0.05,Rja:5,  Tjmax:45},
+];
+let comps = JSON.parse(JSON.stringify(PRESET));
+
+function recompute(){
+  const Ptot = comps.reduce((s,c)=>s+c.P, 0);
+  const Tint = Text + Ptot * Renc;
+  for(const c of comps){
+    c.Tj = Tint + c.P * c.Rja;
+    c.margin = c.Tjmax - c.Tj;
+  }
+  return {Ptot, Tint};
+}
+
+function renderTable(){
+  const {Ptot, Tint} = recompute();
+  const tbody = document.querySelector('#cTable tbody');
+  tbody.innerHTML = '';
+  let tightestComp = null;
+  for(let i=0;i<comps.length;i++){
+    const c = comps[i];
+    const cls = c.margin < 0 ? 'fail-row' : (c.margin < 15 ? 'warn-row' : '');
+    if(!tightestComp || c.margin < tightestComp.margin) tightestComp = c;
+    const tr = document.createElement('tr');
+    tr.className = cls;
+    tr.innerHTML = `
+      <td><input class="cell" style="width:120px" value="${c.name}" data-i="${i}" data-f="name"></td>
+      <td><input class="cell" type="number" step="0.05" value="${c.P}" data-i="${i}" data-f="P"></td>
+      <td><input class="cell" type="number" step="1" value="${c.Rja}" data-i="${i}" data-f="Rja"></td>
+      <td><input class="cell" type="number" step="1" value="${c.Tjmax}" data-i="${i}" data-f="Tjmax"></td>
+      <td>${c.Tj.toFixed(1)}</td>
+      <td class="${c.margin<0?'fail':(c.margin<15?'warn':'pass')}">${c.margin.toFixed(1)} °C</td>
+      <td><button class="btn" data-del="${i}" style="padding:2px 8px">×</button></td>
+    `;
+    tbody.appendChild(tr);
+  }
+  // Hook up inputs
+  tbody.querySelectorAll('input.cell').forEach(inp=>{
+    inp.oninput = e=>{
+      const i = +e.target.dataset.i;
+      const f = e.target.dataset.f;
+      const v = f==='name' ? e.target.value : +e.target.value;
+      comps[i][f] = v;
+      updateAll(false); // redraw without re-rendering full table for stable focus
+    };
+  });
+  tbody.querySelectorAll('button[data-del]').forEach(btn=>{
+    btn.onclick = e=>{
+      comps.splice(+e.target.dataset.del, 1);
+      updateAll(true);
+    };
+  });
+  document.getElementById('ptot').textContent = Ptot.toFixed(2) + ' W';
+  document.getElementById('tint').textContent = Tint.toFixed(1) + ' °C';
+  document.getElementById('tightest').innerHTML =
+    `<span class="${tightestComp.margin<0?'fail':(tightestComp.margin<15?'warn':'pass')}">${tightestComp.name}: ${tightestComp.margin.toFixed(1)} °C</span>`;
+  const v = document.getElementById('verdict');
+  if(tightestComp.margin < 0){
+    v.innerHTML = `<span class="fail">FAIL — ${tightestComp.name} exceeds Tj_max by ${(-tightestComp.margin).toFixed(1)} °C. Try a mitigation below.</span>`;
+  } else if(tightestComp.margin < 15){
+    v.innerHTML = `<span class="warn">Tight — ${tightestComp.name} has only ${tightestComp.margin.toFixed(1)} °C of margin under nominal. Push T_ext to worst case to see if it still passes.</span>`;
+  } else {
+    v.innerHTML = `<span class="pass">All components comfortable. Smallest margin: ${tightestComp.margin.toFixed(1)} °C on ${tightestComp.name}.</span>`;
+  }
+}
+
+function renderUpdateOnly(){
+  const {Ptot, Tint} = recompute();
+  // Update only Tj, Margin cells in place (preserves focus)
+  const trs = document.querySelectorAll('#cTable tbody tr');
+  let tightestComp = null;
+  for(let i=0;i<comps.length;i++){
+    const c = comps[i];
+    if(!tightestComp || c.margin < tightestComp.margin) tightestComp = c;
+    const tr = trs[i];
+    if(!tr) continue;
+    tr.className = c.margin < 0 ? 'fail-row' : (c.margin < 15 ? 'warn-row' : '');
+    const tds = tr.querySelectorAll('td');
+    tds[4].textContent = c.Tj.toFixed(1);
+    tds[5].className = c.margin<0?'fail':(c.margin<15?'warn':'pass');
+    tds[5].textContent = c.margin.toFixed(1) + ' °C';
+  }
+  document.getElementById('ptot').textContent = Ptot.toFixed(2) + ' W';
+  document.getElementById('tint').textContent = Tint.toFixed(1) + ' °C';
+  document.getElementById('tightest').innerHTML =
+    `<span class="${tightestComp.margin<0?'fail':(tightestComp.margin<15?'warn':'pass')}">${tightestComp.name}: ${tightestComp.margin.toFixed(1)} °C</span>`;
+  const v = document.getElementById('verdict');
+  if(tightestComp.margin < 0){
+    v.innerHTML = `<span class="fail">FAIL — ${tightestComp.name} exceeds Tj_max by ${(-tightestComp.margin).toFixed(1)} °C. Try a mitigation below.</span>`;
+  } else if(tightestComp.margin < 15){
+    v.innerHTML = `<span class="warn">Tight — ${tightestComp.name} has only ${tightestComp.margin.toFixed(1)} °C of margin under nominal.</span>`;
+  } else {
+    v.innerHTML = `<span class="pass">All components comfortable. Smallest margin: ${tightestComp.margin.toFixed(1)} °C on ${tightestComp.name}.</span>`;
+  }
+}
+
+function drawEnclosure(){
+  const svg = document.getElementById('vEnc');
+  clear(svg);
+  const {Ptot, Tint} = recompute();
+  // Draw box
+  nsIn(svg,'rect',{x:30,y:50,width:420,height:180,fill:'#1d232c',stroke:'#888','stroke-width':2,rx:6});
+  // Internal temp tint (color overlay)
+  const t = Math.max(0, Math.min(1, (Tint-Text)/40));
+  const r = Math.round(94 + t*(255-94));
+  const g = Math.round(200 - t*120);
+  const b = Math.round(255 - t*200);
+  nsIn(svg,'rect',{x:32,y:52,width:416,height:176,fill:`rgb(${r},${g},${b})`,opacity:0.15,rx:5});
+  // External ambient label
+  nsIn(svg,'text',{x:20,y:40,class:'label-dim'},`External: ${Text.toFixed(0)}°C`);
+  // Internal label
+  nsIn(svg,'text',{x:240,y:70,class:'label','text-anchor':'middle',fill:'#ffb86c'},
+    `Internal ambient: ${Tint.toFixed(1)} °C`);
+  nsIn(svg,'text',{x:240,y:88,class:'label-dim','text-anchor':'middle'},
+    `(rose by ${(Tint-Text).toFixed(1)} °C; Θ_enc = ${Renc.toFixed(1)} °C/W; P = ${Ptot.toFixed(2)} W)`);
+
+  // Components inside as small chips
+  const chipsPerRow = Math.min(4, comps.length);
+  const padX = 80, padY = 110;
+  for(let i=0;i<comps.length;i++){
+    const c = comps[i];
+    const row = Math.floor(i / chipsPerRow);
+    const col = i % chipsPerRow;
+    const cx = 60 + col*100, cy = padY + row*60;
+    const ratio = Math.max(0, Math.min(1, c.Tj/120));
+    const r2 = Math.round(94 + ratio*(255-94));
+    const g2 = Math.round(200 - ratio*120);
+    const b2 = Math.round(255 - ratio*200);
+    const color = `rgb(${r2},${g2},${b2})`;
+    nsIn(svg,'rect',{x:cx,y:cy,width:80,height:30,fill:color,stroke:c.margin<0?'#ff7b72':'#fff','stroke-width':c.margin<0?2:1,rx:3});
+    nsIn(svg,'text',{x:cx+40,y:cy+14,class:'label','text-anchor':'middle',fill:'#0e1116'},c.name.substring(0,12));
+    nsIn(svg,'text',{x:cx+40,y:cy+25,class:'label','text-anchor':'middle',fill:'#0e1116','font-size':'10'},
+      `${c.Tj.toFixed(0)}°C`);
+  }
+
+  // Vents/fan indicator
+  const encType = document.getElementById('encType').value;
+  if(encType==='vented' || encType==='fan'){
+    for(let i=0;i<5;i++){
+      nsIn(svg,'rect',{x:450,y:80+i*25,width:8,height:14,fill:'#5ec8ff',opacity:0.85});
+    }
+    if(encType==='fan'){
+      nsIn(svg,'text',{x:454,y:60,class:'label-dim','text-anchor':'middle',fill:'#5ec8ff'},'fan');
+    } else {
+      nsIn(svg,'text',{x:454,y:60,class:'label-dim','text-anchor':'middle',fill:'#5ec8ff'},'vents');
+    }
+  }
+}
+
+function updateAll(rebuildTable=true){
+  document.getElementById('TextRO').textContent = Text.toFixed(0) + ' °C';
+  const encType = document.getElementById('encType').value;
+  let suffix = '';
+  if(encType==='sealed') suffix = ' (sealed PETG)';
+  else if(encType==='vented') suffix = ' (passive vent)';
+  else if(encType==='fan') suffix = ' (active fan)';
+  else if(encType==='metal') suffix = ' (metal)';
+  document.getElementById('RencRO').textContent = Renc.toFixed(1) + ' °C/W' + suffix;
+  if(rebuildTable) renderTable();
+  else renderUpdateOnly();
+  drawEnclosure();
+}
+
+document.getElementById('Text').oninput = e=>{ Text=+e.target.value; updateAll(false); };
+document.getElementById('Renc').oninput = e=>{ Renc=+e.target.value; updateAll(false); };
+document.getElementById('encType').onchange = e=>{
+  const v = e.target.value;
+  if(v==='sealed') Renc = 8;
+  else if(v==='vented') Renc = 3;
+  else if(v==='fan') Renc = 1;
+  else if(v==='metal') Renc = 1.5;
+  document.getElementById('Renc').value = Renc;
+  updateAll(false);
+};
+
+document.getElementById('addRow').onclick = ()=>{
+  comps.push({name:`Comp ${comps.length+1}`, P:0.1, Rja:30, Tjmax:85});
+  updateAll(true);
+};
+document.getElementById('resetBtn').onclick = ()=>{
+  comps = JSON.parse(JSON.stringify(PRESET));
+  Text = 30; Renc = 8;
+  document.getElementById('Text').value = Text;
+  document.getElementById('Renc').value = Renc;
+  document.getElementById('encType').value = 'sealed';
+  updateAll(true);
+};
+
+// Mitigations
+document.getElementById('mitVent').onclick = ()=>{
+  Renc = 3; document.getElementById('Renc').value = 3;
+  document.getElementById('encType').value = 'vented';
+  updateAll(false);
+};
+document.getElementById('mitFan').onclick = ()=>{
+  Renc = 1; document.getElementById('Renc').value = 1;
+  document.getElementById('encType').value = 'fan';
+  updateAll(false);
+};
+document.getElementById('mitMetal').onclick = ()=>{
+  Renc = 1.5; document.getElementById('Renc').value = 1.5;
+  document.getElementById('encType').value = 'metal';
+  updateAll(false);
+};
+document.getElementById('mitSinkRP').onclick = ()=>{
+  const rp = comps.find(c=>c.name.startsWith('RP'));
+  if(rp){ rp.Rja = 12; updateAll(true); }
+};
+document.getElementById('mitDerate').onclick = ()=>{
+  const rp = comps.find(c=>c.name.startsWith('RP'));
+  if(rp){ rp.P = 0.4; updateAll(true); }
+};
+
+updateAll(true);
+</script>
+</body>
+</html>

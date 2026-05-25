@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GD&amp;T Feature Control Frame Explorer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  /* FCF specifics */
+  .fcf{display:inline-flex;align-items:stretch;font-family:ui-monospace,Menlo,monospace;
+    font-size:22px;background:var(--bg-elev2);border:1.5px solid var(--fg-bright);
+    border-radius:2px;margin:4px 0}
+  .fcf-cell{padding:8px 14px;border-right:1.5px solid var(--fg-bright);
+    color:var(--fg-bright);min-width:36px;text-align:center}
+  .fcf-cell:last-child{border-right:none}
+  .fcf-cell.sym{font-size:24px;color:var(--accent)}
+  .fcf-cell.mod{color:var(--accent2)}
+  .fcf-cell.datum{color:var(--accent3)}
+  .fcf-wrap{margin:18px 0;text-align:center}
+  .fcf-decode{margin-top:10px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace;text-align:left;
+    background:var(--bg-elev2);padding:10px 14px;border-radius:6px;
+    border:1px solid var(--line)}
+  .datum-row{display:flex;gap:6px;align-items:center}
+  .datum-row select{flex:1}
+  .tol-zone{fill:rgba(94,200,255,0.18);stroke:var(--accent);
+    stroke-width:1.2;stroke-dasharray:4 3}
+  .hole-outline{fill:none;stroke:var(--accent2);stroke-width:2}
+  .true-pos{fill:var(--fg-bright)}
+  .screw{fill:rgba(255,184,108,0.35);stroke:var(--accent2);stroke-width:1.2}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>GD&amp;T Feature Control Frame Explorer</h1>
+  <p class="lede">Build a feature control frame piece by piece: pick the geometric symbol, set the tolerance value, attach a material-condition modifier, and chain datums. The live FCF renders below, and the position case visualises the cylindrical tolerance zone with MMC bonus tolerance — anchored to the fold-p4-pico Pico 2 W mounting hole (M2.5 clearance, Ø2.9 +0.2/-0).</p>
+
+  <h3>What this teaches</h3>
+  <p>One FCF replaces a dozen ±X dimensions. The symbol says <em>what</em> is controlled, the value says <em>how tight</em>, the modifier links size to bonus tolerance, and the datums say <em>relative to what</em>. The MMC bonus shows why a slightly oversized hole still passes inspection — a real concern on FDM prints where holes spread inconsistently.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Geometric symbol</label>
+      <select id="sel-sym">
+        <option value="position">⌖  position (true position)</option>
+        <option value="perp">⊥  perpendicularity</option>
+        <option value="conc">◎  concentricity</option>
+        <option value="runout">↗  runout</option>
+        <option value="flat">⌒  flatness</option>
+        <option value="cyl">⌓  cylindricity</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Tolerance value (mm) — <span class="readout" id="ro-tol">0.20</span></label>
+      <input type="range" id="sl-tol" min="0.05" max="1.0" step="0.01" value="0.20">
+    </div>
+    <div class="control">
+      <label>Material-condition modifier</label>
+      <select id="sel-mod">
+        <option value="none">— none (RFS, regardless of feature size)</option>
+        <option value="mmc" selected>Ⓜ MMC (maximum material condition)</option>
+        <option value="lmc">Ⓛ LMC (least material condition)</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Datum A (primary)</label>
+      <select id="sel-a"><option value="A">A</option><option value="">— none</option></select>
+    </div>
+    <div class="control">
+      <label>Datum B (secondary)</label>
+      <select id="sel-b"><option value="B">B</option><option value="">— none</option></select>
+    </div>
+    <div class="control">
+      <label>Datum C (tertiary)</label>
+      <select id="sel-c"><option value="C">C</option><option value="">— none</option></select>
+    </div>
+  </section>
+
+  <div class="fcf-wrap">
+    <div class="fcf" id="fcf"></div>
+    <div class="fcf-decode" id="fcf-decode"></div>
+  </div>
+
+  <h2>Position case — hole + tolerance zone (M2.5 mounting pattern)</h2>
+  <p class="lede">Hole nominal Ø2.9 mm, tolerance +0.2/−0 → MMC = 2.9, LMC = 3.1. Drag the slider to vary the actual hole size and watch the cylindrical tolerance zone grow under MMC bonus tolerance. The M2.5 screw (Ø2.5) is shown in orange for reference.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Actual hole diameter (mm) — <span class="readout" id="ro-size">2.90</span></label>
+      <input type="range" id="sl-size" min="2.9" max="3.1" step="0.01" value="2.90">
+    </div>
+    <div class="control">
+      <label>FCF tolerance at MMC (mm)</label>
+      <span class="readout" id="ro-fcf">Ø0.20</span>
+    </div>
+    <div class="control">
+      <label>Bonus tolerance (mm)</label>
+      <span class="readout" id="ro-bonus">+0.00</span>
+    </div>
+    <div class="control">
+      <label>Effective tolerance zone Ø (mm)</label>
+      <span class="readout" id="ro-eff">Ø0.20</span>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="svg-pos" viewBox="0 0 920 360" xmlns="http://www.w3.org/2000/svg">
+      <!-- LEFT: top-down view of hole at nominal + tolerance zone + screw -->
+      <g transform="translate(40,30)">
+        <text x="180" y="-6" class="label" text-anchor="middle">Top-down: hole, tolerance zone, M2.5 screw</text>
+        <g transform="translate(180,150)">
+          <!-- crosshairs at true position -->
+          <line x1="-130" y1="0" x2="130" y2="0" class="axis"/>
+          <line x1="0" y1="-130" x2="0" y2="130" class="axis"/>
+          <!-- nominal position marker -->
+          <circle cx="0" cy="0" r="2" class="true-pos"/>
+          <text x="6" y="-4" class="label-dim">true pos</text>
+          <!-- tolerance zone (cylinder cross-section) -->
+          <circle id="tol-zone" cx="0" cy="0" r="40" class="tol-zone"/>
+          <!-- hole outline -->
+          <circle id="hole" cx="0" cy="0" r="58" class="hole-outline"/>
+          <!-- M2.5 screw at edge of zone -->
+          <circle id="screw" cx="0" cy="0" r="50" class="screw"/>
+          <!-- dim arrows -->
+          <line id="tol-dim-l" x1="-40" y1="80" x2="40" y2="80" stroke="var(--accent)" stroke-width="1"/>
+          <line id="tol-dim-l1" x1="-40" y1="76" x2="-40" y2="84" stroke="var(--accent)" stroke-width="1"/>
+          <line id="tol-dim-l2" x1="40" y1="76" x2="40" y2="84" stroke="var(--accent)" stroke-width="1"/>
+          <text id="tol-dim-t" x="0" y="98" class="label" text-anchor="middle" fill="var(--accent)">Ø zone</text>
+        </g>
+        <!-- scale legend -->
+        <text x="0" y="320" class="label-dim">Scale: 1 mm ≈ 100 px</text>
+      </g>
+
+      <!-- Divider -->
+      <line x1="430" y1="30" x2="430" y2="340" stroke="var(--line)" stroke-width="1"/>
+
+      <!-- RIGHT: scenario callout (the gdt-callouts.md M2.5 case) -->
+      <g transform="translate(450,30)">
+        <text x="220" y="-6" class="label" text-anchor="middle">Scenario: fold-p4-pico Pico 2 W mounting hole</text>
+        <rect x="0" y="10" width="440" height="290" rx="6" fill="var(--bg-elev2)" stroke="var(--line)"/>
+        <text x="20" y="40" class="label">Nominal hole: Ø2.9 +0.2 / −0 mm</text>
+        <text x="20" y="62" class="label">Fastener: M2.5 socket-head (Ø2.5 max OD)</text>
+        <text x="20" y="84" class="label">Pattern: 47 × 11.4 mm, 4× holes</text>
+        <text x="20" y="106" class="label">Datums: A = inside bottom face</text>
+        <text x="68" y="124" class="label">B = inside long edge</text>
+        <text x="68" y="142" class="label">C = inside short edge</text>
+
+        <text x="20" y="178" class="label" fill="var(--accent)">Fit check (worst case):</text>
+        <text x="20" y="200" class="label-dim" id="fit-1">hole at actual size → screw min clearance</text>
+        <text x="20" y="220" class="label" id="fit-2">— mm</text>
+        <text x="20" y="252" class="label-dim">Screw fits if (hole Ø − eff zone Ø) ≥ screw OD (2.5)</text>
+        <text x="20" y="274" class="label" id="fit-pass">—</text>
+      </g>
+    </svg>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Five fields, one box.</b> The FCF reads strictly left to right: symbol, tolerance value with Ø prefix (cylindrical zone), modifier, then datums in priority order A | B | C.</li>
+    <li><b>Position needs datums; flatness/cylindricity don't.</b> Switch the symbol to ⌒ flatness or ⌓ cylindricity — those control the surface against itself, so the datum cells go empty (the rule is baked in).</li>
+    <li><b>Ⓜ MMC buys bonus tolerance.</b> At MMC (Ø2.9, the smallest allowed) the zone is exactly 0.20 mm. Push the hole to 3.0 mm and the zone grows to 0.30 mm — the screw still passes because the bigger hole already gives the screw more room.</li>
+    <li><b>Ⓛ LMC is the inverse.</b> Bonus kicks in at the *largest* size — used on shafts/pins where material removal is the failure mode (e.g., a pin must keep enough meat to take load).</li>
+    <li><b>The position case fails when the hole is small AND offset.</b> If the hole is at MMC (2.9) and the axis sits at the edge of the 0.2 mm zone, the screw (2.5) barely clears — that's the design margin baked into the spec.</li>
+    <li><b>Real FDM prints: include Ⓜ on every clearance hole.</b> Printed holes spread inconsistently; the bonus tolerance absorbs the variation without redesign.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>Datum A</b> — primary, locks 3 DOF.</li>
+        <li><b>Datum B</b> — secondary, locks 2 DOF.</li>
+        <li><b>Datum C</b> — tertiary, locks 1 DOF.</li>
+        <li><b>Symbols</b> — ⌖ position, ⊥ perpendicular, Ⓜ MMC, Ⓛ LMC.</li>
+      </ul>
+    </div>
+    <div class="cheat-card formulas">
+      <h3>MMC BONUS</h3>
+      <dl>
+        <dt>Bonus</dt><dd><span class="eq">b = actual − MMC</span></dd>
+        <dt>Eff. zone</dt><dd><span class="eq">t_eff = t_FCF + b</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Datum order matters</b> — swap A and B → different inspection result.</li>
+        <li><b>MMC needs FoS</b> — bonus only valid on a feature-of-size, not a planar surface.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 1 — Technical Drawing &amp; CAD</a> ·
+    Topic: GD&amp;T feature control frames
+  </footer>
+</main>
+<script>
+  const SYM = {
+    position: {glyph:'⌖', name:'position',         needsDatum:true,  cylZone:true},
+    perp:     {glyph:'⊥', name:'perpendicularity', needsDatum:true,  cylZone:false},
+    conc:     {glyph:'◎', name:'concentricity',    needsDatum:true,  cylZone:true},
+    runout:   {glyph:'↗', name:'runout',           needsDatum:true,  cylZone:false},
+    flat:     {glyph:'⌒', name:'flatness',         needsDatum:false, cylZone:false},
+    cyl:      {glyph:'⌓', name:'cylindricity',     needsDatum:false, cylZone:false}
+  };
+  const MOD = {
+    none: {glyph:'',  name:'RFS (regardless of feature size)'},
+    mmc:  {glyph:'Ⓜ', name:'MMC — bonus tolerance when feature is at smallest material'},
+    lmc:  {glyph:'Ⓛ', name:'LMC — bonus tolerance when feature is at largest material'}
+  };
+
+  const MMC = 2.9, LMC = 3.1, SCREW = 2.5;
+
+  const el = id => document.getElementById(id);
+
+  function renderFCF() {
+    const symKey = el('sel-sym').value;
+    const sym = SYM[symKey];
+    const tol = parseFloat(el('sl-tol').value).toFixed(2);
+    const modKey = el('sel-mod').value;
+    const mod = MOD[modKey];
+    const datA = sym.needsDatum ? el('sel-a').value : '';
+    const datB = sym.needsDatum ? el('sel-b').value : '';
+    const datC = sym.needsDatum ? el('sel-c').value : '';
+
+    // disable datum selects when symbol doesn't need them
+    el('sel-a').disabled = !sym.needsDatum;
+    el('sel-b').disabled = !sym.needsDatum;
+    el('sel-c').disabled = !sym.needsDatum;
+
+    const tolText = (sym.cylZone ? 'Ø' : '') + tol + (mod.glyph ? ' ' + mod.glyph : '');
+
+    let html = '';
+    html += `<div class="fcf-cell sym">${sym.glyph}</div>`;
+    html += `<div class="fcf-cell">${tolText}</div>`;
+    if (datA) html += `<div class="fcf-cell datum">${datA}</div>`;
+    if (datB) html += `<div class="fcf-cell datum">${datB}</div>`;
+    if (datC) html += `<div class="fcf-cell datum">${datC}</div>`;
+    el('fcf').innerHTML = html;
+
+    // decode
+    const parts = [];
+    parts.push(`<b style="color:var(--accent)">${sym.glyph}</b>  = ${sym.name}`);
+    parts.push(`<b style="color:var(--fg-bright)">${(sym.cylZone?'Ø':'')+tol}</b>  = ${sym.cylZone?'cylindrical':'planar'} tolerance zone of ${tol} mm`);
+    if (mod.glyph) parts.push(`<b style="color:var(--accent2)">${mod.glyph}</b>  = ${mod.name}`);
+    else parts.push(`(no modifier) = RFS — tolerance does not depend on feature size`);
+    if (sym.needsDatum) {
+      const ds = [datA, datB, datC].filter(x=>x);
+      if (ds.length) parts.push(`<b style="color:var(--accent3)">${ds.join(' | ')}</b>  = datum reference${ds.length>1?'s':''} (priority ${ds.join(' &gt; ')})`);
+      else parts.push(`<span style="color:var(--warn)">— no datums set; ${sym.name} requires at least one datum</span>`);
+    } else {
+      parts.push(`(no datums) = ${sym.name} controls the surface against itself`);
+    }
+    el('fcf-decode').innerHTML = parts.join('<br>');
+
+    renderPosCase();
+  }
+
+  function renderPosCase() {
+    const tolMMC = parseFloat(el('sl-tol').value);
+    const size = parseFloat(el('sl-size').value);
+    const modKey = el('sel-mod').value;
+    const symKey = el('sel-sym').value;
+
+    // bonus only applies for MMC modifier; bonus = size - MMC
+    let bonus = 0;
+    if (modKey === 'mmc') bonus = Math.max(0, size - MMC);
+    else if (modKey === 'lmc') bonus = Math.max(0, LMC - size);
+    const eff = tolMMC + bonus;
+
+    el('ro-tol').textContent = tolMMC.toFixed(2);
+    el('ro-size').textContent = size.toFixed(2);
+    el('ro-fcf').textContent = 'Ø' + tolMMC.toFixed(2);
+    el('ro-bonus').textContent = '+' + bonus.toFixed(2);
+    el('ro-eff').textContent = 'Ø' + eff.toFixed(2);
+
+    // scale: 1 mm -> 100 px (so 2.9 mm hole -> r=145 ... too big; use 50 px/mm)
+    // pick scale 50 px/mm; hole r = size/2 * 50; zone r = eff/2 * 50
+    const S = 50;
+    const holeR = (size / 2) * S;
+    const zoneR = (eff / 2) * S;
+    const screwR = (SCREW / 2) * S;
+
+    el('hole').setAttribute('r', holeR);
+    el('tol-zone').setAttribute('r', zoneR);
+    el('screw').setAttribute('r', screwR);
+
+    // dim line for the zone (under hole)
+    el('tol-dim-l').setAttribute('x1', -zoneR);
+    el('tol-dim-l').setAttribute('x2', zoneR);
+    el('tol-dim-l1').setAttribute('x1', -zoneR);
+    el('tol-dim-l1').setAttribute('x2', -zoneR);
+    el('tol-dim-l2').setAttribute('x1', zoneR);
+    el('tol-dim-l2').setAttribute('x2', zoneR);
+    el('tol-dim-t').textContent = `Ø${eff.toFixed(2)} zone`;
+
+    // fit check: worst case = hole at offset = zone radius
+    // min clearance between hole edge and screw = (size - eff) - SCREW
+    // i.e., when the screw can shift up to (eff/2) from center, the hole must still wrap it: hole_r - eff/2 >= screw_r
+    // -> (size/2 - eff/2) >= screw/2 -> size - eff >= screw
+    const minClearance = size - eff - SCREW;
+    el('fit-1').textContent = `hole Ø${size.toFixed(2)} − zone Ø${eff.toFixed(2)} − screw Ø${SCREW.toFixed(2)}`;
+    el('fit-2').textContent = `= ${minClearance.toFixed(2)} mm`;
+    if (symKey !== 'position') {
+      el('fit-pass').textContent = '(fit check applies only to position)';
+      el('fit-pass').setAttribute('fill','var(--fg-dim)');
+    } else if (minClearance >= 0) {
+      el('fit-pass').textContent = `PASS — screw still drops in (${minClearance.toFixed(2)} mm margin)`;
+      el('fit-pass').setAttribute('fill','var(--accent3)');
+    } else {
+      el('fit-pass').textContent = `FAIL — screw interferes by ${(-minClearance).toFixed(2)} mm`;
+      el('fit-pass').setAttribute('fill','var(--warn)');
+    }
+  }
+
+  ['sel-sym','sl-tol','sel-mod','sel-a','sel-b','sel-c','sl-size'].forEach(id =>
+    el(id).addEventListener('input', renderFCF));
+  renderFCF();
+</script>
+</body>
+</html>

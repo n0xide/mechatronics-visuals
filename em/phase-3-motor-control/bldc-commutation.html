@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BLDC Commutation — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+    --phaseA:#5ec8ff; --phaseB:#ffb86c; --phaseC:#a3e635;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-A{stroke:var(--phaseA)}
+  .trace-B{stroke:var(--phaseB)}
+  .trace-C{stroke:var(--phaseC)}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>BLDC Commutation — Six-Step vs Sinusoidal</h1>
+  <p class="lede">BLDC = brushless DC = a 3-phase synchronous motor that you commutate electronically. Same magnet+coils as PMSM; difference is how cleverly you drive the phase currents.</p>
+
+  <p>A BLDC has three stator phases (A, B, C) wound 120° apart and a permanent-magnet rotor. The driver must energize the right phases at the right time to produce continuous rotation — this is "commutation." Three flavors, in order of sophistication: <b>trapezoidal six-step</b> (turn on two phases, leave one floating; rotate which pair every 60° electrical); <b>sinusoidal</b> (continuously drive smooth sine waves 120° apart); <b>FOC</b> (transform to rotor frame, regulate the torque-producing current directly). Six-step is the hobby-ESC default — simple, works sensorless via back-EMF zero-cross. Sinusoidal is quieter and smoother but needs continuous rotor angle. FOC is sinusoidal commutation done in a smart reference frame; it's how serious robotics drives torque.</p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="sixstep">Six-step (trapezoidal)</div>
+    <div class="tab" data-tab="sine">Sinusoidal</div>
+    <div class="tab" data-tab="foc">FOC concept</div>
+  </div>
+
+  <div class="tab-panel active" data-panel="sixstep">
+    <h3>Six-step commutation — Hall-sensored</h3>
+    <p style="color:var(--fg-dim);font-size:13px">Six discrete states per electrical revolution (360° elec). In each state, one phase is driven HIGH (to V+), one driven LOW (to GND), and the third FLOATS. Hall sensors (or back-EMF zero-cross) tell the driver when to advance to the next state.</p>
+    <section class="controls">
+      <div class="control">
+        <label>Rotor angle (elec °): <span class="readout" id="angRead">30°</span></label>
+        <input id="ang" type="range" min="0" max="359" step="1" value="30">
+      </div>
+      <div class="control">
+        <label>Speed</label>
+        <button class="btn" id="spinBtn">▶ Animate</button>
+      </div>
+      <div class="control">
+        <label>Sensor mode</label>
+        <select id="sensorMode">
+          <option value="hall">Hall (3 sensors)</option>
+          <option value="bemf">Sensorless (back-EMF zero-cross)</option>
+        </select>
+      </div>
+    </section>
+    <div class="figure">
+      <h3>Six-step state</h3>
+      <svg viewBox="0 0 700 320" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+        <!-- 3-phase inverter -->
+        <line x1="40" y1="40" x2="600" y2="40" class="trace trace-1" stroke="var(--fg)" stroke-width="1.5"/>
+        <line x1="40" y1="280" x2="600" y2="280" class="trace trace-1" stroke="var(--fg)" stroke-width="1.5"/>
+        <text x="30" y="44" class="axis-label" text-anchor="end">V+</text>
+        <text x="30" y="284" class="axis-label" text-anchor="end">GND</text>
+
+        <!-- Phase A leg -->
+        <g id="legA">
+          <line x1="150" y1="40" x2="150" y2="100" stroke="var(--fg)" stroke-width="1.5"/>
+          <rect id="hsA" x="125" y="100" width="50" height="40" fill="var(--bg-elev2)" stroke="var(--phaseA)" stroke-width="2"/>
+          <text x="150" y="125" class="label" text-anchor="middle">A+</text>
+          <line x1="150" y1="140" x2="150" y2="180" stroke="var(--fg)" stroke-width="1.5"/>
+          <circle cx="150" cy="180" r="3" fill="var(--phaseA)"/>
+          <text x="160" y="178" class="label" fill="var(--phaseA)">A</text>
+          <line x1="150" y1="180" x2="150" y2="220" stroke="var(--fg)" stroke-width="1.5"/>
+          <rect id="lsA" x="125" y="220" width="50" height="40" fill="var(--bg-elev2)" stroke="var(--phaseA)" stroke-width="2"/>
+          <text x="150" y="245" class="label" text-anchor="middle">A−</text>
+          <line x1="150" y1="260" x2="150" y2="280" stroke="var(--fg)" stroke-width="1.5"/>
+        </g>
+        <g id="legB">
+          <line x1="320" y1="40" x2="320" y2="100" stroke="var(--fg)" stroke-width="1.5"/>
+          <rect id="hsB" x="295" y="100" width="50" height="40" fill="var(--bg-elev2)" stroke="var(--phaseB)" stroke-width="2"/>
+          <text x="320" y="125" class="label" text-anchor="middle">B+</text>
+          <line x1="320" y1="140" x2="320" y2="180" stroke="var(--fg)" stroke-width="1.5"/>
+          <circle cx="320" cy="180" r="3" fill="var(--phaseB)"/>
+          <text x="330" y="178" class="label" fill="var(--phaseB)">B</text>
+          <line x1="320" y1="180" x2="320" y2="220" stroke="var(--fg)" stroke-width="1.5"/>
+          <rect id="lsB" x="295" y="220" width="50" height="40" fill="var(--bg-elev2)" stroke="var(--phaseB)" stroke-width="2"/>
+          <text x="320" y="245" class="label" text-anchor="middle">B−</text>
+          <line x1="320" y1="260" x2="320" y2="280" stroke="var(--fg)" stroke-width="1.5"/>
+        </g>
+        <g id="legC">
+          <line x1="490" y1="40" x2="490" y2="100" stroke="var(--fg)" stroke-width="1.5"/>
+          <rect id="hsC" x="465" y="100" width="50" height="40" fill="var(--bg-elev2)" stroke="var(--phaseC)" stroke-width="2"/>
+          <text x="490" y="125" class="label" text-anchor="middle">C+</text>
+          <line x1="490" y1="140" x2="490" y2="180" stroke="var(--fg)" stroke-width="1.5"/>
+          <circle cx="490" cy="180" r="3" fill="var(--phaseC)"/>
+          <text x="500" y="178" class="label" fill="var(--phaseC)">C</text>
+          <line x1="490" y1="180" x2="490" y2="220" stroke="var(--fg)" stroke-width="1.5"/>
+          <rect id="lsC" x="465" y="220" width="50" height="40" fill="var(--bg-elev2)" stroke="var(--phaseC)" stroke-width="2"/>
+          <text x="490" y="245" class="label" text-anchor="middle">C−</text>
+          <line x1="490" y1="260" x2="490" y2="280" stroke="var(--fg)" stroke-width="1.5"/>
+        </g>
+
+        <!-- State display -->
+        <text x="620" y="50" class="label" fill="var(--accent2)">State <tspan id="stateNum" font-weight="bold">1</tspan>/6</text>
+        <text x="620" y="70" class="label-dim">Halls:</text>
+        <text x="620" y="85" class="label" id="hallTxt">HA=1 HB=0 HC=1</text>
+        <text x="620" y="105" class="label-dim">Drive:</text>
+        <text x="620" y="120" class="label" id="driveTxt">A+ → B−</text>
+
+        <!-- Mini rotor diagram -->
+        <g id="rotor" transform="translate(635,210)">
+          <circle r="40" fill="none" stroke="var(--fg-dim)" stroke-width="1"/>
+          <line id="rotorVec" x1="0" y1="0" x2="0" y2="-35" stroke="var(--accent2)" stroke-width="3"/>
+          <circle r="3" fill="var(--accent2)"/>
+          <text y="55" class="axis-label" text-anchor="middle">rotor θ</text>
+        </g>
+      </svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--phaseA)"></span>Phase A</span>
+        <span><span class="swatch" style="background:var(--phaseB)"></span>Phase B</span>
+        <span><span class="swatch" style="background:var(--phaseC)"></span>Phase C</span>
+        <span>· bright FET = driven</span>
+      </div>
+    </div>
+
+    <div class="figure">
+      <h3>Hall-state → drive lookup</h3>
+      <table>
+        <tr><th>State</th><th>Range (°elec)</th><th>HA</th><th>HB</th><th>HC</th><th>Drive</th></tr>
+        <tr><td>1</td><td>  0–60</td><td>1</td><td>0</td><td>1</td><td>A+ → B−</td></tr>
+        <tr><td>2</td><td> 60–120</td><td>1</td><td>0</td><td>0</td><td>A+ → C−</td></tr>
+        <tr><td>3</td><td>120–180</td><td>1</td><td>1</td><td>0</td><td>B+ → C−</td></tr>
+        <tr><td>4</td><td>180–240</td><td>0</td><td>1</td><td>0</td><td>B+ → A−</td></tr>
+        <tr><td>5</td><td>240–300</td><td>0</td><td>1</td><td>1</td><td>C+ → A−</td></tr>
+        <tr><td>6</td><td>300–360</td><td>0</td><td>0</td><td>1</td><td>C+ → B−</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="tab-panel" data-panel="sine">
+    <h3>Sinusoidal commutation</h3>
+    <p style="color:var(--fg-dim);font-size:13px">Drive each phase with a smooth sine, 120° apart. Continuous rotor angle required (encoder, not just halls). Torque is constant — no 6× per-revolution ripple of trapezoidal.</p>
+    <section class="controls">
+      <div class="control">
+        <label>Rotor angle (elec °): <span class="readout" id="sinAngRead">90°</span></label>
+        <input id="sinAng" type="range" min="0" max="359" step="1" value="90">
+      </div>
+      <div class="control">
+        <label>Amplitude (modulation index): <span class="readout" id="ampRead">0.90</span></label>
+        <input id="amp" type="range" min="0" max="1.15" step="0.01" value="0.9">
+      </div>
+      <div class="control">
+        <button class="btn" id="spinSinBtn">▶ Animate</button>
+      </div>
+    </section>
+    <div class="figure">
+      <svg viewBox="0 0 700 240" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+        <line x1="50" y1="20" x2="50" y2="220" class="axis"/>
+        <line x1="50" y1="120" x2="680" y2="120" stroke="var(--grid)" stroke-dasharray="2,3"/>
+        <text x="40" y="30" class="axis-label" text-anchor="end">+V</text>
+        <text x="40" y="125" class="axis-label" text-anchor="end">0</text>
+        <text x="40" y="220" class="axis-label" text-anchor="end">−V</text>
+        <text x="685" y="232" class="axis-label">θ elec</text>
+        <polyline id="sinA" class="trace trace-A" points=""/>
+        <polyline id="sinB" class="trace trace-B" points=""/>
+        <polyline id="sinC" class="trace trace-C" points=""/>
+        <line id="sinCursor" x1="200" y1="20" x2="200" y2="220" stroke="var(--accent2)" stroke-dasharray="3,3"/>
+      </svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--phaseA)"></span>V_A = sin(θ)</span>
+        <span><span class="swatch" style="background:var(--phaseB)"></span>V_B = sin(θ − 120°)</span>
+        <span><span class="swatch" style="background:var(--phaseC)"></span>V_C = sin(θ + 120°)</span>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--fg-dim)">SVPWM (space-vector) adds a 3rd-harmonic injection so the peak line-to-line voltage reaches 1.15·V_dc, vs 0.866·V_dc for plain sine. Free torque headroom — almost every modern FOC implements SVPWM internally.</p>
+  </div>
+
+  <div class="tab-panel" data-panel="foc">
+    <h3>From sinusoidal to FOC (intuition)</h3>
+    <p style="color:var(--fg-dim);font-size:13px">Sinusoidal drive sets phase voltages — but you really want to set <i>torque</i>. Torque is produced by current that's perpendicular to the rotor flux. FOC rotates the reference frame to follow the rotor; then "torque-current" becomes a single scalar (i_q) you can PID directly. See <code>foc-overview.html</code> for the full picture.</p>
+    <div class="figure">
+      <svg viewBox="0 0 700 260" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+        <!-- Stator coords -->
+        <line x1="80" y1="130" x2="280" y2="130" class="axis"/>
+        <line x1="180" y1="30" x2="180" y2="230" class="axis"/>
+        <text x="285" y="135" class="axis-label">α</text>
+        <text x="172" y="25" class="axis-label" text-anchor="end">β</text>
+        <text x="180" y="245" class="axis-label" text-anchor="middle">Stator frame (αβ)</text>
+        <!-- Rotating current vector -->
+        <line id="iAlpha" x1="180" y1="130" x2="260" y2="80" stroke="var(--accent2)" stroke-width="3"/>
+        <polygon id="iAlphaArrow" points="255,75 265,85 260,80" fill="var(--accent2)"/>
+        <text x="265" y="75" class="label" fill="var(--accent2)">I_s</text>
+
+        <!-- Rotor coords -->
+        <g transform="translate(500,130) rotate(-30)">
+          <line x1="-100" y1="0" x2="100" y2="0" class="axis"/>
+          <line x1="0" y1="-100" x2="0" y2="100" class="axis"/>
+          <text x="108" y="3" class="axis-label">d</text>
+          <text x="-3" y="-105" class="axis-label" text-anchor="end">q</text>
+          <line id="iDQ" x1="0" y1="0" x2="80" y2="-50" stroke="var(--accent3)" stroke-width="3"/>
+          <polygon points="75,-45 85,-55 80,-50" fill="var(--accent3)"/>
+          <text x="90" y="-55" class="label" fill="var(--accent3)">I_s in d-q</text>
+          <line id="iqProj" x1="80" y1="-50" x2="80" y2="0" stroke="var(--accent3)" stroke-dasharray="3,2"/>
+          <text x="80" y="40" class="label-dim" text-anchor="middle">i_d</text>
+          <text x="98" y="-25" class="label-dim">i_q</text>
+        </g>
+        <text x="500" y="245" class="axis-label" text-anchor="middle">Rotor frame (dq) — rotates with magnet</text>
+
+        <text x="350" y="100" class="label" text-anchor="middle">Park</text>
+        <text x="350" y="115" class="label-dim" text-anchor="middle">transform</text>
+        <path d="M 290 130 Q 350 80 410 130" fill="none" stroke="var(--accent)" stroke-width="2"/>
+        <polygon points="405,127 415,133 410,130" fill="var(--accent)"/>
+      </svg>
+    </div>
+    <p style="font-size:13px;color:var(--fg-dim)">In the stator frame, the current vector spins. In the rotor frame, it stands still: i_d (flux, regulate to 0) and i_q (torque, regulate to setpoint). Two simple PIs on DC quantities replace three mutually-coupled AC PIs.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Six-step has 6× per-revolution torque ripple</b> — at each commutation, current jumps to a new phase pair. Rotor sees a ~14% torque dip between steps. Audible "growl" at low RPM. Fine for drone motors at 30 000 rpm; awful for a robot wrist at 10 rpm.</li>
+    <li><b>Six-step needs rotor position at coarse 60° resolution</b> — three Hall sensors give 6 discrete states per revolution, exactly enough. Sensorless: detect back-EMF zero crossings on the floating phase, time the next commutation 30° later.</li>
+    <li><b>Sensorless six-step can't start from rest</b> — no rotation → no back-EMF → no zero-cross. ESCs use open-loop "ramp up" (apply rotating field blindly, hope rotor catches), then switch to closed-loop sensorless once spinning.</li>
+    <li><b>Sinusoidal needs continuous rotor angle</b> — encoder (magnetic AS5048A, optical incremental, resolver) or a high-quality back-EMF observer. Halls alone give 60° resolution — too coarse for smooth sine.</li>
+    <li><b>FOC = sinusoidal + smart frame</b> — the math (Clarke + Park) is just a rotating-frame coordinate change. Once in the d-q frame, the AC problem becomes a DC problem; PI controllers on DC quantities are easy to tune.</li>
+    <li><b>SVPWM gives free voltage headroom</b> — 3rd-harmonic injection raises peak line-to-line from 86% to 100% of V_dc. ~15% more usable torque from the same battery, no extra hardware.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>WHICH COMMUTATION?</h3>
+      <table>
+        <tr><th>Goal</th><th>Pick</th></tr>
+        <tr><td>Hobby ESC / quadcopter</td><td>6-step sensorless</td></tr>
+        <tr><td>Quiet hobby (sailwinch)</td><td>6-step with halls</td></tr>
+        <tr><td>Quiet + smooth (gimbal)</td><td>Sinusoidal + encoder</td></tr>
+        <tr><td>Torque-controlled robotics</td><td>FOC + encoder</td></tr>
+        <tr><td>EV traction, CNC servo</td><td>FOC + SVPWM + encoder</td></tr>
+      </table>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>3 halls = 6 states</b> — Hall pattern → next drive state via LUT.</li>
+        <li><b>Floating phase shows back-EMF</b> — zero-cross marks 30° before commutation.</li>
+        <li><b>Sine = 120° apart</b> — V_A, V_B = V_A(θ−120°), V_C = V_A(θ+120°).</li>
+        <li><b>Pole pairs ≠ stator slots</b> — electrical rev = mechanical rev × P/2.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Wrong commutation order</b> — motor stutters or runs backward. Swap any two phase wires to reverse, or fix the LUT.</li>
+        <li><b>Sensorless at low RPM</b> — back-EMF too small to detect; below ~500 rpm switch to open-loop or wait.</li>
+        <li><b>Six-step at robotic speeds</b> — 14% torque ripple = bad arm motion. Use sinusoidal/FOC.</li>
+        <li><b>Hall installation off</b> — even a few mechanical degrees → wrong commutation timing → loss of torque + heat.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 3 — Motor Control</a> ·
+    Topic: BLDC Commutation
+  </footer>
+</main>
+<script>
+  // Tab switching
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.addEventListener('click',()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      document.querySelector(`.tab-panel[data-panel="${t.dataset.tab}"]`).classList.add('active');
+    });
+  });
+
+  // ---- Six-step ----
+  const ang=document.getElementById('ang');
+  const angRead=document.getElementById('angRead');
+  const stateNum=document.getElementById('stateNum');
+  const hallTxt=document.getElementById('hallTxt');
+  const driveTxt=document.getElementById('driveTxt');
+  const rotorVec=document.getElementById('rotorVec');
+
+  const states=[
+    {hi:'A',lo:'B',ha:1,hb:0,hc:1},
+    {hi:'A',lo:'C',ha:1,hb:0,hc:0},
+    {hi:'B',lo:'C',ha:1,hb:1,hc:0},
+    {hi:'B',lo:'A',ha:0,hb:1,hc:0},
+    {hi:'C',lo:'A',ha:0,hb:1,hc:1},
+    {hi:'C',lo:'B',ha:0,hb:0,hc:1},
+  ];
+
+  function updateSixStep(){
+    const a=parseFloat(ang.value);
+    angRead.textContent=a.toFixed(0)+'°';
+    const idx=Math.floor(a/60)%6;
+    const s=states[idx];
+    stateNum.textContent=idx+1;
+    hallTxt.textContent=`HA=${s.ha} HB=${s.hb} HC=${s.hc}`;
+    driveTxt.textContent=`${s.hi}+ → ${s.lo}−`;
+
+    // Reset all to dim
+    ['hsA','lsA','hsB','lsB','hsC','lsC'].forEach(id=>{
+      document.getElementById(id).setAttribute('fill','var(--bg-elev2)');
+    });
+    // Highlight active
+    const colorMap={A:'rgba(94,200,255,0.45)',B:'rgba(255,184,108,0.45)',C:'rgba(163,230,53,0.45)'};
+    document.getElementById('hs'+s.hi).setAttribute('fill',colorMap[s.hi]);
+    document.getElementById('ls'+s.lo).setAttribute('fill',colorMap[s.lo]);
+
+    // Rotor
+    const rad=(a-90)*Math.PI/180;
+    rotorVec.setAttribute('x2',Math.cos(rad)*35);
+    rotorVec.setAttribute('y2',Math.sin(rad)*35);
+  }
+  ang.addEventListener('input',updateSixStep);
+  updateSixStep();
+
+  let spinAng=0, spinTimer=null;
+  document.getElementById('spinBtn').addEventListener('click',()=>{
+    if(spinTimer){clearInterval(spinTimer);spinTimer=null;document.getElementById('spinBtn').textContent='▶ Animate';return;}
+    document.getElementById('spinBtn').textContent='■ Stop';
+    spinTimer=setInterval(()=>{
+      spinAng=(spinAng+3)%360;
+      ang.value=spinAng;
+      updateSixStep();
+    },40);
+  });
+
+  // ---- Sinusoidal ----
+  const sinAng=document.getElementById('sinAng');
+  const amp=document.getElementById('amp');
+  const sinAngRead=document.getElementById('sinAngRead');
+  const ampRead=document.getElementById('ampRead');
+  const sinCursor=document.getElementById('sinCursor');
+
+  function updateSin(){
+    const a=parseFloat(sinAng.value);
+    const A=parseFloat(amp.value);
+    sinAngRead.textContent=a.toFixed(0)+'°';
+    ampRead.textContent=A.toFixed(2);
+
+    const xL=50,xR=680,xRange=xR-xL;
+    const yMid=120,ampY=90;
+    let pA=[],pB=[],pC=[];
+    const N=360;
+    for(let i=0;i<=N;i++){
+      const th=i; // degrees 0..360
+      const x=xL+i/N*xRange;
+      pA.push(`${x},${yMid-Math.sin(th*Math.PI/180)*ampY*A}`);
+      pB.push(`${x},${yMid-Math.sin((th-120)*Math.PI/180)*ampY*A}`);
+      pC.push(`${x},${yMid-Math.sin((th+120)*Math.PI/180)*ampY*A}`);
+    }
+    document.getElementById('sinA').setAttribute('points',pA.join(' '));
+    document.getElementById('sinB').setAttribute('points',pB.join(' '));
+    document.getElementById('sinC').setAttribute('points',pC.join(' '));
+    const xCur = xL + a/360*xRange;
+    sinCursor.setAttribute('x1',xCur);
+    sinCursor.setAttribute('x2',xCur);
+  }
+  sinAng.addEventListener('input',updateSin);
+  amp.addEventListener('input',updateSin);
+  updateSin();
+
+  let sinSpin=0, sinTimer=null;
+  document.getElementById('spinSinBtn').addEventListener('click',()=>{
+    if(sinTimer){clearInterval(sinTimer);sinTimer=null;document.getElementById('spinSinBtn').textContent='▶ Animate';return;}
+    document.getElementById('spinSinBtn').textContent='■ Stop';
+    sinTimer=setInterval(()=>{
+      sinSpin=(sinSpin+3)%360;
+      sinAng.value=sinSpin;
+      updateSin();
+    },40);
+  });
+</script>
+</body>
+</html>

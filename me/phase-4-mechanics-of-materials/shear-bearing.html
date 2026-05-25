@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shear & Bearing — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  /* Common SVG conventions */
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .summary{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;
+    padding:10px 14px;margin:10px 0;font:13px ui-monospace,monospace;line-height:1.7}
+  .summary b{color:var(--fg-bright)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Shear, Bearing, and Pressure-Vessel Stresses</h1>
+  <p class="lede">A pin in a clevis carries its load by shearing across one or two planes. A pin
+  bearing against the side of its hole develops a contact stress. A thin-walled cylinder under
+  internal pressure feels biaxial stress, with the hoop direction taking twice as much as the
+  longitudinal. Three classic σ = F/(some area) problems where picking the right area is the whole
+  game.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Applied load F = <span class="readout" id="rF">5.0</span> kN</label>
+      <input type="range" id="F" min="0" max="20" step="0.1" value="5">
+    </div>
+    <div class="control">
+      <label>Pin diameter d = <span class="readout" id="rD">8</span> mm</label>
+      <input type="range" id="D" min="3" max="20" step="0.5" value="8">
+    </div>
+    <div class="control">
+      <label>Plate thickness t = <span class="readout" id="rT">6</span> mm</label>
+      <input type="range" id="T" min="2" max="20" step="0.5" value="6">
+    </div>
+    <div class="control">
+      <label>Pin material τ_allow</label>
+      <select id="mat">
+        <option value="250">Stainless 304 (≈250 MPa)</option>
+        <option value="380">Stainless 304 ultimate (≈380 MPa)</option>
+        <option value="500">Steel 8.8 (≈500 MPa)</option>
+        <option value="720">Steel 12.9 (≈720 MPa)</option>
+      </select>
+    </div>
+  </section>
+
+  <h3>Single shear</h3>
+  <div class="figure">
+    <svg id="single" viewBox="0 0 880 240" width="100%" height="240"></svg>
+  </div>
+  <div class="summary" id="single-res"></div>
+
+  <h3>Double shear (clevis)</h3>
+  <div class="figure">
+    <svg id="double" viewBox="0 0 880 240" width="100%" height="240"></svg>
+  </div>
+  <div class="summary" id="double-res"></div>
+
+  <h2>Bearing stress on the hole</h2>
+  <p class="lede">Where the pin presses against the inside of its hole, the contact area is the
+  projected rectangle t × d (NOT the curved surface). Bearing stress σ_b = F/(t·d) crushes both
+  the pin and the plate locally — usually plate is the weaker side.</p>
+  <div class="figure">
+    <svg id="bearing" viewBox="0 0 880 240" width="100%" height="240"></svg>
+  </div>
+  <div class="summary" id="bearing-res"></div>
+
+  <h2>Thin-walled pressure vessel</h2>
+  <p class="lede">A pressurized cylinder (gas tank, hydraulic accumulator, propane bottle) is in a
+  biaxial stress state. Cut around the circumference: balance gives axial σ_l = pr/(2t). Cut along
+  the axis: balance gives hoop σ_h = pr/t. <b>Hoop is twice axial</b> — that's why pressure vessels
+  fail by cracking lengthwise.</p>
+  <section class="controls">
+    <div class="control">
+      <label>Pressure p = <span class="readout" id="rP">1.0</span> MPa</label>
+      <input type="range" id="P" min="0" max="10" step="0.1" value="1">
+    </div>
+    <div class="control">
+      <label>Inner radius r = <span class="readout" id="rR">50</span> mm</label>
+      <input type="range" id="R" min="10" max="200" step="5" value="50">
+    </div>
+    <div class="control">
+      <label>Wall thickness t = <span class="readout" id="rTW">2.0</span> mm</label>
+      <input type="range" id="TW" min="0.5" max="10" step="0.1" value="2">
+    </div>
+  </section>
+  <div class="figure">
+    <svg id="vessel" viewBox="0 0 880 280" width="100%" height="280"></svg>
+  </div>
+  <div class="summary" id="vessel-res"></div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Single vs. double shear:</b> for the same load F, double shear cuts the shear stress in half because the load splits between two planes. τ_single = F/A, τ_double = F/(2A).</li>
+    <li><b>The shear plane is perpendicular to the load.</b> It's the cross-section of the pin that the two plates would slide along if the pin failed. Visualize: hold a pencil in one hand and a sleeve over it in the other — pull them apart; the failure surface is where the sleeve slides off the pencil.</li>
+    <li><b>Bearing area is projected, not curved.</b> The contact is over a half-cylinder, but the *projected* area t·d is what carries the load in the standard formula. Distributing F over the full curved area would underestimate the local crushing.</li>
+    <li><b>Hoop = 2× longitudinal.</b> A cylindrical pressure vessel naturally splits its load: half the cross-sectional pressure force has to be carried across the long seam (hoop), the other half across the end cap (longitudinal). The hoop area is half because the longitudinal seam is half the perimeter that the end-cap circumference is.</li>
+    <li><b>Thin-wall assumption: r/t ≥ 10.</b> Below that, the through-thickness stress gradient matters and you need thick-cylinder (Lamé) equations. A 50 mm radius vessel needs t ≤ 5 mm for the formula to hold.</li>
+    <li><b>Bigger pin or thicker plate help shear and bearing differently.</b> Doubling pin diameter quarters shear stress (A scales with d²) but only halves bearing stress (area scales with d). Thicker plate doesn't affect shear at all but halves bearing.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>shear</dt><dd><span class="eq">τ = V / A</span></dd>
+        <dt>bearing</dt><dd><span class="eq">σ_b = F / (t · d)</span><span class="eq-note">(projected area)</span></dd>
+        <dt>hoop</dt><dd><span class="eq">σ_h = p · r / t</span></dd>
+        <dt>axial (vessel)</dt><dd><span class="eq">σ_l = p · r / (2t)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>Double shear halves τ</b> — two planes share V.</li>
+        <li><b>Bearing area = t · d</b> — pin diameter × plate thickness (projected).</li>
+        <li><b>Hoop = 2× axial</b> in a thin-walled cylinder.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Vessels fail along length</b> — hoop is the bigger stress, splits open lengthwise.</li>
+        <li><b>Pin double-shear needs symmetric loading</b> — asymmetric clevis loads one plane harder.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 4 — Mechanics of Materials</a> ·
+    Topic: Shear, bearing, thin-walled pressure vessels
+  </footer>
+</main>
+<script>
+function nsmk(svg, tag, attrs={}){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  svg.appendChild(e);
+  return e;
+}
+function clr(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+const ssvg = document.getElementById('single');
+const dsvg = document.getElementById('double');
+const brsvg = document.getElementById('bearing');
+const vsvg  = document.getElementById('vessel');
+
+function clevis(svg, mode){
+  // mode: 'single' or 'double'
+  clr(svg);
+  const F = parseFloat(document.getElementById('F').value);   // kN
+  const d = parseFloat(document.getElementById('D').value);   // mm
+  const t = parseFloat(document.getElementById('T').value);   // mm
+  const tauAllow = parseFloat(document.getElementById('mat').value); // MPa
+
+  // Pin shear area
+  const A_one = Math.PI/4 * d*d;   // mm² per plane
+  const planes = (mode === 'single') ? 1 : 2;
+  const V = F*1000;                // N per pin
+  const V_per_plane = V/planes;
+  const tau = V_per_plane / A_one; // MPa
+
+  // Deformation visual: bolt distorts slightly because of shear; offset by tau / tauAllow
+  const distortPx = Math.min(18, 16 * tau / tauAllow);
+  const dCol = tau > tauAllow ? '#ff7b72' : (tau > tauAllow*0.5 ? '#ffb86c' : '#a3e635');
+
+  const cx = 440, cy = 120;
+  const pinR = Math.max(10, d*1.4);
+  const plateH = Math.max(38, t*4);
+  const plateW = 220;
+
+  if(mode === 'single'){
+    // Two plates side-by-side, lap joint
+    // Left plate
+    nsmk(svg, 'rect', {x:cx-plateW, y:cy-plateH/2-6, width:plateW-8, height:plateH,
+      fill:'#1d232c', stroke:'#8f99a8', 'stroke-width':1.5});
+    // Right plate (shifted down vertically — lap)
+    nsmk(svg, 'rect', {x:cx+8, y:cy-plateH/2+6, width:plateW, height:plateH,
+      fill:'#1d232c', stroke:'#8f99a8', 'stroke-width':1.5});
+
+    // Force arrows
+    nsmk(svg, 'line',{x1:cx-plateW-50, y1:cy-6, x2:cx-plateW, y2:cy-6,
+      stroke:'#ffb86c', 'stroke-width':3});
+    nsmk(svg, 'polygon',{points:`${cx-plateW},${cy-6} ${cx-plateW-10},${cy-12} ${cx-plateW-10},${cy}`,
+      fill:'#ffb86c'});
+    nsmk(svg, 'text',{x:cx-plateW-58, y:cy-12, 'text-anchor':'end', class:'label', fill:'#ffb86c'})
+      .textContent = `F = ${F.toFixed(1)} kN`;
+
+    nsmk(svg, 'line',{x1:cx+plateW+8, y1:cy+6, x2:cx+plateW+58, y2:cy+6,
+      stroke:'#ffb86c', 'stroke-width':3});
+    nsmk(svg, 'polygon',{points:`${cx+plateW+58},${cy+6} ${cx+plateW+48},${cy} ${cx+plateW+48},${cy+12}`,
+      fill:'#ffb86c'});
+    nsmk(svg, 'text',{x:cx+plateW+66, y:cy, class:'label', fill:'#ffb86c'})
+      .textContent = `F`;
+
+    // Pin (vertical cylinder through both plates) — shown sheared
+    // Top half (attached to right plate going down) shifts with right plate's motion (up... let's go simpler):
+    // Show pin distorting in a "Z" — top half shifted right, bottom half shifted left
+    const pHalf = plateH/2 + 8;
+    // Top half (in left plate)
+    nsmk(svg, 'rect', {x:cx-pinR/2, y:cy-pHalf, width:pinR, height:pHalf,
+      fill:'#5ec8ff', 'fill-opacity':0.7, stroke:'#5ec8ff', 'stroke-width':1.5,
+      transform:`translate(${-distortPx/2}, 0)`});
+    nsmk(svg, 'rect', {x:cx-pinR/2, y:cy, width:pinR, height:pHalf,
+      fill:'#5ec8ff', 'fill-opacity':0.7, stroke:'#5ec8ff', 'stroke-width':1.5,
+      transform:`translate(${distortPx/2}, 0)`});
+
+    // Shear plane (horizontal at cy)
+    nsmk(svg, 'line',{x1:cx-pinR-10, y1:cy, x2:cx+pinR+10, y2:cy,
+      stroke:dCol, 'stroke-width':3});
+    nsmk(svg, 'text',{x:cx+pinR+18, y:cy+4, class:'label', fill:dCol, 'font-weight':'600'})
+      .textContent = 'shear plane';
+
+    // Labels
+    nsmk(svg, 'text',{x:cx-pinR-12, y:cy-pHalf-5, 'text-anchor':'end', class:'label-dim'})
+      .textContent = `pin Ø${d} mm`;
+    nsmk(svg, 'text',{x:cx-plateW+8, y:cy-plateH/2-12, class:'label-dim'})
+      .textContent = `t = ${t} mm`;
+
+  } else {
+    // Double shear: outer plates + middle plate (clevis fork)
+    // Outer left
+    nsmk(svg, 'rect', {x:cx-plateW, y:cy-plateH-8, width:plateW-8, height:plateH-4,
+      fill:'#1d232c', stroke:'#8f99a8', 'stroke-width':1.5});
+    nsmk(svg, 'rect', {x:cx-plateW, y:cy+12, width:plateW-8, height:plateH-4,
+      fill:'#1d232c', stroke:'#8f99a8', 'stroke-width':1.5});
+    // Middle (right side)
+    nsmk(svg, 'rect', {x:cx+8, y:cy-plateH/2, width:plateW, height:plateH,
+      fill:'#1d232c', stroke:'#8f99a8', 'stroke-width':1.5});
+
+    // Forces
+    nsmk(svg, 'line',{x1:cx-plateW-50, y1:cy-plateH/2-4, x2:cx-plateW, y2:cy-plateH/2-4,
+      stroke:'#ffb86c', 'stroke-width':3});
+    nsmk(svg, 'polygon',{points:`${cx-plateW},${cy-plateH/2-4} ${cx-plateW-10},${cy-plateH/2-10} ${cx-plateW-10},${cy-plateH/2+2}`,
+      fill:'#ffb86c'});
+    nsmk(svg, 'line',{x1:cx-plateW-50, y1:cy+plateH/2+4, x2:cx-plateW, y2:cy+plateH/2+4,
+      stroke:'#ffb86c', 'stroke-width':3});
+    nsmk(svg, 'polygon',{points:`${cx-plateW},${cy+plateH/2+4} ${cx-plateW-10},${cy+plateH/2-2} ${cx-plateW-10},${cy+plateH/2+10}`,
+      fill:'#ffb86c'});
+    nsmk(svg, 'text',{x:cx-plateW-58, y:cy-plateH/2-10, 'text-anchor':'end', class:'label', fill:'#ffb86c'})
+      .textContent = `F/2`;
+    nsmk(svg, 'text',{x:cx-plateW-58, y:cy+plateH/2-2, 'text-anchor':'end', class:'label', fill:'#ffb86c'})
+      .textContent = `F/2`;
+
+    nsmk(svg, 'line',{x1:cx+plateW+8, y1:cy, x2:cx+plateW+58, y2:cy,
+      stroke:'#ffb86c', 'stroke-width':3});
+    nsmk(svg, 'polygon',{points:`${cx+plateW+58},${cy} ${cx+plateW+48},${cy-6} ${cx+plateW+48},${cy+6}`,
+      fill:'#ffb86c'});
+    nsmk(svg, 'text',{x:cx+plateW+66, y:cy-4, class:'label', fill:'#ffb86c'})
+      .textContent = `F = ${F.toFixed(1)} kN`;
+
+    // Pin: three segments. Top (outer): shifted left (with outer plates). Middle: shifted right (with middle). Bottom (outer): shifted left.
+    const segH = (plateH-4);
+    // Top
+    nsmk(svg, 'rect', {x:cx-pinR/2, y:cy-plateH-8, width:pinR, height:segH,
+      fill:'#5ec8ff', 'fill-opacity':0.7, stroke:'#5ec8ff', 'stroke-width':1.5,
+      transform:`translate(${-distortPx/2}, 0)`});
+    // Middle
+    nsmk(svg, 'rect', {x:cx-pinR/2, y:cy-plateH/2, width:pinR, height:plateH,
+      fill:'#5ec8ff', 'fill-opacity':0.7, stroke:'#5ec8ff', 'stroke-width':1.5,
+      transform:`translate(${distortPx/2}, 0)`});
+    // Bottom
+    nsmk(svg, 'rect', {x:cx-pinR/2, y:cy+12, width:pinR, height:segH,
+      fill:'#5ec8ff', 'fill-opacity':0.7, stroke:'#5ec8ff', 'stroke-width':1.5,
+      transform:`translate(${-distortPx/2}, 0)`});
+
+    // Two shear planes
+    nsmk(svg, 'line',{x1:cx-pinR-10, y1:cy-plateH/2-4, x2:cx+pinR+10, y2:cy-plateH/2-4,
+      stroke:dCol, 'stroke-width':3});
+    nsmk(svg, 'line',{x1:cx-pinR-10, y1:cy+plateH/2+4, x2:cx+pinR+10, y2:cy+plateH/2+4,
+      stroke:dCol, 'stroke-width':3});
+    nsmk(svg, 'text',{x:cx+pinR+18, y:cy-plateH/2, class:'label', fill:dCol, 'font-weight':'600'})
+      .textContent = 'plane 1';
+    nsmk(svg, 'text',{x:cx+pinR+18, y:cy+plateH/2+8, class:'label', fill:dCol, 'font-weight':'600'})
+      .textContent = 'plane 2';
+  }
+
+  const fos = tauAllow / tau;
+  const resTxt =
+    `<b>V (per plane) =</b> <span class="readout">${(V_per_plane/1000).toFixed(2)} kN</span> · ` +
+    `<b>A = πd²/4 =</b> <span class="readout">${A_one.toFixed(2)} mm²</span> · ` +
+    `<b>τ = V/A =</b> <span class="readout" style="color:${dCol}">${tau.toFixed(2)} MPa</span><br>` +
+    `<b>Allowable τ:</b> ${tauAllow} MPa · ` +
+    `<b>Factor of safety n = τ_allow/τ =</b> <span class="readout" style="color:${dCol}">${isFinite(fos)?fos.toFixed(2):'∞'}</span> ` +
+    (tau > tauAllow ? `<span style="color:#ff7b72">— pin yields/fails!</span>` :
+      tau > tauAllow*0.5 ? `<span style="color:#ffb86c">— margin tight</span>` :
+      `<span style="color:#a3e635">— safe</span>`);
+
+  return resTxt;
+}
+
+function renderClevis(){
+  document.getElementById('rF').textContent = parseFloat(document.getElementById('F').value).toFixed(1);
+  document.getElementById('rD').textContent = document.getElementById('D').value;
+  document.getElementById('rT').textContent = document.getElementById('T').value;
+  document.getElementById('single-res').innerHTML = clevis(ssvg, 'single');
+  document.getElementById('double-res').innerHTML = clevis(dsvg, 'double');
+  renderBearing();
+}
+
+function renderBearing(){
+  clr(brsvg);
+  const F = parseFloat(document.getElementById('F').value);
+  const d = parseFloat(document.getElementById('D').value);
+  const t = parseFloat(document.getElementById('T').value);
+  // Bearing stress σ_b = F/(t·d)
+  const Ab = t*d;
+  const sigmaB = (F*1000) / Ab;  // MPa
+  // Plate bearing typical limit ≈ 1.5× yield ≈ 400 MPa for mild steel
+  const allow = 400;
+  const col = sigmaB > allow ? '#ff7b72' : (sigmaB > allow*0.5 ? '#ffb86c' : '#a3e635');
+
+  // Sketch: side view of plate (rectangle) with pin (circle) inside hole, force arrow pulling plate left
+  const cx = 440, cy = 130;
+  const plateW = 220, plateH = Math.max(60, t*6);
+  // Plate (right side, with hole on left edge area)
+  nsmk(brsvg, 'rect', {x:cx, y:cy-plateH/2, width:plateW, height:plateH,
+    fill:'#1d232c', stroke:'#8f99a8', 'stroke-width':1.5});
+  // Hole in plate
+  const holeR = Math.max(12, d*1.8);
+  nsmk(brsvg, 'circle', {cx:cx+holeR+8, cy:cy, r:holeR, fill:'#0e1116', stroke:'#8f99a8', 'stroke-width':1.5});
+  // Pin (slightly smaller, touching left side of hole)
+  const pinR = holeR - 2;
+  nsmk(brsvg, 'circle', {cx:cx+holeR+8-1, cy:cy, r:pinR, fill:'#5ec8ff', 'fill-opacity':0.7,
+    stroke:'#5ec8ff', 'stroke-width':1.5});
+  // Bearing contact area highlight (left half of circle)
+  nsmk(brsvg, 'path', {d:`M ${cx+holeR+8-1},${cy-pinR} A ${pinR},${pinR} 0 0 0 ${cx+holeR+8-1},${cy+pinR} Z`,
+    fill:col, 'fill-opacity':0.55, stroke:col, 'stroke-width':1.5});
+
+  // Force arrow pulling pin to the left (against plate)
+  nsmk(brsvg, 'line',{x1:cx+holeR+8, y1:cy, x2:cx+holeR+8-60, y2:cy,
+    stroke:'#ffb86c', 'stroke-width':3});
+  nsmk(brsvg, 'polygon',{points:`${cx+holeR-52},${cy} ${cx+holeR-42},${cy-6} ${cx+holeR-42},${cy+6}`,
+    fill:'#ffb86c'});
+  nsmk(brsvg, 'text',{x:cx+holeR-60, y:cy-8, 'text-anchor':'end', class:'label', fill:'#ffb86c'})
+    .textContent = `F = ${F.toFixed(1)} kN`;
+
+  // Plate held on right side
+  nsmk(brsvg, 'line',{x1:cx+plateW, y1:cy-plateH/2, x2:cx+plateW, y2:cy+plateH/2,
+    stroke:'#8f99a8', 'stroke-width':3});
+  for(let i=0;i<6;i++){
+    nsmk(brsvg, 'line',{x1:cx+plateW, y1:cy-plateH/2+i*(plateH/5), x2:cx+plateW+14, y2:cy-plateH/2+i*(plateH/5),
+      stroke:'#8f99a8', 'stroke-width':1.5});
+  }
+
+  // Projected area annotation
+  nsmk(brsvg, 'rect', {x:cx+holeR+8-pinR, y:cy+plateH/2+30, width:pinR*2, height:14,
+    fill:col, 'fill-opacity':0.3, stroke:col, 'stroke-width':1.5, 'stroke-dasharray':'3 3'});
+  nsmk(brsvg, 'text',{x:cx+holeR+8, y:cy+plateH/2+24, 'text-anchor':'middle', class:'label-dim'})
+    .textContent = `projected A_b = t × d = ${t} × ${d} = ${Ab.toFixed(0)} mm²`;
+
+  // Plate thickness label (use side view edge)
+  nsmk(brsvg, 'text',{x:cx-8, y:cy-plateH/2-6, 'text-anchor':'end', class:'label-dim'})
+    .textContent = `t (into page)`;
+
+  document.getElementById('bearing-res').innerHTML =
+    `<b>σ_b = F/(t·d) =</b> <span class="readout" style="color:${col}">${sigmaB.toFixed(2)} MPa</span> · ` +
+    `<b>Projected area =</b> ${Ab.toFixed(2)} mm²<br>` +
+    `<span style="color:var(--fg-dim)">Contact distributes over a half-cylinder, but for the stress formula we use the *projected* rectangular area t·d.</span>`;
+}
+
+function renderVessel(){
+  clr(vsvg);
+  const p = parseFloat(document.getElementById('P').value);  // MPa
+  const r = parseFloat(document.getElementById('R').value);  // mm
+  const t = parseFloat(document.getElementById('TW').value); // mm
+  document.getElementById('rP').textContent = p.toFixed(1);
+  document.getElementById('rR').textContent = r.toFixed(0);
+  document.getElementById('rTW').textContent = t.toFixed(1);
+
+  const sigma_h = p*r/t;        // MPa
+  const sigma_l = p*r/(2*t);    // MPa
+  const rOverT = r/t;
+  const thinValid = rOverT >= 10;
+
+  // Draw cylinder cross-section (circle) + side view
+  const cx1 = 220, cy = 140;
+  const rPx = Math.min(90, Math.max(30, r*0.6));
+  const tPx = Math.max(3, t*1.5);
+
+  // Side view (cylinder, end caps shown as ellipses)
+  nsmk(vsvg, 'ellipse',{cx:cx1-130, cy:cy, rx:18, ry:rPx,
+    fill:'#1d232c', stroke:'#8f99a8', 'stroke-width':1.5});
+  nsmk(vsvg, 'line',{x1:cx1-130, y1:cy-rPx, x2:cx1+10, y2:cy-rPx, stroke:'#8f99a8', 'stroke-width':1.5});
+  nsmk(vsvg, 'line',{x1:cx1-130, y1:cy+rPx, x2:cx1+10, y2:cy+rPx, stroke:'#8f99a8', 'stroke-width':1.5});
+  nsmk(vsvg, 'ellipse',{cx:cx1+10, cy:cy, rx:18, ry:rPx,
+    fill:'#1d232c', stroke:'#8f99a8', 'stroke-width':1.5});
+
+  // Hoop and longitudinal stress arrows on the side view
+  // Hoop = circumferential (perpendicular to axis)
+  nsmk(vsvg, 'line',{x1:cx1-60, y1:cy-rPx-22, x2:cx1-60, y2:cy-rPx-4,
+    stroke:'#ff7b72', 'stroke-width':2.5});
+  nsmk(vsvg, 'polygon',{points:`${cx1-60},${cy-rPx-4} ${cx1-65},${cy-rPx-12} ${cx1-55},${cy-rPx-12}`,
+    fill:'#ff7b72'});
+  nsmk(vsvg, 'line',{x1:cx1-60, y1:cy+rPx+22, x2:cx1-60, y2:cy+rPx+4,
+    stroke:'#ff7b72', 'stroke-width':2.5});
+  nsmk(vsvg, 'polygon',{points:`${cx1-60},${cy+rPx+4} ${cx1-65},${cy+rPx+12} ${cx1-55},${cy+rPx+12}`,
+    fill:'#ff7b72'});
+  nsmk(vsvg, 'text',{x:cx1-60, y:cy-rPx-26, 'text-anchor':'middle', class:'label', fill:'#ff7b72'})
+    .textContent = 'σ_h (hoop)';
+
+  // Longitudinal = along axis
+  nsmk(vsvg, 'line',{x1:cx1+30, y1:cy, x2:cx1+50, y2:cy, stroke:'#5ec8ff', 'stroke-width':2.5});
+  nsmk(vsvg, 'polygon',{points:`${cx1+50},${cy} ${cx1+42},${cy-5} ${cx1+42},${cy+5}`, fill:'#5ec8ff'});
+  nsmk(vsvg, 'line',{x1:cx1-150, y1:cy, x2:cx1-170, y2:cy, stroke:'#5ec8ff', 'stroke-width':2.5});
+  nsmk(vsvg, 'polygon',{points:`${cx1-170},${cy} ${cx1-162},${cy-5} ${cx1-162},${cy+5}`, fill:'#5ec8ff'});
+  nsmk(vsvg, 'text',{x:cx1+58, y:cy+4, class:'label', fill:'#5ec8ff'}).textContent = 'σ_l';
+
+  // Cross-section view on the right
+  const cx2 = 600;
+  nsmk(vsvg, 'circle',{cx:cx2, cy:cy, r:rPx+tPx, fill:'#1d232c', stroke:'#8f99a8', 'stroke-width':1.5});
+  nsmk(vsvg, 'circle',{cx:cx2, cy:cy, r:rPx, fill:'#0e1116', stroke:'#5ec8ff', 'stroke-width':1});
+  // Pressure arrows (inside) pointing radially out
+  for(let a=0; a<2*Math.PI; a+=Math.PI/6){
+    const x1=cx2+rPx*0.4*Math.cos(a), y1=cy+rPx*0.4*Math.sin(a);
+    const x2=cx2+(rPx-3)*Math.cos(a), y2=cy+(rPx-3)*Math.sin(a);
+    nsmk(vsvg, 'line',{x1, y1, x2, y2, stroke:'#a3e635', 'stroke-width':1.5});
+    nsmk(vsvg, 'polygon',{
+      points:`${x2},${y2} ${x2-4*Math.cos(a)+2*Math.sin(a)},${y2-4*Math.sin(a)-2*Math.cos(a)} ${x2-4*Math.cos(a)-2*Math.sin(a)},${y2-4*Math.sin(a)+2*Math.cos(a)}`,
+      fill:'#a3e635'});
+  }
+  // Hoop stress arrows on outer wall (tangential)
+  for(let a=0; a<2*Math.PI; a+=Math.PI/3){
+    const px = cx2 + (rPx+tPx+4)*Math.cos(a);
+    const py = cy + (rPx+tPx+4)*Math.sin(a);
+    // tangent direction
+    const tx1 = px - 16*Math.sin(a), ty1 = py + 16*Math.cos(a);
+    const tx2 = px + 16*Math.sin(a), ty2 = py - 16*Math.cos(a);
+    nsmk(vsvg, 'line',{x1:tx1, y1:ty1, x2:tx2, y2:ty2, stroke:'#ff7b72', 'stroke-width':2});
+  }
+  nsmk(vsvg, 'text',{x:cx2, y:cy+5, 'text-anchor':'middle', class:'label', fill:'#a3e635'})
+    .textContent = `p = ${p.toFixed(1)} MPa`;
+  nsmk(vsvg, 'text',{x:cx2, y:cy+rPx+tPx+30, 'text-anchor':'middle', class:'label-dim'})
+    .textContent = `r = ${r} mm, t = ${t} mm`;
+  nsmk(vsvg, 'text',{x:cx2, y:30, 'text-anchor':'middle', class:'label', fill:'#ff7b72'})
+    .textContent = 'hoop direction →';
+
+  // Result panel
+  document.getElementById('vessel-res').innerHTML =
+    `<b>Hoop stress σ_h = pr/t =</b> <span class="readout" style="color:#ff7b72">${sigma_h.toFixed(2)} MPa</span><br>` +
+    `<b>Longitudinal σ_l = pr/(2t) =</b> <span class="readout" style="color:#5ec8ff">${sigma_l.toFixed(2)} MPa</span><br>` +
+    `<b>Ratio σ_h / σ_l =</b> <span class="readout">2.00</span> · ` +
+    `<b>r/t =</b> <span class="readout" style="color:${thinValid?'#a3e635':'#ff7b72'}">${rOverT.toFixed(1)}</span> ` +
+    (thinValid ? '<span style="color:#a3e635">(thin-wall valid)</span>'
+               : '<span style="color:#ff7b72">(r/t < 10 → use thick-wall Lamé equations)</span>');
+}
+
+document.getElementById('F').oninput = renderClevis;
+document.getElementById('D').oninput = renderClevis;
+document.getElementById('T').oninput = renderClevis;
+document.getElementById('mat').onchange = renderClevis;
+document.getElementById('P').oninput = renderVessel;
+document.getElementById('R').oninput = renderVessel;
+document.getElementById('TW').oninput = renderVessel;
+
+renderClevis();
+renderVessel();
+</script>
+</body>
+</html>

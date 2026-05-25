@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Real-Time Deadlines — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:10px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px;margin:12px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px}
+  .stat .lbl{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 18px ui-monospace,monospace;color:var(--accent);margin-top:4px}
+  .stat .val.bad{color:var(--warn)}
+  .stat .val.good{color:var(--accent3)}
+  .stat .val.warn{color:var(--accent2)}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:12px 0}
+  @media(max-width:720px){.grid3{grid-template-columns:1fr}}
+  .deadline-card{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:12px}
+  .deadline-card h4{margin:0 0 6px;font:600 13px ui-monospace,monospace}
+  .deadline-card.hard h4{color:var(--warn)}
+  .deadline-card.firm h4{color:var(--accent2)}
+  .deadline-card.soft h4{color:var(--accent3)}
+  .deadline-card p{margin:4px 0;font-size:12px;color:var(--fg-dim)}
+  .deadline-card .ex{font-size:11px;color:var(--fg);margin-top:6px;
+    font-style:italic;font-family:ui-monospace,Menlo,monospace}
+</style>
+</head>
+<body>
+<main>
+  <h1>Real-Time Deadlines — hard/firm/soft and schedulability</h1>
+  <p class="lede">"Real-time" doesn't mean "fast." It means "consequence-aware about being late." Three flavors of deadline, one schedulability test, and the arm's 10 kHz budget.</p>
+
+  <p>A <b>real-time system</b> is one where the value of a result depends on <i>when</i> it's produced, not just whether it's correct. A control loop that computes the right torque 5 ms too late has already shipped destabilizing oscillation to the actuator. "Real-time" doesn't mean "low latency" — a slow RT system is fine as long as deadlines are met. It comes in three flavors. <b>Hard</b>: missing a deadline is a system failure (airbag deployment, FOC current loop, drone IMU). <b>Firm</b>: a missed deadline produces zero value but isn't catastrophic — drop it and move on (a video frame past its display time). <b>Soft</b>: late is worse than on-time, value degrades smoothly (a UI redraw, a logging sample). The whole point of an RTOS is to give you the tools to prove (or at least argue) that hard deadlines will be met. <b>Schedulability analysis</b> — adding up CPU utilization Σ C/T and checking against Liu-Layland's bound for RMS — is the back-of-envelope test. Stay under ~69% and any RMS-prioritized set will meet deadlines.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Task 1 period T₁ (ms): <span class="readout" id="t1pR">0.1</span></label>
+      <input id="t1p" type="range" min="0.05" max="2" step="0.05" value="0.1">
+    </div>
+    <div class="control">
+      <label>Task 1 exec C₁ (ms): <span class="readout" id="t1cR">0.04</span></label>
+      <input id="t1c" type="range" min="0.01" max="0.5" step="0.01" value="0.04">
+    </div>
+    <div class="control">
+      <label>Task 2 period T₂ (ms): <span class="readout" id="t2pR">1</span></label>
+      <input id="t2p" type="range" min="0.5" max="10" step="0.5" value="1">
+    </div>
+    <div class="control">
+      <label>Task 2 exec C₂ (ms): <span class="readout" id="t2cR">0.2</span></label>
+      <input id="t2c" type="range" min="0.05" max="2" step="0.05" value="0.2">
+    </div>
+    <div class="control">
+      <label>Task 3 period T₃ (ms): <span class="readout" id="t3pR">10</span></label>
+      <input id="t3p" type="range" min="2" max="100" step="1" value="10">
+    </div>
+    <div class="control">
+      <label>Task 3 exec C₃ (ms): <span class="readout" id="t3cR">2</span></label>
+      <input id="t3c" type="range" min="0.1" max="20" step="0.1" value="2">
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Per-task utilization</h3>
+    <div class="stat-grid">
+      <div class="stat"><div class="lbl">Task 1: U₁ = C/T</div><div class="val" id="u1">—</div></div>
+      <div class="stat"><div class="lbl">Task 2: U₂ = C/T</div><div class="val" id="u2">—</div></div>
+      <div class="stat"><div class="lbl">Task 3: U₃ = C/T</div><div class="val" id="u3">—</div></div>
+      <div class="stat"><div class="lbl">Σ Utilization</div><div class="val" id="usum">—</div></div>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Liu-Layland schedulability test (RMS, N=3)</h3>
+    <svg id="bar" viewBox="0 0 920 200"></svg>
+    <p style="font-size:12px;color:var(--fg-dim);text-align:center;margin-top:6px">
+      Green band = guaranteed schedulable (Σ U ≤ N(2^(1/N)−1)). Amber = maybe (depends on alignment). Red = overload (Σ U &gt; 1).
+    </p>
+  </div>
+
+  <h2>The three flavors of deadline</h2>
+  <div class="grid3">
+    <div class="deadline-card hard">
+      <h4>HARD</h4>
+      <p>Missing the deadline causes catastrophic failure. The system <i>must</i> always meet it, and the design must prove it (worst-case analysis, formal schedulability).</p>
+      <p class="ex">Airbag deploy. Pacemaker pulse. <b>Arm FOC current loop (10 kHz).</b> Aircraft fly-by-wire.</p>
+    </div>
+    <div class="deadline-card firm">
+      <h4>FIRM</h4>
+      <p>Result has zero value past the deadline but missing is not catastrophic. Late results are <i>discarded</i>. Acceptable to miss a small fraction.</p>
+      <p class="ex">Video frame past display time. Stale sensor sample. Network packet past media-playback window.</p>
+    </div>
+    <div class="deadline-card soft">
+      <h4>SOFT</h4>
+      <p>Value degrades gracefully past the deadline. Late is worse than on-time; very late is worse than mildly late, but still has some value.</p>
+      <p class="ex">UI button response (&lt;100 ms feels instant; 500 ms feels slow but still works). <b>Arm position loop @ 1 kHz</b> (technically firm, often treated as soft). Telemetry upload.</p>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Default sliders model the arm</b> — T₁=0.1 ms (10 kHz current), T₂=1 ms (1 kHz position), T₃=10 ms (100 Hz comms). Total U ≈ 60%. Well under Liu-Layland's 78% for N=3. The arm fits comfortably on one MCU at this load.</li>
+    <li><b>Bump Task 3's exec to 5 ms</b> — that's a 100 Hz task taking 5 ms per cycle. U₃ jumps to 50%, total to ~100%. Red zone. Real outcome: comms task starves the position loop, robot judders.</li>
+    <li><b>Bump Task 1 exec to 0.08 ms</b> — the current loop now spends 80% of its 100 µs budget on math. Tiny disturbances (an extra ISR) and you miss the deadline. Healthy margin is 50–60% per task.</li>
+    <li><b>Liu-Layland is sufficient, not necessary</b> — being above the LL bound doesn't mean you'll miss deadlines, only that the simple test no longer guarantees you. Run a response-time analysis (worst-case completion = own exec + interference from higher-priority tasks).</li>
+    <li><b>The bound shrinks with N</b> — N=1: 100%, N=2: 82.8%, N=3: 78%, N→∞: 69%. Adding tasks reduces the guaranteed-safe utilization. The fewer tasks at a given utilization, the better.</li>
+    <li><b>EDF is optimal but tricky</b> — Earliest-Deadline-First can hit 100% utilization. But priority changes at runtime, harder to debug, less common in safety-critical embedded. Fixed-priority RMS dominates the field for a reason.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Utilization</dt>
+        <dd><span class="eq">U_i = C_i / T_i</span></dd>
+        <dt>Liu-Layland bound</dt>
+        <dd><span class="eq">U_bound = N·(2^(1/N) − 1)</span>
+          <span class="eq-note">N=1 → 1.000, N=2 → 0.828, N=3 → 0.780, N=∞ → 0.693</span></dd>
+        <dt>Sufficient test</dt>
+        <dd><span class="eq">Σ U_i ≤ U_bound ⇒ schedulable</span></dd>
+        <dt>Necessary test</dt>
+        <dd><span class="eq">Σ U_i ≤ 1 (any policy)</span></dd>
+        <dt>Response time</dt>
+        <dd><span class="eq">R_i = C_i + Σ ⌈R_i/T_j⌉ · C_j</span>
+          <span class="eq-note">over j higher priority than i; iterate to fixed point</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>ARM PROJECT BUDGET</h3>
+      <ul>
+        <li><b>Current loop</b> — 10 kHz (T=100 µs), C ≈ 40 µs → U=40%, HARD deadline</li>
+        <li><b>Position loop</b> — 1 kHz (T=1 ms), C ≈ 200 µs → U=20%, SOFT</li>
+        <li><b>Comms (ROS 2 topic)</b> — 100 Hz (T=10 ms), C ≈ 2 ms → U=20%, SOFT</li>
+        <li><b>Logging</b> — 10 Hz (T=100 ms), C ≈ 5 ms → U=5%, SOFT</li>
+        <li><b>Σ U ≈ 85%</b> — over LL bound; need response-time analysis. In practice, current+position on RT MCU, comms+log on SBC.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>WHAT GOES WRONG</h3>
+      <ul>
+        <li><b>Misjudging C</b> — measured exec time is best-case; worst-case is 2–10× higher due to cache misses, branch prediction, ISR storms.</li>
+        <li><b>Forgetting interrupt overhead</b> — ISRs steal CPU from every task. Add their utilization too.</li>
+        <li><b>Counting only RT tasks</b> — context-switch overhead, RTOS tick, idle housekeeping all consume cycles.</li>
+        <li><b>Treating soft as hard</b> — over-engineering a UI task adds cost; treating hard as soft loses limbs.</li>
+        <li><b>Σ U &gt; 1</b> — overload, period. No scheduler can fix this. Reduce work, drop a task, or buy a faster MCU.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 5 — Real-Time Firmware</a> ·
+    Topic: Real-time deadlines, utilization, Liu-Layland
+  </footer>
+</main>
+<script>
+  const ids=['t1p','t1c','t2p','t2c','t3p','t3c'];
+  const els={};
+  ids.forEach(i=>els[i]=document.getElementById(i));
+
+  function update(){
+    const T1=parseFloat(els.t1p.value), C1=parseFloat(els.t1c.value);
+    const T2=parseFloat(els.t2p.value), C2=parseFloat(els.t2c.value);
+    const T3=parseFloat(els.t3p.value), C3=parseFloat(els.t3c.value);
+    document.getElementById('t1pR').textContent=T1.toFixed(2);
+    document.getElementById('t1cR').textContent=C1.toFixed(2);
+    document.getElementById('t2pR').textContent=T2.toFixed(1);
+    document.getElementById('t2cR').textContent=C2.toFixed(2);
+    document.getElementById('t3pR').textContent=T3.toFixed(0);
+    document.getElementById('t3cR').textContent=C3.toFixed(1);
+    const U1=C1/T1, U2=C2/T2, U3=C3/T3;
+    const Us=U1+U2+U3;
+    document.getElementById('u1').textContent=(U1*100).toFixed(1)+'%';
+    document.getElementById('u2').textContent=(U2*100).toFixed(1)+'%';
+    document.getElementById('u3').textContent=(U3*100).toFixed(1)+'%';
+    const usumEl = document.getElementById('usum');
+    usumEl.textContent=(Us*100).toFixed(1)+'%';
+    const N=3; const LL = N*(Math.pow(2,1/N)-1);
+    if(Us<=LL) usumEl.className='val good';
+    else if(Us<=1) usumEl.className='val warn';
+    else usumEl.className='val bad';
+
+    // bar chart
+    const svg = document.getElementById('bar');
+    const W=920;
+    const padL=80, padR=20;
+    const inW = W-padL-padR;
+    let html='';
+    // axis
+    html += `<line x1="${padL}" y1="120" x2="${padL+inW}" y2="120" stroke="#8f99a8"/>`;
+    for(let p=0;p<=100;p+=10){
+      const xc = padL + (p/100)*inW;
+      html += `<line x1="${xc}" y1="120" x2="${xc}" y2="125" stroke="#8f99a8"/>`;
+      html += `<text x="${xc}" y="140" text-anchor="middle" class="axis-label">${p}%</text>`;
+    }
+    html += `<text x="${padL+inW/2}" y="158" text-anchor="middle" class="axis-label">CPU utilization</text>`;
+
+    // bands
+    const llX = padL + LL*inW;
+    const oneX = padL + 1.0*inW;
+    html += `<rect x="${padL}" y="60" width="${llX-padL}" height="50" fill="#a3e635" opacity="0.18"/>`;
+    html += `<rect x="${llX}" y="60" width="${oneX-llX}" height="50" fill="#ffb86c" opacity="0.18"/>`;
+    html += `<rect x="${oneX}" y="60" width="${padL+inW-oneX}" height="50" fill="#ff7b72" opacity="0.18"/>`;
+    html += `<line x1="${llX}" y1="55" x2="${llX}" y2="115" stroke="#a3e635" stroke-dasharray="3,2"/>`;
+    html += `<text x="${llX}" y="50" text-anchor="middle" fill="#a3e635" font-family="ui-monospace,monospace" font-size="11" font-weight="bold">LL ${(LL*100).toFixed(1)}%</text>`;
+    html += `<line x1="${oneX}" y1="55" x2="${oneX}" y2="115" stroke="#ff7b72" stroke-dasharray="3,2"/>`;
+    html += `<text x="${oneX}" y="50" text-anchor="middle" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="11" font-weight="bold">100%</text>`;
+
+    // stacked U bar
+    const cols = ['#ff7b72','#ffb86c','#a3e635'];
+    const Us_arr = [U1,U2,U3];
+    let xacc = padL;
+    Us_arr.forEach((u,i)=>{
+      const w = Math.min(u,1) * inW;
+      const wActual = Math.min(w, padL+inW - xacc);
+      if(wActual>0){
+        html += `<rect x="${xacc}" y="68" width="${wActual}" height="34" fill="${cols[i]}" opacity="0.9"/>`;
+        if(wActual>40){
+          html += `<text x="${xacc+wActual/2}" y="89" text-anchor="middle" fill="#0e1116" font-family="ui-monospace,monospace" font-size="11" font-weight="bold">T${i+1} ${(u*100).toFixed(1)}%</text>`;
+        }
+      }
+      xacc += w;
+    });
+    // verdict
+    let verdict, vcol;
+    if(Us<=LL){ verdict='SCHEDULABLE (under LL bound)'; vcol='#a3e635'; }
+    else if(Us<=1){ verdict='MAYBE (above LL, need response-time analysis)'; vcol='#ffb86c'; }
+    else { verdict='OVERLOAD — cannot schedule'; vcol='#ff7b72'; }
+    html += `<text x="${padL+inW/2}" y="180" text-anchor="middle" fill="${vcol}" font-family="ui-monospace,monospace" font-size="13" font-weight="bold">${verdict}</text>`;
+    svg.innerHTML=html;
+  }
+  ids.forEach(i=>els[i].addEventListener('input',update));
+  update();
+</script>
+</body>
+</html>

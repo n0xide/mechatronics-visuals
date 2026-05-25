@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beam Deflection — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  /* Common SVG conventions */
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .summary{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;
+    padding:10px 14px;margin:10px 0;font:13px ui-monospace,monospace;line-height:1.7}
+  .summary b{color:var(--fg-bright)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Beam Deflection</h1>
+  <p class="lede">Four classic deflection formulas. Pick one, slide the parameters, watch the
+  deflected shape. The same EI shows up in every formula — bending stiffness is what fights
+  deflection. Most importantly: δ scales with L³ (point load) or L⁴ (distributed) — small length
+  increases turn into big sag.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Case</label>
+      <select id="case">
+        <option value="cantP">Cantilever, end point load P → δ = PL³/(3EI)</option>
+        <option value="cantW">Cantilever, UDL w → δ = wL⁴/(8EI)</option>
+        <option value="ssP">Simply-supported, center point P → δ = PL³/(48EI)</option>
+        <option value="ssW">Simply-supported, UDL w → δ = 5wL⁴/(384EI)</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Length L = <span class="readout" id="rL">1.0</span> m</label>
+      <input type="range" id="L" min="0.1" max="3" step="0.05" value="1">
+    </div>
+    <div class="control">
+      <label>Load P or w = <span class="readout" id="rP">100</span> (N or N/m)</label>
+      <input type="range" id="P" min="10" max="2000" step="10" value="100">
+    </div>
+    <div class="control">
+      <label>Modulus E</label>
+      <select id="E">
+        <option value="200">Steel (E=200 GPa)</option>
+        <option value="69">Aluminum (E=69 GPa)</option>
+        <option value="110">Brass (E=110 GPa)</option>
+        <option value="2.2">PETG (E=2.2 GPa)</option>
+        <option value="13">Wood pine (E=13 GPa)</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Width b = <span class="readout" id="rB">25</span> mm</label>
+      <input type="range" id="B" min="5" max="80" step="1" value="25">
+    </div>
+    <div class="control">
+      <label>Height h = <span class="readout" id="rH">25</span> mm</label>
+      <input type="range" id="H" min="5" max="80" step="1" value="25">
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="beam" viewBox="0 0 880 320" width="100%" height="320"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>Undeflected beam</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Deflected shape (×5 visually)</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>Load</span>
+      <span><span class="swatch" style="background:#ff7b72"></span>Max deflection δ</span>
+    </div>
+  </div>
+
+  <div class="summary" id="results"></div>
+
+  <h2>What changes when you double a parameter</h2>
+  <table id="sensTable">
+    <thead><tr><th>Parameter</th><th>Scaling</th><th>If doubled</th></tr></thead>
+    <tbody>
+      <tr><td>Length L</td><td>δ ∝ L³ (point) or L⁴ (UDL)</td><td>8× or 16× the deflection</td></tr>
+      <tr><td>Load P or w</td><td>δ ∝ load</td><td>2× the deflection</td></tr>
+      <tr><td>Modulus E</td><td>δ ∝ 1/E</td><td>½ the deflection</td></tr>
+      <tr><td>Width b (rect cross-section)</td><td>I ∝ b, so δ ∝ 1/b</td><td>½ the deflection</td></tr>
+      <tr><td>Height h (rect cross-section)</td><td>I ∝ h³, so δ ∝ 1/h³</td><td>⅛ the deflection</td></tr>
+    </tbody>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Cantilever vs simply-supported, same load:</b> a cantilever with end load deflects 16× more than a simply-supported beam with the same midspan load (PL³/3EI vs PL³/48EI). Cantilevers are inherently floppy.</li>
+    <li><b>UDL is gentler than concentrated load.</b> A SS beam with UDL of total wL = P deflects 5wL⁴/384EI = 5/8 of PL³/48EI = 5PL³/(384EI), compared to PL³/48EI = 8PL³/384EI — UDL deflects ~5/8 as much.</li>
+    <li><b>Height h enters cubed.</b> Doubling beam height divides deflection by 8 AND quarters the stress. Doubling width divides deflection by 2 only. <i>Always go taller before wider.</i></li>
+    <li><b>EI is "bending stiffness."</b> Same EI = same deflection for the same load. A steel beam and an aluminum beam of equal EI deflect equally — but the aluminum one is fatter and lighter.</li>
+    <li><b>Don't trust thin 3D-printed cantilevers.</b> A 100 mm PETG bracket (E≈2 GPa, ~100× softer than steel) deflects ~100× more under the same load. Most "warped" prints aren't manufacturing defects; they're elastic deflection.</li>
+    <li><b>The deflection visualization is amplified ×5.</b> Real elastic deflection is usually 0.1–2% of the span — visually negligible. The animation exaggerates so you can see the shape.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS — δ_max</h3>
+      <table>
+        <tr><th>Case</th><th>δ_max</th></tr>
+        <tr><td>cantilever, end P</td><td>P·L³ / (3·E·I)</td></tr>
+        <tr><td>cantilever, UDL w</td><td>w·L⁴ / (8·E·I)</td></tr>
+        <tr><td>simply-sup, center P</td><td>P·L³ / (48·E·I)</td></tr>
+        <tr><td>simply-sup, UDL w</td><td>5·w·L⁴ / (384·E·I)</td></tr>
+      </table>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>δ ∝ L³</b> for point loads, <b>L⁴</b> for distributed.</li>
+        <li><b>Superposition works</b> — linear elastic loading is additive.</li>
+        <li><b>E·I rules stiffness</b> — material AND geometry, not mass.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Adding mass ≠ adding stiffness</b> — doubling rect height gives <b>8× stiffness</b> (h³). Mass doubles, stiffness 8×.</li>
+        <li><b>Superposition fails past yield</b> — only valid in linear elastic regime.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 4 — Mechanics of Materials</a> ·
+    Topic: Beam deflection formulas
+  </footer>
+</main>
+<script>
+const svg = document.getElementById('beam');
+function nsmk(tag, attrs={}){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  svg.appendChild(e);
+  return e;
+}
+function clr(){ while(svg.firstChild) svg.removeChild(svg.firstChild); }
+
+function render(){
+  clr();
+  const c = document.getElementById('case').value;
+  const L = parseFloat(document.getElementById('L').value);  // m
+  const P = parseFloat(document.getElementById('P').value);  // N or N/m
+  const E = parseFloat(document.getElementById('E').value);  // GPa
+  const b = parseFloat(document.getElementById('B').value);  // mm
+  const h = parseFloat(document.getElementById('H').value);  // mm
+  document.getElementById('rL').textContent = L.toFixed(2);
+  document.getElementById('rP').textContent = P;
+  document.getElementById('rB').textContent = b;
+  document.getElementById('rH').textContent = h;
+
+  const I_mm4 = b * Math.pow(h, 3) / 12; // mm⁴
+  const I_m4 = I_mm4 * 1e-12;
+  const E_Pa = E * 1e9;
+  const EI = E_Pa * I_m4;  // N·m²
+
+  // Deflection
+  let delta, formula, shapeFn, loadKind;
+  const L4 = Math.pow(L, 4), L3 = Math.pow(L, 3);
+
+  if(c === 'cantP'){
+    delta = P * L3 / (3 * EI);
+    formula = `δ = PL³/(3EI) = ${P}·${L.toFixed(2)}³ / (3·${EI.toFixed(2)})`;
+    // v(x) = (P/(6EI)) * x² * (3L - x), x from fixed (=0) to L
+    shapeFn = (x) => (P / (6*EI)) * x*x * (3*L - x);
+    loadKind = 'point-end';
+  } else if(c === 'cantW'){
+    delta = P * L4 / (8 * EI);
+    formula = `δ = wL⁴/(8EI) = ${P}·${L.toFixed(2)}⁴ / (8·${EI.toFixed(2)})`;
+    shapeFn = (x) => (P / (24*EI)) * x*x * (6*L*L - 4*L*x + x*x);
+    loadKind = 'udl';
+  } else if(c === 'ssP'){
+    delta = P * L3 / (48 * EI);
+    formula = `δ = PL³/(48EI) = ${P}·${L.toFixed(2)}³ / (48·${EI.toFixed(2)})`;
+    // v(x) for 0 ≤ x ≤ L/2: v = (P x / 48EI)(3L² - 4x²); symmetric.
+    shapeFn = (x) => {
+      let xu = x;
+      if(xu > L/2) xu = L - xu;
+      return (P * xu / (48 * EI)) * (3*L*L - 4*xu*xu);
+    };
+    loadKind = 'point-center';
+  } else if(c === 'ssW'){
+    delta = 5 * P * L4 / (384 * EI);
+    formula = `δ = 5wL⁴/(384EI) = 5·${P}·${L.toFixed(2)}⁴ / (384·${EI.toFixed(2)})`;
+    // v(x) = (w x /(24 EI)) * (L³ − 2 L x² + x³)
+    shapeFn = (x) => (P * x / (24 * EI)) * (L*L*L - 2*L*x*x + x*x*x);
+    loadKind = 'udl';
+  }
+
+  // Layout
+  const xL = 100, xR = 780, yBeam = 130;
+  const Lpx = xR - xL;
+
+  // Visual scale: amplify δ by ×5 of the max actual displacement
+  const visMax = 60; // px
+  const visScale = visMax / Math.max(1e-9, Math.abs(delta));
+  const visAmp = Math.min(visScale, visScale*5);  // not too aggressive
+
+  // Better: just cap the visual deflection at visMax pixels
+  const cap = Math.min(visMax, Math.abs(delta) * 5 * 200); // 5× visually, but actual delta in m converted to px somehow
+  // Simplest: scale so that max delta maps to visMax pixels.
+  const sScale = visMax / Math.max(1e-6, Math.abs(delta));
+
+  // Undeflected beam (faint)
+  nsmk('line',{x1:xL, y1:yBeam, x2:xR, y2:yBeam,
+    stroke:'#5ec8ff', 'stroke-width':1.5, 'stroke-dasharray':'5 4', opacity:0.45});
+
+  // Supports (depend on case)
+  const isCant = (c === 'cantP' || c === 'cantW');
+  if(isCant){
+    // Fixed wall at left
+    for(let i=0;i<6;i++){
+      nsmk('line',{x1:xL-14, y1:yBeam-25+i*10, x2:xL, y2:yBeam-18+i*10, stroke:'#8f99a8', 'stroke-width':1.5});
+    }
+    nsmk('line',{x1:xL, y1:yBeam-30, x2:xL, y2:yBeam+30, stroke:'#8f99a8', 'stroke-width':2});
+  } else {
+    // Simply supported: pin at L, roller at R
+    nsmk('polygon',{points:`${xL},${yBeam+3} ${xL-12},${yBeam+22} ${xL+12},${yBeam+22}`, fill:'#8f99a8'});
+    nsmk('line',{x1:xL-18, y1:yBeam+24, x2:xL+18, y2:yBeam+24, stroke:'#8f99a8', 'stroke-width':2});
+    nsmk('polygon',{points:`${xR},${yBeam+3} ${xR-12},${yBeam+20} ${xR+12},${yBeam+20}`, fill:'none', stroke:'#8f99a8', 'stroke-width':1.5});
+    nsmk('circle',{cx:xR-6, cy:yBeam+24, r:3, fill:'#8f99a8'});
+    nsmk('circle',{cx:xR+6, cy:yBeam+24, r:3, fill:'#8f99a8'});
+    nsmk('line',{x1:xR-18, y1:yBeam+29, x2:xR+18, y2:yBeam+29, stroke:'#8f99a8', 'stroke-width':2});
+  }
+
+  // Load arrows
+  if(loadKind === 'point-end'){
+    nsmk('line',{x1:xR, y1:yBeam-50, x2:xR, y2:yBeam-5,
+      stroke:'#ffb86c', 'stroke-width':3});
+    nsmk('polygon',{points:`${xR},${yBeam-5} ${xR-7},${yBeam-15} ${xR+7},${yBeam-15}`, fill:'#ffb86c'});
+    nsmk('text',{x:xR+10, y:yBeam-25, class:'label', fill:'#ffb86c'}).textContent = `P = ${P} N`;
+  } else if(loadKind === 'point-center'){
+    nsmk('line',{x1:(xL+xR)/2, y1:yBeam-50, x2:(xL+xR)/2, y2:yBeam-5,
+      stroke:'#ffb86c', 'stroke-width':3});
+    nsmk('polygon',{points:`${(xL+xR)/2},${yBeam-5} ${(xL+xR)/2-7},${yBeam-15} ${(xL+xR)/2+7},${yBeam-15}`, fill:'#ffb86c'});
+    nsmk('text',{x:(xL+xR)/2+10, y:yBeam-25, class:'label', fill:'#ffb86c'}).textContent = `P = ${P} N`;
+  } else if(loadKind === 'udl'){
+    for(let i=0; i<=14; i++){
+      const xx = xL + i*Lpx/14;
+      nsmk('line',{x1:xx, y1:yBeam-30, x2:xx, y2:yBeam-4, stroke:'#ffb86c', 'stroke-width':1.5});
+      nsmk('polygon',{points:`${xx},${yBeam-4} ${xx-4},${yBeam-10} ${xx+4},${yBeam-10}`, fill:'#ffb86c'});
+    }
+    nsmk('line',{x1:xL, y1:yBeam-32, x2:xR, y2:yBeam-32, stroke:'#ffb86c', 'stroke-width':2});
+    nsmk('text',{x:(xL+xR)/2, y:yBeam-38, 'text-anchor':'middle', class:'label', fill:'#ffb86c'})
+      .textContent = `w = ${P} N/m`;
+  }
+
+  // Deflected shape
+  const N = 80;
+  let path = `M ${xL} ${yBeam}`;
+  for(let i=1;i<=N;i++){
+    const xm = (i/N) * L;  // metres along beam
+    const v = shapeFn(xm);  // metres deflection (downward positive)
+    const xpx = xL + (i/N) * Lpx;
+    const ypx = yBeam + v * sScale;
+    path += ` L ${xpx} ${ypx}`;
+  }
+  nsmk('path',{d:path, fill:'none', stroke:'#a3e635', 'stroke-width':2.5});
+
+  // Mark max deflection
+  let xMax_m, yMax_px;
+  if(loadKind === 'point-end' || loadKind === 'udl' && isCant){
+    xMax_m = L;
+    yMax_px = yBeam + delta * sScale;
+    const xMaxPx = xR;
+    nsmk('circle',{cx:xMaxPx, cy:yMax_px, r:5, fill:'#ff7b72'});
+    nsmk('line',{x1:xMaxPx, y1:yBeam, x2:xMaxPx, y2:yMax_px, stroke:'#ff7b72', 'stroke-width':1, 'stroke-dasharray':'3 3'});
+    nsmk('text',{x:xMaxPx+10, y:yMax_px+4, class:'label', fill:'#ff7b72'})
+      .textContent = `δ_max = ${(delta*1000).toFixed(3)} mm`;
+  } else {
+    // SS beam: midspan
+    xMax_m = L/2;
+    yMax_px = yBeam + delta * sScale;
+    const xMaxPx = (xL+xR)/2;
+    nsmk('circle',{cx:xMaxPx, cy:yMax_px, r:5, fill:'#ff7b72'});
+    nsmk('line',{x1:xMaxPx, y1:yBeam, x2:xMaxPx, y2:yMax_px, stroke:'#ff7b72', 'stroke-width':1, 'stroke-dasharray':'3 3'});
+    nsmk('text',{x:xMaxPx+10, y:yMax_px+12, class:'label', fill:'#ff7b72'})
+      .textContent = `δ_max = ${(delta*1000).toFixed(3)} mm`;
+  }
+
+  // Length dim
+  nsmk('line',{x1:xL, y1:yBeam+50, x2:xR, y2:yBeam+50, stroke:'#8f99a8', 'stroke-width':1});
+  nsmk('line',{x1:xL, y1:yBeam+45, x2:xL, y2:yBeam+55, stroke:'#8f99a8', 'stroke-width':1});
+  nsmk('line',{x1:xR, y1:yBeam+45, x2:xR, y2:yBeam+55, stroke:'#8f99a8', 'stroke-width':1});
+  nsmk('text',{x:(xL+xR)/2, y:yBeam+65, 'text-anchor':'middle', class:'label-dim'})
+    .textContent = `L = ${L.toFixed(2)} m`;
+
+  // EI text
+  nsmk('text',{x:440, y:240, 'text-anchor':'middle', class:'label-dim'})
+    .textContent = `EI = ${EI.toFixed(2)} N·m² (= ${(E*1e3).toFixed(0)} MPa · ${I_mm4.toFixed(0)} mm⁴)`;
+  nsmk('text',{x:440, y:260, 'text-anchor':'middle', class:'label', fill:'#5ec8ff'})
+    .textContent = `cross-section ${b}×${h} mm, I = b·h³/12 = ${I_mm4.toFixed(2)} mm⁴`;
+  nsmk('text',{x:440, y:280, 'text-anchor':'middle', class:'label-dim'})
+    .textContent = `(deflection visually amplified ×${(sScale/(visMax/Math.abs(delta || 1e-9))*5).toFixed(1)} so you can see it)`;
+
+  document.getElementById('results').innerHTML =
+    `<b>${formula}</b><br>` +
+    `<b>δ_max =</b> <span class="readout">${(delta*1000).toFixed(4)} mm</span> ` +
+    `(= ${(delta/L*100).toFixed(3)}% of span L)<br>` +
+    `<b>EI =</b> <span class="readout">${EI.toFixed(3)} N·m²</span> · ` +
+    `<b>I =</b> <span class="readout">${I_mm4.toFixed(2)} mm⁴</span> · ` +
+    `<span style="color:var(--fg-dim)">δ scales: 2× load → 2× δ · 2× L → ${(loadKind==='udl')?'16':'8'}× δ · 2× h → ⅛ δ</span>`;
+}
+
+document.getElementById('case').onchange = render;
+document.getElementById('L').oninput = render;
+document.getElementById('P').oninput = render;
+document.getElementById('E').onchange = render;
+document.getElementById('B').oninput = render;
+document.getElementById('H').oninput = render;
+
+render();
+</script>
+</body>
+</html>

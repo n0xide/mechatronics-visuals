@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Counters and FSMs — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0;flex-wrap:wrap}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .ctr-row{display:grid;grid-template-columns:80px repeat(4,52px) 80px;gap:4px;align-items:center;margin:6px 0}
+  .ctr-row .lbl{font:12px ui-monospace,monospace;color:var(--fg-dim)}
+  .bit{width:48px;height:36px;background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+       display:flex;align-items:center;justify-content:center;
+       font:600 14px ui-monospace,monospace;color:var(--fg);position:relative;transition:background 0.1s}
+  .bit.on{background:var(--accent3);color:var(--bg);border-color:var(--accent3)}
+  .bit.rippling{box-shadow:0 0 0 2px var(--warn);background:var(--warn);color:var(--bg)}
+  .bit .delay{position:absolute;bottom:-15px;left:0;right:0;text-align:center;
+              font:10px ui-monospace,monospace;color:var(--accent2)}
+  .state-circle{cursor:default}
+  .state-circle.current circle{fill:var(--accent);stroke:var(--accent)}
+  .state-circle.current text{fill:var(--bg);font-weight:700}
+  .light{display:inline-block;width:18px;height:18px;border-radius:50%;background:#222;
+         border:1px solid var(--line);margin:0 4px}
+  .light.red.on{background:#ff5a5a;box-shadow:0 0 10px #ff5a5a}
+  .light.yellow.on{background:#ffd95a;box-shadow:0 0 10px #ffd95a}
+  .light.green.on{background:#3edc6e;box-shadow:0 0 10px #3edc6e}
+  .led-strip{display:flex;gap:4px;margin:8px 0}
+  .led{width:24px;height:24px;border-radius:50%;background:#222;border:1px solid var(--line);
+       display:flex;align-items:center;justify-content:center;font:10px ui-monospace,monospace;color:var(--fg-dim)}
+  .led.on{background:var(--accent);box-shadow:0 0 8px var(--accent);color:var(--bg)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Counters and FSMs</h1>
+  <p class="lede">Ripple counters chain flip-flops — fast to design, slow to settle. Synchronous counters share a clock — uniform, fast, predictable. State machines extend the idea: a clock advances a register, combinational logic decides the next state.</p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="ctr">Ripple vs. synchronous counter</div>
+    <div class="tab" data-tab="fsm">Traffic-light FSM (Moore)</div>
+    <div class="tab" data-tab="shift">74HC595 shift register</div>
+  </div>
+
+  <!-- COUNTERS -->
+  <div class="tab-panel active" data-panel="ctr">
+    <h3>4-bit binary counter — two implementations</h3>
+    <p style="font-size:12px;color:var(--fg-dim)">Both count 0→15 on rising clock edges. The ripple counter chains T-flip-flops; each bit triggers the next, so the carry walks across the bits one gate-delay at a time. The synchronous counter clocks all four flip-flops together, with combinational logic deciding which bits toggle next.</p>
+
+    <div class="toggles" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0">
+      <button class="btn primary" id="ctrStep">Step clock ↑</button>
+      <button class="btn" id="ctrPlay">Auto run</button>
+      <button class="btn" id="ctrReset">Reset</button>
+      <label style="font:12px ui-monospace,monospace;color:var(--fg-dim)">Speed:</label>
+      <input type="range" id="ctrSpeed" min="200" max="1500" step="100" value="700" style="width:120px;accent-color:var(--accent)">
+      <span class="readout" id="ctrCount">count = 0</span>
+    </div>
+
+    <h3>Ripple counter (async — carry ripples)</h3>
+    <div class="ctr-row">
+      <span class="lbl">Q3 Q2 Q1 Q0</span>
+      <div class="bit" id="rip3">0<span class="delay">+3τ</span></div>
+      <div class="bit" id="rip2">0<span class="delay">+2τ</span></div>
+      <div class="bit" id="rip1">0<span class="delay">+1τ</span></div>
+      <div class="bit" id="rip0">0<span class="delay">+0τ</span></div>
+      <span class="lbl" id="ripVal">= 0</span>
+    </div>
+    <p style="font-size:11px;color:var(--fg-dim);margin-top:18px">Each T-FF clocks on the previous Q output. When Q0→1 toggles after delay τ, Q1 only sees that edge τ later, and so on. At count=7→8, all four bits propagate sequentially over 4·τ — visible as the orange flash walking from Q0 to Q3.</p>
+
+    <h3>Synchronous counter (all FFs share CLK)</h3>
+    <div class="ctr-row">
+      <span class="lbl">Q3 Q2 Q1 Q0</span>
+      <div class="bit" id="syn3">0<span class="delay">+1τ</span></div>
+      <div class="bit" id="syn2">0<span class="delay">+1τ</span></div>
+      <div class="bit" id="syn1">0<span class="delay">+1τ</span></div>
+      <div class="bit" id="syn0">0<span class="delay">+1τ</span></div>
+      <span class="lbl" id="synVal">= 0</span>
+    </div>
+    <p style="font-size:11px;color:var(--fg-dim);margin-top:18px">All bits update together one τ after the edge. Carry logic feeds T-inputs: T0=1, T1=Q0, T2=Q0·Q1, T3=Q0·Q1·Q2.</p>
+
+    <canvas id="ctrTiming" width="900" height="220" style="background:var(--bg-elev2);border-radius:6px;margin-top:14px;display:block"></canvas>
+    <p style="font-size:11px;color:var(--fg-dim);margin-top:6px">Timing comparison. Ripple counter: each bit's edge is staggered by τ. Synchronous: all bits transition together after one τ. The ripple's worst-case total delay grows linearly with bit-width — limits its max frequency.</p>
+  </div>
+
+  <!-- FSM -->
+  <div class="tab-panel" data-panel="fsm">
+    <h3>Moore FSM — traffic light controller</h3>
+    <p style="font-size:12px;color:var(--fg-dim)">Three states, three outputs. In a Moore machine the output depends only on the current state (not the input) — so the lights are stable as long as the state holds. The clock advances Red→Green→Yellow→Red.</p>
+
+    <div class="toggles" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0">
+      <button class="btn primary" id="fsmStep">Step clock ↑</button>
+      <button class="btn" id="fsmPlay">Auto run</button>
+      <button class="btn" id="fsmReset">Reset to RED</button>
+      <span class="readout" id="fsmState">state = RED</span>
+    </div>
+
+    <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap">
+      <svg viewBox="0 0 380 260" width="380" height="260" style="background:var(--bg-elev2);border-radius:6px;padding:8px;flex:0 0 auto">
+        <!-- State circles -->
+        <g class="state-circle" id="sRED">
+          <circle cx="80" cy="80" r="34" fill="var(--bg)" stroke="var(--fg-dim)" stroke-width="2"/>
+          <text x="80" y="84" text-anchor="middle" fill="var(--fg)" font-family="ui-monospace,monospace" font-size="13">RED</text>
+        </g>
+        <g class="state-circle" id="sGRN">
+          <circle cx="300" cy="80" r="34" fill="var(--bg)" stroke="var(--fg-dim)" stroke-width="2"/>
+          <text x="300" y="84" text-anchor="middle" fill="var(--fg)" font-family="ui-monospace,monospace" font-size="13">GREEN</text>
+        </g>
+        <g class="state-circle" id="sYEL">
+          <circle cx="190" cy="200" r="34" fill="var(--bg)" stroke="var(--fg-dim)" stroke-width="2"/>
+          <text x="190" y="204" text-anchor="middle" fill="var(--fg)" font-family="ui-monospace,monospace" font-size="13">YELLOW</text>
+        </g>
+        <!-- Arrows -->
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="var(--accent)"/>
+          </marker>
+        </defs>
+        <path d="M 114,72 Q 190,40 266,72" fill="none" stroke="var(--accent)" stroke-width="2" marker-end="url(#arrow)"/>
+        <text x="190" y="38" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="var(--accent)">clk↑</text>
+
+        <path d="M 285,114 Q 250,180 222,190" fill="none" stroke="var(--accent)" stroke-width="2" marker-end="url(#arrow)"/>
+        <text x="278" y="160" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="var(--accent)">clk↑</text>
+
+        <path d="M 158,190 Q 100,180 90,114" fill="none" stroke="var(--accent)" stroke-width="2" marker-end="url(#arrow)"/>
+        <text x="98" y="160" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="var(--accent)">clk↑</text>
+      </svg>
+
+      <div style="flex:1;min-width:200px">
+        <h3>Traffic head</h3>
+        <div style="background:#1a1a1a;border-radius:8px;padding:10px;display:inline-flex;flex-direction:column;align-items:center;gap:6px;border:1px solid var(--line)">
+          <span class="light red" id="lightR"></span>
+          <span class="light yellow" id="lightY"></span>
+          <span class="light green" id="lightG"></span>
+        </div>
+
+        <h3>State / output table</h3>
+        <table style="font-size:12px">
+          <tr><th>State</th><th>R</th><th>Y</th><th>G</th><th>Next</th></tr>
+          <tr id="rowRED"><td>RED</td><td>1</td><td>0</td><td>0</td><td>GREEN</td></tr>
+          <tr id="rowGRN"><td>GREEN</td><td>0</td><td>0</td><td>1</td><td>YELLOW</td></tr>
+          <tr id="rowYEL"><td>YELLOW</td><td>0</td><td>1</td><td>0</td><td>RED</td></tr>
+        </table>
+      </div>
+    </div>
+    <p style="font-size:11px;color:var(--fg-dim);margin-top:8px">Encoded with 2 bits (state register Q1Q0): RED=00, GREEN=01, YELLOW=10. Next-state logic is combinational; output logic is just decoded state — Moore.</p>
+  </div>
+
+  <!-- SHIFT REGISTER -->
+  <div class="tab-panel" data-panel="shift">
+    <h3>74HC595 — serial-in, parallel-out (SIPO)</h3>
+    <p style="font-size:12px;color:var(--fg-dim)">Eight cascaded D-flip-flops. SER feeds Q0 on each SRCLK edge; everything shifts left. RCLK transfers the shift register into the output latch — the visible LEDs only update when you pulse RCLK. This is how the GPIO expansion trick works.</p>
+
+    <div class="toggles" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0">
+      <label style="font:12px ui-monospace,monospace;color:var(--fg-dim)">SER:</label>
+      <button class="btn" id="srBitToggle">SER = 0</button>
+      <button class="btn primary" id="srClkBtn">SRCLK ↑ (shift)</button>
+      <button class="btn" id="srLatchBtn">RCLK ↑ (latch)</button>
+      <button class="btn" id="srAuto">Auto stream</button>
+      <button class="btn" id="srClear">Clear</button>
+    </div>
+
+    <h3>Shift register (internal)</h3>
+    <div class="led-strip" id="shiftReg"></div>
+    <h3>Output latch (Q7..Q0 LEDs)</h3>
+    <div class="led-strip" id="outputLatch"></div>
+    <p style="font-size:11px;color:var(--fg-dim);margin-top:6px">The shift register sees every clock; the LEDs only reflect what was latched. Pattern shown in auto stream: <code>0xA5</code> = 10100101.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Ripple delay grows linearly with bit-width</b> — a 16-bit ripple counter has 16·τ worst case. Above ~50 MHz, only synchronous counters are usable.</li>
+    <li><b>Synchronous counters need carry logic</b> — T0=1, T1=Q0, T2=Q0·Q1, etc. More gates, but every bit settles in one τ.</li>
+    <li><b>Moore output depends only on state</b> — outputs are glitch-free as long as the state register is glitch-free. Mealy is faster (no extra clock cycle) but outputs can glitch on input changes.</li>
+    <li><b>State encoding choices</b> — binary (log2 N FFs), one-hot (N FFs, simpler decode), Gray (one bit changes per transition, useful for clock-domain crossing).</li>
+    <li><b>74HC595 separates shift from latch</b> — you can update the shift register at SPI speeds without flicker; only RCLK reveals the new pattern.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>COUNTERS / FSM</h3>
+      <dl>
+        <dt>Mod-N counter</dt><dd><span class="eq">⌈log₂ N⌉ flip-flops</span></dd>
+        <dt>Ripple delay</dt><dd><span class="eq">N · tcq (slow)</span></dd>
+        <dt>Sync (CLA)</dt><dd><span class="eq">≈ tcq + tcomb (one clock)</span></dd>
+        <dt>Moore</dt><dd><span class="eq">out = f(state)</span></dd>
+        <dt>Mealy</dt><dd><span class="eq">out = f(state, input)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>ENCODINGS</h3>
+      <ul>
+        <li><b>Binary</b> — fewest FFs (⌈log₂ S⌉), more decode logic.</li>
+        <li><b>One-hot</b> — 1 FF per state; preferred in FPGAs (fast, simple decode).</li>
+        <li><b>Gray</b> — adjacent states differ by 1 bit; useful across clock domains.</li>
+        <li><b>Moore = safe</b>, <b>Mealy = fewer states</b> but glitch-prone.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Mealy output glitches</b> — outputs change with input during a state; register them.</li>
+        <li><b>Ripple counter skew</b> — bits update at different times; never use ripple outputs as clock or for parallel sampling.</li>
+        <li><b>Missing reset</b> — unreached states stuck on power-up; always define reset behavior.</li>
+        <li><b>Async reset deassertion</b> — must be synchronous to clock to avoid recovery violations.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 5 — Digital Electronics</a> ·
+    Topic: Counters, FSMs, Shift Registers
+  </footer>
+</main>
+<script>
+  // ===== Tabs =====
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.onclick=()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      document.querySelector(`.tab-panel[data-panel="${t.dataset.tab}"]`).classList.add('active');
+    };
+  });
+
+  // ===== Counters =====
+  let ctrVal = 0;
+  let ctrPlayInt = null;
+  const ripBits = ['rip0','rip1','rip2','rip3'];
+  const synBits = ['syn0','syn1','syn2','syn3'];
+
+  function ctrRender(animateRipple){
+    ['ripVal','synVal'].forEach(id=>{
+      document.getElementById(id).textContent = '= ' + ctrVal;
+    });
+    document.getElementById('ctrCount').textContent = 'count = ' + ctrVal;
+    for(let i=0;i<4;i++){
+      const bit = (ctrVal >> i) & 1;
+      document.getElementById(synBits[i]).textContent = bit;
+      document.getElementById(synBits[i]).classList.toggle('on', bit===1);
+      document.getElementById(synBits[i]).querySelector('.delay').textContent = '+1τ';
+    }
+    if(animateRipple){
+      // Walk the change through the ripple bits
+      const prev = (ctrVal - 1) & 0xF;
+      const changed = [];
+      for(let i=0;i<4;i++){
+        if(((ctrVal>>i)&1) !== ((prev>>i)&1)) changed.push(i);
+      }
+      // Reset display first
+      for(let i=0;i<4;i++){
+        const bit = (prev >> i) & 1;
+        document.getElementById(ripBits[i]).textContent = bit;
+        document.getElementById(ripBits[i]).classList.toggle('on', bit===1);
+        document.getElementById(ripBits[i]).classList.remove('rippling');
+      }
+      changed.forEach((idx, step)=>{
+        setTimeout(()=>{
+          document.getElementById(ripBits[idx]).classList.add('rippling');
+          setTimeout(()=>{
+            const bit = (ctrVal>>idx) & 1;
+            document.getElementById(ripBits[idx]).textContent = bit;
+            document.getElementById(ripBits[idx]).classList.toggle('on', bit===1);
+            document.getElementById(ripBits[idx]).classList.remove('rippling');
+          }, 140);
+        }, step * 180);
+      });
+    } else {
+      for(let i=0;i<4;i++){
+        const bit = (ctrVal >> i) & 1;
+        document.getElementById(ripBits[i]).textContent = bit;
+        document.getElementById(ripBits[i]).classList.toggle('on', bit===1);
+        document.getElementById(ripBits[i]).classList.remove('rippling');
+      }
+    }
+    drawCtrTiming();
+  }
+  function ctrStep(){ ctrVal = (ctrVal+1) & 0xF; ctrRender(true); }
+  document.getElementById('ctrStep').onclick = ctrStep;
+  document.getElementById('ctrReset').onclick = ()=>{ ctrVal = 0; ctrRender(false); };
+  document.getElementById('ctrPlay').onclick = ()=>{
+    if(ctrPlayInt){ clearInterval(ctrPlayInt); ctrPlayInt = null;
+      document.getElementById('ctrPlay').textContent = 'Auto run'; return; }
+    document.getElementById('ctrPlay').textContent = 'Stop';
+    const spd = +document.getElementById('ctrSpeed').value;
+    ctrPlayInt = setInterval(ctrStep, spd);
+  };
+  document.getElementById('ctrSpeed').oninput = ()=>{
+    if(ctrPlayInt){
+      clearInterval(ctrPlayInt);
+      ctrPlayInt = setInterval(ctrStep, +document.getElementById('ctrSpeed').value);
+    }
+  };
+
+  function drawCtrTiming(){
+    const c = document.getElementById('ctrTiming');
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0,0,c.width,c.height);
+    const W = c.width, H = c.height;
+    ctx.font='11px ui-monospace,monospace';
+    // Draw ripple vs sync side by side - 8 clock cycles
+    const lanes = ['CLK','Q0 rip','Q1 rip','Q0 syn','Q1 syn'];
+    const colors = ['#5ec8ff','#ffb86c','#ffb86c','#a3e635','#a3e635'];
+    const laneH = 32;
+    const startX = 60;
+    const tickW = 80;
+    for(let i=0;i<lanes.length;i++){
+      const y = 18 + i*laneH;
+      ctx.fillStyle = '#8f99a8';
+      ctx.fillText(lanes[i], 4, y+18);
+      ctx.strokeStyle = '#2a313c';
+      ctx.beginPath(); ctx.moveTo(startX, y+22); ctx.lineTo(W-10, y+22); ctx.stroke();
+    }
+    // Draw clk
+    ctx.strokeStyle = '#5ec8ff'; ctx.lineWidth=2; ctx.beginPath();
+    let cy = 18+22;
+    ctx.moveTo(startX, cy);
+    for(let i=0;i<10;i++){
+      const x = startX + i*tickW;
+      ctx.lineTo(x, cy);
+      ctx.lineTo(x, cy-16);
+      ctx.lineTo(x+tickW/2, cy-16);
+      ctx.lineTo(x+tickW/2, cy);
+    }
+    ctx.lineTo(W-10, cy);
+    ctx.stroke();
+    // Q0 ripple - toggles each clock, delayed by ~8px
+    const delay = 8;
+    function drawWave(y, bitFn, totalDelay){
+      ctx.strokeStyle = '#ffb86c'; ctx.lineWidth=2;
+      ctx.beginPath();
+      let curBit = 0;
+      ctx.moveTo(startX, y+22);
+      for(let i=0;i<10;i++){
+        const x = startX + i*tickW + totalDelay;
+        const newBit = bitFn(i);
+        if(newBit !== curBit){
+          ctx.lineTo(x, y+22 - (curBit?16:0));
+          ctx.lineTo(x, y+22 - (newBit?16:0));
+          curBit = newBit;
+        }
+      }
+      ctx.lineTo(W-10, y+22 - (curBit?16:0));
+      ctx.stroke();
+    }
+    // Q0 ripple — toggles on every clock — colored orange
+    ctx.strokeStyle = '#ffb86c'; ctx.lineWidth=2;
+    drawWave(18+laneH, i => i & 1, delay);
+    // Q1 ripple — delayed by 2τ
+    ctx.strokeStyle = '#ffb86c'; ctx.lineWidth=2;
+    drawWave(18+2*laneH, i => (i>>1) & 1, delay*2);
+    // Q0 sync — same timing as CLK (1τ)
+    ctx.strokeStyle = '#a3e635'; ctx.lineWidth=2;
+    drawWave(18+3*laneH, i => i & 1, delay);
+    // Q1 sync — also 1τ
+    ctx.strokeStyle = '#a3e635'; ctx.lineWidth=2;
+    drawWave(18+4*laneH, i => (i>>1) & 1, delay);
+    // Annotation
+    ctx.fillStyle = '#ff7b72'; ctx.font='10px ui-monospace,monospace';
+    ctx.fillText('ripple: Q1 edge lags 2τ behind clock', startX+80, H-6);
+    ctx.fillStyle = '#a3e635';
+    ctx.fillText('sync: all bits update together (1τ)', startX+440, H-6);
+  }
+  ctrRender(false);
+
+  // ===== FSM =====
+  const fsmStates = ['RED','GREEN','YELLOW'];
+  let fsmIdx = 0;
+  let fsmPlayInt = null;
+  function fsmRender(){
+    const cur = fsmStates[fsmIdx];
+    document.getElementById('fsmState').textContent = 'state = ' + cur;
+    ['sRED','sGRN','sYEL'].forEach(id=>document.getElementById(id).classList.remove('current'));
+    ['rowRED','rowGRN','rowYEL'].forEach(id=>{
+      document.getElementById(id).style.background = '';
+      document.getElementById(id).style.color = '';
+    });
+    const map = {RED:['sRED','rowRED','lightR'], GREEN:['sGRN','rowGRN','lightG'], YELLOW:['sYEL','rowYEL','lightY']};
+    document.getElementById(map[cur][0]).classList.add('current');
+    document.getElementById(map[cur][1]).style.background = 'var(--accent)';
+    document.getElementById(map[cur][1]).style.color = 'var(--bg)';
+    ['lightR','lightY','lightG'].forEach(id=>document.getElementById(id).classList.remove('on'));
+    document.getElementById(map[cur][2]).classList.add('on');
+  }
+  document.getElementById('fsmStep').onclick = ()=>{ fsmIdx = (fsmIdx+1)%3; fsmRender(); };
+  document.getElementById('fsmReset').onclick = ()=>{ fsmIdx = 0; fsmRender(); if(fsmPlayInt){clearInterval(fsmPlayInt); fsmPlayInt=null; document.getElementById('fsmPlay').textContent='Auto run';} };
+  document.getElementById('fsmPlay').onclick = ()=>{
+    if(fsmPlayInt){ clearInterval(fsmPlayInt); fsmPlayInt=null; document.getElementById('fsmPlay').textContent='Auto run'; return; }
+    document.getElementById('fsmPlay').textContent='Stop';
+    fsmPlayInt = setInterval(()=>{ fsmIdx = (fsmIdx+1)%3; fsmRender(); }, 1200);
+  };
+  fsmRender();
+
+  // ===== Shift register =====
+  let srBit = 0;
+  let shiftReg = [0,0,0,0,0,0,0,0]; // bit 7 left .. bit 0 right
+  let outputLatch = [0,0,0,0,0,0,0,0];
+  let srAutoInt = null;
+  let srStreamIdx = 0;
+  const srStream = [1,0,1,0,0,1,0,1]; // 0xA5
+
+  function srRender(){
+    const sr = document.getElementById('shiftReg');
+    const ol = document.getElementById('outputLatch');
+    sr.innerHTML = '';
+    ol.innerHTML = '';
+    // display Q7 .. Q0
+    for(let i=7;i>=0;i--){
+      const el = document.createElement('div');
+      el.className = 'led' + (shiftReg[i]?' on':'');
+      el.textContent = 'Q'+i;
+      sr.appendChild(el);
+      const el2 = document.createElement('div');
+      el2.className = 'led' + (outputLatch[i]?' on':'');
+      el2.textContent = 'Q'+i;
+      ol.appendChild(el2);
+    }
+  }
+  document.getElementById('srBitToggle').onclick = ()=>{
+    srBit ^= 1;
+    document.getElementById('srBitToggle').textContent = 'SER = ' + srBit;
+  };
+  document.getElementById('srClkBtn').onclick = ()=>{
+    // shift left: Q7 falls off; new Q0 = SER
+    for(let i=7;i>0;i--) shiftReg[i] = shiftReg[i-1];
+    shiftReg[0] = srBit;
+    srRender();
+  };
+  document.getElementById('srLatchBtn').onclick = ()=>{
+    outputLatch = shiftReg.slice();
+    srRender();
+  };
+  document.getElementById('srClear').onclick = ()=>{
+    shiftReg = [0,0,0,0,0,0,0,0];
+    outputLatch = [0,0,0,0,0,0,0,0];
+    srRender();
+    if(srAutoInt){ clearInterval(srAutoInt); srAutoInt=null; document.getElementById('srAuto').textContent='Auto stream'; }
+  };
+  document.getElementById('srAuto').onclick = ()=>{
+    if(srAutoInt){ clearInterval(srAutoInt); srAutoInt=null;
+      document.getElementById('srAuto').textContent='Auto stream'; return; }
+    document.getElementById('srAuto').textContent='Stop';
+    srStreamIdx = 0;
+    srAutoInt = setInterval(()=>{
+      srBit = srStream[srStreamIdx % 8];
+      document.getElementById('srBitToggle').textContent = 'SER = ' + srBit;
+      // shift
+      for(let i=7;i>0;i--) shiftReg[i] = shiftReg[i-1];
+      shiftReg[0] = srBit;
+      srStreamIdx++;
+      // latch every 8 shifts
+      if(srStreamIdx % 8 === 0) outputLatch = shiftReg.slice();
+      srRender();
+    }, 500);
+  };
+  srRender();
+</script>
+</body>
+</html>

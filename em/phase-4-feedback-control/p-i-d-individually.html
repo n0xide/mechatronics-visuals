@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P, I, D individually — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .panels{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px}
+  .panel h3{margin:0 0 6px;text-transform:uppercase}
+  .panel svg{display:block;width:100%;height:auto}
+  .panel.p h3{color:#5ec8ff}
+  .panel.i h3{color:#a3e635}
+  .panel.d h3{color:#ffb86c}
+</style>
+</head>
+<body>
+<main>
+  <h1>P, I, D in isolation</h1>
+  <p class="lede">Same plant, same step input, same noise budget — three controllers, one term each.
+  This is the cleanest way to see what each term contributes (and what each one breaks).
+  Common plant: first-order lag with a tiny dead time, like a small DC motor speed loop.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Kp</label>
+      <input type="range" id="kp" min="0" max="10" step="0.1" value="2.5">
+      <span class="readout" id="kpRO">2.5</span>
+    </div>
+    <div class="control">
+      <label>Ki</label>
+      <input type="range" id="ki" min="0" max="8" step="0.1" value="3.0">
+      <span class="readout" id="kiRO">3.0</span>
+    </div>
+    <div class="control">
+      <label>Kd</label>
+      <input type="range" id="kd" min="0" max="2" step="0.02" value="0.5">
+      <span class="readout" id="kdRO">0.50</span>
+    </div>
+    <div class="control">
+      <label>Sensor noise (σ)</label>
+      <input type="range" id="noise" min="0" max="0.02" step="0.0005" value="0.003">
+      <span class="readout" id="noiseRO">0.003</span>
+    </div>
+    <div class="control">
+      <label>Plant time constant τ (s)</label>
+      <input type="range" id="tau" min="0.2" max="2" step="0.05" value="0.6">
+      <span class="readout" id="tauRO">0.60 s</span>
+    </div>
+    <div class="control">
+      <label>Setpoint r</label>
+      <input type="range" id="sp" min="0.2" max="1.5" step="0.05" value="1">
+      <span class="readout" id="spRO">1.00</span>
+    </div>
+  </section>
+
+  <div class="panels">
+    <div class="panel p">
+      <h3>P only — proportional</h3>
+      <svg id="svgP" viewBox="0 0 380 220"></svg>
+      <p style="font-size:12px;color:var(--fg-dim);margin:8px 0 0">
+        <b>u = Kp·e</b><br>
+        Fast, but always leaves a residual error (unless plant has free integrator).
+        Push Kp too high → oscillates, then instability.
+      </p>
+    </div>
+    <div class="panel i">
+      <h3>I only — integral</h3>
+      <svg id="svgI" viewBox="0 0 380 220"></svg>
+      <p style="font-size:12px;color:var(--fg-dim);margin:8px 0 0">
+        <b>u = Ki·∫e dt</b><br>
+        Eventually drives error to zero. Slow on its own.
+        Pure integral on second-order plants is unstable — needs P or D to behave.
+      </p>
+    </div>
+    <div class="panel d">
+      <h3>D only — derivative</h3>
+      <svg id="svgD" viewBox="0 0 380 220"></svg>
+      <p style="font-size:12px;color:var(--fg-dim);margin:8px 0 0">
+        <b>u = −Kd·(dy/dt)</b><br>
+        Acts on rate of change. Without P or I there is no DC gain — output stays near zero.
+        Amplifies sensor noise — visible as jitter on the trace.
+      </p>
+    </div>
+  </div>
+
+  <h2>Plant + measurements</h2>
+  <p>First-order plant <code>τ·dy/dt + y = u</code>, integrated forward Euler at dt = 5 ms.
+  All three loops see identical white-noise sensor reading. Step setpoint applied at t = 0.5 s.
+  D is computed on the measurement (not on error) to keep the kick out at the step edge.</p>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>P-only never reaches the setpoint exactly.</b> Steady-state error <code>e_ss = r / (1 + Kp·K_plant)</code> for a first-order plant. Doubling Kp roughly halves the residual — until you hit the ringing wall.</li>
+    <li><b>I-only is too slow to use alone.</b> The integral has to wind up from zero before any control action exists. Pair it with P (PI) and you keep the speed and kill the offset.</li>
+    <li><b>D-only does nothing in steady state.</b> Once dy/dt = 0 the control output is 0, so the loop has no DC gain. Crank Kd, see jitter, but no useful pull toward the setpoint.</li>
+    <li><b>Noise is D's enemy.</b> Raise the noise slider — the orange D-only trace gets jagged while P and I stay smooth, because the derivative passes high frequencies straight through.</li>
+    <li><b>Increase τ to shrink ringing.</b> Slower plants tolerate higher gains. Faster plants need either lower gain or D damping to stay calm.</li>
+    <li><b>Combining is multiplicative:</b> PI fixes residual error without ringing; PD damps overshoot without I windup; PID has all three and most second-order systems need it.</li>
+  </ul>
+
+  <h2>Term-by-term diagnostic table</h2>
+  <table>
+    <thead><tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>Slow response, big residual</td><td>Kp too low</td><td>Increase Kp</td></tr>
+      <tr><td>Overshoots, then settles</td><td>Kp too high, no D</td><td>Reduce Kp or add Kd</td></tr>
+      <tr><td>Sustained oscillation</td><td>Kp at ultimate gain Ku</td><td>Back off Kp ~50 %, this is your Z-N starting point</td></tr>
+      <tr><td>Steady-state offset, no overshoot</td><td>Pure P or PD on type-0 plant</td><td>Add Ki</td></tr>
+      <tr><td>Slow drift back to setpoint after disturbance</td><td>Ki too small</td><td>Increase Ki cautiously</td></tr>
+      <tr><td>Wild overshoot after saturation</td><td>Integral windup</td><td>Add anti-windup clamp</td></tr>
+      <tr><td>Jittery output, especially in motor velocity loops</td><td>Kd amplifying noise</td><td>Filter D term or reduce Kd to zero</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>P term</dt><dd><span class="eq">u_P = Kp · e</span></dd>
+        <dt>I term</dt><dd><span class="eq">u_I = Ki · ∫e dt</span></dd>
+        <dt>D term</dt><dd><span class="eq">u_D = Kd · de/dt</span></dd>
+        <dt>Steady-state err (P only, type-0)</dt><dd><span class="eq">e_ss = r / (1 + Kp·Kplant)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>ROLE OF EACH TERM</h3>
+      <ul>
+        <li><b>P</b> — speed of correction; sets bandwidth</li>
+        <li><b>I</b> — eliminates steady-state error; corrects bias</li>
+        <li><b>D</b> — damps overshoot; predicts; never use alone</li>
+        <li><b>Sample rate ≥ 10× loop bandwidth</b> or you will not see what you think you see</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>WHEN <em>NOT</em> TO USE EACH</h3>
+      <ul>
+        <li><b>D on noisy speed loops</b> (encoder velocity from finite differences) — amplifies quantization</li>
+        <li><b>I on plants with hard limits</b> without anti-windup — guaranteed overshoot</li>
+        <li><b>P only</b> on temperature / level control where offset matters — always combine with I</li>
+        <li><b>D on slow processes</b> (chem, thermal) — bandwidth too low for D to help</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 4 — Feedback Control</a> ·
+    Topic: isolated P / I / D step responses
+  </footer>
+</main>
+<script>
+function ns(tag, attrs={}, parent){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+let kp = 2.5, ki = 3.0, kd = 0.5, noise = 0.003, tau = 0.6, sp = 1.0;
+
+// Simulate one of (P, I, D) controllers on identical first-order plant.
+// Plant: tau dy/dt + y = u, sample rate 5 ms.
+function simulate(mode){
+  const T = 10, dt = 0.005;
+  const N = Math.floor(T/dt);
+  const stepT = 0.5;
+  let y = 0, I = 0, yPrev = 0;
+  const t = new Float32Array(N), out = new Float32Array(N), u = new Float32Array(N);
+  let seed = (mode==='p'?1:mode==='i'?2:3) * 91237;
+  function rnd(){ seed = (seed*1103515245 + 12345) & 0x7fffffff; return seed/0x7fffffff - 0.5; }
+  for(let i=0;i<N;i++){
+    const tt = i*dt;
+    const r = tt >= stepT ? sp : 0;
+    const meas = y + (rnd()+rnd()) * noise;
+    const e = r - meas;
+    let ui = 0;
+    if(mode === 'p'){
+      ui = kp * e;
+    } else if(mode === 'i'){
+      I += ki * e * dt;
+      ui = I;
+    } else {  // d
+      const dymeas = (meas - yPrev)/dt;
+      ui = -kd * dymeas;
+    }
+    // saturate broadly so things don't blow up
+    if(ui > 5) ui = 5;
+    if(ui < -5) ui = -5;
+    // plant
+    y += dt * ((ui - y)/tau);
+    t[i] = tt; out[i] = y; u[i] = ui;
+    yPrev = meas;
+  }
+  return {t, out, u};
+}
+
+function drawPanel(svgId, mode, color){
+  const svg = document.getElementById(svgId);
+  clear(svg);
+  const W = 380, H = 220, PAD_L = 36, PAD_R = 12, PAD_T = 10, PAD_B = 22;
+  // grid
+  for(let i=0;i<=6;i++){
+    const yy = PAD_T + i/6*(H-PAD_T-PAD_B);
+    ns('line',{x1:PAD_L,y1:yy,x2:W-PAD_R,y2:yy,stroke:'#222831'},svg);
+  }
+  // axes
+  ns('line',{x1:PAD_L,y1:H-PAD_B,x2:W-PAD_R,y2:H-PAD_B,stroke:'#8f99a8'},svg);
+  ns('line',{x1:PAD_L,y1:PAD_T,x2:PAD_L,y2:H-PAD_B,stroke:'#8f99a8'},svg);
+
+  const yMax = Math.max(1.5, sp*1.5);
+  const yMin = -0.2*yMax;
+  function xPx(t){ return PAD_L + t/10 * (W-PAD_L-PAD_R); }
+  function yPx(y){ return H-PAD_B - (y-yMin)/(yMax-yMin)*(H-PAD_T-PAD_B); }
+
+  // setpoint
+  const s = {t:[0,0.5,0.5,10], v:[0,0,sp,sp]};
+  let psp = '';
+  for(let i=0;i<s.t.length;i++){
+    psp += (i?' L ':'M ') + xPx(s.t[i]) + ',' + yPx(s.v[i]);
+  }
+  ns('path',{d:psp,fill:'none',stroke:'#a3e635','stroke-width':1.2,'stroke-dasharray':'4 3',opacity:0.8},svg);
+
+  const sim = simulate(mode);
+  let py = '';
+  for(let i=0;i<sim.t.length;i+=2){
+    if(i===0) py = `M ${xPx(sim.t[i])},${yPx(sim.out[i])}`;
+    else py += ` L ${xPx(sim.t[i])},${yPx(sim.out[i])}`;
+  }
+  ns('path',{d:py,fill:'none',stroke:color,'stroke-width':2},svg);
+
+  // labels
+  ns('text',{x:PAD_L-4,y:yPx(sp)+3,class:'label-dim','text-anchor':'end',fill:'#a3e635'},svg).textContent='r';
+  ns('text',{x:PAD_L-4,y:yPx(0)+3,class:'label-dim','text-anchor':'end'},svg).textContent='0';
+  for(let i=0;i<=10;i+=2){
+    ns('text',{x:xPx(i),y:H-PAD_B+14,class:'label-dim','text-anchor':'middle'},svg).textContent=i+'s';
+  }
+
+  // SS error annotation
+  const yFinal = sim.out[sim.out.length-1];
+  const ssErr = sp - yFinal;
+  const txtY = yPx(yFinal);
+  ns('line',{x1:xPx(8),y1:yPx(sp),x2:xPx(8),y2:yPx(yFinal),stroke:'#ff7b72','stroke-width':1,'stroke-dasharray':'2 2'},svg);
+  ns('text',{x:xPx(8)+5,y:(yPx(sp)+yPx(yFinal))/2+3,class:'label-dim',fill:'#ff7b72'},svg).textContent='e_ss = '+ssErr.toFixed(3);
+}
+
+function refresh(){
+  drawPanel('svgP','p','#5ec8ff');
+  drawPanel('svgI','i','#a3e635');
+  drawPanel('svgD','d','#ffb86c');
+}
+
+document.getElementById('kp').oninput = e=>{ kp=parseFloat(e.target.value); document.getElementById('kpRO').textContent=kp.toFixed(1); refresh(); };
+document.getElementById('ki').oninput = e=>{ ki=parseFloat(e.target.value); document.getElementById('kiRO').textContent=ki.toFixed(1); refresh(); };
+document.getElementById('kd').oninput = e=>{ kd=parseFloat(e.target.value); document.getElementById('kdRO').textContent=kd.toFixed(2); refresh(); };
+document.getElementById('noise').oninput = e=>{ noise=parseFloat(e.target.value); document.getElementById('noiseRO').textContent=noise.toFixed(3); refresh(); };
+document.getElementById('tau').oninput = e=>{ tau=parseFloat(e.target.value); document.getElementById('tauRO').textContent=tau.toFixed(2)+' s'; refresh(); };
+document.getElementById('sp').oninput = e=>{ sp=parseFloat(e.target.value); document.getElementById('spRO').textContent=sp.toFixed(2); refresh(); };
+
+refresh();
+</script>
+</body>
+</html>

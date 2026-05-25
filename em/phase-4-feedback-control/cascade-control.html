@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cascade control — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .block-pos{fill:#1f3a4a;stroke:#5ec8ff;stroke-width:1.5;rx:4}
+  .block-vel{fill:#2a3a1f;stroke:#a3e635;stroke-width:1.5;rx:4}
+  .block-cur{fill:#3a2a1f;stroke:#ffb86c;stroke-width:1.5;rx:4}
+  .block-plant{fill:#3a1f2a;stroke:#ff7b72;stroke-width:1.5;rx:4}
+  .sum-node{fill:#0e1116;stroke:#dde3ec;stroke-width:1.5}
+</style>
+</head>
+<body>
+<main>
+  <h1>Cascade control — nested loops</h1>
+  <p class="lede">A single PID controlling a complex plant has to be tuned for the worst-case bandwidth.
+  Cascading two (or three) PIDs — an inner fast loop and an outer slow loop — separates concerns and
+  rejects disturbances closer to where they enter. Classic example: a brushless motor controlled with a
+  current loop (~10 kHz) inside a velocity loop (~1 kHz) inside a position loop (~100 Hz).</p>
+
+  <h2>Three-loop cascade for FOC arm joint</h2>
+  <div class="figure">
+    <svg id="diagSvg" viewBox="0 0 880 280" width="100%" height="280"></svg>
+    <p style="font-size:12px;color:var(--fg-dim);margin-top:8px">
+      Each inner loop is the actuator of its outer loop. The outer loop trusts that the inner already
+      converged before its next sample. <b>Rule of thumb: inner bandwidth ≥ 5–10× outer.</b>
+    </p>
+  </div>
+
+  <h2>Position cascade demonstration</h2>
+  <p>Simulated DC servo: outer position loop sends a velocity setpoint to an inner velocity loop,
+  which commands current (= torque). Compare a single position PID directly driving torque vs. the
+  cascade. Slide the inner-loop bandwidth ratio to see the failure mode when inner is too slow.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Inner / outer bandwidth ratio</label>
+      <input type="range" id="ratio" min="1.0" max="20" step="0.5" value="10">
+      <span class="readout" id="ratioRO">10×</span>
+    </div>
+    <div class="control">
+      <label>Outer position Kp</label>
+      <input type="range" id="kpPos" min="2" max="30" step="0.5" value="15">
+      <span class="readout" id="kpPosRO">15.0</span>
+    </div>
+    <div class="control">
+      <label>Outer position Kd</label>
+      <input type="range" id="kdPos" min="0" max="3" step="0.05" value="0.6">
+      <span class="readout" id="kdPosRO">0.60</span>
+    </div>
+    <div class="control">
+      <label>Load disturbance (N·m)</label>
+      <input type="range" id="dist" min="0" max="3" step="0.05" value="1.0">
+      <span class="readout" id="distRO">1.00</span>
+    </div>
+    <div class="control">
+      <label>Disturbance time (s)</label>
+      <input type="range" id="distT" min="1" max="4.5" step="0.1" value="2.5">
+      <span class="readout" id="distTRO">2.5 s</span>
+    </div>
+    <div class="control">
+      <label>Setpoint (rad)</label>
+      <input type="range" id="sp" min="0.2" max="2.0" step="0.05" value="1.0">
+      <span class="readout" id="spRO">1.00</span>
+    </div>
+  </section>
+
+  <h2>Outputs — single-loop PID vs cascade</h2>
+  <div class="figure">
+    <svg id="plotSvg" viewBox="0 0 880 320" width="100%" height="320"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#ffb86c"></span>Single-loop PID position</span>
+      <span><span class="swatch" style="background:#5ec8ff"></span>Cascade position</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Setpoint</span>
+      <span><span class="swatch" style="background:#ff7b72"></span>Disturbance pulse</span>
+    </div>
+  </div>
+
+  <div id="summary" class="figure" style="padding:14px 18px;font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>
+
+  <h2>Real cascade examples</h2>
+  <table>
+    <thead><tr><th>System</th><th>Inner loop</th><th>Middle loop</th><th>Outer loop</th></tr></thead>
+    <tbody>
+      <tr><td>FOC servo motor</td><td>Current (10 kHz)</td><td>Velocity (1 kHz)</td><td>Position (100–500 Hz)</td></tr>
+      <tr><td>Heater + thermostat</td><td>SSR PWM duty (10 Hz)</td><td>Element temperature (1 Hz)</td><td>Tank temperature (0.1 Hz)</td></tr>
+      <tr><td>Drone</td><td>Motor RPM ESCs (kHz)</td><td>Attitude rate (gyro, 1 kHz)</td><td>Attitude (Madgwick, 200 Hz) → position (GPS, 5 Hz)</td></tr>
+      <tr><td>CNC axis</td><td>Servo current</td><td>Servo velocity</td><td>Axis position (controller, 1 kHz)</td></tr>
+      <tr><td>Robot arm joint (PA612 build)</td><td>STM32G431 FOC current</td><td>Velocity loop</td><td>Position via MoveIt / ros2_control</td></tr>
+    </tbody>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Inner ≥ 5× outer is the practical rule.</b> Drag the ratio slider below ~3 and the cascade response starts oscillating because the outer loop is faster than the inner can keep up — the inner loop becomes a delay element to the outer.</li>
+    <li><b>Disturbance rejection is the cascade win.</b> A load torque is rejected by the velocity loop before it can affect position much. Watch the orange (single-loop) trace recover slowly while the blue (cascade) barely flinches.</li>
+    <li><b>Each loop has its own PID with its own gains.</b> Tune from the inside out: inner first (with outer in manual or open), then middle, then outer. Once an inner loop is tuned, you don't retune it when adding the outer.</li>
+    <li><b>The outer loop "sees" the inner closed-loop transfer function as its plant.</b> If the inner is well-tuned (high bandwidth, low overshoot) the outer's plant looks like a unity gain with a small lag — easy to control.</li>
+    <li><b>Sample rates often nest:</b> 10 kHz current ISR → 1 kHz velocity → 100 Hz position. The control structure mirrors the timing structure.</li>
+    <li><b>Don't try to control a flexible mechanism with a single PID.</b> The bandwidth gap between current control (very fast) and position of a long arm (slow, oscillatory) is enormous — cascading is mandatory.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>BANDWIDTH RULE</h3>
+      <dl>
+        <dt>Frequency separation</dt><dd><span class="eq">ω_inner ≥ 5–10 · ω_outer</span></dd>
+        <dt>Sample rate inner</dt><dd><span class="eq">f_s,inner ≥ 10 · ω_inner / 2π</span></dd>
+        <dt>Cascade transfer (idealised inner)</dt><dd><span class="eq">G_total ≈ G_outer · (1)</span><span class="eq-note">when inner is fast vs outer</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>TUNE FROM THE INSIDE OUT</h3>
+      <ul>
+        <li><b>1. Tune inner loop alone</b> (high gain, low overshoot, fast settling)</li>
+        <li><b>2. Close inner, tune middle</b> treating closed inner loop as the plant</li>
+        <li><b>3. Close middle, tune outer</b> last</li>
+        <li><b>Never go back</b> to retune inner unless you change the plant</li>
+        <li><b>Each loop runs at its own rate</b> in firmware — ISR or RTOS task per loop</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li><b>Inner too slow</b> — outer demands faster response than inner can deliver → oscillation</li>
+        <li><b>Inner saturated</b> propagates as outer-loop failure; clamp outer's request to inner's limit</li>
+        <li><b>Multiple integrators</b> across loops can wind up independently — anti-windup on each</li>
+        <li><b>Stale sample</b> from inner if you forget to update before outer reads — strict timing matters</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 4 — Feedback Control</a> ·
+    Topic: cascade control, bandwidth separation, FOC arm joint
+  </footer>
+</main>
+<script>
+function ns(tag, attrs={}, parent){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+function drawBlock(svg, x, y, w, h, label, sub, cls){
+  ns('rect',{x,y,width:w,height:h,class:cls||'block'},svg);
+  ns('text',{x:x+w/2,y:y+h/2-3,class:'label','text-anchor':'middle',fill:'#fff','font-weight':'600'},svg).textContent=label;
+  if(sub) ns('text',{x:x+w/2,y:y+h/2+13,class:'label-dim','text-anchor':'middle'},svg).textContent=sub;
+}
+function arrow(svg, x1, y1, x2, y2, color){
+  const c = color || '#dde3ec';
+  ns('line',{x1,y1,x2:x2-6,y2,stroke:c,'stroke-width':1.5,fill:'none'},svg);
+  ns('path',{d:`M ${x2},${y2} L ${x2-8},${y2-4} L ${x2-8},${y2+4} Z`,fill:c},svg);
+}
+function sumNode(svg, cx, cy){
+  ns('circle',{cx,cy,r:12,class:'sum-node'},svg);
+  ns('line',{x1:cx-8,y1:cy,x2:cx+8,y2:cy,stroke:'#dde3ec'},svg);
+  ns('line',{x1:cx,y1:cy-8,x2:cx,y2:cy+8,stroke:'#dde3ec'},svg);
+  ns('text',{x:cx-15,y:cy-12,class:'label-dim'},svg).textContent='+';
+  ns('text',{x:cx-15,y:cy+18,class:'label-dim'},svg).textContent='−';
+}
+
+function drawDiagram(){
+  const svg = document.getElementById('diagSvg');
+  clear(svg);
+  // labels
+  ns('text',{x:20,y:24,class:'label',fill:'#5ec8ff','font-weight':'600'},svg).textContent='Position loop (slow, ~100 Hz)';
+  ns('text',{x:230,y:24,class:'label',fill:'#a3e635','font-weight':'600'},svg).textContent='Velocity loop (medium, ~1 kHz)';
+  ns('text',{x:480,y:24,class:'label',fill:'#ffb86c','font-weight':'600'},svg).textContent='Current loop (fast, ~10 kHz)';
+  ns('text',{x:760,y:24,class:'label',fill:'#ff7b72','font-weight':'600'},svg).textContent='Plant';
+
+  // r_pos
+  arrow(svg, 20, 140, 70, 140);
+  ns('text',{x:30,y:130,class:'label-dim'},svg).textContent='r_pos';
+  sumNode(svg, 84, 140);
+  arrow(svg, 100, 140, 140, 140);
+  drawBlock(svg, 140, 120, 80, 40, 'PID', 'pos', 'block-pos');
+  arrow(svg, 220, 140, 245, 140);
+  ns('text',{x:225,y:134,class:'label-dim'},svg).textContent='v_sp';
+  sumNode(svg, 260, 140);
+  arrow(svg, 276, 140, 310, 140);
+  drawBlock(svg, 310, 120, 80, 40, 'PID', 'vel', 'block-vel');
+  arrow(svg, 390, 140, 415, 140);
+  ns('text',{x:395,y:134,class:'label-dim'},svg).textContent='i_sp';
+  sumNode(svg, 430, 140);
+  arrow(svg, 446, 140, 480, 140);
+  drawBlock(svg, 480, 120, 80, 40, 'PI', 'curr', 'block-cur');
+  arrow(svg, 560, 140, 600, 140);
+  ns('text',{x:565,y:134,class:'label-dim'},svg).textContent='V_PWM';
+  drawBlock(svg, 600, 120, 130, 40, 'Motor + load', '', 'block-plant');
+  arrow(svg, 730, 140, 800, 140);
+  ns('text',{x:760,y:134,class:'label-dim'},svg).textContent='θ';
+
+  // feedback loops
+  // current feedback (innermost)
+  ns('line',{x1:715,y1:160,x2:715,y2:185,stroke:'#ffb86c','stroke-width':1.5},svg);
+  ns('line',{x1:715,y1:185,x2:430,y2:185,stroke:'#ffb86c','stroke-width':1.5},svg);
+  ns('line',{x1:430,y1:185,x2:430,y2:152,stroke:'#ffb86c','stroke-width':1.5},svg);
+  ns('text',{x:540,y:198,class:'label-dim',fill:'#ffb86c'},svg).textContent='i_meas (shunt)';
+  // velocity feedback
+  ns('line',{x1:745,y1:160,x2:745,y2:215,stroke:'#a3e635','stroke-width':1.5},svg);
+  ns('line',{x1:745,y1:215,x2:260,y2:215,stroke:'#a3e635','stroke-width':1.5},svg);
+  ns('line',{x1:260,y1:215,x2:260,y2:152,stroke:'#a3e635','stroke-width':1.5},svg);
+  ns('text',{x:500,y:228,class:'label-dim',fill:'#a3e635'},svg).textContent='ω_meas (encoder diff)';
+  // position feedback
+  ns('line',{x1:775,y1:160,x2:775,y2:245,stroke:'#5ec8ff','stroke-width':1.5},svg);
+  ns('line',{x1:775,y1:245,x2:84,y2:245,stroke:'#5ec8ff','stroke-width':1.5},svg);
+  ns('line',{x1:84,y1:245,x2:84,y2:152,stroke:'#5ec8ff','stroke-width':1.5},svg);
+  ns('text',{x:500,y:258,class:'label-dim',fill:'#5ec8ff'},svg).textContent='θ_meas (absolute encoder)';
+}
+
+// ----- Sim: position PID-only vs cascade -----
+let ratio = 10, kpPos = 15, kdPos = 0.6, dist = 1.0, distT = 2.5, sp = 1.0;
+// Plant: J θ̈ = K_t · i − b θ̇  (torque from current minus viscous)
+// Inner current loop modelled as first-order: τ_i di/dt = i_sp − i
+const J = 0.005, b = 0.02, Kt = 0.4;
+
+function simBoth(){
+  const T = 5, dt = 0.0005;
+  const N = Math.floor(T/dt);
+  // Inner time constants
+  const tau_inner = 0.005 / ratio;  // current loop tau scales with ratio
+  // Cascade
+  let q1 = 0, qd1 = 0, i1 = 0, Ipos1 = 0, qPrev1 = 0;
+  // Single-loop: position PID drives current directly (no inner)
+  let q2 = 0, qd2 = 0, Ipos2 = 0, qPrev2 = 0;
+  const t = new Float32Array(N), p1 = new Float32Array(N), p2 = new Float32Array(N), distArr = new Float32Array(N);
+  // Velocity loop gains (cascade)
+  const kpV = 8, kiV = 30;
+  let Ivel = 0;
+  for(let n=0;n<N;n++){
+    const tt = n*dt;
+    const d = (tt > distT && tt < distT+0.1) ? dist : 0;  // brief disturbance pulse
+    distArr[n] = d;
+
+    // Cascade
+    {
+      const ePos = sp - q1;
+      const dymeas = (q1 - qPrev1)/dt;
+      // Outer Position PID -> velocity setpoint
+      const vsp = kpPos*ePos - kdPos*dymeas;
+      // Clamp vsp
+      const vspC = Math.max(-15, Math.min(15, vsp));
+      // Inner velocity PI -> current setpoint
+      const eVel = vspC - qd1;
+      Ivel += kiV * eVel * dt;
+      if(Ivel > 8) Ivel = 8; if(Ivel < -8) Ivel = -8;
+      const isp = kpV*eVel + Ivel;
+      const ispC = Math.max(-6, Math.min(6, isp));
+      // Current loop: i tracks isp with tau_inner
+      i1 += dt * ((ispC - i1)/tau_inner);
+      // plant
+      const tau_motor = Kt * i1;
+      const qdd = (tau_motor - b*qd1 - d) / J;
+      qd1 += qdd*dt; q1 += qd1*dt;
+      qPrev1 = q1;
+      p1[n] = q1;
+    }
+    // Single-loop position PID drives current directly (no inner) - same gain scale
+    {
+      const e = sp - q2;
+      Ipos2 += 6 * e * dt;
+      if(Ipos2 > 8) Ipos2 = 8; if(Ipos2 < -8) Ipos2 = -8;
+      const dymeas = (q2 - qPrev2)/dt;
+      const i_cmd = kpPos*e + Ipos2 - kdPos*dymeas;
+      const i_cmdC = Math.max(-6, Math.min(6, i_cmd));
+      const tau_motor = Kt * i_cmdC;
+      const qdd = (tau_motor - b*qd2 - d) / J;
+      qd2 += qdd*dt; q2 += qd2*dt;
+      qPrev2 = q2;
+      p2[n] = q2;
+    }
+    t[n] = tt;
+  }
+  return {t, p1, p2, distArr};
+}
+
+function drawPlot(){
+  const svg = document.getElementById('plotSvg');
+  clear(svg);
+  const W=880, H=320, PAD_L=60, PAD_R=20, PAD_T=20, PAD_B=40;
+  const tMax = 5, yMax = sp*1.6, yMin = -0.3;
+
+  for(let i=0;i<=8;i++){
+    const yy = PAD_T + i/8*(H-PAD_T-PAD_B);
+    ns('line',{x1:PAD_L,y1:yy,x2:W-PAD_R,y2:yy,stroke:'#222831'},svg);
+  }
+  ns('line',{x1:PAD_L,y1:H-PAD_B,x2:W-PAD_R,y2:H-PAD_B,stroke:'#8f99a8'},svg);
+  ns('line',{x1:PAD_L,y1:PAD_T,x2:PAD_L,y2:H-PAD_B,stroke:'#8f99a8'},svg);
+
+  function xPx(t){ return PAD_L + t/tMax*(W-PAD_L-PAD_R); }
+  function yPx(y){ return H-PAD_B - (y-yMin)/(yMax-yMin)*(H-PAD_T-PAD_B); }
+  for(let i=0;i<=5;i++){
+    ns('text',{x:xPx(i),y:H-PAD_B+18,class:'label-dim','text-anchor':'middle'},svg).textContent=i+'s';
+  }
+  for(let i=0;i<=4;i++){
+    const yv = yMin + (yMax-yMin)*i/4;
+    ns('text',{x:PAD_L-6,y:yPx(yv)+4,class:'label-dim','text-anchor':'end'},svg).textContent=yv.toFixed(2);
+  }
+
+  // setpoint
+  ns('line',{x1:xPx(0),y1:yPx(sp),x2:xPx(tMax),y2:yPx(sp),stroke:'#a3e635','stroke-width':1.5,'stroke-dasharray':'5 4',opacity:0.85},svg);
+  // disturbance window
+  ns('rect',{x:xPx(distT),y:PAD_T,width:xPx(distT+0.1)-xPx(distT),height:H-PAD_T-PAD_B,fill:'#ff7b72',opacity:0.15},svg);
+
+  const sim = simBoth();
+  let p1 = '', p2 = '';
+  const stride = 4;
+  for(let i=0;i<sim.t.length;i+=stride){
+    if(i===0){
+      p1 = `M ${xPx(sim.t[i])},${yPx(sim.p1[i])}`;
+      p2 = `M ${xPx(sim.t[i])},${yPx(sim.p2[i])}`;
+    } else {
+      p1 += ` L ${xPx(sim.t[i])},${yPx(sim.p1[i])}`;
+      p2 += ` L ${xPx(sim.t[i])},${yPx(sim.p2[i])}`;
+    }
+  }
+  ns('path',{d:p2,fill:'none',stroke:'#ffb86c','stroke-width':2,opacity:0.9},svg);
+  ns('path',{d:p1,fill:'none',stroke:'#5ec8ff','stroke-width':2.5},svg);
+
+  // Compute disturbance dip for each
+  const distIdx = Math.floor(distT/0.0005);
+  const recoverIdx = Math.floor((distT+0.4)/0.0005);
+  let dip1=0, dip2=0;
+  for(let i=distIdx;i<Math.min(recoverIdx,sim.t.length);i++){
+    dip1 = Math.max(dip1, Math.abs(sp - sim.p1[i]));
+    dip2 = Math.max(dip2, Math.abs(sp - sim.p2[i]));
+  }
+  document.getElementById('summary').innerHTML =
+    `<b>Inner / outer bandwidth ratio = ${ratio.toFixed(1)}×</b>  (rule of thumb: ≥ 5×)<br>` +
+    `<span style="color:var(--accent)">Cascade max disturbance excursion: ${dip1.toFixed(4)} rad</span><br>` +
+    `<span style="color:var(--accent2)">Single-loop max disturbance excursion: ${dip2.toFixed(4)} rad</span><br>` +
+    `<span style="color:var(--fg-dim)">Cascade rejects faster because the velocity loop kills the torque pulse before it propagates to position.</span>`;
+}
+
+function refresh(){ drawDiagram(); drawPlot(); }
+
+document.getElementById('ratio').oninput = e=>{ ratio=parseFloat(e.target.value); document.getElementById('ratioRO').textContent=ratio.toFixed(1)+'×'; refresh(); };
+document.getElementById('kpPos').oninput = e=>{ kpPos=parseFloat(e.target.value); document.getElementById('kpPosRO').textContent=kpPos.toFixed(1); refresh(); };
+document.getElementById('kdPos').oninput = e=>{ kdPos=parseFloat(e.target.value); document.getElementById('kdPosRO').textContent=kdPos.toFixed(2); refresh(); };
+document.getElementById('dist').oninput = e=>{ dist=parseFloat(e.target.value); document.getElementById('distRO').textContent=dist.toFixed(2); refresh(); };
+document.getElementById('distT').oninput = e=>{ distT=parseFloat(e.target.value); document.getElementById('distTRO').textContent=distT.toFixed(1)+' s'; refresh(); };
+document.getElementById('sp').oninput = e=>{ sp=parseFloat(e.target.value); document.getElementById('spRO').textContent=sp.toFixed(2); refresh(); };
+
+refresh();
+</script>
+</body>
+</html>

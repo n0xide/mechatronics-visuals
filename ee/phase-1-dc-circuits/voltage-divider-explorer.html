@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voltage Divider Explorer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>Voltage Divider Explorer</h1>
+  <p class="lede">Two resistors, one tap. The single most-used circuit in all of electronics — every resistive sensor, every battery monitor, every level shift starts here. Slide V_in, R1, R2; watch V_tap, the ratio, the standby current, and the ADC count from a 12-bit converter update together.</p>
+
+  <p>This visual teaches the <b>divider reflex</b>: given V_in and a target V_out, you can pick R1 and R2 from the E12 series in seconds — and you can read off the loading limit, the standby current, and the ADC count without leaving the same chunk of math. The lesson is anchored to the fold-p4-pico battery monitor (Exercise 3 in <a target="_top" href="../../index.html">Phase 1 — DC Circuits</a>), so the study side and the project side reinforce each other.</p>
+
+  <section class="controls">
+    <div class="control"><label>V_in: <span class="readout" id="vRead">4.20 V</span></label><input id="v" type="range" min="0.5" max="24" step="0.1" value="4.2"></div>
+    <div class="control"><label>R1: <span class="readout" id="r1Read">33 kΩ</span></label><input id="r1" type="range" min="0" max="20" step="1" value="6"></div>
+    <div class="control"><label>R2: <span class="readout" id="r2Read">56 kΩ</span></label><input id="r2" type="range" min="0" max="20" step="1" value="9"></div>
+    <div class="control"><label>Target V_out: <span class="readout" id="vtRead">2.64 V</span></label><input id="vt" type="range" min="0.1" max="24" step="0.05" value="2.64"></div>
+    <div class="control"><label>ADC: <span class="readout" id="adcRead">12-bit / 3.3 V</span></label>
+      <select id="adc">
+        <option value="12,3.3" selected>12-bit, 3.3 V ref (RP2350)</option>
+        <option value="12,3.3">12-bit, 3.3 V ref (RP2350)</option>
+        <option value="10,5.0">10-bit, 5.0 V ref (ATmega328P)</option>
+        <option value="12,3.3i">12-bit, 3.3 V (ESP32-S3)</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="circuit" viewBox="0 0 600 280" width="100%"></svg>
+    <table id="tbl">
+      <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+      <tr><td>Divider ratio</td><td id="tRatio" class="num">0.6292</td><td><code>R2 / (R1 + R2)</code></td></tr>
+      <tr><td>V_tap</td><td id="tVtap" class="num">2.643 V</td><td><code>V_in · R2 / (R1 + R2)</code></td></tr>
+      <tr><td>V_R1 (drop across R1)</td><td id="tVR1" class="num">1.557 V</td><td><code>V_in · R1 / (R1 + R2)</code></td></tr>
+      <tr><td>Series current</td><td id="tI" class="num">47.2 µA</td><td><code>V_in / (R1 + R2)</code></td></tr>
+      <tr><td>Power in divider</td><td id="tP" class="num">198 µW</td><td><code>V_in · I</code></td></tr>
+      <tr><td>ADC count @ V_tap</td><td id="tAdc" class="num">3279 / 4095</td><td><code>round(V_tap / V_ref · (2^N − 1))</code></td></tr>
+      <tr><td>R_thévenin (loading source)</td><td id="tRth" class="num">20.8 kΩ</td><td><code>R1 · R2 / (R1 + R2)</code></td></tr>
+    </table>
+
+    <div class="vd" id="vdiv">
+      <b>Voltage-divider formula:</b> V_tap = V_in × R2 / (R1 + R2) = <span id="vdCalc">4.20 × 56,000 / 89,000 = 2.643 V</span>
+    </div>
+
+    <div class="vd" id="loadbox" style="border-left-color:var(--warn)">
+      <b style="color:var(--warn)">Loading effect (forward to Thévenin):</b>
+      <span id="loadCalc">Rth = 20.8 kΩ vs ADC ~100 kΩ → predicted error ~17.2 % low</span>
+    </div>
+  </div>
+
+  <h2>How the formula falls out (KVL + Ohm)</h2>
+  <p>Two resistors in series with a source, ground at the bottom, tap point between them. One closed loop, one current.</p>
+  <div class="deriv">
+    <span class="step">1.  KVL around the loop:        <b>V_in − I·R1 − I·R2 = 0</b></span>
+    <span class="step">2.  Solve for I (one loop, one I): <b>I = V_in / (R1 + R2)</b></span>
+    <span class="step">3.  V_tap is the voltage across R2 alone: <b>V_tap = I · R2</b></span>
+    <span class="step">4.  Substitute: <span class="arrow">→</span> <b>V_tap = V_in · R2 / (R1 + R2)</b></span>
+  </div>
+  <p class="lede">The formula is not a separate fact; it's Ohm's law applied twice. Anytime you forget it, redo those four lines.</p>
+
+  <h2>Picking E12 resistors for a target ratio</h2>
+  <p>You usually know V_in and the V_out you want — what you need is R1 and R2 from the E12 series. The trick is to rearrange the formula so it's about <em>ratios</em>, not absolute values:</p>
+  <div class="deriv">
+    <span class="step">Start:    <b>ratio = R2 / (R1 + R2)</b></span>
+    <span class="step">Cross-multiply: <b>ratio · (R1 + R2) = R2</b></span>
+    <span class="step">Expand:   <b>ratio · R1 + ratio · R2 = R2</b></span>
+    <span class="step">Group R2: <b>ratio · R1 = R2 · (1 − ratio)</b></span>
+    <span class="step">Solve:    <span class="arrow">→</span> <b>R2 / R1 = ratio / (1 − ratio)</b></span>
+  </div>
+  <p>Now picking is easy. For any target ratio, compute <code>R2 / R1</code> as a single number; then walk the E12 series picking pairs whose ratio is closest. Try the <em>Target V_out</em> slider above — the panel below shows the E12 walk:</p>
+
+  <table id="e12tbl">
+    <thead>
+      <tr><th>R1 (E12)</th><th>R2 (closest E12 to k·R1)</th><th>R2 / R1</th><th>Actual ratio</th><th>Error</th></tr>
+    </thead>
+    <tbody id="e12body"></tbody>
+  </table>
+
+  <h2>Worked example — fold-p4-pico battery monitor (Ex 3)</h2>
+  <div class="worked">
+    <h3>The constraints</h3>
+    <p>1S LiPo cell on the cyberdeck: 3.0 V (cutoff) – 4.2 V (full charge). Pico 2 W ADC: 12-bit, 3.3 V reference. Map V_LiPo_max = 4.2 V to ≤ 80 % of full scale (2.64 V) so transient overshoot doesn't clip.</p>
+
+    <h3>The arithmetic</h3>
+    <span class="eq">Target ratio = 2.64 / 4.2 = 0.6286 <span class="annot">(80 % of full scale at V_in = 4.2 V)</span></span>
+    <span class="eq">R2 / R1 = 0.6286 / 0.3714 = 1.693 <span class="annot">(rearranged form — look for R2 ≈ 1.7·R1)</span></span>
+    <span class="eq">E12 pick: R1 = 33 kΩ, R2 = 56 kΩ <span class="annot">(56/33 = 1.697 → ratio 0.6292, error 0.1 %)</span></span>
+    <span class="eq">@ 4.2 V LiPo: V_tap = 4.2 × 0.6292 = 2.643 V <span class="annot">(80.1 % of 3.3 V → ADC 3279/4095)</span></span>
+    <span class="eq">@ 3.7 V nominal: V_tap = 2.328 V → ADC = 2889</span>
+    <span class="eq">@ 3.0 V cutoff: V_tap = 1.888 V → ADC = 2343</span>
+    <span class="eq">Standby current: I = 4.2 V / 89 kΩ = 47.2 µA <span class="annot">(2000 mAh / 47 µA ≈ 4.84 years → negligible)</span></span>
+
+    <h3>The firmware reconstruction</h3>
+    <span class="eq">V_LiPo = adc_count · 3.3 / (4095 · 0.6292) = adc_count · 1.2810 mV/count</span>
+    <p style="color:var(--fg-dim);font-size:12px;margin-top:8px">The project-side cheat sheet (<code>fold-p4-pico/references/battery-math-cheatsheet.md</code> + its <a href="../../../../projects/cyberdeck/fold-p4-pico/visuals/battery-math.html">HTML companion</a>) carries these exact numbers and the <code>battery -v</code> TUI command that consumes them.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Ratio is dimensionless, R1 + R2 sets the standby current</b> — you can pick the ratio independently of the current draw. Bigger R1+R2 = less current = more loading; smaller R1+R2 = more current = less loading. Pick the ratio first, then scale the pair up or down to land on a current you like.</li>
+    <li><b>The R2/R1 algebra is the picking trick</b> — converting "ratio" into a single number you compare across E12 pairs is much faster than computing V_tap for every candidate pair.</li>
+    <li><b>ADC count = V_tap / V_ref × (2^N − 1)</b> — full scale is 1023 (10-bit), 4095 (12-bit), 65535 (16-bit). Same divider, different ADC, different number. The volts don't care.</li>
+    <li><b>Heavier loads worsen the loading effect</b> — anything connected to the tap node is a parallel resistance against R2. Most ADCs present 10⁴–10⁵ Ω during sampling. If R1‖R2 (= Rth, the divider's source impedance) approaches that, your reading drops. Rule of thumb: keep Rth ≤ R_load/10, ideally ≤ R_load/100.</li>
+    <li><b>The forward reference is Thévenin</b> — once you've seen the loading effect once, you've already met Thévenin: the divider is a voltage source Vth = V_tap behind a source resistance Rth = R1‖R2. <a href="thevenin-norton-explorer.html">The next explorer</a> picks up here.</li>
+  </ul>
+
+  <h2>Where you'll see this circuit</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Battery monitor</b> — scale a cell voltage above V_ref down into the ADC's range. This explorer's worked example.</li>
+      <li><b style="color:var(--fg)">Resistive sensors</b> — photoresistor, thermistor, force-sensitive resistor. One of the two resistors is the sensor; its resistance change becomes a voltage change. See <code>voltage-dividers.md</code> (Day 4 photoresistor circuit).</li>
+      <li><b style="color:var(--fg)">Level shifting</b> — 5 V signal into a 3.3 V input. Quick and dirty (no buffering); fine for low-frequency digital lines.</li>
+      <li><b style="color:var(--fg)">Op-amp bias</b> — setting a mid-rail reference for single-supply op-amps. Two equal resistors → V_ref/2.</li>
+      <li><b style="color:var(--fg)">Pull-up + button</b> — a pull-up is a one-resistor divider where the second resistor is the button or device (very small when pressed, very large when open).</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Divider</dt><dd><span class="eq">V_tap = V_in · R2 / (R1 + R2)</span></dd>
+        <dt>Picking</dt><dd><span class="eq">R2 / R1 = ratio / (1 − ratio)</span></dd>
+        <dt>Current</dt><dd><span class="eq">I = V_in / (R1 + R2)</span></dd>
+        <dt>ADC count</dt><dd><span class="eq">N = V_tap / V_ref · (2^N_bits − 1)</span></dd>
+        <dt>Rth (loading)</dt><dd><span class="eq">Rth = R1 · R2 / (R1 + R2)</span></dd>
+        <dt>Loading factor</dt><dd><span class="eq">V_actual / V_ideal ≈ R_load / (Rth + R_load)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SHORTCUTS</h3>
+      <ul>
+        <li><b>Equal R1 = R2</b> → V_tap is exactly V_in / 2.</li>
+        <li><b>R2 ≫ R1</b> → V_tap approaches V_in.</li>
+        <li><b>R2 ≪ R1</b> → V_tap approaches 0.</li>
+        <li>Keep <b>Rth ≤ R_load / 10</b> for &lt; 10 % loading.</li>
+        <li>For E12 picking: <b>R2/R1 = ratio / (1 − ratio)</b> is the single number to compare.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Forgetting loading</b> — the divider only works as derived when nothing draws current from the tap. ADCs and high-Z multimeter inputs are close enough; comparators and op-amp inputs are great; a microcontroller GPIO input is fine; a logic-level FET gate (after charge) is fine; a small motor or LED is <i>not</i> fine.</li>
+        <li><b>Power above V_in × I</b> — students sometimes compute V_R1·I + V_R2·I as "two powers" and double-count. The single supply delivers V_in · I total; that's the only number that matters.</li>
+        <li><b>Numerator vs denominator</b> — the resistor in the numerator is the one you're <i>tapping across</i> (R2 here, the bottom one). Swapping R1 and R2 inverts the ratio.</li>
+        <li><b>Ratio drift with R tolerance</b> — 1 % resistors give &lt; 1 % ratio drift; 5 % carbon-film gives up to ~7 %. For battery monitors, prefer 1 % thin-film.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 1 — DC Circuit Foundations</a> ·
+    Topic: Ohm's Law &amp; Series Circuits ·
+    Forward: <a href="thevenin-norton-explorer.html">Thévenin / Norton Explorer</a> for the loading-effect derivation ·
+    Companion: <code>fold-p4-pico battery-math cheat sheet</code>
+  </footer>
+</main>
+<script>
+  const E12vals = [1000,1200,1500,1800,2200,2700,3300,3900,4700,5600,6800,8200,
+                   10000,12000,15000,18000,22000,27000,33000,39000,47000,
+                   56000,68000,82000,100000,120000,150000,180000,220000];
+
+  function rOf(i){ return E12vals[Math.min(E12vals.length-1, Math.max(0, parseInt(i)))]; }
+  function fmtR(r){
+    if(r>=1e6) return (r/1e6).toFixed(2)+" MΩ";
+    if(r>=1e3) return (r/1e3).toFixed(r>=10000?0:1)+" kΩ";
+    return r.toFixed(0)+" Ω";
+  }
+  function fmtI(i){
+    if(Math.abs(i)<1e-6) return (i*1e9).toFixed(1)+" nA";
+    if(Math.abs(i)<1e-3) return (i*1e6).toFixed(1)+" µA";
+    if(Math.abs(i)<1)    return (i*1e3).toFixed(2)+" mA";
+    return i.toFixed(3)+" A";
+  }
+  function fmtP(p){
+    if(Math.abs(p)<1e-6) return (p*1e9).toFixed(1)+" nW";
+    if(Math.abs(p)<1e-3) return (p*1e6).toFixed(1)+" µW";
+    if(Math.abs(p)<1)    return (p*1e3).toFixed(2)+" mW";
+    return p.toFixed(3)+" W";
+  }
+
+  const ids=['v','r1','r2','vt','adc'];
+  const els={}; ids.forEach(k=>els[k]=document.getElementById(k));
+
+  // ADC presets:  bits, ref, label
+  function adcCfg(val){
+    if(val==='10,5.0')  return {bits:10, ref:5.0, label:"10-bit / 5.0 V (ATmega328P)"};
+    if(val==='12,3.3i') return {bits:12, ref:3.3, label:"12-bit / 3.3 V (ESP32-S3)"};
+    return                       {bits:12, ref:3.3, label:"12-bit / 3.3 V (RP2350)"};
+  }
+
+  function drawCircuit(V, R1, R2){
+    const svg = document.getElementById('circuit');
+    const Vtap = V * R2 / (R1+R2);
+    const Vr1  = V - Vtap;
+    svg.innerHTML = `
+      <!-- left vertical wire (Vin → R1 → tap → R2 → GND) -->
+      <text x="80" y="40" class="label" text-anchor="middle">V_in = ${V.toFixed(2)} V</text>
+      <line x1="80" y1="50" x2="80" y2="80" class="wire"/>
+      <line x1="60" y1="80"  x2="100" y2="80" class="wire"/>
+      <line x1="60" y1="80"  x2="60"  y2="90" stroke="var(--fg)" stroke-width="3"/>
+      <line x1="100" y1="80" x2="100" y2="90" stroke="var(--fg)" stroke-width="3"/>
+      <line x1="50" y1="95"  x2="110" y2="95" stroke="var(--fg)" stroke-width="2"/>
+      <line x1="55" y1="100" x2="105" y2="100" stroke="var(--fg)" stroke-width="2"/>
+      <line x1="60" y1="105" x2="100" y2="105" stroke="var(--fg)" stroke-width="2"/>
+      <text x="120" y="92" class="label-dim">battery / source</text>
+
+      <line x1="80" y1="105" x2="80" y2="130" class="wire"/>
+
+      <!-- R1 -->
+      <rect x="60" y="130" width="40" height="60" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="80" y="165" class="label" text-anchor="middle">R1</text>
+      <text x="115" y="155" class="label">${fmtR(R1)}</text>
+      <text x="115" y="170" class="label-dim">V_R1 = ${Vr1.toFixed(3)} V</text>
+
+      <line x1="80" y1="190" x2="80" y2="210" class="wire"/>
+
+      <!-- tap node -->
+      <circle cx="80" cy="210" r="3" fill="var(--accent2)"/>
+      <line x1="80" y1="210" x2="200" y2="210" class="wire"/>
+      <text x="205" y="206" class="label-ok">→ V_tap = ${Vtap.toFixed(3)} V</text>
+      <text x="205" y="220" class="label-dim">(ADC pin or next stage)</text>
+
+      <line x1="80" y1="210" x2="80" y2="225" class="wire"/>
+
+      <!-- R2 -->
+      <rect x="60" y="225" width="40" height="60" fill="var(--bg-elev2)" stroke="var(--accent2)" stroke-width="1.5"/>
+      <text x="80" y="260" class="label" text-anchor="middle">R2</text>
+      <text x="115" y="250" class="label">${fmtR(R2)}</text>
+      <text x="115" y="265" class="label-dim">V_R2 = ${Vtap.toFixed(3)} V</text>
+
+      <line x1="80" y1="285" x2="80" y2="300" class="wire"/>
+      <!-- GND symbol -->
+      <line x1="60" y1="300" x2="100" y2="300" class="wire"/>
+      <line x1="68" y1="306" x2="92" y2="306" class="wire"/>
+      <line x1="76" y1="312" x2="84" y2="312" class="wire"/>
+      <text x="110" y="305" class="label-dim">GND</text>
+    `;
+    // expand viewbox for the ground at the bottom
+    svg.setAttribute('viewBox','0 30 600 300');
+  }
+
+  function findClosestE12(target){
+    let best = E12vals[0], err = Math.abs(E12vals[0]-target);
+    for(const v of E12vals){
+      const e = Math.abs(v-target);
+      if(e < err){ best = v; err = e; }
+    }
+    return best;
+  }
+
+  function buildE12Walk(targetRatio){
+    if(!isFinite(targetRatio) || targetRatio<=0 || targetRatio>=1) return [];
+    const kRatio = targetRatio / (1 - targetRatio);
+    // pick a representative spread of R1 values: 1k, 3.3k, 10k, 33k, 100k
+    const r1Picks = [1000, 3300, 10000, 33000, 100000];
+    return r1Picks.map(r1 => {
+      const r2 = findClosestE12(r1 * kRatio);
+      const actual = r2 / (r1 + r2);
+      const errPct = ((actual - targetRatio) / targetRatio) * 100;
+      return {r1, r2, kAct: r2/r1, actual, err: errPct};
+    });
+  }
+
+  function update(){
+    const V  = parseFloat(els.v.value);
+    const R1 = rOf(els.r1.value);
+    const R2 = rOf(els.r2.value);
+    const Vt = parseFloat(els.vt.value);
+    const acfg = adcCfg(els.adc.value);
+
+    document.getElementById('vRead').textContent  = V.toFixed(2) + " V";
+    document.getElementById('r1Read').textContent = fmtR(R1);
+    document.getElementById('r2Read').textContent = fmtR(R2);
+    document.getElementById('vtRead').textContent = Vt.toFixed(2) + " V";
+    document.getElementById('adcRead').textContent= acfg.label;
+
+    const ratio = R2 / (R1 + R2);
+    const Vtap  = V * ratio;
+    const Vr1   = V - Vtap;
+    const I     = V / (R1 + R2);
+    const P     = V * I;
+    const fullScale = Math.pow(2, acfg.bits) - 1;
+    const adcCount  = Math.min(fullScale, Math.max(0, Math.round(Vtap / acfg.ref * fullScale)));
+    const Rth   = (R1 * R2) / (R1 + R2);
+    const adcZ  = 100000; // RP2350 sample-time input impedance, approximate
+    const loadFactor = adcZ / (Rth + adcZ);
+    const loadErrPct = (1 - loadFactor) * 100;
+
+    document.getElementById('tRatio').textContent = ratio.toFixed(4);
+    document.getElementById('tVtap').textContent  = Vtap.toFixed(3) + " V";
+    document.getElementById('tVR1').textContent   = Vr1.toFixed(3) + " V";
+    document.getElementById('tI').textContent     = fmtI(I);
+    document.getElementById('tP').textContent     = fmtP(P);
+    document.getElementById('tAdc').textContent   = adcCount + " / " + fullScale +
+        (Vtap > acfg.ref ? "  ⚠ V_tap > V_ref!" : "");
+    document.getElementById('tRth').textContent   = fmtR(Rth);
+
+    document.getElementById('vdCalc').textContent =
+      `${V.toFixed(2)} × ${R2.toLocaleString()} / ${(R1+R2).toLocaleString()} = ${Vtap.toFixed(3)} V`;
+
+    const loadBox = document.getElementById('loadCalc');
+    if(loadErrPct > 5){
+      loadBox.innerHTML = `Rth = ${fmtR(Rth)} vs ADC ~100 kΩ → predicted error <b style="color:var(--warn)">~${loadErrPct.toFixed(1)} % low</b>. Calibrate, lower R1+R2, or buffer with an op-amp.`;
+    } else if(loadErrPct > 1){
+      loadBox.innerHTML = `Rth = ${fmtR(Rth)} vs ADC ~100 kΩ → predicted error ~${loadErrPct.toFixed(1)} % low. Borderline — calibration recommended.`;
+    } else {
+      loadBox.innerHTML = `Rth = ${fmtR(Rth)} vs ADC ~100 kΩ → predicted error ~${loadErrPct.toFixed(2)} % — safe to ignore.`;
+    }
+
+    drawCircuit(V, R1, R2);
+
+    // E12 walk for the target ratio (uses the Vt vs V slider)
+    const targetRatio = Vt / V;
+    const walk = buildE12Walk(targetRatio);
+    const body = document.getElementById('e12body');
+    if(!isFinite(targetRatio) || targetRatio<=0 || targetRatio>=1){
+      body.innerHTML = `<tr><td colspan="5" style="color:var(--warn);text-align:center">Target V_out must be 0 &lt; V_out &lt; V_in.</td></tr>`;
+    } else {
+      const head = `<tr><td colspan="5" style="background:var(--bg-elev2);font-size:12px;color:var(--fg-dim)">
+          Target ratio = ${Vt.toFixed(2)} / ${V.toFixed(2)} = <b style="color:var(--accent2)">${targetRatio.toFixed(4)}</b>
+          &nbsp;·&nbsp; R2/R1 needed = <b style="color:var(--accent2)">${(targetRatio/(1-targetRatio)).toFixed(3)}</b>
+        </td></tr>`;
+      body.innerHTML = head + walk.map(w => {
+        const cls = Math.abs(w.err) < 0.5 ? 'style="background:rgba(163,230,53,0.06)"' : '';
+        return `<tr ${cls}><td>${fmtR(w.r1)}</td><td>${fmtR(w.r2)}</td>
+          <td class="num">${w.kAct.toFixed(3)}</td>
+          <td class="num">${w.actual.toFixed(4)}</td>
+          <td class="num">${w.err >= 0 ? '+' : ''}${w.err.toFixed(2)} %</td></tr>`;
+      }).join('');
+    }
+  }
+
+  ids.forEach(k => els[k].addEventListener('input', update));
+  els.adc.addEventListener('change', update);
+  update();
+</script>
+</body>
+</html>

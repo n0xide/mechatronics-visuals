@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Circuits Cookbook — reusable patterns</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:1180px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px;max-width:780px}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  /* Filter bar */
+  .filter-bar{display:flex;flex-wrap:wrap;gap:6px;margin:18px 0 8px;
+    padding:10px 12px;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px}
+  .filter-bar .count{margin-left:auto;font:12px ui-monospace,monospace;
+    color:var(--fg-dim);align-self:center;padding-right:4px}
+  button.filter{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:5px 12px;font:12px ui-monospace,monospace;cursor:pointer;
+    transition:background 0.12s,border-color 0.12s,color 0.12s}
+  button.filter:hover{background:var(--line)}
+  button.filter.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  button.filter[data-cat="power"].active{background:var(--warn);border-color:var(--warn);color:#fff}
+  button.filter[data-cat="digital"].active{background:var(--accent3);border-color:var(--accent3);color:var(--bg)}
+  button.filter[data-cat="loads"].active{background:#c084fc;border-color:#c084fc;color:var(--bg)}
+  button.filter[data-cat="analog"].active{background:var(--accent2);border-color:var(--accent2);color:var(--bg)}
+  button.filter[data-cat="comms"].active{background:#5ec8ff;border-color:#5ec8ff;color:var(--bg)}
+  button.filter[data-cat="firmware"].active{background:#f472b6;border-color:#f472b6;color:#fff}
+  /* Recipe grid */
+  .recipes{display:grid;gap:14px;margin:14px 0;
+    grid-template-columns:repeat(auto-fill,minmax(330px,1fr))}
+  .recipe{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:14px 16px;display:flex;flex-direction:column;gap:8px;
+    border-left:3px solid var(--line)}
+  .recipe[data-cat="power"]{border-left-color:var(--warn)}
+  .recipe[data-cat="digital"]{border-left-color:var(--accent3)}
+  .recipe[data-cat="loads"]{border-left-color:#c084fc}
+  .recipe[data-cat="analog"]{border-left-color:var(--accent2)}
+  .recipe[data-cat="comms"]{border-left-color:#5ec8ff}
+  .recipe[data-cat="firmware"]{border-left-color:#f472b6}
+  .recipe.hidden{display:none}
+  .recipe-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+  .recipe h3{margin:0;font-size:13px;text-transform:none;letter-spacing:0;
+    color:var(--fg-bright)}
+  .tag{font:10px ui-monospace,monospace;color:var(--fg-dim);
+    background:var(--bg-elev2);padding:2px 6px;border-radius:3px;
+    text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap}
+  .recipe[data-cat="power"] .tag{color:var(--warn)}
+  .recipe[data-cat="digital"] .tag{color:var(--accent3)}
+  .recipe[data-cat="loads"] .tag{color:#c084fc}
+  .recipe[data-cat="analog"] .tag{color:var(--accent2)}
+  .recipe[data-cat="comms"] .tag{color:#5ec8ff}
+  .recipe[data-cat="firmware"] .tag{color:#f472b6}
+  .schem{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:8px;display:flex;align-items:center;justify-content:center;
+    min-height:140px}
+  .schem svg{display:block;max-width:100%;height:auto}
+  .schem.code{padding:10px;align-items:stretch;justify-content:stretch;min-height:auto}
+  .schem.code pre{margin:0;font:11px/1.45 ui-monospace,Menlo,monospace;
+    color:var(--fg);white-space:pre;overflow-x:auto}
+  .schem.code .kw{color:var(--accent)}
+  .schem.code .fn{color:var(--accent2)}
+  .schem.code .com{color:var(--fg-dim);font-style:italic}
+  .schem.code .num{color:var(--accent3)}
+  .use{font-size:12px;color:var(--fg);font-style:italic}
+  .use::before{content:"When: ";color:var(--accent);font-style:normal;font-weight:600}
+  .meta{display:grid;grid-template-columns:auto 1fr;gap:3px 8px;
+    font:11px ui-monospace,Menlo,monospace;margin-top:2px}
+  .meta dt{color:var(--fg-bright);white-space:nowrap}
+  .meta dd{margin:0;color:var(--fg-dim)}
+  .meta .formula{color:var(--accent)}
+  .meta .gotcha{color:var(--warn)}
+  /* SVG schematic style */
+  .wire{stroke:var(--fg);stroke-width:1.4;fill:none;stroke-linecap:round}
+  .dot{fill:var(--fg)}
+  .lbl{fill:var(--fg);font:10px ui-monospace,monospace}
+  .lbl-dim{fill:var(--fg-dim);font:9px ui-monospace,monospace}
+  .lbl-net{fill:var(--accent);font:10px ui-monospace,monospace;font-weight:600}
+  .lbl-gnd{fill:var(--fg-dim);font:10px ui-monospace,monospace}
+  .comp-fill{fill:var(--bg-elev2);stroke:var(--fg);stroke-width:1.4}
+  .pin{stroke:var(--fg);stroke-width:1.4;fill:none}
+  .arrow{stroke:var(--fg);stroke-width:1.4;fill:var(--fg)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Circuits cookbook — reusable patterns</h1>
+  <p class="lede">A pattern library of small, proven circuit + firmware recipes. Each card has a schematic, a one-line "when to use", the key formula, common values, and the trap that bites people. Filter by category at the top. These are the building blocks behind 80 percent of mechatronics designs — recognise them once and you stop reinventing them.</p>
+
+  <div class="filter-bar">
+    <button class="filter active" data-cat="all">All</button>
+    <button class="filter" data-cat="power">Power &amp; protection</button>
+    <button class="filter" data-cat="digital">Digital input</button>
+    <button class="filter" data-cat="loads">Driving loads</button>
+    <button class="filter" data-cat="analog">Analog</button>
+    <button class="filter" data-cat="comms">Comms</button>
+    <button class="filter" data-cat="firmware">Firmware</button>
+    <span class="count" id="count">— recipes</span>
+  </div>
+
+  <section class="recipes" id="recipes">
+
+    <!-- 1. Reverse-polarity P-FET -->
+    <article class="recipe" data-cat="power">
+      <div class="recipe-head"><h3>Reverse-polarity P-FET</h3><span class="tag">Power</span></div>
+      <div class="schem"><svg viewBox="0 0 280 130">
+        <text x="14" y="20" class="lbl-net">VIN+</text>
+        <line class="wire" x1="14" y1="30" x2="100" y2="30"/>
+        <!-- P-FET body diode pointing back to source -->
+        <rect class="comp-fill" x="100" y="20" width="40" height="40" rx="2"/>
+        <text x="120" y="44" class="lbl" text-anchor="middle">P-FET</text>
+        <line class="pin" x1="100" y1="40" x2="92" y2="40"/>
+        <text x="88" y="44" class="lbl-dim" text-anchor="end">G</text>
+        <line class="wire" x1="92" y1="40" x2="92" y2="95"/>
+        <line class="wire" x1="92" y1="95" x2="160" y2="95"/>
+        <!-- gate pull-down via Zener -->
+        <line class="wire" x1="140" y1="30" x2="240" y2="30"/>
+        <text x="244" y="34" class="lbl-net">VOUT</text>
+        <!-- Zener to GND from gate -->
+        <line class="wire" x1="160" y1="95" x2="160" y2="115"/>
+        <polygon class="arrow" points="155,107 165,107 160,115"/>
+        <text x="170" y="105" class="lbl-dim">D Z 10V</text>
+        <!-- gate pull-up R -->
+        <line class="wire" x1="60" y1="30" x2="60" y2="50"/>
+        <rect class="comp-fill" x="50" y="50" width="20" height="30"/>
+        <line class="wire" x1="60" y1="80" x2="60" y2="95"/>
+        <line class="wire" x1="60" y1="95" x2="92" y2="95"/>
+        <text x="76" y="68" class="lbl-dim">100k</text>
+        <line class="wire" x1="14" y1="115" x2="240" y2="115"/>
+        <text x="14" y="128" class="lbl-gnd">GND</text>
+      </svg></div>
+      <p class="use">A device might be plugged backward and you want zero voltage drop (~mV).</p>
+      <dl class="meta">
+        <dt>Formula</dt><dd class="formula">V_drop = I · R_DS(on)</dd>
+        <dt>Values</dt><dd>R_DS(on) &lt; 50 mΩ, V_GS(th) &lt; 3 V, Zener 10–12 V</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Body diode conducts before FET turns on — brief reverse current during inrush.</dd>
+      </dl>
+    </article>
+
+    <!-- 2. Schottky reverse-polarity -->
+    <article class="recipe" data-cat="power">
+      <div class="recipe-head"><h3>Schottky reverse-polarity diode</h3><span class="tag">Power</span></div>
+      <div class="schem"><svg viewBox="0 0 280 100">
+        <text x="14" y="20" class="lbl-net">VIN+</text>
+        <line class="wire" x1="14" y1="30" x2="100" y2="30"/>
+        <!-- diode triangle -->
+        <polygon class="comp-fill" points="100,20 100,40 120,30"/>
+        <line class="pin" x1="120" y1="20" x2="120" y2="40"/>
+        <line class="wire" x1="120" y1="30" x2="240" y2="30"/>
+        <text x="244" y="34" class="lbl-net">VOUT</text>
+        <text x="110" y="58" class="lbl-dim">Schottky</text>
+        <line class="wire" x1="14" y1="80" x2="240" y2="80"/>
+        <text x="14" y="94" class="lbl-gnd">GND</text>
+      </svg></div>
+      <p class="use">Low-current loads where ~0.3 V drop is acceptable.</p>
+      <dl class="meta">
+        <dt>Formula</dt><dd class="formula">P_loss = V_f · I_load  (≈ 0.3 W per A)</dd>
+        <dt>Values</dt><dd>SS14 (1 A), SS34 (3 A), SS54 (5 A); V_R ≥ 2× V_in</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Schottky leakage rises sharply with temperature — bad for low-power sleep.</dd>
+      </dl>
+    </article>
+
+    <!-- 3. NTC inrush -->
+    <article class="recipe" data-cat="power">
+      <div class="recipe-head"><h3>Soft-start NTC inrush limiter</h3><span class="tag">Power</span></div>
+      <div class="schem"><svg viewBox="0 0 280 100">
+        <text x="14" y="20" class="lbl-net">AC L</text>
+        <line class="wire" x1="14" y1="30" x2="100" y2="30"/>
+        <rect class="comp-fill" x="100" y="20" width="50" height="20" rx="2"/>
+        <text x="125" y="34" class="lbl" text-anchor="middle">NTC</text>
+        <line class="wire" x1="150" y1="30" x2="240" y2="30"/>
+        <text x="244" y="34" class="lbl-net">to bridge</text>
+        <text x="105" y="58" class="lbl-dim">cold: 5–10 Ω → hot: &lt;1 Ω</text>
+        <line class="wire" x1="14" y1="80" x2="240" y2="80"/>
+        <text x="14" y="94" class="lbl-gnd">AC N</text>
+      </svg></div>
+      <p class="use">Mains-powered supply with large bulk caps — limit the inrush spike at plug-in.</p>
+      <dl class="meta">
+        <dt>Rule</dt><dd class="formula">R_cold ≈ V_peak / I_inrush_target</dd>
+        <dt>Values</dt><dd>SCK series: 5 Ω/5 A, 10 Ω/3 A; place before bridge rectifier</dd>
+        <dt>Gotcha</dt><dd class="gotcha">NTC stays hot — if you hot-plug quickly, R hasn't recovered. Add a bypass relay for cycle-tolerant supplies.</dd>
+      </dl>
+    </article>
+
+    <!-- 4. Bulk + ceramic bypass -->
+    <article class="recipe" data-cat="power">
+      <div class="recipe-head"><h3>Bulk + ceramic bypass pair</h3><span class="tag">Power</span></div>
+      <div class="schem"><svg viewBox="0 0 280 110">
+        <text x="14" y="20" class="lbl-net">VCC</text>
+        <line class="wire" x1="14" y1="30" x2="240" y2="30"/>
+        <!-- bulk cap -->
+        <line class="wire" x1="80" y1="30" x2="80" y2="50"/>
+        <line class="wire" x1="65" y1="50" x2="95" y2="50"/>
+        <line class="wire" x1="65" y1="60" x2="95" y2="60"/>
+        <line class="wire" x1="80" y1="60" x2="80" y2="90"/>
+        <text x="100" y="58" class="lbl-dim">10µF tant/electro</text>
+        <!-- ceramic -->
+        <line class="wire" x1="180" y1="30" x2="180" y2="50"/>
+        <line class="wire" x1="168" y1="50" x2="192" y2="50"/>
+        <line class="wire" x1="168" y1="60" x2="192" y2="60"/>
+        <line class="wire" x1="180" y1="60" x2="180" y2="90"/>
+        <text x="200" y="58" class="lbl-dim">100nF ceramic</text>
+        <line class="wire" x1="14" y1="90" x2="240" y2="90"/>
+        <text x="14" y="104" class="lbl-gnd">GND</text>
+      </svg></div>
+      <p class="use">Every IC. Bulk handles low-f droop, ceramic handles fast switching transients.</p>
+      <dl class="meta">
+        <dt>Pair</dt><dd class="formula">1× bulk (µF) + 1× 100 nF per Vcc pin</dd>
+        <dt>Values</dt><dd>10–100 µF bulk; 100 nF 0402/0603 within 5 mm of pin</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Two ceramics with mismatched values create an anti-resonance dip; keep parallel decoupling within 1 decade.</dd>
+      </dl>
+    </article>
+
+    <!-- 5. LDO with output cap -->
+    <article class="recipe" data-cat="power">
+      <div class="recipe-head"><h3>LDO with input + output cap</h3><span class="tag">Power</span></div>
+      <div class="schem"><svg viewBox="0 0 280 130">
+        <text x="14" y="20" class="lbl-net">VIN</text>
+        <line class="wire" x1="14" y1="30" x2="80" y2="30"/>
+        <rect class="comp-fill" x="80" y="20" width="120" height="40" rx="3"/>
+        <text x="140" y="36" class="lbl" text-anchor="middle">LDO</text>
+        <text x="140" y="48" class="lbl-dim" text-anchor="middle">e.g. AMS1117-3.3</text>
+        <line class="wire" x1="200" y1="30" x2="266" y2="30"/>
+        <text x="244" y="20" class="lbl-net">VOUT</text>
+        <!-- input cap -->
+        <line class="wire" x1="50" y1="30" x2="50" y2="80"/>
+        <line class="wire" x1="40" y1="80" x2="60" y2="80"/>
+        <line class="wire" x1="40" y1="88" x2="60" y2="88"/>
+        <line class="wire" x1="50" y1="88" x2="50" y2="110"/>
+        <text x="20" y="78" class="lbl-dim">10µF</text>
+        <!-- output cap -->
+        <line class="wire" x1="240" y1="30" x2="240" y2="80"/>
+        <line class="wire" x1="230" y1="80" x2="250" y2="80"/>
+        <line class="wire" x1="230" y1="88" x2="250" y2="88"/>
+        <line class="wire" x1="240" y1="88" x2="240" y2="110"/>
+        <text x="252" y="78" class="lbl-dim">22µF</text>
+        <line class="wire" x1="50" y1="110" x2="240" y2="110"/>
+        <line class="wire" x1="140" y1="60" x2="140" y2="110"/>
+        <text x="14" y="124" class="lbl-gnd">GND</text>
+      </svg></div>
+      <p class="use">3.3 V or 5 V rail from a higher source; small load (&lt;500 mA) where switching noise matters.</p>
+      <dl class="meta">
+        <dt>Headroom</dt><dd class="formula">V_in ≥ V_out + V_dropout (≈ 1.1 V for AMS1117)</dd>
+        <dt>Values</dt><dd>10 µF in, 22 µF out (LDOs often require min ESR); ground both at one point</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Some LDOs oscillate without a ceramic with specific ESR — read the datasheet stability section.</dd>
+      </dl>
+    </article>
+
+    <!-- 6. Fuse + TVS -->
+    <article class="recipe" data-cat="power">
+      <div class="recipe-head"><h3>Input fuse + TVS clamp</h3><span class="tag">Power</span></div>
+      <div class="schem"><svg viewBox="0 0 280 110">
+        <text x="14" y="20" class="lbl-net">VIN</text>
+        <line class="wire" x1="14" y1="30" x2="70" y2="30"/>
+        <rect class="comp-fill" x="70" y="22" width="40" height="16" rx="3"/>
+        <text x="90" y="34" class="lbl" text-anchor="middle">F</text>
+        <line class="wire" x1="110" y1="30" x2="240" y2="30"/>
+        <text x="244" y="34" class="lbl-net">VOUT</text>
+        <!-- TVS -->
+        <line class="wire" x1="170" y1="30" x2="170" y2="55"/>
+        <polygon class="comp-fill" points="160,55 180,55 170,72"/>
+        <polygon class="comp-fill" points="160,72 180,72 170,55"/>
+        <line class="wire" x1="170" y1="72" x2="170" y2="90"/>
+        <text x="186" y="68" class="lbl-dim">TVS</text>
+        <text x="186" y="80" class="lbl-dim">SMBJ24A</text>
+        <line class="wire" x1="14" y1="90" x2="240" y2="90"/>
+        <text x="14" y="104" class="lbl-gnd">GND</text>
+      </svg></div>
+      <p class="use">Front of every input that might see ESD, surge, or accidental overvoltage.</p>
+      <dl class="meta">
+        <dt>Order</dt><dd class="formula">fuse first → TVS clamps → bulk cap</dd>
+        <dt>Values</dt><dd>Fuse = 1.5× steady current; TVS V_BR ≈ 1.3× V_nominal, bidirectional for AC</dd>
+        <dt>Gotcha</dt><dd class="gotcha">TVS without a fuse just dies silently after one big surge. Fuse is the consumable.</dd>
+      </dl>
+    </article>
+
+    <!-- 7. Pull-up + Schmitt -->
+    <article class="recipe" data-cat="digital">
+      <div class="recipe-head"><h3>Pull-up + GPIO + Schmitt</h3><span class="tag">Digital in</span></div>
+      <div class="schem"><svg viewBox="0 0 280 130">
+        <text x="14" y="20" class="lbl-net">3V3</text>
+        <line class="wire" x1="14" y1="30" x2="120" y2="30"/>
+        <rect class="comp-fill" x="100" y="40" width="20" height="30"/>
+        <text x="130" y="58" class="lbl-dim">10k</text>
+        <line class="wire" x1="110" y1="30" x2="110" y2="40"/>
+        <line class="wire" x1="110" y1="70" x2="110" y2="100"/>
+        <line class="wire" x1="110" y1="100" x2="220" y2="100"/>
+        <!-- button -->
+        <line class="wire" x1="170" y1="100" x2="170" y2="115"/>
+        <line class="wire" x1="160" y1="115" x2="190" y2="115"/>
+        <line class="wire" x1="175" y1="115" x2="175" y2="125"/>
+        <line class="wire" x1="14" y1="125" x2="190" y2="125"/>
+        <text x="195" y="120" class="lbl-dim">SW</text>
+        <!-- GPIO -->
+        <rect class="comp-fill" x="220" y="92" width="50" height="20" rx="2"/>
+        <text x="245" y="106" class="lbl" text-anchor="middle">GPIO</text>
+        <text x="14" y="138" class="lbl-gnd">GND</text>
+      </svg></div>
+      <p class="use">Any switch, button, optocoupler output, or open-drain sensor input.</p>
+      <dl class="meta">
+        <dt>Rule</dt><dd class="formula">R_pu × I_leak ≪ V_IL ;  R_pu × C_line ≤ desired rise τ</dd>
+        <dt>Values</dt><dd>10 kΩ default; 1–4.7 kΩ for noisy/long lines; internal pull-up = ~30–50 kΩ</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Floating input without pull-up reads garbage and burns power oscillating around threshold.</dd>
+      </dl>
+    </article>
+
+    <!-- 8. Debounce RC -->
+    <article class="recipe" data-cat="digital">
+      <div class="recipe-head"><h3>Button debounce RC + Schmitt</h3><span class="tag">Digital in</span></div>
+      <div class="schem"><svg viewBox="0 0 280 130">
+        <text x="14" y="20" class="lbl-net">3V3</text>
+        <line class="wire" x1="14" y1="30" x2="220" y2="30"/>
+        <rect class="comp-fill" x="60" y="40" width="20" height="30"/>
+        <text x="86" y="58" class="lbl-dim">10k</text>
+        <line class="wire" x1="70" y1="30" x2="70" y2="40"/>
+        <line class="wire" x1="70" y1="70" x2="70" y2="100"/>
+        <!-- cap to GND -->
+        <line class="wire" x1="140" y1="70" x2="140" y2="80"/>
+        <line class="wire" x1="130" y1="80" x2="150" y2="80"/>
+        <line class="wire" x1="130" y1="86" x2="150" y2="86"/>
+        <line class="wire" x1="140" y1="86" x2="140" y2="105"/>
+        <text x="156" y="78" class="lbl-dim">100nF</text>
+        <line class="wire" x1="70" y1="70" x2="140" y2="70"/>
+        <line class="wire" x1="140" y1="70" x2="220" y2="70"/>
+        <rect class="comp-fill" x="220" y="62" width="50" height="20" rx="2"/>
+        <text x="245" y="76" class="lbl" text-anchor="middle">GPIO</text>
+        <!-- button -->
+        <line class="wire" x1="70" y1="100" x2="70" y2="115"/>
+        <line class="wire" x1="60" y1="115" x2="80" y2="115"/>
+        <line class="wire" x1="14" y1="125" x2="80" y2="125"/>
+        <line class="wire" x1="75" y1="115" x2="75" y2="125"/>
+        <text x="14" y="138" class="lbl-gnd">GND</text>
+      </svg></div>
+      <p class="use">Tactile button into MCU; preferred over software debounce when timing is tight.</p>
+      <dl class="meta">
+        <dt>Formula</dt><dd class="formula">τ = R · C ≈ 1 ms ;  5τ ≈ 5 ms settle</dd>
+        <dt>Values</dt><dd>R = 10 kΩ, C = 100 nF; pair with Schmitt-trigger input or 74HC14 inverter</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Without Schmitt hysteresis you get multiple edges on the slow ramp through V_threshold.</dd>
+      </dl>
+    </article>
+
+    <!-- 9. Optoisolator -->
+    <article class="recipe" data-cat="digital">
+      <div class="recipe-head"><h3>Optocoupler isolation</h3><span class="tag">Digital in</span></div>
+      <div class="schem"><svg viewBox="0 0 280 130">
+        <text x="14" y="20" class="lbl-net">IN+</text>
+        <line class="wire" x1="14" y1="30" x2="60" y2="30"/>
+        <rect class="comp-fill" x="60" y="22" width="20" height="16"/>
+        <text x="90" y="34" class="lbl-dim">330Ω</text>
+        <line class="wire" x1="80" y1="30" x2="120" y2="30"/>
+        <!-- LED -->
+        <polygon class="comp-fill" points="120,22 120,38 134,30"/>
+        <line class="pin" x1="134" y1="22" x2="134" y2="38"/>
+        <line class="wire" x1="134" y1="30" x2="155" y2="30"/>
+        <line class="wire" x1="155" y1="30" x2="155" y2="100"/>
+        <line class="wire" x1="14" y1="100" x2="155" y2="100"/>
+        <text x="14" y="114" class="lbl-gnd">IN-</text>
+        <!-- isolation barrier -->
+        <line x1="170" y1="10" x2="170" y2="120" stroke="#8f99a8" stroke-dasharray="3 3"/>
+        <!-- phototransistor side -->
+        <text x="270" y="20" class="lbl-net" text-anchor="end">3V3</text>
+        <line class="wire" x1="195" y1="30" x2="270" y2="30"/>
+        <rect class="comp-fill" x="205" y="40" width="20" height="30"/>
+        <text x="230" y="58" class="lbl-dim">10k</text>
+        <line class="wire" x1="215" y1="30" x2="215" y2="40"/>
+        <line class="wire" x1="215" y1="70" x2="215" y2="100"/>
+        <!-- transistor symbol -->
+        <circle class="comp-fill" cx="215" cy="100" r="10"/>
+        <line class="wire" x1="215" y1="110" x2="215" y2="115"/>
+        <line class="wire" x1="155" y1="115" x2="270" y2="115"/>
+        <text x="244" y="76" class="lbl-net">OUT</text>
+      </svg></div>
+      <p class="use">Crossing voltage domains (mains→logic, motor→logic), or breaking ground loops.</p>
+      <dl class="meta">
+        <dt>Formula</dt><dd class="formula">R_LED = (V_in − V_f) / I_LED ;  CTR = I_C / I_LED</dd>
+        <dt>Values</dt><dd>PC817: I_LED 10–15 mA, CTR 50–600 %; output pull-up 4.7–10 kΩ</dd>
+        <dt>Gotcha</dt><dd class="gotcha">CTR drops with age and temperature — design for the min CTR, not typical.</dd>
+      </dl>
+    </article>
+
+    <!-- 10. N-MOSFET low-side -->
+    <article class="recipe" data-cat="loads">
+      <div class="recipe-head"><h3>N-MOSFET low-side switch</h3><span class="tag">Loads</span></div>
+      <div class="schem"><svg viewBox="0 0 280 150">
+        <text x="14" y="20" class="lbl-net">V_LOAD</text>
+        <line class="wire" x1="14" y1="30" x2="140" y2="30"/>
+        <!-- load -->
+        <rect class="comp-fill" x="125" y="30" width="30" height="40"/>
+        <text x="140" y="55" class="lbl" text-anchor="middle">L</text>
+        <line class="wire" x1="140" y1="70" x2="140" y2="90"/>
+        <!-- FET -->
+        <rect class="comp-fill" x="120" y="90" width="40" height="30" rx="2"/>
+        <text x="140" y="108" class="lbl" text-anchor="middle">N-FET</text>
+        <line class="pin" x1="120" y1="105" x2="60" y2="105"/>
+        <text x="60" y="100" class="lbl-dim">G</text>
+        <!-- gate resistor -->
+        <rect class="comp-fill" x="70" y="97" width="20" height="16"/>
+        <text x="80" y="92" class="lbl-dim" text-anchor="middle">100Ω</text>
+        <!-- pulldown -->
+        <line class="wire" x1="44" y1="105" x2="44" y2="135"/>
+        <line class="wire" x1="60" y1="105" x2="44" y2="105"/>
+        <rect class="comp-fill" x="34" y="115" width="20" height="20"/>
+        <text x="10" y="130" class="lbl-dim">10k</text>
+        <line class="wire" x1="44" y1="135" x2="240" y2="135"/>
+        <line class="wire" x1="140" y1="120" x2="140" y2="135"/>
+        <!-- driver -->
+        <text x="14" y="105" class="lbl-net">PWM</text>
+        <text x="14" y="148" class="lbl-gnd">GND</text>
+      </svg></div>
+      <p class="use">Switching motors, LEDs, heaters from logic — load returns to V+, FET sinks to GND.</p>
+      <dl class="meta">
+        <dt>Formula</dt><dd class="formula">P_diss = I² · R_DS(on) ;  τ_sw = R_g · C_iss</dd>
+        <dt>Values</dt><dd>Logic-level FET (V_GS(th) ≤ 2.5 V); R_g 47–220 Ω; R_pulldown 10 kΩ</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Standard FETs need V_GS = 10 V to turn on fully — read "logic level" in the part number.</dd>
+      </dl>
+    </article>
+
+    <!-- 11. P-MOSFET high-side -->
+    <article class="recipe" data-cat="loads">
+      <div class="recipe-head"><h3>P-MOSFET high-side switch</h3><span class="tag">Loads</span></div>
+      <div class="schem"><svg viewBox="0 0 280 150">
+        <text x="14" y="20" class="lbl-net">V_BAT</text>
+        <line class="wire" x1="14" y1="30" x2="140" y2="30"/>
+        <rect class="comp-fill" x="120" y="30" width="40" height="30" rx="2"/>
+        <text x="140" y="48" class="lbl" text-anchor="middle">P-FET</text>
+        <!-- gate pull-up -->
+        <line class="wire" x1="80" y1="30" x2="80" y2="50"/>
+        <rect class="comp-fill" x="70" y="50" width="20" height="25"/>
+        <text x="40" y="64" class="lbl-dim">100k</text>
+        <line class="wire" x1="80" y1="75" x2="80" y2="90"/>
+        <line class="wire" x1="80" y1="90" x2="120" y2="90"/>
+        <line class="pin" x1="120" y1="45" x2="80" y2="45"/>
+        <line class="wire" x1="80" y1="45" x2="80" y2="50"/>
+        <!-- N-FET pulldown driver -->
+        <rect class="comp-fill" x="62" y="90" width="35" height="25" rx="2"/>
+        <text x="80" y="105" class="lbl" text-anchor="middle">NFET</text>
+        <line class="wire" x1="80" y1="115" x2="80" y2="135"/>
+        <line class="pin" x1="62" y1="105" x2="40" y2="105"/>
+        <text x="14" y="108" class="lbl-net">EN</text>
+        <!-- load -->
+        <line class="wire" x1="140" y1="60" x2="140" y2="90"/>
+        <rect class="comp-fill" x="125" y="90" width="30" height="35"/>
+        <text x="140" y="111" class="lbl" text-anchor="middle">L</text>
+        <line class="wire" x1="140" y1="125" x2="140" y2="135"/>
+        <line class="wire" x1="14" y1="135" x2="240" y2="135"/>
+        <text x="14" y="148" class="lbl-gnd">GND</text>
+      </svg></div>
+      <p class="use">Battery-side power switch, sleep-mode load disconnect, "soft power button".</p>
+      <dl class="meta">
+        <dt>On</dt><dd class="formula">V_GS = −(V_BAT) when NFET sinks gate</dd>
+        <dt>Values</dt><dd>V_GS(max) typically ±20 V — clamp gate to V_BAT with Zener if V_BAT &gt; 18 V</dd>
+        <dt>Gotcha</dt><dd class="gotcha">If MCU boots after V_BAT, gate floats high (off). Need pull-up so default state is off, not glitchy.</dd>
+      </dl>
+    </article>
+
+    <!-- 12. H-bridge -->
+    <article class="recipe" data-cat="loads">
+      <div class="recipe-head"><h3>H-bridge (4 FETs + drivers)</h3><span class="tag">Loads</span></div>
+      <div class="schem"><svg viewBox="0 0 280 160">
+        <text x="14" y="20" class="lbl-net">V_M</text>
+        <line class="wire" x1="14" y1="30" x2="240" y2="30"/>
+        <!-- HS-A -->
+        <rect class="comp-fill" x="60" y="40" width="36" height="24" rx="2"/>
+        <text x="78" y="56" class="lbl" text-anchor="middle">P-HSA</text>
+        <line class="wire" x1="78" y1="30" x2="78" y2="40"/>
+        <line class="wire" x1="78" y1="64" x2="78" y2="90"/>
+        <!-- HS-B -->
+        <rect class="comp-fill" x="184" y="40" width="36" height="24" rx="2"/>
+        <text x="202" y="56" class="lbl" text-anchor="middle">P-HSB</text>
+        <line class="wire" x1="202" y1="30" x2="202" y2="40"/>
+        <line class="wire" x1="202" y1="64" x2="202" y2="90"/>
+        <!-- Motor -->
+        <circle class="comp-fill" cx="140" cy="90" r="14"/>
+        <text x="140" y="94" class="lbl" text-anchor="middle">M</text>
+        <line class="wire" x1="78" y1="90" x2="126" y2="90"/>
+        <line class="wire" x1="154" y1="90" x2="202" y2="90"/>
+        <!-- LS-A -->
+        <rect class="comp-fill" x="60" y="115" width="36" height="24" rx="2"/>
+        <text x="78" y="131" class="lbl" text-anchor="middle">N-LSA</text>
+        <line class="wire" x1="78" y1="115" x2="78" y2="90"/>
+        <line class="wire" x1="78" y1="139" x2="78" y2="150"/>
+        <!-- LS-B -->
+        <rect class="comp-fill" x="184" y="115" width="36" height="24" rx="2"/>
+        <text x="202" y="131" class="lbl" text-anchor="middle">N-LSB</text>
+        <line class="wire" x1="202" y1="115" x2="202" y2="90"/>
+        <line class="wire" x1="202" y1="139" x2="202" y2="150"/>
+        <line class="wire" x1="14" y1="150" x2="240" y2="150"/>
+        <text x="14" y="20" class="lbl-net">V_M</text>
+        <text x="14" y="160" class="lbl-gnd">GND</text>
+      </svg></div>
+      <p class="use">Bidirectional DC motor, voice coil, or stepper coil drive.</p>
+      <dl class="meta">
+        <dt>Rule</dt><dd class="formula">Forward = HSA+LSB ;  Reverse = HSB+LSA ;  never HS+LS same side</dd>
+        <dt>Values</dt><dd>Use gate driver (DRV8870/L298 integrated, or DRV8701 for discretes); 1–4 µs dead-time</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Shoot-through (both HS+LS on briefly) cooks both FETs in microseconds. Dead-time is non-negotiable.</dd>
+      </dl>
+    </article>
+
+    <!-- 13. Flyback diode -->
+    <article class="recipe" data-cat="loads">
+      <div class="recipe-head"><h3>Flyback diode (relay/solenoid)</h3><span class="tag">Loads</span></div>
+      <div class="schem"><svg viewBox="0 0 280 140">
+        <text x="14" y="20" class="lbl-net">V+</text>
+        <line class="wire" x1="14" y1="30" x2="240" y2="30"/>
+        <!-- coil -->
+        <line class="wire" x1="140" y1="30" x2="140" y2="50"/>
+        <path class="wire" d="M125,50 q15,10 0,20 q-15,10 0,20 q15,10 0,20"/>
+        <line class="wire" x1="140" y1="110" x2="140" y2="125"/>
+        <text x="160" y="78" class="lbl">L</text>
+        <!-- flyback diode in parallel -->
+        <polygon class="comp-fill" points="180,60 180,76 196,68"/>
+        <line class="pin" x1="196" y1="60" x2="196" y2="76"/>
+        <line class="wire" x1="196" y1="68" x2="196" y2="30"/>
+        <line class="wire" x1="180" y1="68" x2="180" y2="110"/>
+        <line class="wire" x1="180" y1="110" x2="140" y2="110"/>
+        <text x="206" y="74" class="lbl-dim">1N4007</text>
+        <!-- switch FET -->
+        <rect class="comp-fill" x="120" y="125" width="40" height="14" rx="2"/>
+        <text x="140" y="135" class="lbl" text-anchor="middle">SW</text>
+        <text x="14" y="138" class="lbl-gnd">GND</text>
+      </svg></div>
+      <p class="use">ANY inductive load driven by a transistor: relays, solenoids, brushed DC motors.</p>
+      <dl class="meta">
+        <dt>Why</dt><dd class="formula">V_L = −L · dI/dt → kV spikes destroy FETs without clamp</dd>
+        <dt>Values</dt><dd>1N400x for slow coils, UF400x or Schottky for PWM motors (faster recovery)</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Diode increases relay release time. Add series Zener (~24 V) for snappy release at cost of more stress.</dd>
+      </dl>
+    </article>
+
+    <!-- 14. Voltage divider for ADC -->
+    <article class="recipe" data-cat="analog">
+      <div class="recipe-head"><h3>Voltage divider for ADC</h3><span class="tag">Analog</span></div>
+      <div class="schem"><svg viewBox="0 0 280 130">
+        <text x="14" y="20" class="lbl-net">V_BAT</text>
+        <line class="wire" x1="14" y1="30" x2="140" y2="30"/>
+        <line class="wire" x1="140" y1="30" x2="140" y2="50"/>
+        <rect class="comp-fill" x="130" y="50" width="20" height="24"/>
+        <text x="160" y="65" class="lbl-dim">R1 100k</text>
+        <line class="wire" x1="140" y1="74" x2="140" y2="85"/>
+        <line class="wire" x1="140" y1="85" x2="240" y2="85"/>
+        <rect class="comp-fill" x="240" y="78" width="36" height="14" rx="2"/>
+        <text x="258" y="89" class="lbl" text-anchor="middle">ADC</text>
+        <rect class="comp-fill" x="130" y="90" width="20" height="24"/>
+        <text x="160" y="105" class="lbl-dim">R2 33k</text>
+        <line class="wire" x1="140" y1="114" x2="140" y2="125"/>
+        <line class="wire" x1="14" y1="125" x2="240" y2="125"/>
+        <text x="14" y="138" class="lbl-gnd">GND</text>
+      </svg></div>
+      <p class="use">Measure a voltage above the ADC reference (battery, rail monitor).</p>
+      <dl class="meta">
+        <dt>Formula</dt><dd class="formula">V_adc = V_in · R2/(R1+R2)</dd>
+        <dt>Values</dt><dd>Keep R1‖R2 ≤ 10 kΩ for SAR ADCs; add 1–10 nF cap at ADC pin for filtering</dd>
+        <dt>Gotcha</dt><dd class="gotcha">High-impedance divider + low ADC sample time = wrong reading (sample cap can't charge in time).</dd>
+      </dl>
+    </article>
+
+    <!-- 15. RC anti-alias -->
+    <article class="recipe" data-cat="analog">
+      <div class="recipe-head"><h3>RC anti-alias before ADC</h3><span class="tag">Analog</span></div>
+      <div class="schem"><svg viewBox="0 0 280 110">
+        <text x="14" y="20" class="lbl-net">SIG</text>
+        <line class="wire" x1="14" y1="30" x2="80" y2="30"/>
+        <rect class="comp-fill" x="80" y="22" width="30" height="16"/>
+        <text x="95" y="50" class="lbl-dim" text-anchor="middle">1kΩ</text>
+        <line class="wire" x1="110" y1="30" x2="240" y2="30"/>
+        <rect class="comp-fill" x="240" y="22" width="36" height="16" rx="2"/>
+        <text x="258" y="34" class="lbl" text-anchor="middle">ADC</text>
+        <!-- cap -->
+        <line class="wire" x1="170" y1="30" x2="170" y2="60"/>
+        <line class="wire" x1="158" y1="60" x2="182" y2="60"/>
+        <line class="wire" x1="158" y1="66" x2="182" y2="66"/>
+        <line class="wire" x1="170" y1="66" x2="170" y2="90"/>
+        <text x="186" y="60" class="lbl-dim">100nF</text>
+        <line class="wire" x1="14" y1="90" x2="240" y2="90"/>
+        <text x="14" y="104" class="lbl-gnd">GND</text>
+      </svg></div>
+      <p class="use">Always — before any ADC pin, even when "the signal is slow".</p>
+      <dl class="meta">
+        <dt>Formula</dt><dd class="formula">f_c = 1/(2π·R·C) ;  pick f_c &lt; f_s/2</dd>
+        <dt>Values</dt><dd>1 kΩ + 100 nF → f_c ≈ 1.6 kHz (good for 10–20 kSPS)</dd>
+        <dt>Gotcha</dt><dd class="gotcha">No filter = aliases of switching noise and EMI land squarely in your signal band.</dd>
+      </dl>
+    </article>
+
+    <!-- 16. Op-amp buffer -->
+    <article class="recipe" data-cat="analog">
+      <div class="recipe-head"><h3>Op-amp buffer (impedance isolation)</h3><span class="tag">Analog</span></div>
+      <div class="schem"><svg viewBox="0 0 280 110">
+        <text x="14" y="32" class="lbl-net">V_in</text>
+        <line class="wire" x1="14" y1="40" x2="80" y2="40"/>
+        <polygon class="comp-fill" points="80,15 80,65 145,40"/>
+        <text x="98" y="34" class="lbl-dim">+</text>
+        <text x="98" y="56" class="lbl-dim">−</text>
+        <line class="wire" x1="145" y1="40" x2="240" y2="40"/>
+        <text x="244" y="44" class="lbl-net">V_out</text>
+        <!-- feedback short -->
+        <line class="wire" x1="200" y1="40" x2="200" y2="80"/>
+        <line class="wire" x1="80" y1="55" x2="60" y2="55"/>
+        <line class="wire" x1="60" y1="55" x2="60" y2="80"/>
+        <line class="wire" x1="60" y1="80" x2="200" y2="80"/>
+        <text x="120" y="92" class="lbl-dim">unity gain feedback</text>
+      </svg></div>
+      <p class="use">Source is high-Z (thermistor, MEMS, voltage reference) and load draws current.</p>
+      <dl class="meta">
+        <dt>Formula</dt><dd class="formula">V_out = V_in ;  Z_in ≈ ∞ ;  Z_out ≈ 0</dd>
+        <dt>Values</dt><dd>Rail-to-rail opamp if signal nears V_cc/GND; bandwidth × gain product matters</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Some opamps oscillate at unity gain — check the datasheet for "minimum stable gain".</dd>
+      </dl>
+    </article>
+
+    <!-- 17. Instrumentation amp on Wheatstone bridge -->
+    <article class="recipe" data-cat="analog">
+      <div class="recipe-head"><h3>In-amp on Wheatstone bridge</h3><span class="tag">Analog</span></div>
+      <div class="schem"><svg viewBox="0 0 280 160">
+        <text x="14" y="20" class="lbl-net">V_EX</text>
+        <line class="wire" x1="14" y1="30" x2="100" y2="30"/>
+        <line class="wire" x1="100" y1="30" x2="100" y2="40"/>
+        <!-- bridge: 4 resistors in diamond -->
+        <rect class="comp-fill" x="80" y="40" width="40" height="14"/>
+        <rect class="comp-fill" x="80" y="84" width="40" height="14"/>
+        <line class="wire" x1="100" y1="54" x2="80" y2="69"/>
+        <line class="wire" x1="100" y1="54" x2="120" y2="69"/>
+        <line class="wire" x1="100" y1="84" x2="80" y2="69"/>
+        <line class="wire" x1="100" y1="84" x2="120" y2="69"/>
+        <line class="wire" x1="100" y1="98" x2="100" y2="115"/>
+        <line class="wire" x1="14" y1="115" x2="160" y2="115"/>
+        <!-- in-amp -->
+        <line class="wire" x1="80" y1="69" x2="155" y2="55"/>
+        <line class="wire" x1="120" y1="69" x2="155" y2="80"/>
+        <polygon class="comp-fill" points="160,40 160,90 220,65"/>
+        <text x="180" y="68" class="lbl" text-anchor="middle">INA</text>
+        <line class="wire" x1="220" y1="65" x2="270" y2="65"/>
+        <text x="240" y="58" class="lbl-net">V_out</text>
+        <text x="14" y="128" class="lbl-gnd">GND</text>
+      </svg></div>
+      <p class="use">Load cell, strain gauge, RTD bridge — measure tiny ΔV in presence of large common-mode.</p>
+      <dl class="meta">
+        <dt>Formula</dt><dd class="formula">V_out = G · (V+ − V−) ;  G = 1 + 49.4kΩ/R_G  (INA128)</dd>
+        <dt>Values</dt><dd>INA128/INA826/AD623; G = 100–1000 for load cells; ratiometric ADC if you can</dd>
+        <dt>Gotcha</dt><dd class="gotcha">CMRR collapses if source impedance is unbalanced — match the two input source-Rs.</dd>
+      </dl>
+    </article>
+
+    <!-- 18. Current sense shunt -->
+    <article class="recipe" data-cat="analog">
+      <div class="recipe-head"><h3>Current sense (shunt + diff amp)</h3><span class="tag">Analog</span></div>
+      <div class="schem"><svg viewBox="0 0 280 130">
+        <text x="14" y="20" class="lbl-net">V_BUS</text>
+        <line class="wire" x1="14" y1="30" x2="80" y2="30"/>
+        <rect class="comp-fill" x="80" y="22" width="50" height="16"/>
+        <text x="105" y="34" class="lbl" text-anchor="middle">R_s</text>
+        <line class="wire" x1="130" y1="30" x2="240" y2="30"/>
+        <text x="244" y="34" class="lbl-net">to LOAD</text>
+        <!-- diff amp -->
+        <line class="wire" x1="90" y1="30" x2="90" y2="60"/>
+        <line class="wire" x1="120" y1="30" x2="120" y2="60"/>
+        <polygon class="comp-fill" points="140,55 140,100 210,78"/>
+        <text x="165" y="82" class="lbl" text-anchor="middle">INA240</text>
+        <line class="wire" x1="90" y1="60" x2="140" y2="68"/>
+        <line class="wire" x1="120" y1="60" x2="140" y2="90"/>
+        <line class="wire" x1="210" y1="78" x2="270" y2="78"/>
+        <text x="240" y="74" class="lbl-net">V_out</text>
+        <text x="105" y="50" class="lbl-dim">5–50mΩ</text>
+      </svg></div>
+      <p class="use">Motor current, battery monitor, OCP — convert I to a usable voltage with low loss.</p>
+      <dl class="meta">
+        <dt>Formula</dt><dd class="formula">V_shunt = I · R_s ;  V_out = V_shunt · G</dd>
+        <dt>Values</dt><dd>Aim V_shunt(max) ≈ 50–100 mV; INA240 (high-side) or INA181 (50/100/200 V/V)</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Kelvin-sense the shunt — share only the sense traces, not the load current path.</dd>
+      </dl>
+    </article>
+
+    <!-- 19. Inverting summing amp -->
+    <article class="recipe" data-cat="analog">
+      <div class="recipe-head"><h3>Inverting summing amp</h3><span class="tag">Analog</span></div>
+      <div class="schem"><svg viewBox="0 0 280 130">
+        <text x="14" y="32" class="lbl-net">V1</text>
+        <line class="wire" x1="14" y1="40" x2="60" y2="40"/>
+        <rect class="comp-fill" x="60" y="32" width="22" height="16"/>
+        <line class="wire" x1="82" y1="40" x2="100" y2="40"/>
+        <text x="14" y="62" class="lbl-net">V2</text>
+        <line class="wire" x1="14" y1="70" x2="60" y2="70"/>
+        <rect class="comp-fill" x="60" y="62" width="22" height="16"/>
+        <line class="wire" x1="82" y1="70" x2="100" y2="70"/>
+        <line class="wire" x1="100" y1="40" x2="100" y2="70"/>
+        <line class="wire" x1="100" y1="55" x2="130" y2="55"/>
+        <polygon class="comp-fill" points="130,30 130,80 190,55"/>
+        <text x="145" y="50" class="lbl-dim">−</text>
+        <text x="145" y="72" class="lbl-dim">+</text>
+        <line class="wire" x1="130" y1="75" x2="115" y2="75"/>
+        <line class="wire" x1="115" y1="75" x2="115" y2="95"/>
+        <line class="wire" x1="115" y1="95" x2="240" y2="95"/>
+        <text x="14" y="108" class="lbl-gnd">GND</text>
+        <!-- feedback -->
+        <line class="wire" x1="160" y1="55" x2="160" y2="20"/>
+        <rect class="comp-fill" x="150" y="18" width="20" height="14"/>
+        <line class="wire" x1="160" y1="18" x2="160" y2="10"/>
+        <line class="wire" x1="160" y1="10" x2="210" y2="10"/>
+        <line class="wire" x1="210" y1="10" x2="210" y2="55"/>
+        <line class="wire" x1="190" y1="55" x2="240" y2="55"/>
+        <text x="244" y="58" class="lbl-net">V_o</text>
+      </svg></div>
+      <p class="use">Mix two signals with independent gain; build a single-supply offset.</p>
+      <dl class="meta">
+        <dt>Formula</dt><dd class="formula">V_o = −R_f · (V1/R1 + V2/R2)</dd>
+        <dt>Values</dt><dd>R_f sets max gain; equal Rs sum equally; bias V+ to mid-rail on single-supply</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Single-supply opamp clamps at 0 V — the inverter literally cannot make a negative output. Use mid-rail virtual GND.</dd>
+      </dl>
+    </article>
+
+    <!-- 20. I2C pull-ups -->
+    <article class="recipe" data-cat="comms">
+      <div class="recipe-head"><h3>I²C pull-ups + bus cap budget</h3><span class="tag">Comms</span></div>
+      <div class="schem"><svg viewBox="0 0 280 130">
+        <text x="14" y="20" class="lbl-net">3V3</text>
+        <line class="wire" x1="14" y1="30" x2="240" y2="30"/>
+        <rect class="comp-fill" x="80" y="40" width="20" height="24"/>
+        <text x="106" y="56" class="lbl-dim">4.7k</text>
+        <rect class="comp-fill" x="160" y="40" width="20" height="24"/>
+        <text x="186" y="56" class="lbl-dim">4.7k</text>
+        <line class="wire" x1="90" y1="30" x2="90" y2="40"/>
+        <line class="wire" x1="170" y1="30" x2="170" y2="40"/>
+        <line class="wire" x1="90" y1="64" x2="90" y2="100"/>
+        <line class="wire" x1="170" y1="64" x2="170" y2="100"/>
+        <text x="40" y="105" class="lbl-net">SDA</text>
+        <text x="200" y="105" class="lbl-net">SCL</text>
+        <line class="wire" x1="60" y1="100" x2="240" y2="100"/>
+      </svg></div>
+      <p class="use">Every I²C bus. Open-drain needs pull-up to assert high.</p>
+      <dl class="meta">
+        <dt>Formula</dt><dd class="formula">R_min = (V_cc−0.4)/3mA ;  R_max ≈ 1µs/C_bus</dd>
+        <dt>Values</dt><dd>4.7 kΩ (3.3 V), 2.2 kΩ (5 V, fast); ≤400 pF total bus capacitance</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Two devices each with internal pull-ups effectively halve the resistance — bus may go too "stiff".</dd>
+      </dl>
+    </article>
+
+    <!-- 21. SPI level shifter -->
+    <article class="recipe" data-cat="comms">
+      <div class="recipe-head"><h3>SPI level shifter (3V3 ↔ 5V)</h3><span class="tag">Comms</span></div>
+      <div class="schem"><svg viewBox="0 0 280 140">
+        <text x="14" y="20" class="lbl-net">3V3</text>
+        <text x="244" y="20" class="lbl-net" text-anchor="end">5V</text>
+        <line class="wire" x1="14" y1="30" x2="80" y2="30"/>
+        <line class="wire" x1="200" y1="30" x2="270" y2="30"/>
+        <rect class="comp-fill" x="60" y="40" width="20" height="20"/>
+        <text x="38" y="55" class="lbl-dim">10k</text>
+        <rect class="comp-fill" x="200" y="40" width="20" height="20"/>
+        <text x="225" y="55" class="lbl-dim">10k</text>
+        <line class="wire" x1="70" y1="30" x2="70" y2="40"/>
+        <line class="wire" x1="210" y1="30" x2="210" y2="40"/>
+        <line class="wire" x1="70" y1="60" x2="70" y2="80"/>
+        <line class="wire" x1="210" y1="60" x2="210" y2="80"/>
+        <line class="wire" x1="70" y1="80" x2="120" y2="80"/>
+        <line class="wire" x1="160" y1="80" x2="210" y2="80"/>
+        <!-- NMOS -->
+        <rect class="comp-fill" x="120" y="70" width="40" height="20" rx="2"/>
+        <text x="140" y="84" class="lbl" text-anchor="middle">2N7000</text>
+        <line class="pin" x1="140" y1="90" x2="140" y2="110"/>
+        <text x="146" y="106" class="lbl-dim">G→3V3</text>
+        <text x="14" y="56" class="lbl">MCU</text>
+        <text x="244" y="56" class="lbl" text-anchor="end">PERIPH</text>
+      </svg></div>
+      <p class="use">3V3 MCU talking to a 5V level chip (older sensors, SD-card adapter, display).</p>
+      <dl class="meta">
+        <dt>Topology</dt><dd class="formula">N-MOSFET bidirectional shifter (BSS138/2N7000)</dd>
+        <dt>Values</dt><dd>10 kΩ pull-ups; one FET per line; or use TXB0108/74LVC chip</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Pull-ups limit SPI speed — for &gt; 5 MHz, use a dedicated buffer not passive shifter.</dd>
+      </dl>
+    </article>
+
+    <!-- 22. RS-485 termination -->
+    <article class="recipe" data-cat="comms">
+      <div class="recipe-head"><h3>RS-485 termination (120 Ω each end)</h3><span class="tag">Comms</span></div>
+      <div class="schem"><svg viewBox="0 0 280 130">
+        <text x="14" y="20" class="lbl-net">A</text>
+        <line class="wire" x1="14" y1="30" x2="270" y2="30"/>
+        <text x="244" y="20" class="lbl-net" text-anchor="end">A</text>
+        <text x="14" y="70" class="lbl-net">B</text>
+        <line class="wire" x1="14" y1="80" x2="270" y2="80"/>
+        <text x="244" y="70" class="lbl-net" text-anchor="end">B</text>
+        <!-- term left -->
+        <rect class="comp-fill" x="30" y="30" width="14" height="50"/>
+        <text x="30" y="105" class="lbl-dim">120Ω</text>
+        <line class="wire" x1="37" y1="30" x2="37" y2="40"/>
+        <line class="wire" x1="37" y1="70" x2="37" y2="80"/>
+        <!-- term right -->
+        <rect class="comp-fill" x="240" y="30" width="14" height="50"/>
+        <text x="232" y="105" class="lbl-dim">120Ω</text>
+        <text x="100" y="105" class="lbl-dim">drop nodes in middle, no R</text>
+      </svg></div>
+      <p class="use">Multidrop RS-485, CAN, anything on a long differential pair (&gt; 1 m).</p>
+      <dl class="meta">
+        <dt>Rule</dt><dd class="formula">R_term = Z_0 of cable (≈ 120 Ω for twisted pair)</dd>
+        <dt>Values</dt><dd>120 Ω at each physical end of the bus (only); add 680Ω bias to A high/B low</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Two terminators in the middle (or none) — reflections, retries, comms storm. Verify with multimeter (60 Ω).</dd>
+      </dl>
+    </article>
+
+    <!-- 23. UART isolation -->
+    <article class="recipe" data-cat="comms">
+      <div class="recipe-head"><h3>UART galvanic isolation</h3><span class="tag">Comms</span></div>
+      <div class="schem"><svg viewBox="0 0 280 140">
+        <text x="20" y="20" class="lbl-net">TX_mcu</text>
+        <line class="wire" x1="20" y1="30" x2="100" y2="30"/>
+        <text x="14" y="70" class="lbl-net">RX_mcu</text>
+        <line class="wire" x1="20" y1="80" x2="100" y2="80"/>
+        <rect class="comp-fill" x="100" y="10" width="80" height="100" rx="3"/>
+        <text x="140" y="58" class="lbl" text-anchor="middle">ADuM1201</text>
+        <text x="140" y="74" class="lbl-dim" text-anchor="middle">digital iso</text>
+        <line class="wire" x1="180" y1="30" x2="260" y2="30"/>
+        <line class="wire" x1="180" y1="80" x2="260" y2="80"/>
+        <text x="244" y="20" class="lbl-net" text-anchor="end">TX_iso</text>
+        <text x="244" y="70" class="lbl-net" text-anchor="end">RX_iso</text>
+        <line x1="140" y1="10" x2="140" y2="110" stroke="#8f99a8" stroke-dasharray="2 3"/>
+        <text x="100" y="128" class="lbl-dim">GND_A</text>
+        <text x="244" y="128" class="lbl-dim" text-anchor="end">GND_B</text>
+      </svg></div>
+      <p class="use">Talking to a noisy motor controller, mains-side MCU, or RS-232/485 PHY on a separate supply.</p>
+      <dl class="meta">
+        <dt>Rule</dt><dd class="formula">Each side gets its own GND + decoupling cap</dd>
+        <dt>Values</dt><dd>ADuM1201 (2-ch), Si8642 (4-ch); isolation 2.5–5 kV; 1–25 Mbps</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Forgetting to isolate power too — only the signal is isolated. Add an isolated DC-DC if the secondary side needs power.</dd>
+      </dl>
+    </article>
+
+    <!-- 24. CAN bus terminator -->
+    <article class="recipe" data-cat="comms">
+      <div class="recipe-head"><h3>CAN bus terminator (split 60Ω)</h3><span class="tag">Comms</span></div>
+      <div class="schem"><svg viewBox="0 0 280 130">
+        <text x="14" y="20" class="lbl-net">CAN_H</text>
+        <line class="wire" x1="14" y1="30" x2="270" y2="30"/>
+        <text x="14" y="80" class="lbl-net">CAN_L</text>
+        <line class="wire" x1="14" y1="80" x2="270" y2="80"/>
+        <!-- split term -->
+        <rect class="comp-fill" x="120" y="30" width="14" height="20"/>
+        <text x="140" y="44" class="lbl-dim">60Ω</text>
+        <line class="wire" x1="127" y1="50" x2="127" y2="60"/>
+        <line class="wire" x1="127" y1="60" x2="160" y2="60"/>
+        <line class="wire" x1="160" y1="60" x2="160" y2="50"/>
+        <rect class="comp-fill" x="153" y="30" width="14" height="20"/>
+        <text x="170" y="44" class="lbl-dim">60Ω</text>
+        <!-- cap to GND -->
+        <line class="wire" x1="143" y1="60" x2="143" y2="90"/>
+        <line class="wire" x1="135" y1="90" x2="151" y2="90"/>
+        <line class="wire" x1="135" y1="96" x2="151" y2="96"/>
+        <line class="wire" x1="143" y1="96" x2="143" y2="115"/>
+        <text x="160" y="96" class="lbl-dim">4.7nF</text>
+        <text x="14" y="128" class="lbl-gnd">GND</text>
+      </svg></div>
+      <p class="use">CAN/CAN-FD network endpoints — improves EMC vs single 120 Ω.</p>
+      <dl class="meta">
+        <dt>Rule</dt><dd class="formula">2× 60 Ω in series at each end ;  cap to GND for CM filter</dd>
+        <dt>Values</dt><dd>60.4 Ω 1% E96, 4.7 nF C0G; terminate exactly two nodes (ends of trunk)</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Splitting is for EMC; if you stub-drop &gt; 30 cm to a node, you'll still see reflections.</dd>
+      </dl>
+    </article>
+
+    <!-- 25. millis() scheduler -->
+    <article class="recipe" data-cat="firmware">
+      <div class="recipe-head"><h3>millis() cooperative scheduler</h3><span class="tag">Firmware</span></div>
+      <div class="schem code"><pre><span class="com">// Non-blocking periodic tasks</span>
+<span class="kw">struct</span> Task { <span class="kw">uint32_t</span> last, period; <span class="kw">void</span>(*fn)(); };
+Task tasks[] = {
+  {0, <span class="num">10</span>,  read_sensors},
+  {0, <span class="num">20</span>,  run_pid},
+  {0, <span class="num">100</span>, update_display},
+  {0, <span class="num">1000</span>,heartbeat},
+};
+<span class="kw">void</span> <span class="fn">loop</span>() {
+  <span class="kw">uint32_t</span> now = millis();
+  <span class="kw">for</span> (<span class="kw">auto</span>& t : tasks) {
+    <span class="kw">if</span> (now - t.last &gt;= t.period) {
+      t.last = now;
+      t.fn();
+    }
+  }
+}</pre></div>
+      <p class="use">Arduino/Pico sketches with multiple periodic jobs — replace delay() once and for all.</p>
+      <dl class="meta">
+        <dt>Trick</dt><dd class="formula">use unsigned subtraction → rollover-safe at 49 days</dd>
+        <dt>Values</dt><dd>periods at logical rates; keep each fn() &lt; shortest period</dd>
+        <dt>Gotcha</dt><dd class="gotcha">A long task delays everything after it — fast tasks first, or split work.</dd>
+      </dl>
+    </article>
+
+    <!-- 26. Ring buffer UART -->
+    <article class="recipe" data-cat="firmware">
+      <div class="recipe-head"><h3>Ring buffer UART RX</h3><span class="tag">Firmware</span></div>
+      <div class="schem code"><pre><span class="kw">#define</span> N <span class="num">128</span>     <span class="com">// power-of-2</span>
+<span class="kw">static volatile uint8_t</span> buf[N];
+<span class="kw">static volatile uint8_t</span> head=<span class="num">0</span>, tail=<span class="num">0</span>;
+
+<span class="com">// ISR — keep tiny</span>
+<span class="kw">void</span> <span class="fn">UART_IRQHandler</span>() {
+  buf[head] = UART-&gt;RXDR;
+  head = (head + <span class="num">1</span>) &amp; (N-<span class="num">1</span>);
+  <span class="com">// dropped if head catches tail; bump stat</span>
+}
+<span class="com">// foreground</span>
+<span class="kw">int</span> <span class="fn">read_byte</span>() {
+  <span class="kw">if</span> (head == tail) <span class="kw">return</span> -<span class="num">1</span>;
+  <span class="kw">uint8_t</span> b = buf[tail];
+  tail = (tail + <span class="num">1</span>) &amp; (N-<span class="num">1</span>);
+  <span class="kw">return</span> b;
+}</pre></div>
+      <p class="use">Streaming bytes from UART, USB CDC, BLE — anywhere you can't poll fast enough.</p>
+      <dl class="meta">
+        <dt>Rule</dt><dd class="formula">Power-of-two size → mask instead of modulo</dd>
+        <dt>Values</dt><dd>64–256 bytes typical; mark volatile; consider lock-free SPSC pattern</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Reading head twice in foreground can race with ISR — snapshot to local var.</dd>
+      </dl>
+    </article>
+
+    <!-- 27. ISR-defers-to-task -->
+    <article class="recipe" data-cat="firmware">
+      <div class="recipe-head"><h3>ISR defers to task</h3><span class="tag">Firmware</span></div>
+      <div class="schem code"><pre><span class="kw">volatile bool</span> sensor_ready = <span class="kw">false</span>;
+
+<span class="com">// ISR: just signal — no I²C, no printf, no float</span>
+<span class="kw">void</span> <span class="fn">EXTI_IRQHandler</span>() {
+  sensor_ready = <span class="kw">true</span>;
+  EXTI-&gt;PR = bit;     <span class="com">// clear flag</span>
+}
+
+<span class="kw">void</span> <span class="fn">loop</span>() {
+  <span class="kw">if</span> (sensor_ready) {
+    sensor_ready = <span class="kw">false</span>;
+    read_imu();        <span class="com">// long I²C burst lives here</span>
+    process_data();
+  }
+}</pre></div>
+      <p class="use">Sensor data-ready pin, timer tick, button — anywhere you'd be tempted to do work in the ISR.</p>
+      <dl class="meta">
+        <dt>Rule</dt><dd class="formula">ISR does the minimum: set flag, ack, return</dd>
+        <dt>Values</dt><dd>flag = volatile bool ;  for RTOS use semaphore/queue</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Long ISR blocks other interrupts — UART overrun, CAN bus-off, lost edges.</dd>
+      </dl>
+    </article>
+
+    <!-- 28. PID step Euler -->
+    <article class="recipe" data-cat="firmware">
+      <div class="recipe-head"><h3>PID step (Euler, anti-windup)</h3><span class="tag">Firmware</span></div>
+      <div class="schem code"><pre><span class="kw">float</span> integ = <span class="num">0</span>, y_prev = <span class="num">0</span>;
+
+<span class="kw">float</span> <span class="fn">pid_step</span>(<span class="kw">float</span> r, <span class="kw">float</span> y, <span class="kw">float</span> dt) {
+  <span class="kw">float</span> e = r - y;
+  <span class="kw">float</span> P = Kp * e;
+  <span class="kw">float</span> D = -Kd * (y - y_prev) / dt; <span class="com">// D on measurement</span>
+  integ += Ki * e * dt;
+  <span class="kw">float</span> u = P + integ + D;
+  <span class="kw">if</span> (u &gt; U_MAX) { u = U_MAX; integ -= Ki*e*dt; }
+  <span class="kw">if</span> (u &lt; U_MIN) { u = U_MIN; integ -= Ki*e*dt; }
+  y_prev = y;
+  <span class="kw">return</span> u;
+}</pre></div>
+      <p class="use">Closed-loop motor speed, temperature, position — the workhorse loop.</p>
+      <dl class="meta">
+        <dt>Formula</dt><dd class="formula">u = Kp·e + Ki·∫e·dt − Kd·dy/dt</dd>
+        <dt>Values</dt><dd>dt = loop period in seconds; sample ≥ 10× plant bandwidth</dd>
+        <dt>Gotcha</dt><dd class="gotcha">D-on-error spikes at setpoint step. Use D-on-measurement (above) by default.</dd>
+      </dl>
+    </article>
+
+    <!-- 29. Table-driven FSM -->
+    <article class="recipe" data-cat="firmware">
+      <div class="recipe-head"><h3>Table-driven FSM</h3><span class="tag">Firmware</span></div>
+      <div class="schem code"><pre><span class="kw">enum</span> State { IDLE, ARMED, RUN, FAULT };
+<span class="kw">enum</span> Event { BTN, TICK, ERR };
+
+<span class="kw">struct</span> Trans { State s; Event e; State next; <span class="kw">void</span>(*act)(); };
+<span class="kw">static const</span> Trans T[] = {
+  { IDLE,  BTN,  ARMED, arm     },
+  { ARMED, TICK, RUN,   spin_up },
+  { RUN,   BTN,  IDLE,  stop    },
+  { RUN,   ERR,  FAULT, fail    },
+};
+
+State s = IDLE;
+<span class="kw">void</span> <span class="fn">dispatch</span>(Event ev) {
+  <span class="kw">for</span> (<span class="kw">auto</span>& t : T)
+    <span class="kw">if</span> (t.s == s &amp;&amp; t.e == ev) {
+      t.act(); s = t.next; <span class="kw">return</span>;
+    }
+}</pre></div>
+      <p class="use">UI flows, motor commissioning sequence, anywhere "if (state == X)" trees are growing.</p>
+      <dl class="meta">
+        <dt>Why</dt><dd class="formula">data table → reviewable, testable, extensible</dd>
+        <dt>Values</dt><dd>add ENTRY/EXIT actions per state for hierarchical FSM</dd>
+        <dt>Gotcha</dt><dd class="gotcha">Forgotten event in a state → silent no-op. Add a default "log unhandled" rule.</dd>
+      </dl>
+    </article>
+
+  </section>
+
+  <footer>
+    Back: <a target="_top" href="../index.html">visuals index</a> · <a target="_top" href="../index.html">study/CONTEXT.md</a> ·
+    Companion extras: <a target="_top" href="constants-units.html">constants &amp; units</a> · <a target="_top" href="study-path.html">study path</a>
+  </footer>
+</main>
+<script>
+  const buttons = document.querySelectorAll('.filter');
+  const recipes = document.querySelectorAll('.recipe');
+  const countEl = document.getElementById('count');
+  function applyFilter(cat){
+    let n = 0;
+    recipes.forEach(r => {
+      const show = (cat === 'all' || r.dataset.cat === cat);
+      r.classList.toggle('hidden', !show);
+      if(show) n++;
+    });
+    countEl.textContent = n + ' recipe' + (n===1?'':'s');
+  }
+  buttons.forEach(b => b.addEventListener('click', () => {
+    buttons.forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    applyFilter(b.dataset.cat);
+  }));
+  applyFilter('all');
+</script>
+</body>
+</html>

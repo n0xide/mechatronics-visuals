@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Priority Inversion — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:10px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px;margin:12px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px}
+  .stat .lbl{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 16px ui-monospace,monospace;color:var(--accent);margin-top:4px}
+  .stat .val.bad{color:var(--warn)}
+  .stat .val.good{color:var(--accent3)}
+  .callout{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:14px 0;border-radius:4px}
+  .callout h4{margin:0 0 6px;color:var(--accent2);font:600 13px ui-monospace,monospace}
+  .callout p{margin:4px 0;font-size:13px;color:var(--fg-dim)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Priority Inversion — and inheritance fixes it</h1>
+  <p class="lede">High-priority task is blocked by a low-priority task holding a mutex. A medium-priority task, oblivious, runs and runs — for as long as it wants. This crashed the Mars Pathfinder. Twice.</p>
+
+  <p>Classic <b>priority inversion</b>: <b>HIGH</b> needs a resource (e.g., shared buffer). <b>LOW</b> is currently holding the mutex for that resource. <b>HIGH</b> blocks. While <b>LOW</b> is running to release the mutex, <b>MED</b> becomes ready and (correctly, by policy) preempts <b>LOW</b>. <b>MED</b> doesn't touch the mutex, so it runs to completion. Meanwhile <b>HIGH</b> sits blocked indirectly behind <b>MED</b> — its priority effectively dropped to LOW's. This bit Mars Pathfinder (1997): the bus-management thread (high) was blocked waiting for the meteorological-data thread (low) to release a pipe; a communications thread (medium) kept preempting the low-priority task; watchdog timed out; system reset. NASA fixed it in flight by enabling <b>priority inheritance</b> on the mutex: when HIGH blocks on a mutex owned by LOW, the scheduler temporarily boosts LOW to HIGH's priority so MED can't preempt it. LOW finishes its critical section quickly, releases the mutex, and drops back to its own priority. HIGH unblocks. The total delay is bounded by LOW's critical-section length, not "however long every MED task feels like running."</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Mutex protocol</label>
+      <select id="proto">
+        <option value="none" selected>None (broken — shows inversion)</option>
+        <option value="inherit">Priority inheritance</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>LOW crit-section length (ms): <span class="readout" id="csRead">3</span></label>
+      <input id="cs" type="range" min="1" max="15" step="1" value="3">
+    </div>
+    <div class="control">
+      <label>MED total work (ms): <span class="readout" id="medRead">10</span></label>
+      <input id="med" type="range" min="0" max="30" step="1" value="10">
+    </div>
+    <div class="control">
+      <label>HIGH deadline (ms after release): <span class="readout" id="ddRead">5</span></label>
+      <input id="dd" type="range" min="1" max="20" step="1" value="5">
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Timeline — three tasks, one mutex</h3>
+    <svg id="diag" viewBox="0 0 920 300"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--warn)"></span>HIGH (needs mutex)</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>MED (no mutex)</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>LOW (holds mutex)</span>
+      <span><span class="swatch" style="background:#7a3a3a"></span>LOW boosted to HIGH</span>
+      <span style="color:var(--warn)">▼ HIGH released</span>
+      <span style="color:var(--fg-bright)">⚑ HIGH deadline</span>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>HIGH's response time</h3>
+    <div class="stat-grid">
+      <div class="stat"><div class="lbl">HIGH release time</div><div class="val" id="hRel">—</div></div>
+      <div class="stat"><div class="lbl">HIGH starts running</div><div class="val" id="hStart">—</div></div>
+      <div class="stat"><div class="lbl">HIGH blocked for</div><div class="val bad" id="hBlock">—</div></div>
+      <div class="stat"><div class="lbl">Deadline</div><div class="val" id="hDd">—</div></div>
+      <div class="stat"><div class="lbl">Met deadline?</div><div class="val" id="hMet">—</div></div>
+    </div>
+  </div>
+
+  <div class="callout">
+    <h4>Mars Pathfinder, 1997</h4>
+    <p>The bus-management thread (high) needed an IPC pipe owned briefly by a meteorological-data thread (low). A communications thread (medium) kept preempting LOW. HIGH never got the pipe. Watchdog timed out. System reset. Cycle.</p>
+    <p>Fix: VxWorks had priority inheritance available but disabled by default on that mutex. Flight engineers patched the parameter remotely. Behavior went from "resets every few days" to "no resets in the rest of the mission."</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Switch protocol to "None"</b> — HIGH blocks the moment it requests the mutex. MED then runs to completion <i>while HIGH is supposed to be highest priority</i>. HIGH's effective priority dropped to LOW's, and LOW is itself blocked by MED. That's the "inversion."</li>
+    <li><b>Switch to "Priority inheritance"</b> — the moment HIGH blocks on the mutex, scheduler boosts LOW to HIGH's priority (shown in dark red). MED can no longer preempt LOW. LOW finishes its critical section, gives the mutex, drops back, HIGH unblocks.</li>
+    <li><b>The bound matters</b> — with inheritance, HIGH's worst-case block time = length of LOW's critical section. Without, it's unbounded (= sum of all MED-priority work). Bounded latency is the whole point of RT.</li>
+    <li><b>It's MED that ruins everything</b> — inversion happens because MED can preempt LOW. If only HIGH and LOW exist (no MED), the chain is bounded by the critical section regardless of inheritance.</li>
+    <li><b>Inheritance is a mutex-only feature</b> — binary semaphores do not implement it; they have no notion of "owner." If you protect a resource with a binary sem, you've built a Pathfinder. Use mutexes.</li>
+    <li><b>Keep critical sections tiny</b> — even with inheritance, HIGH is blocked for the entire critical section. <code>xSemaphoreTake → update_one_field → xSemaphoreGive</code>, not "take mutex, parse JSON, write to flash, give mutex."</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>BLOCKING BOUNDS</h3>
+      <dl>
+        <dt>No protocol</dt>
+        <dd><span class="eq">B_high = ∞ (unbounded)</span>
+          <span class="eq-note">limited only by how long MED-priority work runs</span></dd>
+        <dt>Priority inheritance</dt>
+        <dd><span class="eq">B_high ≤ Σ longest crit-sec of each lower-priority task</span></dd>
+        <dt>Priority ceiling</dt>
+        <dd><span class="eq">B_high ≤ 1 critical section</span>
+          <span class="eq-note">stronger guarantee, prevents deadlock too</span></dd>
+        <dt>Response time</dt>
+        <dd><span class="eq">R = C + B + Σ (R/T_j)·C_j</span>
+          <span class="eq-note">over all higher-priority tasks j</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>PROTOCOLS</h3>
+      <ul>
+        <li><b>Priority inheritance (PI)</b> — boost holder to blocker's priority on contention. FreeRTOS mutexes do this. Default for Linux RT, VxWorks.</li>
+        <li><b>Priority ceiling (PCP/ICPP)</b> — boost holder to max priority of any task that could request the mutex, the moment it's taken. Prevents chained blocking and deadlock.</li>
+        <li><b>No protocol (sema/flag)</b> — vulnerable to unbounded inversion. Use only for signaling, never resource protection.</li>
+        <li><b>Lock-free / atomics</b> — no mutex, no inversion. Limited to operations the CPU supports atomically (compare-and-swap).</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>BUG SIGNATURES</h3>
+      <ul>
+        <li><b>"Sometimes the control loop just freezes for a few hundred ms"</b> — classic unbounded inversion. Check what shares mutexes with the loop.</li>
+        <li><b>Binary semaphore "protecting" a data structure</b> — find it, replace with mutex.</li>
+        <li><b>Long critical section</b> — printf, malloc, file I/O while holding mutex.</li>
+        <li><b>Nested mutex with inconsistent order</b> — A→B in one task, B→A in another. Deadlock. Use priority ceiling or one-mutex-only policy.</li>
+        <li><b>configUSE_MUTEXES = 0</b> — you have semaphores not mutexes. Inheritance not active.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 5 — Real-Time Firmware</a> ·
+    Topic: Priority inversion and priority inheritance
+  </footer>
+</main>
+<script>
+  const protoEl=document.getElementById('proto');
+  const csEl=document.getElementById('cs');
+  const medEl=document.getElementById('med');
+  const ddEl=document.getElementById('dd');
+
+  function update(){
+    const proto = protoEl.value;
+    const Lcs   = parseFloat(csEl.value);    // LOW critical section
+    const Mwork = parseFloat(medEl.value);   // MED total work
+    const Dd    = parseFloat(ddEl.value);
+    document.getElementById('csRead').textContent = Lcs;
+    document.getElementById('medRead').textContent = Mwork;
+    document.getElementById('ddRead').textContent = Dd;
+
+    // Timeline events
+    // t=0   LOW becomes ready, takes mutex, starts critical section
+    // t=2   MED becomes ready (lower than HIGH; higher than LOW unless boost)
+    // t=4   HIGH becomes ready, tries to take mutex → blocks (mutex held by LOW)
+    // simulate
+    const lowReady=0, lowMutexAt=0;
+    const medReady=2;
+    const highReady=4;
+    const WINDOW=40;
+    const STEP=0.05;
+
+    // state machine over time
+    let t=0;
+    const segs=[]; let cur=null, segStart=0;
+    let lowCritDone=0; let lowReleasedAt=null;
+    let lowPrio=1; // 1=low, 4=boosted to HIGH
+    let highBlocked=false; let highStartedAt=null;
+    let medRem = Mwork; let lowCsRem=Lcs;
+    function flush(now){
+      if(cur){ segs.push({type:cur, t0:segStart, t1:now}); cur=null; }
+    }
+    while(t<WINDOW){
+      // event: HIGH becomes ready and requests mutex
+      if(t>=highReady && !highBlocked && highStartedAt===null && lowCsRem>0){
+        highBlocked=true;
+        if(proto==='inherit') lowPrio=4;
+      }
+      // determine priorities now
+      // HIGH = 5 (when running), MED=3, LOW base=1, LOW boost=4
+      let highReadyNow = t>=highReady && !highBlocked;
+      let medReadyNow = t>=medReady && medRem>0;
+      let lowReadyNow = lowCsRem>0;
+      const lowEffPrio = lowPrio;
+      // pick highest
+      let pick = null;
+      let candidates = [];
+      if(highReadyNow) candidates.push({n:'H',p:5});
+      if(medReadyNow) candidates.push({n:'M',p:3});
+      if(lowReadyNow) candidates.push({n:'L',p:lowEffPrio});
+      if(candidates.length===0){
+        // idle — but normally HIGH has already started/done; just advance
+        flush(t);
+        t += STEP;
+        continue;
+      }
+      candidates.sort((a,b)=>b.p-a.p);
+      pick = candidates[0].n;
+      if(pick !== cur){
+        flush(t);
+        cur = pick;
+        segStart = t;
+      }
+      // figure out duration: until next event
+      // events: highReady, medReady; also state transitions
+      const events = [];
+      if(t<highReady) events.push(highReady);
+      if(t<medReady) events.push(medReady);
+      const next = Math.min(t+STEP, ...events.filter(e=>e>t), WINDOW);
+      const dur = next-t;
+      if(cur==='L'){
+        lowCsRem -= dur;
+        if(lowCsRem<=0){
+          lowCsRem=0;
+          // release mutex
+          lowReleasedAt = t+dur;
+          // drop priority
+          lowPrio=1;
+          if(highBlocked){
+            highBlocked=false;
+            // HIGH will be picked next iteration
+          }
+        }
+      } else if(cur==='M'){
+        medRem -= dur;
+        if(medRem<0) medRem=0;
+      } else if(cur==='H'){
+        if(highStartedAt===null) highStartedAt = t;
+        // assume HIGH runs to completion (1 ms work + mutex hold)
+        // we'll terminate once HIGH has 1ms
+        // track via segment
+      }
+      t = next;
+      if(cur==='H' && highStartedAt!==null && (t - highStartedAt) >= 1.5){
+        flush(t);
+        break;
+      }
+    }
+    flush(t);
+    if(highStartedAt===null) highStartedAt = WINDOW;
+
+    // render SVG
+    const svg = document.getElementById('diag');
+    const W=920;
+    const xL=80, xR=900, xRange=xR-xL;
+    const x = ms => xL + (ms/WINDOW)*xRange;
+    let html='';
+    html += `<text x="${W/2}" y="20" text-anchor="middle" fill="#fff" font-family="ui-monospace,monospace" font-size="13" font-weight="bold">Mutex protocol: ${proto==='inherit'?'PRIORITY INHERITANCE':'NONE (broken)'}</text>`;
+    for(let ms=0; ms<=WINDOW; ms+=5){
+      const xc=x(ms);
+      html += `<line x1="${xc}" y1="40" x2="${xc}" y2="240" stroke="#222831"/>`;
+      html += `<text x="${xc}" y="258" text-anchor="middle" class="axis-label">${ms}</text>`;
+    }
+    html += `<text x="${W/2}" y="276" text-anchor="middle" class="axis-label">time (ms)</text>`;
+
+    const rows=[
+      {label:'HIGH',y:50,base:'#ff7b72'},
+      {label:'MED', y:115,base:'#ffb86c'},
+      {label:'LOW', y:180,base:'#a3e635'},
+    ];
+    rows.forEach(r=>{
+      html += `<text x="10" y="${r.y+25}" fill="${r.base}" font-family="ui-monospace,monospace" font-size="12" font-weight="bold">${r.label}</text>`;
+      html += `<rect x="${xL}" y="${r.y}" width="${xRange}" height="40" fill="#0e1116" stroke="#2a313c"/>`;
+    });
+
+    const yOf = {'H':50,'M':115,'L':180};
+    // detect LOW segments where it was boosted (proto=inherit and t>=highReady and t<lowReleasedAt)
+    const colOf = {'H':'#ff7b72','M':'#ffb86c'};
+    segs.forEach(s=>{
+      if(s.t0>=WINDOW) return;
+      const t1c = Math.min(s.t1, WINDOW);
+      const xc0=x(s.t0), xc1=x(t1c);
+      const w = Math.max(xc1-xc0,1);
+      const y = yOf[s.type]+2;
+      let col = colOf[s.type];
+      if(s.type==='L'){
+        const boostedDuringSeg = proto==='inherit' && s.t0>=highReady && lowReleasedAt && s.t1<=lowReleasedAt+0.001;
+        col = boostedDuringSeg ? '#7a3a3a' : '#a3e635';
+      }
+      html += `<rect x="${xc0}" y="${y}" width="${w}" height="36" fill="${col}" opacity="0.9"/>`;
+    });
+
+    // mark "HIGH ready" arrow
+    const xh = x(highReady);
+    html += `<polygon points="${xh-5},36 ${xh+5},36 ${xh},44" fill="#ff7b72"/>`;
+    html += `<text x="${xh}" y="32" text-anchor="middle" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="10" font-weight="bold">HIGH ready</text>`;
+
+    // mark MED ready arrow
+    const xm = x(medReady);
+    html += `<polygon points="${xm-5},101 ${xm+5},101 ${xm},109" fill="#ffb86c"/>`;
+    html += `<text x="${xm}" y="97" text-anchor="middle" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="10" font-weight="bold">MED ready</text>`;
+
+    // blocked region for HIGH
+    if(highStartedAt > highReady){
+      const xb0 = x(highReady), xb1 = x(highStartedAt);
+      html += `<rect x="${xb0}" y="52" width="${xb1-xb0}" height="36" fill="none" stroke="#ff7b72" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+      html += `<text x="${(xb0+xb1)/2}" y="74" text-anchor="middle" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="11" font-weight="bold">HIGH BLOCKED ${(highStartedAt-highReady).toFixed(1)} ms</text>`;
+    }
+
+    // deadline marker
+    const xDd = x(highReady + Dd);
+    html += `<line x1="${xDd}" y1="40" x2="${xDd}" y2="240" stroke="#fff" stroke-dasharray="3,3"/>`;
+    html += `<text x="${xDd}" y="36" text-anchor="middle" fill="#fff" font-family="ui-monospace,monospace" font-size="10" font-weight="bold">⚑ deadline</text>`;
+
+    svg.innerHTML = html;
+
+    // stats
+    const blockMs = highStartedAt - highReady;
+    const met = (highStartedAt - highReady) <= Dd;
+    document.getElementById('hRel').textContent = highReady.toFixed(1)+' ms';
+    document.getElementById('hStart').textContent = highStartedAt.toFixed(1)+' ms';
+    document.getElementById('hBlock').textContent = blockMs.toFixed(2)+' ms';
+    document.getElementById('hDd').textContent = (highReady+Dd).toFixed(1)+' ms';
+    const metEl = document.getElementById('hMet');
+    metEl.textContent = met ? 'YES' : 'NO (missed)';
+    metEl.className = 'val ' + (met?'good':'bad');
+  }
+  [protoEl,csEl,medEl,ddEl].forEach(el=>el.addEventListener('input',update));
+  update();
+</script>
+</body>
+</html>

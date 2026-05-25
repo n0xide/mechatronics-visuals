@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Distributed Loads — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .summary{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;
+    padding:10px 14px;margin:10px 0;font:13px ui-monospace,monospace;line-height:1.7}
+  .summary b{color:var(--fg-bright)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Distributed Loads — Equivalent Resultant</h1>
+  <p class="lede">A distributed load w(x) is mathematically just an integral of force per unit length.
+  For equilibrium purposes you can replace it with a single equivalent concentrated load: magnitude
+  equal to the area under w(x), located at the centroid of that area. Switch profiles and watch the
+  resultant magnitude and position update — along with the support reactions.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Load profile</label>
+      <select id="profile">
+        <option value="uniform" selected>Uniform (rectangle)</option>
+        <option value="triangular-right">Triangular (peak at right)</option>
+        <option value="triangular-left">Triangular (peak at left)</option>
+        <option value="trapezoidal">Trapezoidal</option>
+        <option value="point">Single point load</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>w_max (N/m)</label>
+      <input type="range" id="wmax" min="20" max="200" step="5" value="100">
+      <span class="readout" id="wmaxRO">100 N/m</span>
+    </div>
+    <div class="control">
+      <label>Span L (m)</label>
+      <input type="range" id="span" min="2" max="10" step="0.5" value="6">
+      <span class="readout" id="spanRO">6 m</span>
+    </div>
+    <div class="control">
+      <label>Profile start a / L</label>
+      <input type="range" id="startA" min="0" max="0.5" step="0.05" value="0">
+      <span class="readout" id="startARO">0.00</span>
+    </div>
+    <div class="control">
+      <label>Profile end b / L</label>
+      <input type="range" id="endB" min="0.5" max="1" step="0.05" value="1">
+      <span class="readout" id="endBRO">1.00</span>
+    </div>
+    <div class="control">
+      <label>w_min ratio (trapezoidal only)</label>
+      <input type="range" id="wminRatio" min="0" max="1" step="0.05" value="0.3">
+      <span class="readout" id="wminRatioRO">0.30</span>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="beam" viewBox="0 0 880 400" width="100%" height="400"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#ffb86c"></span>Distributed load w(x)</span>
+      <span><span class="swatch" style="background:#ff7b72"></span>Equivalent point load R</span>
+      <span><span class="swatch" style="background:#5ec8ff"></span>Support reactions</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Centroid location x̄</span>
+    </div>
+  </div>
+
+  <div class="summary" id="summary"></div>
+
+  <h2>Centroid formulas — by profile</h2>
+  <table>
+    <thead>
+      <tr><th>Profile</th><th>R (resultant)</th><th>x̄ (from left of profile)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Uniform w over length ℓ</td><td>w·ℓ</td><td>ℓ/2</td></tr>
+      <tr><td>Triangular, peak at right (w from 0 → w_max)</td><td>½·w_max·ℓ</td><td>2ℓ/3 (centroid is 2/3 toward peak)</td></tr>
+      <tr><td>Triangular, peak at left (w_max → 0)</td><td>½·w_max·ℓ</td><td>ℓ/3 (centroid is 1/3 from peak)</td></tr>
+      <tr><td>Trapezoidal (w_min → w_max)</td><td>½·(w_min + w_max)·ℓ</td><td>ℓ·(w_min + 2·w_max)/(3·(w_min + w_max))</td></tr>
+    </tbody>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>R = area under the load curve.</b> Doesn't matter how the load is distributed — for ΣF and ΣM you only need the area (total) and its centroid.</li>
+    <li><b>Triangular load: resultant at L/3 from the larger (peak) end.</b> If the triangle's peak is at the right end, the centroid is at 2L/3 from the left — i.e., L/3 from the right (the peak). This is the most-tested fact about distributed loads.</li>
+    <li><b>Trapezoidal = rectangle + triangle.</b> Split it, find the resultant of each piece, sum the two forces, and use weighted-average for the combined centroid. Or use the closed-form formula above.</li>
+    <li><b>The resultant only works for external equilibrium.</b> When you compute internal shear and bending moment <i>inside</i> the beam, you must use the actual distributed load, not the lumped resultant.</li>
+    <li><b>Support reactions follow from ΣF = 0 and ΣM = 0.</b> Sum moments about one support to eliminate that support's reaction from the equation — the other support's reaction falls out in one line.</li>
+    <li><b>Moving the resultant closer to a support shifts load onto that support.</b> A right-heavy triangular load puts more weight on the right reaction. Drag the start/end of the profile to see this happen live.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>RESULTANTS</h3>
+      <dl>
+        <dt>uniform</dt><dd><span class="eq">R = w · L</span><span class="eq-note">acts at L/2</span></dd>
+        <dt>triangular</dt><dd><span class="eq">R = ½ · w_max · L</span><span class="eq-note">at L/3 from the larger end</span></dd>
+        <dt>trapezoidal</dt><dd><span class="eq">split → rectangle + triangle</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>R = area</b> under the load curve w(x).</li>
+        <li><b>x̄</b> — resultant acts at the centroid of that area.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>internal stresses</b> — use the actual distributed load, NOT the lumped resultant.</li>
+        <li><b>equivalent point load</b> — valid only for external reactions, not for shear/moment diagrams inside the beam.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 3 — Statics</a> ·
+    Topic: Distributed loads and equivalent resultants
+  </footer>
+</main>
+<script>
+const svg = document.getElementById('beam');
+let profile = 'uniform';
+let wmax = 100;
+let span = 6;
+let startA = 0;
+let endB = 1;
+let wminRatio = 0.3;
+
+const X0 = 80, X1 = 800, Y_BEAM = 280;
+const beamPx = X1 - X0;
+
+function ns(tag, attrs={}, parent=svg){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(){ while(svg.firstChild) svg.removeChild(svg.firstChild); }
+function xPx(xFrac){ return X0 + xFrac * beamPx; }
+
+function drawArrow(x1,y1,x2,y2,color,width=2){
+  const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy);
+  if(len<0.1) return;
+  const ux=dx/len, uy=dy/len;
+  const bx = x2 - 8*ux, by = y2 - 8*uy;
+  const px = -uy, py = ux;
+  ns('line', {x1, y1, x2:bx, y2:by, stroke:color, 'stroke-width':width});
+  ns('polygon', {points:`${x2},${y2} ${bx+4.5*px},${by+4.5*py} ${bx-4.5*px},${by-4.5*py}`,
+    fill:color});
+}
+
+function drawPin(x){
+  ns('polygon',{points:`${x},${Y_BEAM+6} ${x-14},${Y_BEAM+26} ${x+14},${Y_BEAM+26}`,
+    fill:'none', stroke:'#dde3ec', 'stroke-width':1.5});
+  for(let i=-18;i<=18;i+=6){
+    ns('line',{x1:x+i, y1:Y_BEAM+26, x2:x+i-6, y2:Y_BEAM+34,
+      stroke:'#8f99a8', 'stroke-width':1});
+  }
+  ns('line',{x1:x-22, y1:Y_BEAM+26, x2:x+22, y2:Y_BEAM+26,
+    stroke:'#dde3ec', 'stroke-width':1.5});
+}
+function drawRoller(x){
+  ns('polygon',{points:`${x},${Y_BEAM+6} ${x-14},${Y_BEAM+22} ${x+14},${Y_BEAM+22}`,
+    fill:'none', stroke:'#dde3ec', 'stroke-width':1.5});
+  ns('circle',{cx:x-8, cy:Y_BEAM+27, r:4, fill:'none', stroke:'#dde3ec', 'stroke-width':1.2});
+  ns('circle',{cx:x+8, cy:Y_BEAM+27, r:4, fill:'none', stroke:'#dde3ec', 'stroke-width':1.2});
+  for(let i=-18;i<=18;i+=6){
+    ns('line',{x1:x+i, y1:Y_BEAM+32, x2:x+i-6, y2:Y_BEAM+40,
+      stroke:'#8f99a8', 'stroke-width':1});
+  }
+  ns('line',{x1:x-22, y1:Y_BEAM+32, x2:x+22, y2:Y_BEAM+32,
+    stroke:'#dde3ec', 'stroke-width':1.5});
+}
+
+// Returns w(x) where x ∈ [0,1] is fraction of beam
+function wFunc(xFrac){
+  if(xFrac < startA || xFrac > endB) return 0;
+  const t = (xFrac - startA) / (endB - startA);  // 0..1 within profile
+  if(profile === 'uniform') return wmax;
+  if(profile === 'triangular-right') return wmax * t;
+  if(profile === 'triangular-left')  return wmax * (1 - t);
+  if(profile === 'trapezoidal') {
+    const wmin = wmax * wminRatio;
+    return wmin + (wmax - wmin) * t;
+  }
+  if(profile === 'point') return 0; // handled separately
+  return 0;
+}
+
+// Compute resultant magnitude (N) and centroid (xFrac)
+function computeResultant(){
+  const L = span;  // meters
+  if(profile === 'point'){
+    const xMid = (startA + endB) / 2;
+    return {R: wmax, xbar: xMid, label:`P = ${wmax} N at ${(xMid * L).toFixed(2)} m`};
+  }
+  const profLen = (endB - startA) * L;  // meters within profile
+  let R, xbarLocal;  // xbarLocal: meters from start of profile
+  if(profile === 'uniform'){
+    R = wmax * profLen;
+    xbarLocal = profLen / 2;
+  } else if(profile === 'triangular-right'){
+    R = 0.5 * wmax * profLen;
+    xbarLocal = (2/3) * profLen;
+  } else if(profile === 'triangular-left'){
+    R = 0.5 * wmax * profLen;
+    xbarLocal = (1/3) * profLen;
+  } else if(profile === 'trapezoidal'){
+    const wmin = wmax * wminRatio;
+    R = 0.5 * (wmin + wmax) * profLen;
+    xbarLocal = profLen * (wmin + 2*wmax) / (3 * (wmin + wmax));
+  }
+  const xbar_m = startA * L + xbarLocal;
+  const xbar = xbar_m / L;
+  return {R, xbar, xbar_m, label:`R = ${R.toFixed(1)} N at x = ${xbar_m.toFixed(2)} m`};
+}
+
+function computeReactions(R, xbar_m){
+  // Beam pinned at left (x=0), roller at right (x=L). Span = L meters.
+  // ΣM_left = 0:  R_right * L - R * xbar = 0  →  R_right = R * xbar / L
+  // ΣF_y = 0:     R_left + R_right - R = 0   →  R_left = R - R_right
+  const Rr = R * xbar_m / span;
+  const Rl = R - Rr;
+  return {Rl, Rr};
+}
+
+function render(){
+  clear();
+  // Title
+  ns('text',{x:440, y:24, 'text-anchor':'middle', class:'label-dim'}).textContent='Simply-supported beam — distributed load + equivalent point load';
+
+  // Background grid (m markers)
+  for(let i=0; i<=10; i++){
+    const x = X0 + (i/span) * beamPx;
+    if(x > X1+5) break;
+    if(x < X0-5) continue;
+    ns('line',{x1:x, y1:Y_BEAM, x2:x, y2:Y_BEAM+50, stroke:'#222831', 'stroke-width':1, 'stroke-dasharray':'2 4'});
+    ns('text',{x, y:Y_BEAM+62, 'text-anchor':'middle', class:'label-dim'}).textContent=i.toString();
+  }
+  ns('text',{x:440, y:Y_BEAM+78, 'text-anchor':'middle', class:'label-dim'}).textContent='position x (m)';
+
+  // Beam
+  ns('rect',{x:X0, y:Y_BEAM-6, width:beamPx, height:12,
+    fill:'#1d232c', stroke:'#dde3ec', 'stroke-width':1.5});
+
+  // Supports
+  drawPin(X0);
+  drawRoller(X1);
+  ns('text',{x:X0, y:Y_BEAM+50, 'text-anchor':'middle', class:'label-dim'}).textContent='A (pin)';
+  ns('text',{x:X1, y:Y_BEAM+55, 'text-anchor':'middle', class:'label-dim'}).textContent='B (roller)';
+
+  // Distributed load profile
+  if(profile === 'point'){
+    const x = xPx((startA + endB)/2);
+    drawArrow(x, Y_BEAM-110, x, Y_BEAM-8, '#ffb86c', 2.5);
+    ns('text',{x:x-8, y:Y_BEAM-118, class:'label', fill:'#ffb86c'}).textContent=`P=${wmax} N`;
+  } else {
+    // Build polygon
+    const N = 60;
+    const top = [];
+    const x0 = xPx(startA);
+    const x1 = xPx(endB);
+    const wScale = 100 / Math.max(wmax, 1);  // px per (wmax/100)
+    const HMAX = 100;
+    for(let i=0; i<=N; i++){
+      const xFrac = startA + (i/N)*(endB - startA);
+      const w = wFunc(xFrac);
+      const xp = xPx(xFrac);
+      const h = (w / wmax) * HMAX;
+      top.push(`${xp},${Y_BEAM-6 - h}`);
+    }
+    const poly = `${x0},${Y_BEAM-6} ${top.join(' ')} ${x1},${Y_BEAM-6}`;
+    ns('polygon',{points:poly, fill:'#ffb86c', 'fill-opacity':0.22, stroke:'#ffb86c', 'stroke-width':1.5});
+
+    // Distributed arrows
+    const step = Math.max(12, (x1-x0) / 14);
+    for(let xp = x0 + step/2; xp < x1 - 0.1; xp += step){
+      const xFrac = X0 + 0; // unused
+      const xFracReal = (xp - X0)/beamPx;
+      const w = wFunc(xFracReal);
+      const h = (w/wmax) * HMAX;
+      if(h < 6) continue;
+      drawArrow(xp, Y_BEAM-6 - h, xp, Y_BEAM-6, '#ffb86c', 1.5);
+    }
+    // w_max label
+    const xPeak = (profile==='triangular-left') ? x0 : (profile==='triangular-right') ? x1 : (x0+x1)/2;
+    ns('text',{x:xPeak, y:Y_BEAM-114, 'text-anchor':'middle', class:'label', fill:'#ffb86c'}).textContent=`w_max=${wmax} N/m`;
+  }
+
+  // Resultant
+  const res = computeResultant();
+  const xR = xPx(res.xbar);
+  // Resultant arrow (down) larger and red
+  drawArrow(xR, Y_BEAM-160, xR, Y_BEAM-6, '#ff7b72', 3);
+  ns('text',{x:xR+8, y:Y_BEAM-150, class:'label', fill:'#ff7b72'}).textContent=`R = ${res.R.toFixed(1)} N`;
+
+  // Centroid mark on beam
+  ns('circle',{cx:xR, cy:Y_BEAM+12, r:5, fill:'#a3e635'});
+  ns('line',{x1:xR, y1:Y_BEAM-6, x2:xR, y2:Y_BEAM+22, stroke:'#a3e635', 'stroke-width':1, 'stroke-dasharray':'3 3'});
+  ns('text',{x:xR-30, y:Y_BEAM+38, class:'label', fill:'#a3e635'}).textContent=`x̄ = ${res.xbar_m? res.xbar_m.toFixed(2) : (res.xbar*span).toFixed(2)} m`;
+
+  // Reactions
+  const xbar_m = res.xbar_m !== undefined ? res.xbar_m : res.xbar * span;
+  const reacts = computeReactions(res.R, xbar_m);
+  drawArrow(X0, Y_BEAM+90, X0, Y_BEAM+34, '#5ec8ff', 2.5);
+  ns('text',{x:X0-50, y:Y_BEAM+88, class:'label', fill:'#5ec8ff'}).textContent=`R_A=${reacts.Rl.toFixed(1)} N`;
+  drawArrow(X1, Y_BEAM+96, X1, Y_BEAM+40, '#5ec8ff', 2.5);
+  ns('text',{x:X1+8, y:Y_BEAM+94, class:'label', fill:'#5ec8ff'}).textContent=`R_B=${reacts.Rr.toFixed(1)} N`;
+
+  // Dimension line
+  ns('line',{x1:X0, y1:Y_BEAM-200, x2:X1, y2:Y_BEAM-200, stroke:'#8f99a8', 'stroke-width':1});
+  ns('line',{x1:X0, y1:Y_BEAM-205, x2:X0, y2:Y_BEAM-195, stroke:'#8f99a8', 'stroke-width':1});
+  ns('line',{x1:X1, y1:Y_BEAM-205, x2:X1, y2:Y_BEAM-195, stroke:'#8f99a8', 'stroke-width':1});
+  ns('text',{x:440, y:Y_BEAM-210, 'text-anchor':'middle', class:'label-dim'}).textContent=`L = ${span} m`;
+
+  // Update summary
+  let html = `<b>Profile:</b> ${profile.replace('-', ' ')}  ·  `;
+  html += `<b>Resultant R:</b> <span class="readout">${res.R.toFixed(2)} N</span>  ·  `;
+  html += `<b>Centroid x̄:</b> <span class="readout">${(res.xbar_m||res.xbar*span).toFixed(2)} m</span> (from left)<br>`;
+  html += `<b>Reactions:</b> R_A = <span class="readout">${reacts.Rl.toFixed(2)} N</span>, R_B = <span class="readout">${reacts.Rr.toFixed(2)} N</span>  ·  `;
+  html += `<b>Check:</b> R_A + R_B = ${(reacts.Rl + reacts.Rr).toFixed(2)} N (should equal R)<br>`;
+  // Show formula trace
+  if(profile === 'triangular-right' || profile === 'triangular-left'){
+    const profL = (endB - startA) * span;
+    html += `<span style="color:var(--fg-dim)">Triangle: R = ½ · w_max · ℓ = ½ · ${wmax} · ${profL.toFixed(2)} = ${(0.5*wmax*profL).toFixed(2)} N. ` +
+      `Centroid at ${profile==='triangular-right'?'2/3':'1/3'} of profile from left = ${(profile==='triangular-right' ? (2/3)*profL : (1/3)*profL).toFixed(2)} m within profile.</span>`;
+  } else if(profile === 'uniform'){
+    const profL = (endB - startA) * span;
+    html += `<span style="color:var(--fg-dim)">Uniform: R = w · ℓ = ${wmax} · ${profL.toFixed(2)} = ${(wmax*profL).toFixed(2)} N. Centroid at ℓ/2.</span>`;
+  } else if(profile === 'trapezoidal'){
+    const profL = (endB - startA) * span;
+    const wmin = wmax * wminRatio;
+    html += `<span style="color:var(--fg-dim)">Trapezoid: R = ½ · (${wmin.toFixed(1)} + ${wmax}) · ${profL.toFixed(2)} = ${(0.5*(wmin+wmax)*profL).toFixed(2)} N. ` +
+      `Use closed-form for x̄.</span>`;
+  }
+  document.getElementById('summary').innerHTML = html;
+}
+
+document.getElementById('profile').onchange = e => { profile = e.target.value; render(); };
+document.getElementById('wmax').oninput = e => {
+  wmax = parseInt(e.target.value);
+  document.getElementById('wmaxRO').textContent = wmax + ' N/m';
+  render();
+};
+document.getElementById('span').oninput = e => {
+  span = parseFloat(e.target.value);
+  document.getElementById('spanRO').textContent = span + ' m';
+  render();
+};
+document.getElementById('startA').oninput = e => {
+  startA = parseFloat(e.target.value);
+  document.getElementById('startARO').textContent = startA.toFixed(2);
+  if(startA >= endB) { startA = endB - 0.1; e.target.value = startA; }
+  render();
+};
+document.getElementById('endB').oninput = e => {
+  endB = parseFloat(e.target.value);
+  document.getElementById('endBRO').textContent = endB.toFixed(2);
+  if(endB <= startA) { endB = startA + 0.1; e.target.value = endB; }
+  render();
+};
+document.getElementById('wminRatio').oninput = e => {
+  wminRatio = parseFloat(e.target.value);
+  document.getElementById('wminRatioRO').textContent = wminRatio.toFixed(2);
+  render();
+};
+
+render();
+</script>
+</body>
+</html>

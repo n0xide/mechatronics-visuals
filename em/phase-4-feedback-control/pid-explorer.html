@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PID explorer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .toggle-row{display:flex;flex-wrap:wrap;gap:14px;margin:6px 0 0}
+  .toggle-row label{display:flex;align-items:center;gap:6px;font:12px ui-monospace,monospace;color:var(--fg-dim);cursor:pointer}
+  .preset-row{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 0}
+  .preset-row button{flex:1;min-width:90px}
+  .metric{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:8px 12px;font:12px ui-monospace,monospace}
+  .metric b{color:var(--fg-bright);font-size:14px}
+  .metric.warn{border-color:var(--warn)}
+  .metric.warn b{color:var(--warn)}
+  .metrics{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin:12px 0}
+</style>
+</head>
+<body>
+<main>
+  <h1>PID explorer — the master visual</h1>
+  <p class="lede">A mass-spring-damper plant is hit with a step setpoint at t = 0, and a load disturbance at t = 5 s.
+  The three slider columns isolate each PID term so you can see what it actually does. Toggle the
+  per-term contribution traces to watch how P, I, and D add up to the controller output. Saturate the
+  actuator to see integral windup eat your response.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Kp (proportional)</label>
+      <input type="range" id="kp" min="0" max="60" step="0.5" value="15">
+      <span class="readout" id="kpRO">15.0</span>
+    </div>
+    <div class="control">
+      <label>Ki (integral)</label>
+      <input type="range" id="ki" min="0" max="40" step="0.5" value="8">
+      <span class="readout" id="kiRO">8.0</span>
+    </div>
+    <div class="control">
+      <label>Kd (derivative)</label>
+      <input type="range" id="kd" min="0" max="6" step="0.05" value="1.2">
+      <span class="readout" id="kdRO">1.20</span>
+    </div>
+    <div class="control">
+      <label>Setpoint r (m)</label>
+      <input type="range" id="sp" min="0.2" max="2.0" step="0.05" value="1.0">
+      <span class="readout" id="spRO">1.00</span>
+    </div>
+    <div class="control">
+      <label>Disturbance @ t=5s (N)</label>
+      <input type="range" id="dist" min="0" max="20" step="0.5" value="5">
+      <span class="readout" id="distRO">5.0 N</span>
+    </div>
+    <div class="control">
+      <label>Actuator saturation (N)</label>
+      <input type="range" id="sat" min="5" max="80" step="1" value="80">
+      <span class="readout" id="satRO">80 N</span>
+    </div>
+    <div class="control">
+      <label>Sensor noise (σ)</label>
+      <input type="range" id="noise" min="0" max="0.03" step="0.001" value="0">
+      <span class="readout" id="noiseRO">0.000</span>
+    </div>
+    <div class="control">
+      <label>Anti-windup</label>
+      <select id="aw">
+        <option value="none">None — raw integrator</option>
+        <option value="clamp" selected>Clamping (back-stop)</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="controls" style="margin-top:-8px">
+    <div class="control" style="grid-column:1/-1">
+      <label>Presets</label>
+      <div class="preset-row">
+        <button class="btn" data-preset="p-only">P only</button>
+        <button class="btn" data-preset="pi">PI</button>
+        <button class="btn" data-preset="pd">PD</button>
+        <button class="btn" data-preset="pid">PID</button>
+        <button class="btn" data-preset="too-much-p">Too much Kp (oscillates)</button>
+        <button class="btn" data-preset="windup">Windup demo</button>
+      </div>
+    </div>
+    <div class="control" style="grid-column:1/-1">
+      <label>Show per-term contribution</label>
+      <div class="toggle-row">
+        <label><input type="checkbox" id="showP">P term</label>
+        <label><input type="checkbox" id="showI">I term</label>
+        <label><input type="checkbox" id="showD">D term</label>
+        <label><input type="checkbox" id="showU" checked>u(t) total (right axis)</label>
+      </div>
+    </div>
+  </div>
+
+  <h2>Step response</h2>
+  <div class="figure">
+    <svg id="plotSvg" viewBox="0 0 880 360" width="100%" height="360"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>y(t) — output</span>
+      <span><span class="swatch" style="background:#a3e635"></span>r — setpoint</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>u(t) — controller output</span>
+      <span><span class="swatch" style="background:#ff7b72"></span>Disturbance impulse</span>
+    </div>
+  </div>
+
+  <h2>Response metrics</h2>
+  <div class="metrics" id="metrics"></div>
+
+  <h2>Plant: mass-spring-damper</h2>
+  <p>Equation of motion: <code>m·ẍ + c·ẋ + k·x = u(t) + d(t)</code>  with <code>m = 1 kg, c = 0.5 N·s/m, k = 4 N/m</code>.
+  Sample rate <code>dt = 1 ms</code>, integration: explicit Euler. The controller computes
+  <code>u = Kp·e + Ki·∫e dt − Kd·(dy/dt)</code> — note the derivative is on the measurement, not on the
+  error, to avoid derivative kick on setpoint changes.</p>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Pure P leaves a steady-state error.</b> Set Ki = Kd = 0 and watch the output settle below the setpoint. The residual = disturbance / (Kp + k); raise Kp and the residual shrinks but ringing appears.</li>
+    <li><b>Adding I drives the steady-state error to zero — but slowly.</b> The integral accumulates as long as error is nonzero. Too much Ki and it overshoots, oscillates, or destabilises.</li>
+    <li><b>D adds predictive damping.</b> Watch the overshoot collapse as Kd rises. Push it too far and the controller is dominated by noise (turn on sensor noise to see this fail loud).</li>
+    <li><b>Saturation + integrator = windup.</b> Click the "Windup demo" preset: low actuator saturation, high Ki. With anti-windup off the integrator stuffs itself with stored error during saturation and overshoots wildly. Switch to clamping and the response recovers cleanly.</li>
+    <li><b>D on measurement vs D on error.</b> When you step the setpoint, the implementation uses dy/dt (not de/dt), so there's no infinite-slope kick at t=0. This is the standard fix; the textbook formula is the unsafe one.</li>
+    <li><b>The "too much Kp" preset oscillates.</b> The closed-loop poles have crossed into the unstable side. The next visual (Ziegler-Nichols) uses this point — the ultimate gain Ku — to seed PID gains.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>PARALLEL PID</h3>
+      <dl>
+        <dt>Parallel</dt><dd><span class="eq">u = Kp·e + Ki·∫e dt + Kd·(de/dt)</span></dd>
+        <dt>ISA / series</dt><dd><span class="eq">u = Kp·(1 + 1/(Ti·s) + Td·s)·e</span></dd>
+        <dt>Convert</dt><dd><span class="eq">Ki = Kp/Ti,  Kd = Kp·Td</span></dd>
+        <dt>D on measurement</dt><dd><span class="eq">D = −Kd · (dy/dt)</span><span class="eq-note">avoids derivative kick</span></dd>
+        <dt>Discretise</dt><dd><span class="eq">I_k = I_{k-1} + Ki·e·dt</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>WHAT EACH TERM DOES</h3>
+      <ul>
+        <li><b>P (proportional)</b> — present error → bigger Kp = faster but more overshoot</li>
+        <li><b>I (integral)</b> — past error → kills steady-state offset, can wind up</li>
+        <li><b>D (derivative)</b> — future trend → adds damping, amplifies noise</li>
+        <li><b>Filter D</b> — always low-pass the derivative, N = 5–20 typical</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li><b>Integral windup</b> — actuator saturates, I keeps growing, overshoots wildly. Always clamp or back-calculate.</li>
+        <li><b>Derivative kick</b> — D on error spikes on setpoint step. Use D on measurement instead.</li>
+        <li><b>Sample rate too slow</b> — sample at ≥ 10× controller bandwidth. Slow loops are noisy and unstable.</li>
+        <li><b>Forgetting dt units</b> — Ki·e·dt must use the actual loop period, not 1.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 4 — Feedback Control</a> ·
+    Topic: PID explorer, mass-spring-damper, windup, derivative kick
+  </footer>
+</main>
+<script>
+const plotSvg = document.getElementById('plotSvg');
+
+function ns(tag, attrs={}, parent){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+let kp = 15, ki = 8, kd = 1.2, sp = 1.0, dist = 5, sat = 80, noise = 0;
+let antiWindup = 'clamp';
+let showP = false, showI = false, showD = false, showU = true;
+
+// Mass-spring-damper plant
+const m = 1.0, c = 0.5, k = 4.0;
+
+function simulate(){
+  const T = 12;
+  const dt = 0.001;  // 1 kHz
+  const N = Math.floor(T/dt);
+  const distT = 5.0;
+  let x = 0, v = 0, I = 0, ePrev = 0, yPrev = 0;
+  const out = {
+    t:new Float32Array(N), y:new Float32Array(N), u:new Float32Array(N),
+    pTerm:new Float32Array(N), iTerm:new Float32Array(N), dTerm:new Float32Array(N),
+    sat:new Uint8Array(N)
+  };
+  // Simple LFSR-ish noise
+  let seed = 12345;
+  function rnd(){ seed = (seed*1103515245 + 12345) & 0x7fffffff; return seed/0x7fffffff - 0.5; }
+  for(let i=0;i<N;i++){
+    const t = i*dt;
+    const measurement = x + (noise>0 ? noise * (rnd() + rnd()) : 0);
+    const e = sp - measurement;
+    // D on measurement, not error
+    const dymeas = (measurement - yPrev) / dt;
+    const Pterm = kp * e;
+    const Dterm = -kd * dymeas;
+    // Integrator (conditional clamp before saturating)
+    I += ki * e * dt;
+    const u_unsat = Pterm + I + Dterm;
+    let u = u_unsat;
+    let saturated = 0;
+    if(u > sat){ u = sat; saturated = 1; }
+    else if(u < -sat){ u = -sat; saturated = 1; }
+    if(saturated && antiWindup === 'clamp'){
+      // Back-calculate: roll integrator back so u = sat
+      I -= ki * e * dt;  // undo this step's integration
+    }
+    const d = (t >= distT) ? dist : 0;
+    // m x'' + c x' + k x = u + d
+    const a = (u + d - c*v - k*x) / m;
+    v += a*dt;
+    x += v*dt;
+    out.t[i]=t; out.y[i]=x; out.u[i]=u; out.pTerm[i]=Pterm; out.iTerm[i]=I; out.dTerm[i]=Dterm; out.sat[i]=saturated;
+    ePrev = e; yPrev = measurement;
+  }
+  return out;
+}
+
+function computeMetrics(out){
+  const N = out.t.length;
+  const sp_local = sp;
+  let peak = 0, peakIdx = 0;
+  for(let i=0;i<N;i++){
+    if(Math.abs(out.y[i]) > Math.abs(peak)){ peak = out.y[i]; peakIdx = i; }
+  }
+  // Overshoot: relative to setpoint
+  const overshoot = sp_local>0 ? Math.max(0, (peak - sp_local)/sp_local * 100) : 0;
+  // Rise time: 10% -> 90% of setpoint, only before peak
+  let t10 = -1, t90 = -1;
+  for(let i=0;i<peakIdx;i++){
+    if(t10<0 && out.y[i] >= 0.1*sp_local) t10 = out.t[i];
+    if(t90<0 && out.y[i] >= 0.9*sp_local){ t90 = out.t[i]; break; }
+  }
+  const riseTime = (t10>=0 && t90>=0) ? (t90 - t10) : NaN;
+  // Settling: time after which |y - sp| stays under 2% of sp (or 0.02 if sp tiny)
+  const band = Math.max(0.02, 0.02*sp_local);
+  let settleT = NaN;
+  // search from end backward
+  let outsideEnd = N-1;
+  for(let i=N-1;i>=0;i--){
+    if(Math.abs(out.y[i]-sp_local) > band){ outsideEnd = i; break; }
+  }
+  settleT = out.t[Math.min(N-1, outsideEnd+1)];
+  // Steady-state error: average of last 0.5 s
+  let ssSum = 0, ssN = 0;
+  for(let i=N-500;i<N;i++){ ssSum += out.y[i]; ssN++; }
+  const ssErr = sp_local - ssSum/ssN;
+  // Did saturation occur?
+  let satCount = 0;
+  for(let i=0;i<N;i++) satCount += out.sat[i];
+  return {overshoot, riseTime, settleT, ssErr, satCount, peak};
+}
+
+function drawPlot(){
+  clear(plotSvg);
+  const W=880, H=360;
+  const PAD_L = 60, PAD_R = 60, PAD_T = 20, PAD_B = 40;
+  const tMax = 12;
+  const yMax = Math.max(1.8, sp*2.0);
+  const yMin = -0.3*yMax;
+
+  // grid
+  for(let i=0;i<=10;i++){
+    const yy = PAD_T + i/10*(H-PAD_T-PAD_B);
+    ns('line',{x1:PAD_L,y1:yy,x2:W-PAD_R,y2:yy,stroke:'#222831'},plotSvg);
+  }
+  for(let i=0;i<=12;i++){
+    const xx = PAD_L + i/12*(W-PAD_L-PAD_R);
+    ns('line',{x1:xx,y1:PAD_T,x2:xx,y2:H-PAD_B,stroke:'#222831'},plotSvg);
+  }
+
+  ns('line',{x1:PAD_L,y1:H-PAD_B,x2:W-PAD_R,y2:H-PAD_B,stroke:'#8f99a8'},plotSvg);
+  ns('line',{x1:PAD_L,y1:PAD_T,x2:PAD_L,y2:H-PAD_B,stroke:'#8f99a8'},plotSvg);
+  // zero line
+  const y0 = H-PAD_B - (0-yMin)/(yMax-yMin)*(H-PAD_T-PAD_B);
+  ns('line',{x1:PAD_L,y1:y0,x2:W-PAD_R,y2:y0,stroke:'#3a4150','stroke-width':1},plotSvg);
+
+  function xPx(t){ return PAD_L + t/tMax*(W-PAD_L-PAD_R); }
+  function yPx(y){ return H-PAD_B - (y-yMin)/(yMax-yMin)*(H-PAD_T-PAD_B); }
+
+  // Right axis for u(t)
+  const uMax = sat * 1.2;
+  function uPx(u){ return H-PAD_B - (u + uMax)/(2*uMax)*(H-PAD_T-PAD_B); }
+
+  // Ticks
+  for(let i=0;i<=12;i++){
+    const x = xPx(i);
+    ns('line',{x1:x,y1:H-PAD_B,x2:x,y2:H-PAD_B+5,stroke:'#8f99a8'},plotSvg);
+    ns('text',{x,y:H-PAD_B+18,class:'label-dim','text-anchor':'middle'},plotSvg).textContent=i+'s';
+  }
+  // Left axis labels
+  for(let i=0;i<=4;i++){
+    const yv = yMin + (yMax-yMin)*i/4;
+    const y = yPx(yv);
+    ns('text',{x:PAD_L-6,y:y+4,class:'label-dim','text-anchor':'end'},plotSvg).textContent=yv.toFixed(2);
+  }
+  // Right axis labels
+  for(let i=0;i<=4;i++){
+    const uv = -uMax + 2*uMax*i/4;
+    const y = uPx(uv);
+    ns('text',{x:W-PAD_R+6,y:y+4,class:'label-dim',fill:'#ffb86c','text-anchor':'start'},plotSvg).textContent=uv.toFixed(0);
+  }
+  ns('text',{x:PAD_L-40,y:PAD_T+12,class:'label-dim'},plotSvg).textContent='y (m)';
+  ns('text',{x:W-PAD_R+30,y:PAD_T+12,class:'label-dim',fill:'#ffb86c'},plotSvg).textContent='u (N)';
+
+  // setpoint
+  ns('line',{x1:xPx(0),y1:yPx(sp),x2:xPx(tMax),y2:yPx(sp),
+    stroke:'#a3e635','stroke-width':1.5,'stroke-dasharray':'5 4',opacity:0.85},plotSvg);
+  ns('text',{x:xPx(0.05),y:yPx(sp)-4,class:'label-dim',fill:'#a3e635'},plotSvg).textContent='r = '+sp.toFixed(2);
+  // disturbance line
+  ns('line',{x1:xPx(5),y1:PAD_T,x2:xPx(5),y2:H-PAD_B,stroke:'#ff7b72','stroke-width':1,'stroke-dasharray':'3 3',opacity:0.6},plotSvg);
+  ns('text',{x:xPx(5)+4,y:PAD_T+12,class:'label-dim',fill:'#ff7b72'},plotSvg).textContent='d hits';
+
+  const out = simulate();
+  // Decimate to ~400 points for plot
+  const N = out.t.length;
+  const stride = Math.max(1, Math.floor(N/600));
+
+  function plotSeries(arr, color, width, useU, dash){
+    let p = '';
+    let first = true;
+    for(let i=0;i<N;i+=stride){
+      const v = useU ? uPx(arr[i]) : yPx(arr[i]);
+      if(first){ p = `M ${xPx(out.t[i])},${v}`; first = false; }
+      else p += ` L ${xPx(out.t[i])},${v}`;
+    }
+    const attrs = {d:p,fill:'none',stroke:color,'stroke-width':width};
+    if(dash) attrs['stroke-dasharray'] = dash;
+    ns('path',attrs,plotSvg);
+  }
+
+  // u(t)
+  if(showU){
+    plotSeries(out.u, '#ffb86c', 1.5, true);
+    // sat lines
+    ns('line',{x1:PAD_L,y1:uPx(sat),x2:W-PAD_R,y2:uPx(sat),stroke:'#ffb86c','stroke-dasharray':'2 4',opacity:0.4},plotSvg);
+    ns('line',{x1:PAD_L,y1:uPx(-sat),x2:W-PAD_R,y2:uPx(-sat),stroke:'#ffb86c','stroke-dasharray':'2 4',opacity:0.4},plotSvg);
+  }
+  // P/I/D contributions
+  if(showP) plotSeries(out.pTerm, '#5ec8ff', 1, true, '4 2');
+  if(showI) plotSeries(out.iTerm, '#a3e635', 1, true, '4 2');
+  if(showD) plotSeries(out.dTerm, '#ff7b72', 1, true, '4 2');
+
+  // y(t) main
+  plotSeries(out.y, '#5ec8ff', 2.5, false);
+
+  // metrics
+  const m = computeMetrics(out);
+  const metricsDiv = document.getElementById('metrics');
+  metricsDiv.innerHTML = '';
+  function metric(label, val, warn){
+    const d = document.createElement('div');
+    d.className = 'metric' + (warn?' warn':'');
+    d.innerHTML = `<div style="color:var(--fg-dim)">${label}</div><b>${val}</b>`;
+    metricsDiv.appendChild(d);
+  }
+  metric('Rise time (10-90 %)', isFinite(m.riseTime) ? m.riseTime.toFixed(3)+' s' : '—');
+  metric('Overshoot', m.overshoot.toFixed(1) + ' %', m.overshoot>30);
+  metric('Settling (±2 %)', m.settleT < 11.5 ? m.settleT.toFixed(2)+' s' : '> 12 s', m.settleT >= 11.5);
+  metric('Steady-state err', m.ssErr.toFixed(4) + ' m', Math.abs(m.ssErr) > 0.02*sp);
+  metric('Peak y', m.peak.toFixed(3) + ' m');
+  metric('Sat samples', m.satCount + ' / ' + (out.t.length), m.satCount > 100);
+}
+
+document.getElementById('kp').oninput = e=>{ kp=parseFloat(e.target.value); document.getElementById('kpRO').textContent=kp.toFixed(1); drawPlot(); };
+document.getElementById('ki').oninput = e=>{ ki=parseFloat(e.target.value); document.getElementById('kiRO').textContent=ki.toFixed(1); drawPlot(); };
+document.getElementById('kd').oninput = e=>{ kd=parseFloat(e.target.value); document.getElementById('kdRO').textContent=kd.toFixed(2); drawPlot(); };
+document.getElementById('sp').oninput = e=>{ sp=parseFloat(e.target.value); document.getElementById('spRO').textContent=sp.toFixed(2); drawPlot(); };
+document.getElementById('dist').oninput = e=>{ dist=parseFloat(e.target.value); document.getElementById('distRO').textContent=dist.toFixed(1)+' N'; drawPlot(); };
+document.getElementById('sat').oninput = e=>{ sat=parseFloat(e.target.value); document.getElementById('satRO').textContent=sat.toFixed(0)+' N'; drawPlot(); };
+document.getElementById('noise').oninput = e=>{ noise=parseFloat(e.target.value); document.getElementById('noiseRO').textContent=noise.toFixed(3); drawPlot(); };
+document.getElementById('aw').onchange = e=>{ antiWindup=e.target.value; drawPlot(); };
+
+for(const id of ['showP','showI','showD','showU']){
+  document.getElementById(id).onchange = e=>{
+    window[id] = e.target.checked;
+    drawPlot();
+  };
+}
+
+const presets = {
+  'p-only':{kp:20,ki:0,kd:0,sat:80,dist:5},
+  'pi':{kp:12,ki:10,kd:0,sat:80,dist:5},
+  'pd':{kp:25,ki:0,kd:2.5,sat:80,dist:5},
+  'pid':{kp:15,ki:8,kd:1.2,sat:80,dist:5},
+  'too-much-p':{kp:55,ki:0,kd:0,sat:80,dist:5},
+  'windup':{kp:25,ki:25,kd:0.5,sat:8,dist:5},
+};
+function applyPreset(name){
+  const p = presets[name]; if(!p) return;
+  for(const key of Object.keys(p)){
+    const el = document.getElementById(key);
+    if(!el) continue;
+    el.value = p[key];
+    el.dispatchEvent(new Event('input'));
+  }
+}
+document.querySelectorAll('[data-preset]').forEach(btn=>{
+  btn.onclick = ()=>applyPreset(btn.getAttribute('data-preset'));
+});
+
+drawPlot();
+</script>
+</body>
+</html>

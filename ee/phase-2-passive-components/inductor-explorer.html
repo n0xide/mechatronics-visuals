@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inductor explorer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Inductor explorer</h1>
+  <p class="lede">An inductor is a coil — but the core material, current, and frequency all conspire to hide that simple picture. Here's the saturation cliff, the SRF where it stops being an inductor, and how core choice trades Isat for size.</p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="sat">Saturation curve (L vs. I)</div>
+    <div class="tab" data-tab="imp">Impedance + SRF</div>
+  </div>
+
+  <!-- ===== TAB 1: SATURATION ===== -->
+  <div class="tab-panel active" id="tab-sat">
+    <p>Core material has finite magnetic permeability. Push enough current through the winding and the core's magnetic domains align fully — beyond that, the core can't store any more flux, so inductance falls toward the air-core value. This is saturation. Pick a core type and watch where the cliff is.</p>
+    <section class="controls">
+      <div class="control">
+        <label>Core material</label>
+        <select id="core">
+          <option value="ferrite" selected>Ferrite (MnZn) — high µ, soft cliff</option>
+          <option value="ironpwd">Iron powder — lower µ, gradual roll-off</option>
+          <option value="sendust">Sendust / Kool-Mµ — distributed gap</option>
+          <option value="air">Air core — no core, no saturation</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Nominal inductance L₀ (µH): <span class="readout" id="rL0">100</span></label>
+        <input type="range" id="L0" min="1" max="1000" step="1" value="100">
+      </div>
+      <div class="control">
+        <label>Operating current I (A): <span class="readout" id="rI">2.0</span></label>
+        <input type="range" id="I" min="0" max="20" step="0.05" value="2">
+      </div>
+      <div class="control">
+        <label>Isat (datasheet, 30% drop): <span class="readout" id="rIsat">—</span></label>
+        <label>L at I: <span class="readout" id="rLatI">—</span></label>
+      </div>
+    </section>
+    <div class="figure">
+      <svg id="satSvg" viewBox="0 0 720 360" width="100%" height="360">
+        <line x1="60" y1="30" x2="60" y2="290" class="axis"/>
+        <line x1="60" y1="290" x2="700" y2="290" class="axis"/>
+        <g id="satGrid"></g>
+        <path id="satTrace" class="trace trace-1" d=""/>
+        <!-- Isat marker -->
+        <line id="isatLine" x1="0" y1="30" x2="0" y2="290" stroke="#ff7b72" stroke-width="1" stroke-dasharray="4 3"/>
+        <text id="isatLbl" x="0" y="22" text-anchor="middle" fill="#ff7b72" font="11px ui-monospace,monospace">Isat (−30%)</text>
+        <!-- 70% line -->
+        <line id="sat70Line" x1="60" y1="0" x2="700" y2="0" stroke="#ff7b72" stroke-width="0.5" stroke-dasharray="2 4"/>
+        <!-- operating point -->
+        <circle id="opDot" cx="0" cy="0" r="6" fill="#a3e635"/>
+        <line id="opLine" x1="0" y1="30" x2="0" y2="290" stroke="#a3e635" stroke-width="1" stroke-dasharray="4 3"/>
+        <text x="380" y="325" text-anchor="middle" class="axis-label">DC current through coil (A)</text>
+        <text x="22" y="160" transform="rotate(-90 22 160)" text-anchor="middle" class="axis-label">Inductance (% of nominal)</text>
+      </svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:#5ec8ff"></span>L(I) saturation curve</span>
+        <span><span style="color:#ff7b72">red dashed</span> = Isat point (datasheet definition: 30 % L drop)</span>
+        <span><span style="color:#a3e635">green dot</span> = your operating point</span>
+      </div>
+    </div>
+
+    <h3>Why these cores differ</h3>
+    <table>
+      <thead><tr><th>Core</th><th>µr</th><th>Typ. Isat behavior</th><th>Q</th><th>Use</th></tr></thead>
+      <tbody>
+        <tr><td>Ferrite (MnZn)</td><td>1000–10000</td><td><b>Hard knee, cliff edge</b></td><td>Medium</td><td>SMPS &lt; ~5 A, EMI filter</td></tr>
+        <tr><td>Iron powder</td><td>10–100</td><td>Soft, gradual roll-off</td><td>Low–medium</td><td>SMPS, PFC, high DC current</td></tr>
+        <tr><td>Sendust (Kool-Mµ)</td><td>26–125</td><td>Soft, distributed gap</td><td>Higher than iron</td><td>SMPS, low loss at high f</td></tr>
+        <tr><td>Air core</td><td>1</td><td><b>Never saturates</b></td><td>Very high (Q)</td><td>RF, tank circuits</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== TAB 2: IMPEDANCE / SRF ===== -->
+  <div class="tab-panel" id="tab-imp">
+    <p>Above the SRF set by winding capacitance, the inductor's impedance starts to fall — it's now behaving like a capacitor. DCR sets the low-frequency floor; the parallel resonance with winding capacitance is the peak.</p>
+    <section class="controls">
+      <div class="control">
+        <label>Core material</label>
+        <select id="core2">
+          <option value="ferrite" selected>Ferrite — low DCR, low SRF (lossy at high f)</option>
+          <option value="ironpwd">Iron powder — higher DCR, higher SRF</option>
+          <option value="sendust">Sendust — balanced</option>
+          <option value="air">Air core — lowest DCR, highest Q, smallest L</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Inductance (µH): <span class="readout" id="rL2">100</span></label>
+        <input type="range" id="L2" min="0.1" max="1000" step="0.1" value="100">
+      </div>
+      <div class="control">
+        <label>DCR: <span class="readout" id="rDcr">—</span></label>
+        <label>Cw: <span class="readout" id="rCw">—</span></label>
+        <label>SRF: <span class="readout" id="rSrf2">—</span></label>
+        <label>Q@1MHz: <span class="readout" id="rQ">—</span></label>
+      </div>
+    </section>
+    <div class="figure">
+      <svg id="impSvg" viewBox="0 0 720 360" width="100%" height="360">
+        <line x1="60" y1="40" x2="60" y2="300" class="axis"/>
+        <line x1="60" y1="300" x2="700" y2="300" class="axis"/>
+        <g id="impGrid"></g>
+        <path id="indIdeal" class="trace trace-1" d="" stroke-dasharray="3 3"/>
+        <path id="indTotal" class="trace" stroke="#fff" stroke-width="2.5" d=""/>
+        <line id="srfLine2" x1="0" y1="40" x2="0" y2="300" stroke="#ff7b72" stroke-width="1" stroke-dasharray="4 3"/>
+        <text id="srfLbl2" x="0" y="30" text-anchor="middle" fill="#ff7b72" font="11px ui-monospace,monospace">SRF</text>
+        <text x="380" y="335" text-anchor="middle" class="axis-label">Frequency (Hz, log)</text>
+        <text x="22" y="170" transform="rotate(-90 22 170)" text-anchor="middle" class="axis-label">|Z| (Ω, log)</text>
+        <text x="120" y="60" fill="#5ec8ff" font="11px ui-monospace,monospace">inductive (Z↑ with f)</text>
+        <text x="540" y="60" fill="#ffb86c" font="11px ui-monospace,monospace">capacitive (Z↓ with f)</text>
+      </svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:#5ec8ff"></span>ideal ωL</span>
+        <span><span class="swatch" style="background:#fff"></span>|Z| real (DCR floor + parallel Cw)</span>
+        <span><span style="color:#ff7b72">red dashed</span> SRF — peak Z, then falls (cap-like)</span>
+      </div>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Ferrite saturates earlier than iron powder</b> — Ferrite has very high µr, so it stores a lot of flux per amp, but its magnetic domains saturate at low B. Iron powder has a distributed air gap mixed in, so it has lower µ (and needs more turns for the same L) but each grain saturates independently — the cliff smooths into a slope.</li>
+    <li><b>Air core never saturates</b> — Set the core to "air" and the L curve is flat forever. The cost: huge winding for any meaningful L. That's why air-core inductors are only used in RF, where nH is enough.</li>
+    <li><b>Above SRF, your inductor is a capacitor</b> — Just like a cap that turns inductive above its SRF. Your "100 µH choke" at 30 MHz might be a 2 pF cap. Always read the datasheet impedance plot.</li>
+    <li><b>DCR sets the noise floor; copper loss = I²·DCR</b> — At low frequency, |Z| flattens at the DCR. In a buck converter at 1 A through 30 mΩ DCR, that's 30 mW of pure heat.</li>
+    <li><b>Isat is defined at 30 % L drop by convention</b> — Some datasheets quote 10 %, some 30 %, some "temperature rise of 40 K". Compare like-for-like or you'll undersize the part.</li>
+    <li><b>Q = ωL/R drops at high f</b> — Core losses (hysteresis, eddy current) climb with frequency. A ferrite that's Q=80 at 1 MHz can be Q=15 at 10 MHz. RF chokes use air or low-loss cores.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>E</dt><dd><span class="eq">E = ½·L·I²</span></dd>
+        <dt>X_L</dt><dd><span class="eq">X_L = 2π·f·L</span></dd>
+        <dt>Q</dt><dd><span class="eq">Q = ω·L / R</span></dd>
+        <dt>v_L</dt><dd><span class="eq">v_L = L · di/dt</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>Ferrite</b> — high µ, low Isat; great filters/EMI; saturates abruptly.</li>
+        <li><b>Iron powder</b> — lower µ, higher Isat; distributed gap, soft saturation.</li>
+        <li><b>Air core</b> — never saturates; tiny L; RF only.</li>
+        <li><b>Isat</b> — usually quoted at 30 % L drop; check before comparing parts.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Operate well below Isat</b> — leave margin; L collapses non-linearly at saturation.</li>
+        <li><b>Inductor is capacitive above SRF</b> — winding capacitance dominates; |Z| drops.</li>
+        <li><b>Switching off an inductor</b> — di/dt spike kills MOSFETs without a freewheel diode/snubber.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 2 — Passive Components</a> ·
+    Topic: Inductor saturation, DCR, winding capacitance, SRF, core materials
+  </footer>
+</main>
+<script>
+  // ---------- TAB MGMT ----------
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ---------- Core models ----------
+  // For sat curve: L(I) = L0 * f(I/Isat_norm) where the curve shape depends on core
+  // ferrite has a sharp knee, iron powder/sendust have a soft slope, air is flat
+  const CORE = {
+    ferrite:  {isatNorm: 4.0,  shape: 'sharp', dcrK: 0.015, cw_pF: 8,  Qbase: 60},
+    ironpwd:  {isatNorm: 10.0, shape: 'soft',  dcrK: 0.040, cw_pF: 3,  Qbase: 30},
+    sendust:  {isatNorm: 8.0,  shape: 'med',   dcrK: 0.025, cw_pF: 4,  Qbase: 50},
+    air:      {isatNorm: 1e9,  shape: 'flat',  dcrK: 0.005, cw_pF: 1,  Qbase: 200}
+  };
+
+  function satCurve(iNorm, shape) {
+    // returns L/L0 as a fraction
+    if (shape === 'flat') return 1.0;
+    if (shape === 'sharp') {
+      // ferrite: stays ~1 until ~70% Isat, then collapses fast toward 0.15
+      return 1 / (1 + Math.pow(iNorm, 6) * 0.7) * 0.85 + 0.15;
+    }
+    if (shape === 'med') {
+      return 1 / (1 + Math.pow(iNorm, 3) * 0.4) * 0.8 + 0.2;
+    }
+    if (shape === 'soft') {
+      // iron powder: gradual slope
+      return 1 / (1 + Math.pow(iNorm, 1.8) * 0.3) * 0.75 + 0.25;
+    }
+    return 1.0;
+  }
+
+  function findIsat(shape, isatNorm) {
+    // I where L drops to 70% — search numerically
+    if (shape === 'flat') return Infinity;
+    for (let iN = 0; iN < 5; iN += 0.001) {
+      if (satCurve(iN, shape) < 0.70) return iN * isatNorm;
+    }
+    return 5 * isatNorm;
+  }
+
+  // ---------- TAB 1: SATURATION ----------
+  const coreSel = document.getElementById('core');
+  const L0in = document.getElementById('L0');
+  const Iin = document.getElementById('I');
+
+  function renderSat() {
+    const cName = coreSel.value;
+    const c = CORE[cName];
+    const L0 = +L0in.value; // µH
+    const I = +Iin.value;
+    document.getElementById('rL0').textContent = L0;
+    document.getElementById('rI').textContent = I.toFixed(2);
+
+    // Isat in absolute amps — scale by L0 so larger L gives proportionally lower Isat
+    // (a real-world heuristic: bigger inductance from the same core = more turns = saturates earlier)
+    const isatScale = 50 / Math.pow(L0, 0.5); // scale to keep range visually useful
+    const Isat = findIsat(c.shape, c.isatNorm) * isatScale;
+    document.getElementById('rIsat').textContent = isFinite(Isat) ? Isat.toFixed(2) + ' A' : '∞ (no core)';
+
+    // Plot: x = 0..max(20, Isat*1.5), y = 0..110%
+    const xMax = Math.max(20, isFinite(Isat) ? Isat * 1.5 : 20);
+    const xPx = i => 60 + (i / xMax) * 640;
+    const yPx = p => 290 - (p / 110) * 260;
+
+    // grid
+    let grid = '';
+    for (let i = 0; i <= 10; i++) {
+      const v = xMax * i / 10;
+      const x = xPx(v);
+      grid += `<line class="grid-line" x1="${x}" y1="30" x2="${x}" y2="290"/>`;
+      grid += `<text class="axis-label" x="${x}" y="306" text-anchor="middle">${v.toFixed(1)}</text>`;
+    }
+    for (let p = 0; p <= 110; p += 10) {
+      const y = yPx(p);
+      grid += `<line class="grid-line" x1="60" y1="${y}" x2="700" y2="${y}"/>`;
+      grid += `<text class="axis-label" x="56" y="${y+3}" text-anchor="end">${p}%</text>`;
+    }
+    document.getElementById('satGrid').innerHTML = grid;
+
+    // trace
+    let d = '';
+    const N = 240;
+    for (let i = 0; i <= N; i++) {
+      const iAmp = xMax * i / N;
+      const iN = isFinite(Isat) ? iAmp / (c.isatNorm * isatScale) : 0;
+      const frac = satCurve(iN, c.shape);
+      const x = xPx(iAmp);
+      const y = yPx(frac * 100);
+      d += (i===0?'M':'L') + x + ',' + y + ' ';
+    }
+    document.getElementById('satTrace').setAttribute('d', d);
+
+    // 70% line
+    const y70 = yPx(70);
+    document.getElementById('sat70Line').setAttribute('y1', y70);
+    document.getElementById('sat70Line').setAttribute('y2', y70);
+
+    // Isat marker
+    if (isFinite(Isat) && Isat < xMax) {
+      const xIsat = xPx(Isat);
+      document.getElementById('isatLine').setAttribute('x1', xIsat);
+      document.getElementById('isatLine').setAttribute('x2', xIsat);
+      document.getElementById('isatLbl').setAttribute('x', xIsat);
+      document.getElementById('isatLine').setAttribute('opacity', 1);
+      document.getElementById('isatLbl').setAttribute('opacity', 1);
+    } else {
+      document.getElementById('isatLine').setAttribute('opacity', 0);
+      document.getElementById('isatLbl').setAttribute('opacity', 0);
+    }
+
+    // Operating point
+    const iN = isFinite(Isat) ? I / (c.isatNorm * isatScale) : 0;
+    const fracOp = satCurve(iN, c.shape);
+    document.getElementById('rLatI').textContent = (L0 * fracOp).toFixed(1) + ' µH (' + (fracOp*100).toFixed(0) + '%)';
+    const xOp = xPx(I);
+    const yOp = yPx(fracOp * 100);
+    document.getElementById('opDot').setAttribute('cx', xOp);
+    document.getElementById('opDot').setAttribute('cy', yOp);
+    document.getElementById('opLine').setAttribute('x1', xOp);
+    document.getElementById('opLine').setAttribute('x2', xOp);
+  }
+  [coreSel, L0in, Iin].forEach(e => e.addEventListener('input', renderSat));
+  coreSel.addEventListener('change', renderSat);
+  renderSat();
+
+  // ---------- TAB 2: IMPEDANCE ----------
+  const core2 = document.getElementById('core2');
+  const L2in = document.getElementById('L2');
+
+  function renderImp() {
+    const L_uH = +L2in.value;
+    const c = CORE[core2.value];
+    const L = L_uH * 1e-6;
+    const DCR = c.dcrK * Math.sqrt(L_uH); // mΩ → Ω scaling
+    const Cw = c.cw_pF * 1e-12;
+    const fSrf = 1 / (2 * Math.PI * Math.sqrt(L * Cw));
+    const f1M = 1e6;
+    const Q1M = (2 * Math.PI * f1M * L) / DCR;
+    document.getElementById('rL2').textContent = L_uH.toFixed(1);
+    document.getElementById('rDcr').textContent = DCR.toFixed(3) + ' Ω';
+    document.getElementById('rCw').textContent = c.cw_pF + ' pF';
+    document.getElementById('rSrf2').textContent = formatFreq(fSrf);
+    document.getElementById('rQ').textContent = Q1M < 1 ? Q1M.toFixed(2) : Q1M.toFixed(0);
+
+    // log-log: 10 Hz to 1 GHz, 1 mΩ to 100 kΩ
+    const fmin = 1, fmax = 9;
+    const zmin = -3, zmax = 5;
+    const xPx = lf => 60 + (lf - fmin) / (fmax - fmin) * 640;
+    const yPx = lz => 300 - (lz - zmin) / (zmax - zmin) * 260;
+
+    // grid
+    let grid = '';
+    for (let f = fmin; f <= fmax; f++) {
+      const x = xPx(f);
+      grid += `<line class="grid-line" x1="${x}" y1="40" x2="${x}" y2="300"/>`;
+      grid += `<text class="axis-label" x="${x}" y="316" text-anchor="middle">10^${f}</text>`;
+    }
+    for (let z = zmin; z <= zmax; z++) {
+      const y = yPx(z);
+      grid += `<line class="grid-line" x1="60" y1="${y}" x2="700" y2="${y}"/>`;
+      grid += `<text class="axis-label" x="56" y="${y+3}" text-anchor="end">10^${z}</text>`;
+    }
+    document.getElementById('impGrid').innerHTML = grid;
+
+    let idealD = '', totalD = '';
+    const N = 240;
+    for (let i = 0; i <= N; i++) {
+      const lf = fmin + (fmax - fmin) * i / N;
+      const f = Math.pow(10, lf);
+      const omega = 2 * Math.PI * f;
+      const Zl = omega * L;
+      // Real inductor model: series R + L in parallel with Cw
+      // Z_RL = R + jωL ; Z_Cw = 1/(jωCw)
+      // Z_total = Z_RL || Z_Cw
+      // For magnitude: use Y = 1/Z_RL + jωCw
+      const ZRL_re = DCR;
+      const ZRL_im = Zl;
+      const Z2 = ZRL_re*ZRL_re + ZRL_im*ZRL_im;
+      const Y_re = ZRL_re / Z2;
+      const Y_im = -ZRL_im / Z2 + omega * Cw;
+      const Y_mag = Math.sqrt(Y_re*Y_re + Y_im*Y_im);
+      const Ztot = 1 / Y_mag;
+      const ideal = Math.max(DCR, Zl); // for display: shows the L slope plus DCR floor
+      const x = xPx(lf);
+      idealD += (i===0?'M':'L') + x + ',' + yPx(Math.log10(Math.max(1e-4, ideal))) + ' ';
+      totalD += (i===0?'M':'L') + x + ',' + yPx(Math.log10(Math.max(1e-4, Ztot))) + ' ';
+    }
+    document.getElementById('indIdeal').setAttribute('d', idealD);
+    document.getElementById('indTotal').setAttribute('d', totalD);
+
+    // SRF marker
+    const xSrf = xPx(Math.log10(fSrf));
+    if (xSrf >= 60 && xSrf <= 700) {
+      document.getElementById('srfLine2').setAttribute('x1', xSrf);
+      document.getElementById('srfLine2').setAttribute('x2', xSrf);
+      document.getElementById('srfLbl2').setAttribute('x', xSrf);
+      document.getElementById('srfLine2').setAttribute('opacity', 1);
+      document.getElementById('srfLbl2').setAttribute('opacity', 1);
+    } else {
+      document.getElementById('srfLine2').setAttribute('opacity', 0);
+      document.getElementById('srfLbl2').setAttribute('opacity', 0);
+    }
+  }
+  function formatFreq(f) {
+    if (f >= 1e9) return (f/1e9).toFixed(2) + ' GHz';
+    if (f >= 1e6) return (f/1e6).toFixed(2) + ' MHz';
+    if (f >= 1e3) return (f/1e3).toFixed(2) + ' kHz';
+    return f.toFixed(1) + ' Hz';
+  }
+  [core2, L2in].forEach(e => e.addEventListener('input', renderImp));
+  core2.addEventListener('change', renderImp);
+  renderImp();
+</script>
+</body>
+</html>

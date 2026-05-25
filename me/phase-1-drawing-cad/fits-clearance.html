@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shaft &amp; Hole Fits — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  /* fits-specific */
+  .band-hole{fill:rgba(94,200,255,0.32);stroke:var(--accent);stroke-width:1.5}
+  .band-shaft{fill:rgba(255,184,108,0.35);stroke:var(--accent2);stroke-width:1.5}
+  .nominal{stroke:var(--fg-dim);stroke-width:1;stroke-dasharray:4 3}
+  .overlap{fill:rgba(255,123,114,0.42);stroke:var(--warn);stroke-width:1}
+  .fit-tag{display:inline-block;padding:6px 14px;border-radius:4px;
+    font:600 13px ui-monospace,Menlo,monospace;letter-spacing:0.04em}
+  .fit-clearance{background:rgba(163,230,53,0.18);color:var(--accent3);
+    border:1px solid var(--accent3)}
+  .fit-transition{background:rgba(255,184,108,0.18);color:var(--accent2);
+    border:1px solid var(--accent2)}
+  .fit-interference{background:rgba(255,123,114,0.18);color:var(--warn);
+    border:1px solid var(--warn)}
+  .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
+  .summary-cell{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:12px 14px}
+  .summary-cell h3{margin-top:0}
+  .caveat{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:14px 0;font-size:13px}
+  .caveat b{color:var(--accent2)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Shaft &amp; Hole Fits — clearance, transition, interference</h1>
+  <p class="lede">Hold a Ø10 mm H7 hole fixed; switch the shaft grade (h6, g6, p6, s6) and watch the tolerance bands shift along the nominal line. Whether the bands separate, touch, or overlap tells you whether the part slips in, presses in, or refuses entirely.</p>
+
+  <h3>What this teaches</h3>
+  <p>In the ISO hole-basis system, the hole is the fixed partner. Lowercase = shaft, capital = hole. Pick the shaft grade to engineer the relationship: h6 slides, g6 runs free, p6 is a light press, s6 is a tight press. Picking the wrong grade either lets a bearing wobble or splits an aluminium boss when you press the pin in.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Nominal size (mm) — <span class="readout" id="ro-nom">10.0</span></label>
+      <input type="range" id="sl-nom" min="3" max="50" step="1" value="10">
+    </div>
+    <div class="control">
+      <label>Hole grade (fixed for hole-basis)</label>
+      <span class="readout">H7  (+IT7 / 0)</span>
+    </div>
+    <div class="control">
+      <label>Shaft grade</label>
+      <select id="sel-shaft">
+        <option value="h6">h6  — sliding fit (clearance)</option>
+        <option value="g6">g6  — running fit (clearance)</option>
+        <option value="p6">p6  — light press (interference)</option>
+        <option value="s6">s6  — tight press (interference)</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Fit classification</label>
+      <span id="ro-fit-tag" class="fit-tag fit-clearance">clearance</span>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg viewBox="0 0 920 380" xmlns="http://www.w3.org/2000/svg">
+      <!-- LEFT: vertical tolerance band chart -->
+      <g transform="translate(30,20)">
+        <text x="180" y="0" class="label" text-anchor="middle">Tolerance bands (deviation from nominal, μm)</text>
+
+        <!-- vertical y-axis with deviation scale; nominal at y=160 -->
+        <!-- scale: 1 μm = 0.4 px so ±200 μm fits in ±80 px -->
+        <line x1="50" y1="20" x2="50" y2="320" class="axis"/>
+        <line x1="46" y1="160" x2="370" y2="160" class="nominal"/>
+        <text x="380" y="164" class="label-dim">nominal Ø</text>
+
+        <!-- y-axis ticks -->
+        <g id="y-ticks"></g>
+
+        <!-- Hole band (H7) -->
+        <g id="g-hole"></g>
+        <!-- Shaft band -->
+        <g id="g-shaft"></g>
+        <!-- Overlap region (drawn last) -->
+        <g id="g-overlap"></g>
+
+        <!-- column labels -->
+        <text x="180" y="345" class="label" text-anchor="middle" fill="var(--accent)">HOLE (H7)</text>
+        <text x="300" y="345" class="label" text-anchor="middle" fill="var(--accent2)" id="lab-shaft">SHAFT (h6)</text>
+      </g>
+
+      <!-- RIGHT: shaft-into-hole animation -->
+      <g transform="translate(540,20)">
+        <text x="180" y="0" class="label" text-anchor="middle">Shaft-into-hole — assembly behaviour</text>
+        <!-- Cross-section: a piece with a hole on top, shaft slides down from above -->
+        <!-- Block outline -->
+        <rect x="40" y="160" width="320" height="160" fill="var(--bg-elev2)" stroke="var(--line)" stroke-width="1"/>
+        <text x="200" y="332" class="label-dim" text-anchor="middle">block w/ hole (cross-section)</text>
+
+        <!-- Hole edges (vertical lines from block top down) -->
+        <line id="hole-l" x1="160" y1="160" x2="160" y2="320" stroke="var(--accent)" stroke-width="2"/>
+        <line id="hole-r" x1="240" y1="160" x2="240" y2="320" stroke="var(--accent)" stroke-width="2"/>
+        <!-- Hole inner fill -->
+        <rect id="hole-fill" x="160" y="160" width="80" height="160" fill="var(--bg)" />
+
+        <!-- Shaft (rectangle, sliding down) -->
+        <rect id="shaft" x="155" y="20" width="90" height="140" fill="rgba(255,184,108,0.35)"
+              stroke="var(--accent2)" stroke-width="2"/>
+        <text x="200" y="14" class="label" text-anchor="middle" fill="var(--accent2)" id="lab-shaft-anim">shaft</text>
+
+        <!-- behaviour indicator -->
+        <g id="g-behavior" transform="translate(40,140)"></g>
+      </g>
+    </svg>
+  </div>
+
+  <div class="summary-grid">
+    <div class="summary-cell">
+      <h3>Hole — H7</h3>
+      <p style="font-size:13px;color:var(--fg-dim);margin:6px 0">
+        Upper: <span class="readout" id="ro-hu">+0</span> μm<br>
+        Lower: <span class="readout" id="ro-hl">+0</span> μm<br>
+        Max Ø: <span class="readout" id="ro-hmax">—</span> mm<br>
+        Min Ø: <span class="readout" id="ro-hmin">—</span> mm
+      </p>
+    </div>
+    <div class="summary-cell">
+      <h3>Shaft — <span id="ro-grade">h6</span></h3>
+      <p style="font-size:13px;color:var(--fg-dim);margin:6px 0">
+        Upper: <span class="readout" id="ro-su">+0</span> μm<br>
+        Lower: <span class="readout" id="ro-sl">+0</span> μm<br>
+        Max Ø: <span class="readout" id="ro-smax">—</span> mm<br>
+        Min Ø: <span class="readout" id="ro-smin">—</span> mm
+      </p>
+    </div>
+    <div class="summary-cell" style="grid-column:1/-1">
+      <h3>Fit numbers</h3>
+      <p style="font-size:13px;color:var(--fg-dim);margin:6px 0">
+        Max clearance (hole max − shaft min): <span class="readout" id="ro-maxclr">—</span> μm<br>
+        Min clearance (hole min − shaft max): <span class="readout" id="ro-minclr">—</span> μm<br>
+        <span id="ro-fit-text" style="color:var(--fg-bright)"></span>
+      </p>
+    </div>
+  </div>
+
+  <div class="caveat">
+    <b>FDM caveat:</b> ISO fit tables assume machined parts. An FDM-printed hole at nominal Ø10.0 typically measures ~9.8 mm because plastic squishes inward as the perimeter cools. If you model an H7 hole and print it, the real fit drifts toward <b>interference</b> by ~0.2 mm. Compensate by either oversizing the hole in CAD by 0.2 mm or by drilling/reaming the printed hole to nominal before assembly.
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Hole-basis system.</b> The hole stays H7 (always above nominal); you change the shaft grade to engineer the fit. Saves on tooling — drills and reamers are discrete sizes; shafts can be turned to any value.</li>
+    <li><b>Lowercase = shaft.</b> H7/h6 → uppercase H is the hole, lowercase h is the shaft. The letter shifts the band up or down relative to nominal; the number sets the band's thickness (IT grade — IT6 tighter than IT7).</li>
+    <li><b>h6 is the dividing line.</b> Shaft band sits *just below* nominal — minimum interference is zero, so it's a clearance fit but barely. Anything tighter (j6, k6) starts to overlap.</li>
+    <li><b>g6 runs freer.</b> Whole band shifted further down so the shaft is always smaller — used for spinning shafts where lubrication is needed.</li>
+    <li><b>p6, s6 invert the geometry.</b> Shaft band sits *above* the hole band entirely — the shaft is always too big. Assembly requires force (press fit, sometimes thermal: heat the boss or freeze the shaft).</li>
+    <li><b>Transition fits</b> (k6, n6, m6 — not shown) have overlapping bands. Some assemblies clearance, others interference, depending on actual sizes — used for precise alignment where you'll tap parts together but want repeatability.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>FIT TABLE (HOLE-BASIS)</h3>
+      <table>
+        <tr><th>Code</th><th>Type</th><th>Use</th></tr>
+        <tr><td>H7/h6</td><td>clearance</td><td>sliding</td></tr>
+        <tr><td>H7/g6</td><td>clearance</td><td>running</td></tr>
+        <tr><td>H7/k6</td><td>transition</td><td>locating</td></tr>
+        <tr><td>H7/p6</td><td>interference</td><td>light press</td></tr>
+        <tr><td>H7/s6</td><td>interference</td><td>heavy press</td></tr>
+      </table>
+    </div>
+    <div class="cheat-card">
+      <h3>DECISION</h3>
+      <ul>
+        <li><b>Clearance</b> — assembly + service (bearings, sliding shafts).</li>
+        <li><b>Transition</b> — locating but separable (dowel pins).</li>
+        <li><b>Press</b> — permanent, no lockring (gears, bushings).</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>FDM holes</b> — print ~0.2 mm undersized; design with offset or ream after.</li>
+        <li><b>Over-tight press</b> — cracks aluminum hubs; calibrate or step down a grade.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 1 — Technical Drawing &amp; CAD</a> ·
+    Topic: Engineering fits (ISO hole-basis)
+  </footer>
+</main>
+<script>
+  // ISO 286 fundamental deviations (μm), simplified for nominal sizes 3–50 mm.
+  // Functions return {upper, lower} in μm relative to nominal.
+  // Reference: ISO 286-1, abbreviated tables. Values approximate but correct for teaching.
+
+  // IT grade tolerance width (μm), by size band [3-6, 6-10, 10-18, 18-30, 30-50]
+  // Range index helper
+  function sizeBand(d) {
+    if (d <= 6)  return 0;
+    if (d <= 10) return 1;
+    if (d <= 18) return 2;
+    if (d <= 30) return 3;
+    return 4;
+  }
+  const IT6 = [8, 9, 11, 13, 16];
+  const IT7 = [12, 15, 18, 21, 25];
+
+  // Fundamental deviation (μm) of upper limit for shaft, by grade & band
+  // h: upper = 0 (always)
+  // g: upper deviation -5, -6, -6, -7, -9
+  // p: lower deviation +12, +15, +18, +22, +26 (shaft larger than hole)
+  // s: lower deviation +14 + ΔIT (rough); we'll use +14, +19, +23, +28, +35
+
+  // For each shaft grade, define functions returning {upper, lower}.
+  // h6: upper = 0, lower = -IT6
+  // g6: upper = -es(g), lower = -es(g) - IT6
+  //   where es(g) ≈ 5, 6, 6, 7, 9 (sign already accounted: g shaft below 0)
+  // p6: lower = +es(p), upper = +es(p) + IT6
+  //   where es(p) ≈ 6, 9, 11, 13, 17 (lower deviation)
+  // s6: lower = +es(s), upper = +es(s) + IT6
+  //   where es(s) ≈ 19, 23, 28, 35, 43
+
+  function shaftLimits(grade, d) {
+    const b = sizeBand(d);
+    const it = IT6[b];
+    if (grade === 'h6') return {upper: 0, lower: -it};
+    if (grade === 'g6') {
+      const es = [5,6,6,7,9][b];
+      return {upper: -es, lower: -es - it};
+    }
+    if (grade === 'p6') {
+      const ei = [6,9,11,13,17][b];     // lower deviation
+      return {upper: ei + it, lower: ei};
+    }
+    if (grade === 's6') {
+      const ei = [19,23,28,35,43][b];
+      return {upper: ei + it, lower: ei};
+    }
+  }
+  function holeLimits(d) {
+    const b = sizeBand(d);
+    const it = IT7[b];
+    return {upper: it, lower: 0};   // H7
+  }
+
+  const el = id => document.getElementById(id);
+
+  // Vertical scale: y=160 is nominal, 1 μm = some-scale px. We want ±60μm visible
+  // for h6/g6 and ±80μm for s6. Use auto-scale: find max abs deviation, set scale.
+  function update() {
+    const d = parseFloat(el('sl-nom').value);
+    const grade = el('sel-shaft').value;
+    const h = holeLimits(d);
+    const s = shaftLimits(grade, d);
+
+    el('ro-nom').textContent = d.toFixed(1);
+    el('ro-grade').textContent = grade;
+    el('lab-shaft').textContent = `SHAFT (${grade})`;
+    el('lab-shaft-anim').textContent = `shaft (${grade})`;
+
+    el('ro-hu').textContent = (h.upper>=0?'+':'') + h.upper;
+    el('ro-hl').textContent = (h.lower>=0?'+':'') + h.lower;
+    el('ro-su').textContent = (s.upper>=0?'+':'') + s.upper;
+    el('ro-sl').textContent = (s.lower>=0?'+':'') + s.lower;
+    el('ro-hmax').textContent = (d + h.upper/1000).toFixed(3);
+    el('ro-hmin').textContent = (d + h.lower/1000).toFixed(3);
+    el('ro-smax').textContent = (d + s.upper/1000).toFixed(3);
+    el('ro-smin').textContent = (d + s.lower/1000).toFixed(3);
+
+    // Fit numbers
+    const maxClr = h.upper - s.lower;   // hole max − shaft min
+    const minClr = h.lower - s.upper;   // hole min − shaft max
+    el('ro-maxclr').textContent = (maxClr>=0?'+':'') + maxClr;
+    el('ro-minclr').textContent = (minClr>=0?'+':'') + minClr;
+
+    let fitType, fitClass, fitText;
+    if (minClr >= 0) {
+      fitType = 'CLEARANCE'; fitClass = 'fit-clearance';
+      fitText = `Clearance fit — shaft always smaller than hole. Slides by hand. Loosest pair: ${maxClr} μm play; tightest pair: ${minClr} μm.`;
+    } else if (maxClr <= 0) {
+      fitType = 'INTERFERENCE'; fitClass = 'fit-interference';
+      fitText = `Interference fit — shaft always larger than hole. Requires press / thermal assembly. Tightest pair: ${(-minClr)} μm interference; loosest pair: ${(-maxClr)} μm.`;
+    } else {
+      fitType = 'TRANSITION'; fitClass = 'fit-transition';
+      fitText = `Transition fit — bands overlap. Some pairs clearance (max ${maxClr} μm); others interference (max ${(-minClr)} μm). Used for precise alignment with tap-fit.`;
+    }
+    const tag = el('ro-fit-tag');
+    tag.textContent = fitType.toLowerCase();
+    tag.className = 'fit-tag ' + fitClass;
+    el('ro-fit-text').textContent = fitText;
+
+    drawBands(h, s);
+    drawAnim(fitType, h, s);
+  }
+
+  function drawBands(h, s) {
+    // y=160 is nominal. 1 μm -> SCALE px (positive μm = up = lower y)
+    // auto-scale: pick max abs value among h.upper, h.lower, s.upper, s.lower
+    const maxAbs = Math.max(Math.abs(h.upper), Math.abs(h.lower),
+                            Math.abs(s.upper), Math.abs(s.lower), 20);
+    const SCALE = 110 / maxAbs;   // fit ±110 px
+
+    const y = v => 160 - v * SCALE;
+
+    // y-ticks
+    const ticksG = el('y-ticks');
+    ticksG.innerHTML = '';
+    const tickStep = maxAbs > 60 ? 20 : (maxAbs > 30 ? 10 : 5);
+    for (let v = -Math.ceil(maxAbs/tickStep)*tickStep; v <= maxAbs; v += tickStep) {
+      if (Math.abs(v) > maxAbs) continue;
+      const yp = y(v);
+      const tk = document.createElementNS('http://www.w3.org/2000/svg','line');
+      tk.setAttribute('x1', 46); tk.setAttribute('x2', 50);
+      tk.setAttribute('y1', yp); tk.setAttribute('y2', yp);
+      tk.setAttribute('class','axis');
+      ticksG.appendChild(tk);
+      const tx = document.createElementNS('http://www.w3.org/2000/svg','text');
+      tx.setAttribute('x', 44); tx.setAttribute('y', yp+3);
+      tx.setAttribute('class','label-dim'); tx.setAttribute('text-anchor','end');
+      tx.textContent = (v>=0?'+':'') + v;
+      ticksG.appendChild(tx);
+    }
+
+    // Hole band: rect at x=110, width=140, between y(h.upper) and y(h.lower)
+    const hg = el('g-hole');
+    hg.innerHTML = '';
+    const hr = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    hr.setAttribute('x', 110);
+    hr.setAttribute('y', y(h.upper));
+    hr.setAttribute('width', 140);
+    hr.setAttribute('height', Math.abs(y(h.upper) - y(h.lower)));
+    hr.setAttribute('class','band-hole');
+    hg.appendChild(hr);
+
+    // Shaft band: rect at x=260
+    const sg = el('g-shaft');
+    sg.innerHTML = '';
+    const sr = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    sr.setAttribute('x', 260);
+    sr.setAttribute('y', y(s.upper));
+    sr.setAttribute('width', 80);
+    sr.setAttribute('height', Math.abs(y(s.upper) - y(s.lower)));
+    sr.setAttribute('class','band-shaft');
+    sg.appendChild(sr);
+
+    // Overlap region (highlight in red if bands overlap on deviation axis)
+    const og = el('g-overlap');
+    og.innerHTML = '';
+    const overlapLo = Math.max(h.lower, s.lower);
+    const overlapHi = Math.min(h.upper, s.upper);
+    if (overlapHi >= overlapLo) {
+      // visualise as a horizontal hatched zone across the chart between the two columns
+      const ov = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      ov.setAttribute('x', 250);
+      ov.setAttribute('y', y(overlapHi));
+      ov.setAttribute('width', 10);
+      ov.setAttribute('height', Math.abs(y(overlapHi) - y(overlapLo)));
+      ov.setAttribute('class','overlap');
+      og.appendChild(ov);
+    }
+  }
+
+  function drawAnim(fitType, h, s) {
+    const g = el('g-behavior');
+    g.innerHTML = '';
+    const shaft = el('shaft');
+    const holeL = el('hole-l');
+    const holeR = el('hole-r');
+    const holeFill = el('hole-fill');
+
+    // Hole width: scale nominal to 80 px wide; deviations exaggerated for clarity.
+    // We'll draw using fixed hole width 80 px (mid-band) and shaft width based on
+    // band position relative to hole (in μm difference, exaggerated 0.5 px / μm).
+    const holeMid = (h.upper + h.lower) / 2;
+    const shaftMid = (s.upper + s.lower) / 2;
+    const EX = 0.6;  // px per μm exaggeration
+
+    // hole half-width = 40 + holeMid*EX (μm above nominal widens, below narrows)
+    const holeHW = 40 + holeMid * EX;
+    holeL.setAttribute('x1', 200 - holeHW);
+    holeL.setAttribute('x2', 200 - holeHW);
+    holeR.setAttribute('x1', 200 + holeHW);
+    holeR.setAttribute('x2', 200 + holeHW);
+    holeFill.setAttribute('x', 200 - holeHW);
+    holeFill.setAttribute('width', holeHW * 2);
+
+    // shaft half-width = 40 + shaftMid*EX
+    const shaftHW = 40 + shaftMid * EX;
+
+    let shaftY, label, color;
+    if (fitType === 'CLEARANCE') {
+      shaftY = 200;  // dropped into hole
+      label = 'slip — slides in by hand';
+      color = 'var(--accent3)';
+    } else if (fitType === 'INTERFERENCE') {
+      shaftY = 130;  // resting on top, can't enter
+      label = 'press — requires force / heat';
+      color = 'var(--warn)';
+    } else {
+      shaftY = 165;  // partial entry
+      label = 'tap — depends on actual sizes';
+      color = 'var(--accent2)';
+    }
+
+    shaft.setAttribute('x', 200 - shaftHW);
+    shaft.setAttribute('width', shaftHW * 2);
+    shaft.setAttribute('y', shaftY);
+
+    // behavior tag
+    const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x', 160);
+    txt.setAttribute('y', 0);
+    txt.setAttribute('class','label');
+    txt.setAttribute('fill', color);
+    txt.textContent = '→ ' + label;
+    g.appendChild(txt);
+  }
+
+  ['sl-nom','sel-shaft'].forEach(id => el(id).addEventListener('input', update));
+  update();
+</script>
+</body>
+</html>

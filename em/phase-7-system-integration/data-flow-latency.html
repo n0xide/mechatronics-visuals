@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data Flow + Latency Budget — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .verdict{padding:12px 14px;border-radius:8px;margin:14px 0;
+    font:13px ui-monospace,monospace;border:1px solid var(--line)}
+  .verdict.ok{background:rgba(163,230,53,0.08);border-color:var(--accent3);color:var(--accent3)}
+  .verdict.warn{background:rgba(255,184,108,0.08);border-color:var(--accent2);color:var(--accent2)}
+  .verdict.bad{background:rgba(255,123,114,0.08);border-color:var(--warn);color:var(--warn)}
+  .stage-bar{margin:14px 0}
+  .stage-row{display:grid;grid-template-columns:160px 1fr 80px;align-items:center;
+    gap:10px;padding:4px 0;font:12px ui-monospace,monospace}
+  .stage-row .name{color:var(--fg-dim)}
+  .stage-row .val{color:var(--accent);text-align:right}
+  .stage-row .bar{height:14px;background:var(--bg-elev2);border-radius:3px;
+    border:1px solid var(--line);overflow:hidden}
+  .stage-row .fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));
+    transition:width 0.2s}
+</style>
+</head>
+<body>
+<main>
+  <h1>Data Flow + Latency Budget — Sensor to Actuator</h1>
+  <p class="lede">A control loop is a deadline. Each stage between sensor and actuator eats µs. Add them up. Compare to the period. Either you fit or you redesign.</p>
+
+  <p>For any closed loop — say, a current loop on a BLDC motor — the path is: encoder spins → magnetic sensor IC samples → SPI transfer to MCU → ADC converts phase currents → control law runs → DAC/PWM updates → gate driver responds → motor current changes. Each step has its own delay. The sum is your <b>loop latency</b>. The loop also has a <b>deadline</b>: the time between one sample and the next, set by your sample rate. If latency &gt; deadline, you've fallen behind and the loop becomes unstable (or, more often, you missed a deadline silently and the system "just works worse"). Adjust the sample rate below and watch the budget either close or blow open.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Loop sample rate: <span class="readout" id="rateRead">10 kHz</span></label>
+      <input id="rate" type="range" min="1" max="50" step="1" value="10">
+    </div>
+    <div class="control">
+      <label>Control law: <span class="readout" id="lawRead">PI (simple)</span></label>
+      <select id="law">
+        <option value="pi">PI (simple)</option>
+        <option value="foc">FOC (Clarke+Park+PI+SVPWM)</option>
+        <option value="mpc">MPC (10-step horizon)</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>MCU class: <span class="readout" id="mcuRead">STM32G4 (170 MHz FPU)</span></label>
+      <select id="mcu">
+        <option value="g4">STM32G4 (170 MHz FPU)</option>
+        <option value="f4">STM32F4 (84 MHz FPU)</option>
+        <option value="f1">STM32F1 (72 MHz no-FPU)</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Bus to actuator: <span class="readout" id="busRead">Local PWM (none)</span></label>
+      <select id="bus">
+        <option value="local">Local PWM (none)</option>
+        <option value="canfd">CAN-FD 5 Mbps</option>
+        <option value="can">Classical CAN 1 Mbps</option>
+        <option value="rs485">RS-485 1 Mbps</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Pipeline (each block adds latency)</h3>
+    <svg viewBox="0 0 900 130" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <defs>
+        <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+          <polygon points="0 0, 8 4, 0 8" fill="var(--fg-dim)"/>
+        </marker>
+      </defs>
+      <g transform="translate(20,40)">
+        <rect width="100" height="50" rx="6" fill="var(--bg)" stroke="var(--accent3)" stroke-width="1.5"/>
+        <text x="50" y="22" text-anchor="middle" class="label">Sensor</text>
+        <text x="50" y="38" text-anchor="middle" class="label-dim">(encoder)</text>
+      </g>
+      <line x1="120" y1="65" x2="160" y2="65" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <g transform="translate(160,40)">
+        <rect width="100" height="50" rx="6" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="50" y="22" text-anchor="middle" class="label">SPI read</text>
+        <text x="50" y="38" text-anchor="middle" class="label-dim">+ ADC</text>
+      </g>
+      <line x1="260" y1="65" x2="300" y2="65" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <g transform="translate(300,40)">
+        <rect width="100" height="50" rx="6" fill="var(--bg)" stroke="var(--accent2)" stroke-width="1.5"/>
+        <text x="50" y="22" text-anchor="middle" class="label">Control law</text>
+        <text x="50" y="38" text-anchor="middle" class="label-dim">(MCU compute)</text>
+      </g>
+      <line x1="400" y1="65" x2="440" y2="65" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <g transform="translate(440,40)">
+        <rect width="100" height="50" rx="6" fill="var(--bg)" stroke="var(--accent2)" stroke-width="1.5"/>
+        <text x="50" y="22" text-anchor="middle" class="label">Bus / PWM</text>
+        <text x="50" y="38" text-anchor="middle" class="label-dim">(serialize+TX)</text>
+      </g>
+      <line x1="540" y1="65" x2="580" y2="65" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <g transform="translate(580,40)">
+        <rect width="100" height="50" rx="6" fill="var(--bg)" stroke="var(--warn)" stroke-width="1.5"/>
+        <text x="50" y="22" text-anchor="middle" class="label">Driver</text>
+        <text x="50" y="38" text-anchor="middle" class="label-dim">(gate prop)</text>
+      </g>
+      <line x1="680" y1="65" x2="720" y2="65" stroke="var(--fg-dim)" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <g transform="translate(720,40)">
+        <rect width="100" height="50" rx="6" fill="var(--bg)" stroke="var(--warn)" stroke-width="1.5"/>
+        <text x="50" y="22" text-anchor="middle" class="label">Motor</text>
+        <text x="50" y="38" text-anchor="middle" class="label-dim">(electrical τ)</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="figure">
+    <h3>Latency budget breakdown</h3>
+    <div class="stage-bar" id="stageBars"></div>
+    <div id="verdict" class="verdict ok"></div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>The MCU compute time scales with control complexity</b> — a simple PI loop is ~3 µs on a G4; full FOC with Clarke+Park+SVPWM is ~15–20 µs; an MPC horizon can balloon to 100+ µs. Switch the dropdown to see what fits.</li>
+    <li><b>Sample rate sets the deadline</b> — 10 kHz means each loop iteration must finish in 100 µs. At 20 kHz you have 50 µs. Crank to 50 kHz and even a simple loop on a G4 starts to miss.</li>
+    <li><b>Going across a bus is the biggest hit</b> — switch the bus dropdown to CAN. Suddenly serializing a 4-byte command + TX time = 80 µs minimum. This is why you never put the fast loop on the bus — close it locally.</li>
+    <li><b>Motor electrical time constant L/R is your floor</b> — even with zero compute and zero bus, the motor current can only change at L/R. For typical small BLDC, L/R ~100–500 µs. Your control loop can't beat physics.</li>
+    <li><b>"Sample mid-PWM"</b> — the ADC must trigger at the midpoint of the PWM period, when switching noise is quietest. This shifts your effective sample time by half a PWM period (25 µs at 20 kHz) but gives clean current readings. Worth it.</li>
+    <li><b>Always leave headroom</b> — never plan for 95% loop utilization. 50–70% is the safety margin for interrupt jitter, branch mispredictions, and the surprise function call that turns into 30 µs.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>BUDGET MATH</h3>
+      <dl>
+        <dt>Deadline</dt><dd><span class="eq">T = 1 / f_sample</span></dd>
+        <dt>Latency</dt><dd><span class="eq">L = Σ stage_µs</span></dd>
+        <dt>Loop OK if</dt><dd><span class="eq">L &lt; 0.7 · T</span><br>
+          <span class="eq-note">leave 30% for jitter</span></dd>
+        <dt>CAN frame time</dt><dd><span class="eq">~110 bit / bitrate + IFG</span><br>
+          <span class="eq-note">8-byte payload, 1 Mbps ≈ 130 µs</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>TYPICAL STAGE COSTS</h3>
+      <ul>
+        <li><b>Encoder sample</b> — 1–10 µs (SPI transfer).</li>
+        <li><b>ADC convert</b> — 1–3 µs at 12-bit, &lt;1 µs at 8-bit fast mode.</li>
+        <li><b>PI law</b> — 1–3 µs on Cortex-M4 with FPU.</li>
+        <li><b>Full FOC</b> — 10–20 µs (sin/cos table + 2 PIs + SVPWM).</li>
+        <li><b>PWM update</b> — &lt;1 µs (write timer register).</li>
+        <li><b>Gate driver prop</b> — 100–500 ns.</li>
+        <li><b>Motor L/R</b> — 100–500 µs (electrical floor).</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Forgetting sin/cos cost</b> — libm sinf() is 30–100 cycles. Use a table lookup or CORDIC for the FOC inner loop.</li>
+        <li><b>Polling instead of DMA for SPI</b> — DMA the encoder transfer; let the CPU work in parallel.</li>
+        <li><b>Floats on a Cortex-M0/M3</b> — no FPU means every multiply is dozens of cycles. Either upgrade the MCU or go fixed-point Q15/Q31.</li>
+        <li><b>Putting the loop on a non-RT host</b> — Linux user-space jitter is ms-scale. The fast loop belongs on a microcontroller.</li>
+        <li><b>Reading the encoder on the same tick you command PWM</b> — actually fine, but only if you sampled the encoder at PWM mid; otherwise you read stale data + new command.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 7 — System Integration</a> ·
+    Topic: Data Flow + Latency Budget
+  </footer>
+</main>
+<script>
+  const rateEl=document.getElementById('rate');
+  const lawEl=document.getElementById('law');
+  const mcuEl=document.getElementById('mcu');
+  const busEl=document.getElementById('bus');
+  const stageBars=document.getElementById('stageBars');
+  const verdict=document.getElementById('verdict');
+
+  // baseline µs per stage at G4
+  const lawTimeG4 = {pi:3, foc:18, mpc:90};
+  const mcuScale  = {g4:1.0, f4:2.0, f1:5.0};
+  function busTime(b){
+    if(b==='local') return 1; // PWM register write
+    if(b==='canfd') return 30;  // ~10-byte FD frame at 5 Mbps data + arb
+    if(b==='can')   return 130; // 8-byte at 1 Mbps
+    if(b==='rs485') return 90;  // ~10 chars at 1 Mbps with framing
+    return 0;
+  }
+  const lawLabel={pi:'PI (simple)',foc:'FOC (Clarke+Park+PI+SVPWM)',mpc:'MPC (10-step horizon)'};
+  const mcuLabel={g4:'STM32G4 (170 MHz FPU)',f4:'STM32F4 (84 MHz FPU)',f1:'STM32F1 (72 MHz no-FPU)'};
+  const busLabel={local:'Local PWM (none)',canfd:'CAN-FD 5 Mbps',can:'Classical CAN 1 Mbps',rs485:'RS-485 1 Mbps'};
+
+  function update(){
+    const rate=parseFloat(rateEl.value);
+    const T = 1000/rate;  // µs
+    const law=lawEl.value;
+    const mcu=mcuEl.value;
+    const bus=busEl.value;
+
+    document.getElementById('rateRead').textContent=rate.toFixed(0)+' kHz';
+    document.getElementById('lawRead').textContent=lawLabel[law];
+    document.getElementById('mcuRead').textContent=mcuLabel[mcu];
+    document.getElementById('busRead').textContent=busLabel[bus];
+
+    const stages = [
+      {name:'Encoder SPI', us: 4},
+      {name:'ADC convert', us: 2},
+      {name:'Control law', us: lawTimeG4[law] * mcuScale[mcu]},
+      {name:'Bus / PWM', us: busTime(bus)},
+      {name:'Gate driver', us: 0.3},
+      {name:'Motor L/R (floor)', us: 200}
+    ];
+    const totalUs = stages.reduce((s,x)=>s+x.us,0);
+    const maxBar = Math.max(...stages.map(x=>x.us), totalUs*0.6);
+
+    stageBars.innerHTML = stages.map(s=>`
+      <div class="stage-row">
+        <div class="name">${s.name}</div>
+        <div class="bar"><div class="fill" style="width:${Math.min(100,s.us/maxBar*100).toFixed(1)}%"></div></div>
+        <div class="val">${s.us.toFixed(1)} µs</div>
+      </div>
+    `).join('') + `
+      <div class="stage-row" style="border-top:1px solid var(--line);margin-top:6px;padding-top:6px">
+        <div class="name" style="color:var(--fg-bright)"><b>TOTAL latency</b></div>
+        <div></div>
+        <div class="val" style="color:var(--accent2);font-weight:bold">${totalUs.toFixed(1)} µs</div>
+      </div>
+      <div class="stage-row">
+        <div class="name" style="color:var(--fg-bright)"><b>Deadline (1/f_s)</b></div>
+        <div></div>
+        <div class="val" style="color:var(--accent3);font-weight:bold">${T.toFixed(1)} µs</div>
+      </div>
+    `;
+
+    // verdict — but motor L/R is a physical floor we can't beat,
+    // and in practice the control deadline only needs the *electrical* path to finish in T,
+    // not the motor response. Compute electrical latency = total - motor L/R.
+    const electricalLatency = totalUs - stages[stages.length-1].us;
+    const utilization = electricalLatency / T;
+    let cls='ok', msg='';
+    if (utilization < 0.5) {
+      cls='ok';
+      msg = `OK — electrical loop ${electricalLatency.toFixed(1)} µs vs ${T.toFixed(1)} µs deadline (${(utilization*100).toFixed(0)}% utilization). Comfortable headroom.`;
+    } else if (utilization < 0.85) {
+      cls='warn';
+      msg = `TIGHT — ${(utilization*100).toFixed(0)}% utilization. Will work but jitter could cause missed deadlines under load.`;
+    } else {
+      cls='bad';
+      msg = `OVERRUN — electrical latency ${electricalLatency.toFixed(1)} µs > ${(0.85*T).toFixed(1)} µs (85% of deadline). Lower sample rate, simpler control law, faster MCU, or move loop closer to motor.`;
+    }
+    if (totalUs > T*5) {
+      msg += ` (Note: motor L/R floor ${stages[stages.length-1].us.toFixed(0)} µs already dominates — even an infinitely fast controller can't react faster than physics.)`;
+    }
+    verdict.className='verdict '+cls;
+    verdict.textContent=msg;
+  }
+  [rateEl,lawEl,mcuEl,busEl].forEach(el=>el.addEventListener('input',update));
+  update();
+</script>
+</body>
+</html>

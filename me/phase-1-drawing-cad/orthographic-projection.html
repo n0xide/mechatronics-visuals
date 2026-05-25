@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orthographic Projection — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .view-label{fill:var(--accent);font:600 12px ui-monospace,monospace;text-anchor:middle}
+  .view-box{fill:var(--bg-elev2);stroke:var(--line);stroke-width:1}
+  .part-face{fill:#2a3340;stroke:var(--accent);stroke-width:1.5;stroke-linejoin:round}
+  .part-face.hidden{stroke-dasharray:4 3;opacity:0.7}
+  .iso-face{fill:#2a3340;stroke:var(--accent2);stroke-width:1.5;stroke-linejoin:round}
+  .iso-face.top{fill:#36404f}
+  .iso-face.right{fill:#202833}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Orthographic Projection — first-angle vs. third-angle</h1>
+  <p class="lede">Toggle the projection standard. The same L-bracket fans into six flat views via the "glass box," but where each view *lands* on the page depends on whether the box folds away from the viewer (first-angle / ISO) or toward the viewer (third-angle / ANSI).</p>
+
+  <h3>What this teaches</h3>
+  <p>An engineer working from an international drawing has to identify the standard *before* reading any dimension. The cone-and-circle symbol in the title block, plus the relative position of the top/front/right views, fully encodes the rule.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Projection standard</label>
+      <div style="display:flex;gap:6px">
+        <button class="btn primary" id="btn-third">Third-angle (ANSI / US)</button>
+        <button class="btn" id="btn-first">First-angle (ISO / EU)</button>
+      </div>
+    </div>
+    <div class="control">
+      <label>Current standard</label>
+      <span class="readout" id="ro-std">Third-angle (ANSI)</span>
+    </div>
+    <div class="control">
+      <label>Title-block symbol</label>
+      <span class="readout" id="ro-sym">cone points right (toward viewer)</span>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg viewBox="0 0 920 460" xmlns="http://www.w3.org/2000/svg">
+      <!-- LEFT: isometric of L-bracket -->
+      <g transform="translate(20,20)">
+        <text x="160" y="-2" class="label" text-anchor="middle">Isometric (the part itself)</text>
+        <g id="iso" transform="translate(40,40)">
+          <!-- L-bracket dims: 80W x 50D x 40H, with vertical leg 80W x 50D x 40H subtracted to make L shape -->
+          <!-- Isometric projection, axes at 30° -->
+          <!-- Front-facing rectangle of L (in the iso) -->
+          <!-- bottom slab: 80 x 50 base, 20 tall; back leg: 80 x 20 (deep) x 40 tall -->
+          <!-- Iso transform: x' = x - z*cos30; y' = -y - z*sin30 (with z into page) -->
+          <!-- We'll just author the polygons. Scale unit = 2 px. -->
+
+          <!-- Visible faces of L-bracket -->
+          <!-- Front face (the L profile, looking at +Z from front) -->
+          <polygon class="iso-face" points="
+            0,80
+            160,80
+            160,40
+            40,40
+            40,0
+            0,0
+          " transform="translate(60,80)"/>
+          <!-- Top face of bottom slab (horizontal top of foot) -->
+          <polygon class="iso-face top" points="
+            40,40
+            160,40
+            220,0
+            100,0
+          " transform="translate(60,80)"/>
+          <!-- Top face of vertical leg -->
+          <polygon class="iso-face top" points="
+            0,0
+            40,0
+            100,-40
+            60,-40
+          " transform="translate(60,80)"/>
+          <!-- Right side of vertical leg -->
+          <polygon class="iso-face right" points="
+            40,0
+            40,40
+            100,0
+            100,-40
+          " transform="translate(60,80)"/>
+          <!-- Right side of slab/foot -->
+          <polygon class="iso-face right" points="
+            160,40
+            160,80
+            220,40
+            220,0
+          " transform="translate(60,80)"/>
+
+          <!-- Axis arrows -->
+          <g transform="translate(20,180)" stroke="var(--fg-dim)" stroke-width="1" fill="none">
+            <line x1="0" y1="0" x2="30" y2="0"/>
+            <text x="34" y="4" class="axis-label">X</text>
+            <line x1="0" y1="0" x2="0" y2="-30"/>
+            <text x="-3" y="-32" class="axis-label" text-anchor="end">Y</text>
+            <line x1="0" y1="0" x2="22" y2="-13"/>
+            <text x="26" y="-12" class="axis-label">Z</text>
+          </g>
+          <text x="10" y="220" class="label-dim">80 × 50 × 40 L-bracket</text>
+        </g>
+      </g>
+
+      <!-- Divider -->
+      <line x1="350" y1="20" x2="350" y2="440" stroke="var(--line)" stroke-width="1"/>
+
+      <!-- RIGHT: the six-view layout -->
+      <g transform="translate(370,20)">
+        <text x="260" y="-2" class="label" text-anchor="middle">Orthographic layout (six views)</text>
+        <!-- We will render six view boxes in a 3x3 grid + label them depending on standard. -->
+        <!-- Grid positions (col, row), each box = 100 x 70: -->
+        <!-- positions: -->
+        <!-- (0,0) (1,0) (2,0) (3,0) -->
+        <!-- (0,1) (1,1) (2,1) (3,1) -->
+        <!-- (0,2) (1,2) (2,2) (3,2) -->
+
+        <!-- The classic six-view layout has 5 around the front: -->
+        <!--   TOP -->
+        <!-- L FRONT R REAR -->
+        <!--   BOTTOM -->
+        <!-- For first-angle: TOP appears BELOW front, BOTTOM appears ABOVE front, LEFT appears to RIGHT, RIGHT appears to LEFT (mirrored vs third-angle). -->
+
+        <!-- We'll draw boxes at fixed positions and only swap the labels and the silhouettes -->
+
+        <!-- view BOX positions (cx, cy = upper-left), each 110 x 80 -->
+        <g id="view-grid">
+          <!-- top row -->
+          <g transform="translate(140,10)" id="vb-top"><rect class="view-box" width="110" height="80" rx="4"/></g>
+          <!-- middle row -->
+          <g transform="translate(20,100)" id="vb-left"><rect class="view-box" width="110" height="80" rx="4"/></g>
+          <g transform="translate(140,100)" id="vb-front"><rect class="view-box" width="110" height="80" rx="4"/></g>
+          <g transform="translate(260,100)" id="vb-right"><rect class="view-box" width="110" height="80" rx="4"/></g>
+          <g transform="translate(380,100)" id="vb-rear"><rect class="view-box" width="110" height="80" rx="4"/></g>
+          <!-- bottom row -->
+          <g transform="translate(140,190)" id="vb-bottom"><rect class="view-box" width="110" height="80" rx="4"/></g>
+        </g>
+
+        <!-- silhouettes (drawn in JS so we can flip left/right by standard) -->
+        <g id="silhouettes"></g>
+
+        <!-- view labels (rewritten in JS) -->
+        <g id="view-labels"></g>
+
+        <!-- Projection-angle symbol -->
+        <g transform="translate(140,300)">
+          <rect x="0" y="0" width="380" height="120" rx="6" fill="var(--bg-elev2)" stroke="var(--line)"/>
+          <text x="190" y="22" class="label" text-anchor="middle">Title-block projection symbol</text>
+          <g id="proj-symbol" transform="translate(120,40)">
+            <!-- A cone (triangle) + a circle, oriented per standard.
+                 Third-angle: cone on RIGHT pointing LEFT (apex left, base right), circle on LEFT.
+                 First-angle: cone on LEFT pointing RIGHT (apex right, base left), circle on RIGHT.
+                 Per ISO standard. -->
+          </g>
+          <text x="190" y="105" class="label-dim" text-anchor="middle" id="sym-caption"></text>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Same part, different page layout.</b> The L-bracket on the left is identical; only the *position* of each flat view on the right depends on the standard.</li>
+    <li><b>Third-angle (ANSI/US):</b> top view above the front, right view to the right of the front. Mnemonic — the glass box folds *toward* you, so views land where the face is pointing.</li>
+    <li><b>First-angle (ISO/EU):</b> top view *below* the front, right view *to the left* of the front. The box folds *away* from you, so views land opposite.</li>
+    <li><b>Title-block symbol</b> is the only unambiguous tell. Cone apex pointing left (toward viewer) = third-angle. Cone apex pointing right (away from viewer) = first-angle.</li>
+    <li><b>Minimum view set.</b> An L-bracket is fully described by front + top + right. The other three (left, rear, bottom) repeat information and are usually omitted.</li>
+    <li><b>If you can't tell:</b> assume nothing. Send the drawing back and demand the symbol. Mis-reading the standard rotates every feature 180° in the wrong plane.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>1st angle</b> — ISO / EU. Project AWAY from viewer. Symbol cone points AWAY.</li>
+        <li><b>3rd angle</b> — ANSI / US. Project TOWARD viewer. Symbol cone points AT viewer.</li>
+        <li><b>Front + Top + Right</b> — typical minimum 3-view set.</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>VIEW SELECTION</h3>
+      <ul>
+        <li><b>3 views</b> — minimum: front + top + right.</li>
+        <li><b>Section view</b> — when hidden internals matter.</li>
+        <li><b>Auxiliary view</b> — for inclined / non-orthogonal faces.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Missing symbol</b> — always include projection-angle symbol in title block; different layouts otherwise give wrong parts.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 1 — Technical Drawing &amp; CAD</a> ·
+    Topic: Orthographic projection
+  </footer>
+</main>
+<script>
+  const labelsByStd = {
+    third: {
+      top:    {row:'top',    col:'top'},     // top view above front
+      front:  {row:'mid',    col:'front'},
+      right:  {row:'mid',    col:'right'},   // right view to the right
+      left:   {row:'mid',    col:'left'},    // left view to the left
+      rear:   {row:'mid',    col:'rear'},
+      bottom: {row:'bot',    col:'bot'}      // bottom view below front
+    },
+    first: {
+      // in first-angle the projected views swap top<->bot and left<->right
+      // but the same six positions are filled
+      // for clarity we keep the same six boxes and swap LABELS only
+    }
+  };
+
+  // For each box id, label depends on standard:
+  // vb-top    -> third-angle: "TOP", first-angle: "BOTTOM"
+  // vb-bottom -> third-angle: "BOTTOM", first-angle: "TOP"
+  // vb-left   -> third-angle: "LEFT", first-angle: "RIGHT"
+  // vb-right  -> third-angle: "RIGHT", first-angle: "LEFT"
+  // vb-front  -> always "FRONT"
+  // vb-rear   -> always "REAR"
+
+  const boxes = ['top','bottom','left','right','front','rear'];
+  const boxPos = {  // upper-left of each box rect, relative to right-panel group
+    top:    [140, 10],
+    left:   [20, 100],
+    front:  [140, 100],
+    right:  [260, 100],
+    rear:   [380, 100],
+    bottom: [140, 190]
+  };
+
+  // Silhouette drawers. Each draws into a <g transform="translate(...)">
+  // The L-bracket: 80 wide, 50 deep, 40 tall (vertical leg 20 thick on rear edge).
+  // Scale to fit inside ~100x70 box centered.
+
+  function svg(tag, attrs, children) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    if (children) for (const c of children) el.appendChild(c);
+    return el;
+  }
+  function path(d, cls) { return svg('path',{d,class:cls||'part-face'}); }
+
+  // Front silhouette: looking along +Z (the L profile)
+  // 80 wide, 40 tall, vertical-leg is 40 tall x 40 wide on the LEFT, foot is 80 wide x 20 tall
+  function frontSil() {
+    return svg('g',{}, [
+      path('M 5 5 L 45 5 L 45 25 L 75 25 L 75 45 L 5 45 Z')
+    ]);
+  }
+  // Right side silhouette: looking along -X (from the right)
+  // shows the L profile rotated -- depth=50, height=40, with foot 50 deep x 20 tall, vertical leg 20 deep x 40 tall on RIGHT
+  function rightSil() {
+    return svg('g',{}, [
+      path('M 5 25 L 55 25 L 55 45 L 5 45 Z'),  // foot
+      path('M 35 5 L 55 5 L 55 25 L 35 25 Z')   // vertical leg cross-section (mirrored)
+    ]);
+  }
+  function leftSil() {
+    // mirror of right
+    return svg('g',{}, [
+      path('M 5 25 L 55 25 L 55 45 L 5 45 Z'),
+      path('M 5 5 L 25 5 L 25 25 L 5 25 Z')
+    ]);
+  }
+  // Top: looking down -Y. Outline of foot top + vertical leg top (offset on rear)
+  function topSil() {
+    return svg('g',{}, [
+      path('M 5 15 L 75 15 L 75 45 L 5 45 Z'),  // full footprint
+      // vertical leg outline (dashed, hidden inside)
+      svg('line',{x1:5,y1:25,x2:75,y2:25,stroke:'var(--accent)',
+                  'stroke-width':1,'stroke-dasharray':'3 3',opacity:0.6})
+    ]);
+  }
+  function bottomSil() {
+    return svg('g',{}, [
+      path('M 5 15 L 75 15 L 75 45 L 5 45 Z'),
+      svg('line',{x1:5,y1:35,x2:75,y2:35,stroke:'var(--accent)',
+                  'stroke-width':1,'stroke-dasharray':'3 3',opacity:0.6})
+    ]);
+  }
+  function rearSil() {
+    // mirror of front horizontally
+    return svg('g',{}, [
+      path('M 5 5 L 35 5 L 35 25 L 75 25 L 75 45 L 5 45 Z')
+    ]);
+  }
+
+  function drawProjectionSymbol(std) {
+    const g = document.getElementById('proj-symbol');
+    g.innerHTML = '';
+    // canonical ISO symbol = frustum (cone) + circle.
+    // Third-angle: circle on LEFT, cone on RIGHT with apex pointing LEFT (toward circle).
+    // First-angle: cone on LEFT with apex pointing RIGHT (toward circle), circle on RIGHT.
+    // Each glyph ~30 wide.
+
+    // The cone is drawn as two triangles meeting at the apex; we'll use a frustum profile.
+    if (std === 'third') {
+      // Circle at left center: cx=20, r=14
+      g.appendChild(svg('circle',{cx:20,cy:20,r:14,fill:'none',stroke:'var(--fg-bright)','stroke-width':1.5}));
+      g.appendChild(svg('circle',{cx:20,cy:20,r:7,fill:'none',stroke:'var(--fg-bright)','stroke-width':1.5}));
+      // Frustum at right: base at x=100, apex at x=60, opening to the left
+      g.appendChild(svg('polygon',{points:'100,2 100,38 60,28 60,12',
+                                    fill:'none',stroke:'var(--fg-bright)','stroke-width':1.5}));
+      // Tie line between circle right edge and frustum apex
+      g.appendChild(svg('line',{x1:34,y1:20,x2:60,y2:20,stroke:'var(--fg-dim)',
+                                'stroke-width':1,'stroke-dasharray':'3 2'}));
+    } else {
+      // Frustum at left, opening to the right (apex on right)
+      g.appendChild(svg('polygon',{points:'0,2 0,38 40,28 40,12',
+                                    fill:'none',stroke:'var(--fg-bright)','stroke-width':1.5}));
+      // Circle at right
+      g.appendChild(svg('circle',{cx:80,cy:20,r:14,fill:'none',stroke:'var(--fg-bright)','stroke-width':1.5}));
+      g.appendChild(svg('circle',{cx:80,cy:20,r:7,fill:'none',stroke:'var(--fg-bright)','stroke-width':1.5}));
+      g.appendChild(svg('line',{x1:40,y1:20,x2:66,y2:20,stroke:'var(--fg-dim)',
+                                'stroke-width':1,'stroke-dasharray':'3 2'}));
+    }
+  }
+
+  function render(std) {
+    const labels = (std === 'third')
+      ? {top:'TOP', bottom:'BOTTOM', left:'LEFT', right:'RIGHT', front:'FRONT', rear:'REAR'}
+      // first-angle: the views swap because the box folds away from the viewer
+      : {top:'BOTTOM', bottom:'TOP', left:'RIGHT', right:'LEFT', front:'FRONT', rear:'REAR'};
+
+    const silMap = (std === 'third')
+      ? {top:topSil, bottom:bottomSil, left:leftSil, right:rightSil, front:frontSil, rear:rearSil}
+      : {top:bottomSil, bottom:topSil, left:rightSil, right:leftSil, front:frontSil, rear:rearSil};
+
+    // labels
+    const labGroup = document.getElementById('view-labels');
+    labGroup.innerHTML = '';
+    for (const id of boxes) {
+      const [x,y] = boxPos[id];
+      const t = svg('text',{x:x+55,y:y+15,class:'view-label'});
+      t.textContent = labels[id];
+      labGroup.appendChild(t);
+    }
+    // silhouettes
+    const silGroup = document.getElementById('silhouettes');
+    silGroup.innerHTML = '';
+    for (const id of boxes) {
+      const [x,y] = boxPos[id];
+      const sil = silMap[id]();
+      sil.setAttribute('transform',`translate(${x+12},${y+22})`);
+      silGroup.appendChild(sil);
+    }
+    // projection symbol
+    drawProjectionSymbol(std);
+    // readouts
+    document.getElementById('ro-std').textContent =
+      std === 'third' ? 'Third-angle (ANSI / US)' : 'First-angle (ISO / EU)';
+    document.getElementById('ro-sym').textContent =
+      std === 'third' ? 'cone apex points left (toward viewer)'
+                      : 'cone apex points right (away from viewer)';
+    document.getElementById('sym-caption').textContent =
+      std === 'third' ? 'Third-angle: circle left, cone (apex left) right'
+                      : 'First-angle: cone (apex right) left, circle right';
+    document.getElementById('btn-third').classList.toggle('primary', std==='third');
+    document.getElementById('btn-first').classList.toggle('primary', std==='first');
+  }
+
+  document.getElementById('btn-third').onclick = () => render('third');
+  document.getElementById('btn-first').onclick = () => render('first');
+  render('third');
+</script>
+</body>
+</html>

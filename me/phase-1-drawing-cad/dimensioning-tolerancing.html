@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dimensioning &amp; Tolerance Stack-Up — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .dim-line{stroke:var(--accent);stroke-width:1;fill:none}
+  .dim-line.baseline{stroke:var(--accent2)}
+  .dim-line.mixed{stroke:var(--accent3)}
+  .ext-line{stroke:var(--fg-dim);stroke-width:1;fill:none;stroke-dasharray:2 2}
+  .dim-text{fill:var(--accent);font:11px ui-monospace,monospace;text-anchor:middle;cursor:pointer}
+  .dim-text.baseline{fill:var(--accent2)}
+  .dim-text.mixed{fill:var(--accent3)}
+  .dim-text.selected{fill:var(--warn);font-weight:700}
+  .feature{fill:#0e1116;stroke:var(--fg);stroke-width:1.5}
+  .feature.highlight{stroke:var(--warn);stroke-width:2.5}
+  .panel{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;
+    padding:12px;margin:10px 0;font:12px ui-monospace,Menlo,monospace}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+  .num{color:var(--accent);font-weight:600}
+  .num-warn{color:var(--warn);font-weight:600}
+  .num-ok{color:var(--accent3);font-weight:600}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Dimensioning &amp; Tolerance Stack-Up</h1>
+  <p class="lede">Same bar with four features. Three ways to dimension it. Click any dimension to see the tolerance chain it feeds into. Move the slider to set the per-dimension ± value and watch worst-case sum diverge from RSS — and watch chain dimensioning explode while baseline dimensioning stays bounded.</p>
+
+  <h3>What this teaches</h3>
+  <p>Tolerance stack-up is why "every dim has ±0.1, what could go wrong" goes wrong. Chains add; baselines don't. Worst-case (linear sum) is the conservative bound; RSS (root-sum-square) is the statistical reality when errors are independent. Pick the dimensioning *scheme* before you pick the values.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Per-dimension tolerance ± (mm)</label>
+      <input type="range" id="tol" min="0.02" max="0.5" step="0.01" value="0.1">
+      <span class="readout" id="ro-tol">±0.10</span>
+    </div>
+    <div class="control">
+      <label>Number of stages in chain</label>
+      <input type="range" id="n" min="2" max="6" step="1" value="4">
+      <span class="readout" id="ro-n">4 segments</span>
+    </div>
+    <div class="control">
+      <label>Selected dimension</label>
+      <span class="readout" id="ro-sel">— (click any blue/orange dim)</span>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg viewBox="0 0 920 540" xmlns="http://www.w3.org/2000/svg" id="svg">
+      <!-- We render three side-by-side schemes on the same conceptual bar.
+           Bar runs from x=80 to x=480, four hole features. -->
+
+      <!-- SCHEME 1: CHAIN -->
+      <g transform="translate(0,0)">
+        <text x="20" y="22" class="label" style="fill:var(--accent)">Scheme 1 — Chain (continuous)</text>
+        <text x="20" y="38" class="label-dim">Each dim measured from the previous feature.</text>
+        <g id="chain-bar" transform="translate(40,80)">
+          <!-- bar: 400 wide x 32 tall -->
+          <rect class="feature" x="0" y="0" width="800" height="32" rx="2"/>
+          <!-- hole features at chain nominal positions, drawn in JS -->
+        </g>
+      </g>
+
+      <!-- SCHEME 2: BASELINE -->
+      <g transform="translate(0,180)">
+        <text x="20" y="22" class="label" style="fill:var(--accent2)">Scheme 2 — Baseline (datum)</text>
+        <text x="20" y="38" class="label-dim">Every dim measured from the same left datum edge.</text>
+        <g id="base-bar" transform="translate(40,80)">
+          <rect class="feature" x="0" y="0" width="800" height="32" rx="2"/>
+        </g>
+      </g>
+
+      <!-- SCHEME 3: MIXED -->
+      <g transform="translate(0,380)">
+        <text x="20" y="22" class="label" style="fill:var(--accent3)">Scheme 3 — Mixed</text>
+        <text x="20" y="38" class="label-dim">Critical feature from datum; cosmetic spacing in chain.</text>
+        <g id="mix-bar" transform="translate(40,80)">
+          <rect class="feature" x="0" y="0" width="800" height="32" rx="2"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <div class="grid-2">
+    <div class="panel">
+      <div style="color:var(--fg-bright);margin-bottom:6px">Selected chain — worst case (sum)</div>
+      <div id="calc-wc">click a dimension above</div>
+    </div>
+    <div class="panel">
+      <div style="color:var(--fg-bright);margin-bottom:6px">Selected chain — RSS (√Σt²)</div>
+      <div id="calc-rss">click a dimension above</div>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Chain accumulates.</b> Click the last dim in scheme 1: every ± from the start of the bar piles on. With 4 segments at ±0.1, worst-case is ±0.4 mm at the far end.</li>
+    <li><b>Baseline cuts the chain.</b> Click the same downstream feature in scheme 2: only ±0.1 applies, because each dim refers back to the single datum edge.</li>
+    <li><b>Worst-case vs. RSS.</b> Worst-case (linear sum) assumes every error stacks in the same direction. RSS = √(Σt²) assumes errors are independent random — usually a factor of √n smaller for n stages. For 4 stages at ±0.1: worst = ±0.40, RSS ≈ ±0.20.</li>
+    <li><b>FDM caveat.</b> RSS only fits when errors are *independent*. Printer X-axis bias is systematic — every hole drifts the same direction. For FDM, design to worst-case unless you've measured the bias and compensated.</li>
+    <li><b>Mixed scheme is the real-world answer.</b> Tie functional features to the datum; let cosmetic spacings chain. Costs the same drawing real-estate; saves tolerance budget where it matters.</li>
+    <li><b>Reference dimensions (REF).</b> Often the chain-style values are shown <code>(REF)</code> alongside baselines so a shop can sanity-check spacing without using them for tolerance.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>Baseline dim</b> — accumulates ONE tolerance (datum-referenced).</li>
+        <li><b>Chain dim</b> — accumulates N tolerances (stage-by-stage).</li>
+        <li><b>REF</b> — informational only; no tolerance budget.</li>
+      </ul>
+    </div>
+    <div class="cheat-card formulas">
+      <h3>STACK-UP FORMULAS</h3>
+      <dl>
+        <dt>Worst case</dt><dd><span class="eq">Σ t_i = n · t</span><span class="eq-note">all errors aligned</span></dd>
+        <dt>RSS</dt><dd><span class="eq">√(Σ t_i²) = √n · t</span><span class="eq-note">independent random</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Bidirectional dims</b> — default to unidirectional; pick a single arrow convention.</li>
+        <li><b>Double-dimming</b> — one dimension per feature, no redundancy.</li>
+        <li><b>RSS on FDM</b> — printer bias is systematic, not random; use worst-case.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 1 — Technical Drawing &amp; CAD</a> ·
+    Topic: Dimensioning, tolerancing, stack-up
+  </footer>
+</main>
+<script>
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  function E(tag, attrs, children) {
+    const el = document.createElementNS(SVG_NS, tag);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    if (children) for (const c of children) el.appendChild(c);
+    return el;
+  }
+
+  // Bar = 800 wide. We place N+1 features (left datum + N holes).
+  // Positions evenly spaced across 700 mm of bar (start at x=50, end at x=750).
+  // We'll show in svg units that *also* match the labels (1 unit ≈ 1 mm) for clean numbers.
+
+  function positions(n) {
+    const startX = 50, endX = 750;
+    const step = (endX - startX) / n;
+    const arr = [];
+    for (let i=0; i<=n; i++) arr.push(startX + i*step);
+    return arr;
+  }
+
+  function holeAt(x, cls) {
+    return E('circle', {cx:x, cy:16, r:7, class:'feature ' + (cls||'')});
+  }
+
+  // Draw a horizontal dimension between (x1,y) and (x2,y) at vertical level 'level'
+  // 'cls' adds 'baseline' / 'mixed' class for color
+  // returns array of svg nodes
+  function dim(x1, x2, level, label, cls, onclick) {
+    const out = [];
+    // extension lines (down from bar)
+    out.push(E('line', {x1:x1, y1:32, x2:x1, y2:level+6, class:'ext-line'}));
+    out.push(E('line', {x1:x2, y1:32, x2:x2, y2:level+6, class:'ext-line'}));
+    // dimension line with arrows
+    out.push(E('line', {x1:x1, y1:level, x2:x2, y2:level, class:'dim-line ' + (cls||'')}));
+    // arrowheads
+    out.push(E('polygon', {points: `${x1},${level} ${x1+6},${level-3} ${x1+6},${level+3}`,
+                            fill: cls==='baseline' ? 'var(--accent2)'
+                                : cls==='mixed' ? 'var(--accent3)' : 'var(--accent)'}));
+    out.push(E('polygon', {points: `${x2},${level} ${x2-6},${level-3} ${x2-6},${level+3}`,
+                            fill: cls==='baseline' ? 'var(--accent2)'
+                                : cls==='mixed' ? 'var(--accent3)' : 'var(--accent)'}));
+    // label
+    const t = E('text', {x: (x1+x2)/2, y: level-4, class: 'dim-text ' + (cls||'')});
+    t.textContent = label;
+    if (onclick) t.addEventListener('click', onclick);
+    out.push(t);
+    return out;
+  }
+
+  let state = {
+    n: 4,
+    tol: 0.1,
+    selectedScheme: null,
+    selectedIdx: null   // index of dimension within scheme
+  };
+
+  function fmtNum(v) { return v.toFixed(2); }
+
+  function calc() {
+    const calcWc = document.getElementById('calc-wc');
+    const calcRss = document.getElementById('calc-rss');
+    if (state.selectedScheme === null) {
+      calcWc.textContent = 'click a dimension above';
+      calcRss.textContent = 'click a dimension above';
+      return;
+    }
+    // chain count = number of dims in the chain feeding the selected feature
+    let chainCount = 1;
+    let descrip = '';
+    if (state.selectedScheme === 'chain') {
+      // chain[i] depends on i+1 dims from start (so selectedIdx of 0..n-1 -> chain length = i+1)
+      chainCount = state.selectedIdx + 1;
+      descrip = `Chain dim #${state.selectedIdx+1} → ${chainCount} stage${chainCount>1?'s':''} of ±${fmtNum(state.tol)} between datum edge and target feature.`;
+    } else if (state.selectedScheme === 'base') {
+      chainCount = 1;
+      descrip = `Baseline dim #${state.selectedIdx+1} → exactly 1 stage of ±${fmtNum(state.tol)} from the datum edge.`;
+    } else if (state.selectedScheme === 'mix') {
+      // first dim is from datum (1 stage); rest chain off that
+      chainCount = Math.max(1, state.selectedIdx);
+      if (state.selectedIdx === 0) {
+        descrip = `Mixed dim #1 (from datum) → 1 stage of ±${fmtNum(state.tol)}.`;
+      } else {
+        descrip = `Mixed dim #${state.selectedIdx+1} (chain off first datum dim) → ${chainCount} stage${chainCount>1?'s':''} of ±${fmtNum(state.tol)}.`;
+      }
+    }
+    const wc = chainCount * state.tol;
+    const rss = Math.sqrt(chainCount) * state.tol;
+    const wcColor = wc > 0.3 ? 'num-warn' : (wc > 0.15 ? 'num' : 'num-ok');
+    calcWc.innerHTML =
+      `<div>${descrip}</div>` +
+      `<div style="margin-top:8px">Worst-case = n × t = <span class="${wcColor}">${chainCount} × ${fmtNum(state.tol)} = ±${fmtNum(wc)} mm</span></div>` +
+      `<div class="label-dim" style="margin-top:4px">Every stage at its extreme, all in the same direction. Use this for FDM, where bias is systematic.</div>`;
+    calcRss.innerHTML =
+      `<div>${descrip}</div>` +
+      `<div style="margin-top:8px">RSS = √(Σt²) = <span class="num">√${chainCount} × ${fmtNum(state.tol)} = ±${fmtNum(rss)} mm</span></div>` +
+      `<div class="label-dim" style="margin-top:4px">Errors assumed independent &amp; random. Use this for high-volume CNC parts with controlled processes.</div>`;
+  }
+
+  function selectDim(scheme, idx) {
+    state.selectedScheme = scheme;
+    state.selectedIdx = idx;
+    document.getElementById('ro-sel').textContent =
+      `Scheme: ${scheme} · dim #${idx+1}`;
+    render();
+    calc();
+  }
+
+  function render() {
+    const n = state.n;
+    const pos = positions(n);
+    const tolText = '±' + fmtNum(state.tol);
+
+    // CHAIN
+    const chain = document.getElementById('chain-bar');
+    chain.innerHTML = '';
+    chain.appendChild(E('rect',{class:'feature', x:0, y:0, width:800, height:32, rx:2}));
+    // datum tick on left
+    chain.appendChild(E('line',{x1:0, y1:0, x2:0, y2:32, stroke:'var(--fg-bright)','stroke-width':2}));
+    // features
+    for (let i=1; i<pos.length; i++) {
+      const h = holeAt(pos[i]);
+      if (state.selectedScheme==='chain' && state.selectedIdx === i-1) h.classList.add('highlight');
+      chain.appendChild(h);
+    }
+    // dimensions: from pos[i] to pos[i+1] for i=0..n-1, alternating levels for legibility
+    for (let i=0; i<n; i++) {
+      const lvl = -10 - (i % 2) * 16;
+      const value = (pos[i+1] - pos[i]).toFixed(0);
+      const sel = (state.selectedScheme==='chain' && state.selectedIdx === i);
+      const nodes = dim(pos[i], pos[i+1], lvl, `${value} ${tolText}`, '', () => selectDim('chain', i));
+      if (sel) nodes[nodes.length-1].classList.add('selected');
+      nodes.forEach(nd => chain.appendChild(nd));
+    }
+
+    // BASELINE
+    const base = document.getElementById('base-bar');
+    base.innerHTML = '';
+    base.appendChild(E('rect',{class:'feature', x:0, y:0, width:800, height:32, rx:2}));
+    base.appendChild(E('line',{x1:0, y1:0, x2:0, y2:32, stroke:'var(--fg-bright)','stroke-width':2}));
+    base.appendChild(E('text',{x:0,y:-2,class:'label-dim','text-anchor':'start'},
+      [(()=>{const t=document.createTextNode('DATUM');return t;})()]));
+    for (let i=1; i<pos.length; i++) {
+      const h = holeAt(pos[i]);
+      if (state.selectedScheme==='base' && state.selectedIdx === i-1) h.classList.add('highlight');
+      base.appendChild(h);
+    }
+    // dims: from datum (pos[0]) to each feature, stacked downward
+    for (let i=0; i<n; i++) {
+      const lvl = 60 + i * 18;
+      const value = (pos[i+1] - pos[0]).toFixed(0);
+      const sel = (state.selectedScheme==='base' && state.selectedIdx === i);
+      const nodes = dim(pos[0], pos[i+1], lvl, `${value} ${tolText}`, 'baseline', () => selectDim('base', i));
+      if (sel) nodes[nodes.length-1].classList.add('selected');
+      nodes.forEach(nd => base.appendChild(nd));
+    }
+
+    // MIXED
+    const mix = document.getElementById('mix-bar');
+    mix.innerHTML = '';
+    mix.appendChild(E('rect',{class:'feature', x:0, y:0, width:800, height:32, rx:2}));
+    mix.appendChild(E('line',{x1:0, y1:0, x2:0, y2:32, stroke:'var(--fg-bright)','stroke-width':2}));
+    for (let i=1; i<pos.length; i++) {
+      const h = holeAt(pos[i]);
+      if (state.selectedScheme==='mix' && state.selectedIdx === i-1) h.classList.add('highlight');
+      mix.appendChild(h);
+    }
+    // first dim from datum to feature 1 (critical), then chain rest
+    const critValue = (pos[1] - pos[0]).toFixed(0);
+    const sel0 = (state.selectedScheme==='mix' && state.selectedIdx === 0);
+    const n0 = dim(pos[0], pos[1], 60, `${critValue} ${tolText}`, 'baseline', () => selectDim('mix', 0));
+    if (sel0) n0[n0.length-1].classList.add('selected');
+    n0.forEach(nd => mix.appendChild(nd));
+
+    for (let i=1; i<n; i++) {
+      const lvl = -10 - ((i-1) % 2) * 16;
+      const value = (pos[i+1] - pos[i]).toFixed(0);
+      const sel = (state.selectedScheme==='mix' && state.selectedIdx === i);
+      const nodes = dim(pos[i], pos[i+1], lvl, `${value} ${tolText}`, 'mixed', () => selectDim('mix', i));
+      if (sel) nodes[nodes.length-1].classList.add('selected');
+      nodes.forEach(nd => mix.appendChild(nd));
+    }
+  }
+
+  document.getElementById('tol').addEventListener('input', e => {
+    state.tol = parseFloat(e.target.value);
+    document.getElementById('ro-tol').textContent = '±' + fmtNum(state.tol);
+    render(); calc();
+  });
+  document.getElementById('n').addEventListener('input', e => {
+    state.n = parseInt(e.target.value, 10);
+    document.getElementById('ro-n').textContent = state.n + ' segments';
+    // reset selection if out of range
+    if (state.selectedIdx !== null && state.selectedIdx >= state.n) {
+      state.selectedScheme = null;
+      state.selectedIdx = null;
+      document.getElementById('ro-sel').textContent = '— (click any blue/orange dim)';
+    }
+    render(); calc();
+  });
+
+  render();
+</script>
+</body>
+</html>

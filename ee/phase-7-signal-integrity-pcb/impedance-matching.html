@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Impedance Matching — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  .col-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:14px 0}
+  .col{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;padding:10px}
+  .col h4{margin:0 0 8px;font:600 12px ui-monospace,monospace;color:var(--accent2);
+          text-transform:uppercase;letter-spacing:0.04em}
+  .col canvas{display:block;width:100%;height:auto;background:var(--bg);border-radius:4px}
+  .col-desc{font-size:11px;color:var(--fg-dim);margin-top:6px;line-height:1.4}
+  @media(max-width:760px){.col-grid{grid-template-columns:1fr}}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Impedance Matching</h1>
+  <p class="lede">Three ways to kill reflections on a digital trace: source termination, load termination, series termination. Each compromises something different — see the resulting waveforms side by side.</p>
+
+  <p>Every termination strategy is the same trick — add a resistor equal (or close) to Z<sub>0</sub> at the right place. Where you put it decides what's absorbed, what's halved, and how much DC current you pay.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Source impedance R<sub>S</sub> (Ω): <span class="readout" id="rsVal">10</span></label>
+      <input type="range" id="rs" min="1" max="100" step="1" value="10">
+    </div>
+    <div class="control">
+      <label>Trace Z<sub>0</sub> (Ω): <span class="readout" id="z0Val">50</span></label>
+      <input type="range" id="z0" min="25" max="100" step="1" value="50">
+    </div>
+    <div class="control">
+      <label>Load Z<sub>L</sub> (Ω): <span class="readout" id="zlVal">1000</span></label>
+      <input type="range" id="zl" min="100" max="10000" step="50" value="1000">
+    </div>
+  </section>
+
+  <div class="col-grid">
+    <div class="col">
+      <h4>Source termination</h4>
+      <svg viewBox="0 0 280 100" width="100%" style="background:var(--bg);border-radius:4px">
+        <rect x="10" y="40" width="50" height="40" fill="#2a313c" stroke="#5ec8ff" stroke-width="1.5"/>
+        <text x="35" y="64" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace" font-size="11">DRV</text>
+        <line x1="60" y1="60" x2="100" y2="60" stroke="#dde3ec" stroke-width="2"/>
+        <rect x="100" y="50" width="40" height="20" fill="#1d232c" stroke="#ffb86c" stroke-width="1.5"/>
+        <text x="120" y="64" text-anchor="middle" fill="#ffb86c" font-family="ui-monospace" font-size="10">R_S</text>
+        <line x1="140" y1="60" x2="230" y2="60" stroke="#a3e635" stroke-width="3"/>
+        <text x="180" y="50" text-anchor="middle" fill="#a3e635" font-family="ui-monospace" font-size="10">Z₀ trace</text>
+        <rect x="230" y="40" width="40" height="40" fill="#2a313c" stroke="#dde3ec" stroke-width="1.5"/>
+        <text x="250" y="64" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace" font-size="11">LOAD</text>
+      </svg>
+      <canvas id="cvs1" width="280" height="160"></canvas>
+      <p class="col-desc">R<sub>S</sub> at the driver, sized so R<sub>driver</sub> + R<sub>S</sub> = Z<sub>0</sub>. First wave is half-amplitude into the line; doubles at the open load (Γ=+1); the return reflection is absorbed by R<sub>S</sub>. Full amplitude settles at load, no DC current. Most common digital choice.</p>
+    </div>
+
+    <div class="col">
+      <h4>Load termination</h4>
+      <svg viewBox="0 0 280 100" width="100%" style="background:var(--bg);border-radius:4px">
+        <rect x="10" y="40" width="50" height="40" fill="#2a313c" stroke="#5ec8ff" stroke-width="1.5"/>
+        <text x="35" y="64" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace" font-size="11">DRV</text>
+        <line x1="60" y1="60" x2="195" y2="60" stroke="#a3e635" stroke-width="3"/>
+        <text x="130" y="50" text-anchor="middle" fill="#a3e635" font-family="ui-monospace" font-size="10">Z₀ trace</text>
+        <rect x="195" y="50" width="40" height="20" fill="#1d232c" stroke="#ffb86c" stroke-width="1.5"/>
+        <text x="215" y="64" text-anchor="middle" fill="#ffb86c" font-family="ui-monospace" font-size="10">R_T</text>
+        <line x1="215" y1="70" x2="215" y2="88" stroke="#dde3ec" stroke-width="1.5"/>
+        <line x1="205" y1="88" x2="225" y2="88" stroke="#dde3ec" stroke-width="2"/>
+        <rect x="245" y="40" width="30" height="40" fill="#2a313c" stroke="#dde3ec" stroke-width="1.5"/>
+        <text x="260" y="64" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace" font-size="9">LD</text>
+      </svg>
+      <canvas id="cvs2" width="280" height="160"></canvas>
+      <p class="col-desc">R<sub>T</sub> = Z<sub>0</sub> at the far end to GND. Absorbs incident wave at the load — no reflection back to source. Full amplitude at load <i>if</i> R<sub>driver</sub> is small. Pays DC current through the terminator continuously.</p>
+    </div>
+
+    <div class="col">
+      <h4>Series termination</h4>
+      <svg viewBox="0 0 280 100" width="100%" style="background:var(--bg);border-radius:4px">
+        <rect x="10" y="40" width="40" height="40" fill="#2a313c" stroke="#5ec8ff" stroke-width="1.5"/>
+        <text x="30" y="64" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace" font-size="10">DRV</text>
+        <line x1="50" y1="60" x2="80" y2="60" stroke="#dde3ec" stroke-width="2"/>
+        <rect x="80" y="50" width="35" height="20" fill="#1d232c" stroke="#ffb86c" stroke-width="1.5"/>
+        <text x="97" y="64" text-anchor="middle" fill="#ffb86c" font-family="ui-monospace" font-size="9">R_ser</text>
+        <line x1="115" y1="60" x2="230" y2="60" stroke="#a3e635" stroke-width="3"/>
+        <text x="170" y="50" text-anchor="middle" fill="#a3e635" font-family="ui-monospace" font-size="10">Z₀</text>
+        <rect x="230" y="40" width="40" height="40" fill="#2a313c" stroke="#dde3ec" stroke-width="1.5"/>
+        <text x="250" y="64" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace" font-size="11">LOAD</text>
+      </svg>
+      <canvas id="cvs3" width="280" height="160"></canvas>
+      <p class="col-desc">Identical to source termination in topology — small R in series with driver, sized so driver+R≈Z<sub>0</sub>. Practical recipe for digital outputs: 22–33 Ω discrete resistor next to an FPGA pin. No DC current; double-amplitude at load is fine for CMOS receivers since the receiver impedance is huge.</p>
+    </div>
+  </div>
+
+  <h2>PCB microstrip Z<sub>0</sub> calculator</h2>
+  <p style="font-size:12px;color:var(--fg-dim)">Approximate formula: Z<sub>0</sub> ≈ (87/√(ε<sub>r</sub>+1.41)) · ln(5.98·H/(0.8·W + T)). Valid when W/H is between 0.1 and 3.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Trace width W (mil): <span class="readout" id="wVal">15</span></label>
+      <input type="range" id="w" min="3" max="60" step="1" value="15">
+    </div>
+    <div class="control">
+      <label>Substrate height H (mil): <span class="readout" id="hVal">10</span></label>
+      <input type="range" id="h" min="3" max="40" step="1" value="10">
+    </div>
+    <div class="control">
+      <label>Copper thickness T (oz → mil): <span class="readout" id="tVal">1.4</span></label>
+      <input type="range" id="t" min="1" max="3" step="0.1" value="1.4">
+    </div>
+    <div class="control">
+      <label>Dielectric ε<sub>r</sub>: <span class="readout" id="erVal">4.4</span></label>
+      <input type="range" id="er" min="2" max="6" step="0.1" value="4.4">
+    </div>
+  </section>
+
+  <div class="figure" style="display:flex;gap:20px;flex-wrap:wrap;align-items:center">
+    <svg viewBox="0 0 320 180" width="320" height="180" style="background:var(--bg-elev2);border-radius:6px;padding:8px">
+      <!-- Ground plane -->
+      <rect x="30" y="130" width="260" height="14" fill="#9a6f3a" stroke="#5a3f1f"/>
+      <text x="160" y="156" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace" font-size="11">GND plane (1 oz Cu)</text>
+      <!-- Substrate -->
+      <rect x="30" y="60" width="260" height="70" fill="#1f2937" stroke="#3a4757"/>
+      <text x="160" y="100" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace" font-size="11">FR4, ε_r = <tspan id="svgEr">4.4</tspan></text>
+      <!-- Microstrip -->
+      <rect id="svgTrace" x="120" y="50" width="80" height="10" fill="#9a6f3a" stroke="#c89456"/>
+      <!-- Dimension arrows -->
+      <line x1="120" y1="40" x2="200" y2="40" stroke="#5ec8ff" stroke-width="1"/>
+      <text x="160" y="34" text-anchor="middle" fill="#5ec8ff" font-family="ui-monospace" font-size="11">W = <tspan id="svgW">15</tspan> mil</text>
+      <line x1="220" y1="60" x2="220" y2="130" stroke="#ffb86c" stroke-width="1"/>
+      <text x="270" y="98" text-anchor="middle" fill="#ffb86c" font-family="ui-monospace" font-size="11">H = <tspan id="svgH">10</tspan></text>
+    </svg>
+    <div style="flex:1;min-width:200px">
+      <h3>Computed Z<sub>0</sub></h3>
+      <div style="font:600 32px ui-monospace,monospace;color:var(--accent3);margin:8px 0">
+        <span id="z0Calc">50</span> Ω
+      </div>
+      <p style="font-size:12px;color:var(--fg-dim)">For controlled-impedance 50 Ω on 1.6 mm FR4: W ≈ 0.9 mm (35 mil). On a typical 10 mil prepreg with ε<sub>r</sub>=4.4: W ≈ 18 mil. Always confirm against fab's actual Dk and stackup.</p>
+      <p style="font-size:11px;color:var(--fg-dim)"><b>Reality check:</b> use the Saturn PCB Toolkit or your fab's calculator for the final number — this is the rough sanity check.</p>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>No termination = ringing</b>. The default un-terminated trace overshoots, undershoots, and rings — each bounce is a round-trip 2·T<sub>D</sub>. Visible on every panel before you tune R.</li>
+    <li><b>Source termination</b> — the cleanest single-resistor fix for digital point-to-point. Full amplitude at load, no DC current, no extra parts at the receiver. Most FPGA pins datasheet a recommended R<sub>series</sub>.</li>
+    <li><b>Load termination</b> — strongest absorption at the load. Required for distributed loads (memory buses) but burns DC current. AC-coupled (split) variants exist to avoid that.</li>
+    <li><b>Series ≈ source termination</b> for a high-impedance receiver. The half-amplitude wave doubles at the open load, and the return is killed by R<sub>series</sub>. This is what 22 Ω in series with a clock line is doing.</li>
+    <li><b>50 Ω is not magic</b>. Pick Z<sub>0</sub> for the system. PC boards default to 50 Ω because RF instruments do; differential pairs target 90–100 Ω (USB, LVDS).</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>50 Ω microstrip</b> on 1.6 mm FR4 ≈ <b>0.9 mm</b> wide.</li>
+        <li>Differential pairs: <b>90–100 Ω</b> (USB, LVDS).</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>DECISION</h3>
+      <ul>
+        <li><b>Series term</b> at driver — point-to-point digital, no DC current.</li>
+        <li><b>Parallel term</b> at receiver — distributed loads, memory buses.</li>
+        <li><b>AC term</b> (R–C) — bidirectional bus, no DC drop.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Under-termination</b> = ringing · <b>Over-termination</b> = slow edges.</li>
+        <li><b>Never daisy-chain</b> high-speed signals — stubs reflect.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 7 — Signal Integrity & PCB Design</a> ·
+    Topic: Impedance matching and termination
+  </footer>
+</main>
+<script>
+  let rs = 10, z0 = 50, zl = 1000;
+
+  function bind(id, valId, target){
+    const el = document.getElementById(id);
+    el.oninput = ()=>{
+      window[target] = +el.value;
+      document.getElementById(valId).textContent = el.value;
+      drawAll();
+    };
+  }
+  bind('rs','rsVal','rs');
+  bind('z0','z0Val','z0');
+  bind('zl','zlVal','zl');
+
+  function drawTermination(canvasId, scheme){
+    const c = document.getElementById(canvasId);
+    const ctx = c.getContext('2d');
+    const W = c.width, H = c.height;
+    ctx.fillStyle = '#0e1116'; ctx.fillRect(0,0,W,H);
+
+    // Two stacked plots: source side, load side
+    ctx.font='10px ui-monospace,monospace'; ctx.fillStyle='#8f99a8';
+    ctx.fillText('V_source', 4, 14);
+    ctx.fillText('V_load', 4, H/2 + 12);
+
+    // Time axis
+    const tdNs = 1; // round-trip in arbitrary unit
+    // We simulate reflections by step response
+    // Use a simple model: reflections at source and load
+    const Gs = (rs - z0) / (rs + z0);
+    const Gl = (zl - z0) / (zl + z0);
+
+    // Amplitude at line entry depends on scheme
+    // Scheme 1 (source term): R_S in series, sized so R_drv + R_S = Z0 → Gs = 0
+    // Scheme 2 (load term): R_T = Z0 at load → Gl = 0
+    // Scheme 3 (series): R_ser sized so R_drv + R_ser = Z0 → Gs = 0 (same as source term)
+    let gs = Gs, gl = Gl;
+    if(scheme === 1 || scheme === 3) gs = (Math.abs(rs - z0) < 5) ? 0 : Gs;
+    if(scheme === 2) gl = (Math.abs(zl - z0) < 5) ? 0 : Gl;
+
+    // Make termination automatic for visualization
+    if(scheme === 1 || scheme === 3) gs = 0;
+    if(scheme === 2) gl = 0;
+
+    // Initial divider ratio at source: incident wave V0 = Vsource * Z0/(Rs+Z0)
+    const V0 = z0 / (rs + z0);
+
+    // Simulate
+    const periods = 8;
+    const samples = 200;
+    const Vsrc = new Array(samples).fill(0);
+    const Vload = new Array(samples).fill(0);
+    // Reflections sequence
+    // Wave (i) at line:
+    // First incident: V0 at t=0 at source.
+    // Arrives at load at t=1 (round-trip = 2). Voltage at load = V0*(1+gl)
+    // Reflected = V0 * gl, arrives back at source at t=2. V at source after = V0 + V0*gl + V0*gl*gs ...
+    let cumSource = 0, cumLoad = 0;
+    let waveAmp = V0;
+    const events = [];
+    // emit "incident leaves source" at t=0
+    events.push({t:0, src:V0, ld:0, type:'launch'});
+    let dir = 'forward'; let amp = V0;
+    for(let k=0;k<periods*2;k++){
+      if(dir === 'forward'){
+        // arrives at load at +1 unit
+        const tArr = (k+1);
+        events.push({t:tArr, src:0, ld:amp*(1+gl), type:'load-arrival'});
+        amp = amp * gl;
+        dir = 'backward';
+      } else {
+        // arrives back at source at +1 unit
+        const tArr = (k+1);
+        events.push({t:tArr, src:amp*(1+gs), ld:0, type:'src-arrival'});
+        amp = amp * gs;
+        dir = 'forward';
+      }
+    }
+
+    // Build V_source vs time and V_load vs time
+    // Source voltage starts at V0 (the step launched onto the line)
+    // When wave returns to source, source voltage adds the (1+gs)*amp term
+    let vS = V0, vL = 0;
+    const tMax = periods * 2;
+    for(let i=0;i<samples;i++){
+      const t = (i/samples) * tMax;
+      // accumulate events: any event with e.t < t
+      vS = V0;
+      vL = 0;
+      events.forEach(e=>{
+        if(e.t === 0) return;
+        if(e.t <= t){
+          if(e.type === 'load-arrival') vL = e.ld;
+          if(e.type === 'src-arrival') vS += e.src;
+        }
+      });
+      Vsrc[i] = vS;
+      Vload[i] = vL;
+    }
+
+    // Steady state final values (after all bounces): driver sees V_dr * Z_L / (R_S + Z_L) effectively
+    // For verification only
+
+    // Draw
+    function drawTrace(arr, yMid, color){
+      ctx.strokeStyle = color; ctx.lineWidth=2;
+      ctx.beginPath();
+      arr.forEach((v,i)=>{
+        const x = 30 + (i/samples) * (W-40);
+        const py = yMid - v * 40;
+        if(i===0) ctx.moveTo(x, py);
+        else ctx.lineTo(x, py);
+      });
+      ctx.stroke();
+    }
+    // Mid-lines
+    ctx.strokeStyle='#2a313c'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(30, H/4 + 5); ctx.lineTo(W-10, H/4 + 5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(30, 3*H/4 - 5); ctx.lineTo(W-10, 3*H/4 - 5); ctx.stroke();
+    // Ideal target (dashed)
+    ctx.strokeStyle='#a3e635'; ctx.setLineDash([3,3]);
+    ctx.beginPath();
+    ctx.moveTo(30, H/4 + 5 - 40);
+    ctx.lineTo(W-10, H/4 + 5 - 40);
+    ctx.moveTo(30, 3*H/4 - 5 - 40);
+    ctx.lineTo(W-10, 3*H/4 - 5 - 40);
+    ctx.stroke(); ctx.setLineDash([]);
+    drawTrace(Vsrc, H/4 + 5, '#5ec8ff');
+    drawTrace(Vload, 3*H/4 - 5, '#ffb86c');
+  }
+
+  function drawAll(){
+    drawTermination('cvs1', 1);
+    drawTermination('cvs2', 2);
+    drawTermination('cvs3', 3);
+  }
+  drawAll();
+
+  // ===== Microstrip calc =====
+  let mw = 15, mh = 10, mt = 1.4, mer = 4.4;
+  function calcZ0(){
+    // Z0 = (87/sqrt(er+1.41)) * ln(5.98*H / (0.8*W + T))
+    const z = (87 / Math.sqrt(mer + 1.41)) * Math.log(5.98 * mh / (0.8 * mw + mt));
+    return Math.max(10, Math.min(200, z));
+  }
+  function updateMicrostrip(){
+    document.getElementById('wVal').textContent = mw;
+    document.getElementById('hVal').textContent = mh;
+    document.getElementById('tVal').textContent = mt.toFixed(1);
+    document.getElementById('erVal').textContent = mer.toFixed(1);
+    document.getElementById('z0Calc').textContent = calcZ0().toFixed(1);
+    // update SVG
+    const traceW = Math.min(180, 6 + mw * 3);
+    const tracePosX = 160 - traceW/2;
+    const traceEl = document.getElementById('svgTrace');
+    traceEl.setAttribute('x', tracePosX);
+    traceEl.setAttribute('width', traceW);
+    document.getElementById('svgW').textContent = mw;
+    document.getElementById('svgH').textContent = mh;
+    document.getElementById('svgEr').textContent = mer.toFixed(1);
+  }
+  document.getElementById('w').oninput = e=>{ mw=+e.target.value; updateMicrostrip(); };
+  document.getElementById('h').oninput = e=>{ mh=+e.target.value; updateMicrostrip(); };
+  document.getElementById('t').oninput = e=>{ mt=+e.target.value; updateMicrostrip(); };
+  document.getElementById('er').oninput = e=>{ mer=+e.target.value; updateMicrostrip(); };
+  updateMicrostrip();
+</script>
+</body>
+</html>

@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sinusoid ↔ Phasor Explorer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:720px){.split{grid-template-columns:1fr}}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Sinusoid &harr; Phasor Explorer</h1>
+  <p class="lede">A sinusoid in the time domain is the projection of a rotating vector — the phasor — onto the real axis. Drag the sliders and watch how the dot on the circle and the dot on the wave move in lockstep. Once that picture is in your head, AC analysis stops being algebra and starts being geometry.</p>
+
+  <h3>What this teaches</h3>
+  <p>The Euler-formula correspondence <code>Vm·cos(ωt+φ) = Re{Vm·e^j(ωt+φ)}</code>. The phasor magnitude is the peak; its angle at <code>t=0</code> is the phase. Frequency is hidden — it's the rotation rate. Two signals at the same ω have a fixed angle between their phasors: that's lead/lag.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>V<sub>m</sub> (peak, V) — <span class="readout" id="rVm">5.0</span></label>
+      <input type="range" id="sVm" min="0.5" max="10" step="0.1" value="5">
+    </div>
+    <div class="control">
+      <label>f (Hz) — <span class="readout" id="rF">1.00</span></label>
+      <input type="range" id="sF" min="0.2" max="3" step="0.05" value="1">
+    </div>
+    <div class="control">
+      <label>φ (phase, °) — <span class="readout" id="rPhi">0</span></label>
+      <input type="range" id="sPhi" min="-180" max="180" step="1" value="0">
+    </div>
+    <div class="control">
+      <label>φ₂ — 2nd signal offset (°) — <span class="readout" id="rPhi2">-45</span></label>
+      <input type="range" id="sPhi2" min="-180" max="180" step="1" value="-45">
+    </div>
+    <div class="control">
+      <label>Animation</label>
+      <div style="display:flex;gap:6px">
+        <button class="btn" id="bPlay">Pause</button>
+        <button class="btn" id="bFreeze">Freeze snapshot</button>
+        <button class="btn" id="bClear">Clear snapshots</button>
+      </div>
+    </div>
+    <div class="control">
+      <label>Readouts</label>
+      <div>V<sub>RMS</sub> = <span class="readout" id="rRMS">3.54</span> V<br>
+           ω = <span class="readout" id="rOmega">6.28</span> rad/s<br>
+           Lead/lag: <span class="readout" id="rLead">v₂ lags v₁ by 45°</span></div>
+    </div>
+  </section>
+
+  <div class="figure">
+    <div class="split">
+      <div>
+        <h3 style="margin-top:0;color:var(--accent)">Phasor (complex plane)</h3>
+        <svg id="phasorSvg" viewBox="0 0 360 360" width="100%"></svg>
+      </div>
+      <div>
+        <h3 style="margin-top:0;color:var(--accent2)">Time domain v(t)</h3>
+        <svg id="timeSvg" viewBox="0 0 360 360" width="100%"></svg>
+      </div>
+    </div>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>v₁ phasor / wave</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>v₂ phasor / wave</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>frozen snapshots</span>
+      <span><span class="swatch" style="background:var(--fg-dim)"></span>RMS level</span>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>The dot on the circle and the dot on the wave move together</b> — the wave dot's height is the y-projection (sin) and x-projection (cos) of the rotating phasor. We use cosine convention here, so the wave traces Re{phasor}.</li>
+    <li><b>Changing φ rotates the phasor</b> — and shifts the wave horizontally. Same information, two views.</li>
+    <li><b>Frequency doesn't change the phasor's shape</b> — only how fast it spins. The phasor is the *steady-state* picture; ω is implicit.</li>
+    <li><b>Two phasors at the same ω keep a constant angle</b> — that fixed angle is the phase difference. Positive = lead, negative = lag (cosine convention).</li>
+    <li><b>RMS is just the radius scaled by 1/√2 ≈ 0.707</b> — the dashed band on the time plot is where a DC voltage delivering the same average power would sit.</li>
+    <li><b>Freeze a few snapshots while spinning</b> — the snapshots make it obvious that "phasor" is just a stop-action photo of a rotating vector.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>time form</dt><dd><span class="eq">v(t) = V_m·cos(ωt + φ)</span></dd>
+        <dt>angular ω</dt><dd><span class="eq">ω = 2πf</span></dd>
+        <dt>RMS</dt><dd><span class="eq">V_rms = V_m / √2</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>RMS ÷ peak = 0.707</b> — same heat as DC of V_rms.</li>
+        <li><b>AVG(|sin|) = 0.637·V_m</b> — full-wave rectified mean.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>RMS for power</b> — peak for breakdown ratings (insulation, cap V_max).</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 3 — AC Circuit Analysis</a> ·
+    Topic: Sinusoids &amp; Phasors
+  </footer>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const sVm=$('sVm'), sF=$('sF'), sPhi=$('sPhi'), sPhi2=$('sPhi2');
+  const rVm=$('rVm'), rF=$('rF'), rPhi=$('rPhi'), rPhi2=$('rPhi2'),
+        rRMS=$('rRMS'), rOmega=$('rOmega'), rLead=$('rLead');
+  const phasorSvg=$('phasorSvg'), timeSvg=$('timeSvg');
+  const bPlay=$('bPlay'), bFreeze=$('bFreeze'), bClear=$('bClear');
+
+  let playing=true, t0=performance.now(), tNow=0;
+  const snapshots=[]; // {vm, ang1, ang2}
+
+  // ---- Phasor SVG static grid ----
+  const PW=360, PH=360, PC=180, PR=140;
+  function buildPhasorStatic(){
+    let s='';
+    // grid circles
+    for (let r=PR/4; r<=PR; r+=PR/4){
+      s+=`<circle cx="${PC}" cy="${PC}" r="${r}" class="grid-line" fill="none"/>`;
+    }
+    // axes
+    s+=`<line x1="20" y1="${PC}" x2="${PW-20}" y2="${PC}" class="axis"/>`;
+    s+=`<line x1="${PC}" y1="20" x2="${PC}" y2="${PH-20}" class="axis"/>`;
+    // axis labels
+    s+=`<text x="${PW-14}" y="${PC-6}" class="axis-label" text-anchor="end">Re</text>`;
+    s+=`<text x="${PC+6}" y="20" class="axis-label">Im</text>`;
+    // tick marks
+    for (let r=PR/4; r<=PR; r+=PR/4){
+      s+=`<text x="${PC+r+2}" y="${PC+12}" class="axis-label">${(r/PR*10).toFixed(0)}</text>`;
+    }
+    phasorSvg.innerHTML = s + '<g id="phLayer"></g>';
+  }
+  buildPhasorStatic();
+
+  // ---- Time SVG static grid ----
+  const TW=360, TH=360, TL=40, TR=20, TT=20, TB=40;
+  const TPW = TW - TL - TR, TPH = TH - TT - TB;
+  function buildTimeStatic(){
+    let s='';
+    // grid + axes
+    for (let i=0;i<=8;i++){
+      const x=TL+i*TPW/8;
+      s+=`<line x1="${x}" y1="${TT}" x2="${x}" y2="${TT+TPH}" class="grid-line"/>`;
+    }
+    for (let j=0;j<=8;j++){
+      const y=TT+j*TPH/8;
+      s+=`<line x1="${TL}" y1="${y}" x2="${TL+TPW}" y2="${y}" class="grid-line"/>`;
+    }
+    // zero axis
+    s+=`<line x1="${TL}" y1="${TT+TPH/2}" x2="${TL+TPW}" y2="${TT+TPH/2}" class="axis"/>`;
+    s+=`<line x1="${TL}" y1="${TT}" x2="${TL}" y2="${TT+TPH}" class="axis"/>`;
+    // labels
+    s+=`<text x="${TL-6}" y="${TT+5}" class="axis-label" text-anchor="end">+V</text>`;
+    s+=`<text x="${TL-6}" y="${TT+TPH+5}" class="axis-label" text-anchor="end">-V</text>`;
+    s+=`<text x="${TL-6}" y="${TT+TPH/2+4}" class="axis-label" text-anchor="end">0</text>`;
+    s+=`<text x="${TL+TPW/2}" y="${TH-8}" class="axis-label" text-anchor="middle">time (s) →</text>`;
+    timeSvg.innerHTML = s + '<g id="tLayer"></g>';
+  }
+  buildTimeStatic();
+
+  function loop(now){
+    if (playing){ tNow += (now - (loop._last||now))/1000; }
+    loop._last = now;
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  function draw(){
+    const Vm = +sVm.value, f = +sF.value;
+    const phi = +sPhi.value * Math.PI/180;
+    const phi2 = +sPhi2.value * Math.PI/180;
+    const omega = 2*Math.PI*f;
+
+    rVm.textContent = Vm.toFixed(1);
+    rF.textContent = f.toFixed(2);
+    rPhi.textContent = sPhi.value;
+    rPhi2.textContent = sPhi2.value;
+    rRMS.textContent = (Vm/Math.SQRT2).toFixed(2);
+    rOmega.textContent = omega.toFixed(2);
+    const lead = +sPhi2.value;
+    if (lead>0) rLead.textContent = `v₂ leads v₁ by ${lead}°`;
+    else if (lead<0) rLead.textContent = `v₂ lags v₁ by ${-lead}°`;
+    else rLead.textContent = `in phase`;
+
+    // ---- phasor draw ----
+    // Map: amp range 0..10 V → 0..PR px. Vm/10 * PR.
+    const scale = PR/10;
+    const ang1 = omega*tNow + phi;       // current angle
+    const ang2 = omega*tNow + phi + phi2;
+    const x1 = PC + Vm*scale*Math.cos(ang1);
+    const y1 = PC - Vm*scale*Math.sin(ang1);
+    const x2 = PC + Vm*scale*Math.cos(ang2);
+    const y2 = PC - Vm*scale*Math.sin(ang2);
+
+    let ph='';
+    // snapshots first (under)
+    for (const sn of snapshots){
+      const sx1 = PC + sn.vm*scale*Math.cos(sn.ang1);
+      const sy1 = PC - sn.vm*scale*Math.sin(sn.ang1);
+      const sx2 = PC + sn.vm*scale*Math.cos(sn.ang2);
+      const sy2 = PC - sn.vm*scale*Math.sin(sn.ang2);
+      ph+=`<line x1="${PC}" y1="${PC}" x2="${sx1}" y2="${sy1}" stroke="var(--accent3)" stroke-width="1" opacity="0.5"/>`;
+      ph+=`<line x1="${PC}" y1="${PC}" x2="${sx2}" y2="${sy2}" stroke="var(--accent3)" stroke-width="1" opacity="0.35" stroke-dasharray="3,3"/>`;
+    }
+    // arc swept by v1 trajectory (small dot trail at radius)
+    ph+=`<circle cx="${PC}" cy="${PC}" r="${Vm*scale}" fill="none" stroke="var(--accent)" stroke-width="0.5" opacity="0.3"/>`;
+    // v1 phasor
+    ph+=`<line x1="${PC}" y1="${PC}" x2="${x1}" y2="${y1}" stroke="var(--accent)" stroke-width="2.5"/>`;
+    ph+=`<circle cx="${x1}" cy="${y1}" r="6" fill="var(--accent)"/>`;
+    ph+=`<text x="${x1+10}" y="${y1-6}" class="label" fill="var(--accent)">v₁</text>`;
+    // v2 phasor (dashed)
+    ph+=`<line x1="${PC}" y1="${PC}" x2="${x2}" y2="${y2}" stroke="var(--accent2)" stroke-width="2" stroke-dasharray="5,3"/>`;
+    ph+=`<circle cx="${x2}" cy="${y2}" r="5" fill="var(--accent2)"/>`;
+    ph+=`<text x="${x2+10}" y="${y2+12}" class="label" fill="var(--accent2)">v₂</text>`;
+    // angle arc between them
+    const aStart = ang2, aEnd = ang1;
+    const rArc = 30;
+    const ax1 = PC + rArc*Math.cos(aStart);
+    const ay1 = PC - rArc*Math.sin(aStart);
+    const ax2 = PC + rArc*Math.cos(aEnd);
+    const ay2 = PC - rArc*Math.sin(aEnd);
+    const dAng = phi2; // signed; if negative, v2 is clockwise of v1
+    const largeArc = Math.abs(dAng) > Math.PI ? 1 : 0;
+    const sweep = dAng > 0 ? 0 : 1;
+    ph+=`<path d="M ${ax1} ${ay1} A ${rArc} ${rArc} 0 ${largeArc} ${sweep} ${ax2} ${ay2}" fill="none" stroke="var(--fg-dim)" stroke-width="1"/>`;
+
+    document.getElementById('phLayer').innerHTML = ph;
+
+    // ---- time draw ----
+    // Show last 2 periods of time, with current t at the right edge
+    const period = 1/f;
+    const span = 2*period;             // 2 cycles visible
+    const tEnd = tNow;
+    const tStart = tEnd - span;
+    const N = 200;
+    let path1='', path2='';
+    for (let i=0;i<=N;i++){
+      const t = tStart + i*span/N;
+      const v1 = Vm * Math.cos(omega*t + phi);
+      const v2 = Vm * Math.cos(omega*t + phi + phi2);
+      const px = TL + i*TPW/N;
+      const py1 = TT + TPH/2 - (v1/10)*(TPH/2);
+      const py2 = TT + TPH/2 - (v2/10)*(TPH/2);
+      path1 += (i===0?'M':'L') + px.toFixed(1) + ' ' + py1.toFixed(1) + ' ';
+      path2 += (i===0?'M':'L') + px.toFixed(1) + ' ' + py2.toFixed(1) + ' ';
+    }
+    let tl='';
+    // RMS bands
+    const rmsY = (Vm/Math.SQRT2/10)*(TPH/2);
+    tl += `<line x1="${TL}" y1="${TT+TPH/2-rmsY}" x2="${TL+TPW}" y2="${TT+TPH/2-rmsY}" stroke="var(--fg-dim)" stroke-width="1" stroke-dasharray="4,4"/>`;
+    tl += `<line x1="${TL}" y1="${TT+TPH/2+rmsY}" x2="${TL+TPW}" y2="${TT+TPH/2+rmsY}" stroke="var(--fg-dim)" stroke-width="1" stroke-dasharray="4,4"/>`;
+    tl += `<text x="${TL+TPW-3}" y="${TT+TPH/2-rmsY-3}" class="axis-label" text-anchor="end">+V_RMS</text>`;
+    // snapshot waves (faint)
+    for (const sn of snapshots){
+      let sp='';
+      for (let i=0;i<=N;i++){
+        const t = tStart + i*span/N;
+        const v = sn.vm * Math.cos(2*Math.PI*sn.f*t + sn.phi);
+        const px = TL + i*TPW/N;
+        const py = TT + TPH/2 - (v/10)*(TPH/2);
+        sp += (i===0?'M':'L') + px.toFixed(1) + ' ' + py.toFixed(1) + ' ';
+      }
+      tl += `<path d="${sp}" fill="none" stroke="var(--accent3)" stroke-width="1" opacity="0.4"/>`;
+    }
+    tl += `<path d="${path1}" class="trace trace-1"/>`;
+    tl += `<path d="${path2}" stroke="var(--accent2)" stroke-width="2" fill="none" stroke-dasharray="5,3"/>`;
+    // current dot at right edge (t = tEnd)
+    const vCur1 = Vm*Math.cos(omega*tEnd + phi);
+    const vCur2 = Vm*Math.cos(omega*tEnd + phi + phi2);
+    const cx = TL + TPW;
+    const cy1 = TT + TPH/2 - (vCur1/10)*(TPH/2);
+    const cy2 = TT + TPH/2 - (vCur2/10)*(TPH/2);
+    tl += `<circle cx="${cx}" cy="${cy1}" r="6" fill="var(--accent)"/>`;
+    tl += `<circle cx="${cx}" cy="${cy2}" r="5" fill="var(--accent2)"/>`;
+    // vertical "now" line
+    tl += `<line x1="${cx}" y1="${TT}" x2="${cx}" y2="${TT+TPH}" stroke="var(--fg-dim)" stroke-width="1" opacity="0.5"/>`;
+    // tick: period markings
+    for (let k=0;k<=2;k++){
+      const tx = TL + (k/2)*TPW;
+      tl += `<text x="${tx}" y="${TH-22}" class="axis-label" text-anchor="middle">${(tStart + k*period).toFixed(2)}s</text>`;
+    }
+    document.getElementById('tLayer').innerHTML = tl;
+  }
+
+  bPlay.addEventListener('click', () => {
+    playing = !playing;
+    bPlay.textContent = playing ? 'Pause' : 'Play';
+  });
+  bFreeze.addEventListener('click', () => {
+    const Vm=+sVm.value, f=+sF.value;
+    const phi=+sPhi.value*Math.PI/180, phi2=+sPhi2.value*Math.PI/180;
+    const omega=2*Math.PI*f;
+    snapshots.push({vm:Vm, f:f, phi:phi, ang1:omega*tNow+phi, ang2:omega*tNow+phi+phi2});
+    if (snapshots.length>5) snapshots.shift();
+  });
+  bClear.addEventListener('click', () => { snapshots.length = 0; });
+
+  for (const el of [sVm,sF,sPhi,sPhi2]) el.addEventListener('input', draw);
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E-Stop &amp; Fail-Safe &mdash; visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  button.btn.estop{background:var(--warn);color:var(--bg);border-color:var(--warn);
+    font:600 14px ui-monospace,monospace;padding:10px 20px}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .wire.live{stroke:var(--accent3);stroke-width:2.5}
+  .wire.dead{stroke:var(--warn);stroke-width:2;stroke-dasharray:3,3}
+  .scenario-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:10px 0}
+  .scenario{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;
+    padding:8px 12px;cursor:pointer;user-select:none}
+  .scenario:hover{border-color:var(--accent)}
+  .scenario.active{background:rgba(255,123,114,0.10);border-color:var(--warn)}
+  .scenario .lbl{font:600 12px ui-monospace,monospace;color:var(--fg);margin-bottom:2px}
+  .scenario .desc{font:11px ui-monospace,monospace;color:var(--fg-dim);line-height:1.4}
+  .state-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:10px 0}
+  .state{background:var(--bg-elev2);border:1px solid var(--line);border-radius:5px;padding:8px 10px}
+  .state .lbl{font:10px ui-monospace,monospace;color:var(--fg-dim);text-transform:uppercase;letter-spacing:0.05em}
+  .state .val{font:600 13px ui-monospace,monospace;color:var(--accent);margin-top:2px}
+  .state .val.safe{color:var(--accent3)}
+  .state .val.fault{color:var(--warn)}
+  .state .val.warn{color:var(--accent2)}
+  .out-status{padding:10px 14px;border-radius:6px;font:13px ui-monospace,monospace;margin:10px 0}
+  .out-status.ok{background:rgba(163,230,53,0.10);border:1px solid var(--accent3);color:var(--accent3)}
+  .out-status.fault{background:rgba(255,123,114,0.10);border:1px solid var(--warn);color:var(--warn)}
+  .out-status.warn{background:rgba(255,184,108,0.10);border:1px solid var(--accent2);color:var(--accent2)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+</style>
+</head>
+<body>
+<main>
+  <h1>E-Stop &amp; Fail-Safe Shutdown</h1>
+  <p class="lede">Dual-channel e-stop, safety contactor, STO inputs, watchdog. Fail-safe means: when something breaks, motion stops &mdash; not "the software handles it."</p>
+
+  <p>A motor doesn't care that your code panicked &mdash; it has angular momentum and a 50&nbsp;A drive. Safety architecture starts from the principle that <b>any single fault must result in a safe state</b>. The safe state is usually "motors freewheeling or actively braked, power removed at the contactor, no commands accepted until manually reset." This is enforced in hardware: physical buttons, dual-redundant relays, STO (Safe Torque Off) inputs on the drive that bypass the firmware path entirely. Click scenarios to see what kicks in.</p>
+
+  <div class="figure">
+    <h3>Safety architecture &mdash; trace power and signal flow</h3>
+    <svg id="esSvg" viewBox="0 0 940 420" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <!-- Battery -->
+      <rect x="20" y="180" width="80" height="60" rx="4" fill="var(--bg)" stroke="var(--accent3)" stroke-width="2"/>
+      <text x="60" y="208" class="label" text-anchor="middle" fill="var(--accent3)">BATTERY</text>
+      <text x="60" y="225" class="label-dim" text-anchor="middle">24V</text>
+
+      <!-- Main fuse -->
+      <line x1="100" y1="210" x2="140" y2="210" class="wire" id="w_bat_fuse"/>
+      <rect x="140" y="200" width="40" height="20" fill="var(--bg)" stroke="var(--warn)" stroke-width="1.5"/>
+      <text x="160" y="214" class="label" text-anchor="middle" font-size="10" fill="var(--warn)">FUSE</text>
+
+      <!-- Safety contactor (the muscle) -->
+      <line x1="180" y1="210" x2="240" y2="210" class="wire" id="w_fuse_cont"/>
+      <rect x="240" y="180" width="80" height="60" rx="4" fill="var(--bg)" stroke="var(--accent2)" stroke-width="2" id="contactor"/>
+      <text x="280" y="200" class="label" text-anchor="middle" fill="var(--accent2)">CONTACTOR</text>
+      <text x="280" y="217" class="label" text-anchor="middle" font-size="10" id="contState">CLOSED</text>
+      <text x="280" y="232" class="label-dim" text-anchor="middle" font-size="10">power switch</text>
+      <line x1="320" y1="210" x2="380" y2="210" class="wire" id="w_cont_drive"/>
+
+      <!-- Motor driver -->
+      <rect x="380" y="180" width="120" height="80" rx="4" fill="var(--bg)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="440" y="200" class="label" text-anchor="middle" fill="var(--accent)">MOTOR DRIVE</text>
+      <text x="440" y="216" class="label-dim" text-anchor="middle" font-size="10">w/ STO inputs</text>
+      <text x="440" y="245" class="label-dim" text-anchor="middle" font-size="10" id="driveState">ENABLED</text>
+      <!-- STO input on the drive -->
+      <circle cx="380" cy="270" r="4" fill="var(--warn)"/>
+      <text x="375" y="282" class="label" text-anchor="end" font-size="10" fill="var(--warn)">STO</text>
+      <line x1="380" y1="270" x2="340" y2="270" class="wire" id="w_sto"/>
+      <line x1="340" y1="270" x2="340" y2="360" class="wire" id="w_sto2"/>
+
+      <!-- Motor -->
+      <line x1="500" y1="210" x2="560" y2="210" class="wire" id="w_drive_motor"/>
+      <circle cx="600" cy="210" r="35" fill="var(--bg)" stroke="var(--accent3)" stroke-width="2"/>
+      <text x="600" y="208" class="label" text-anchor="middle" fill="var(--accent3)">M</text>
+      <text x="600" y="222" class="label-dim" text-anchor="middle" font-size="10" id="motorState">spin</text>
+
+      <!-- Ground -->
+      <line x1="60" y1="240" x2="60" y2="380" class="wire"/>
+      <line x1="60" y1="380" x2="600" y2="380" class="wire"/>
+      <line x1="600" y1="240" x2="600" y2="380" class="wire"/>
+
+      <!-- ====== SAFETY LOGIC SIDE ====== -->
+      <!-- E-stop button (dual-channel) -->
+      <rect x="700" y="40" width="100" height="50" rx="6" fill="var(--bg)" stroke="var(--warn)" stroke-width="2" id="estopBtn"/>
+      <text x="750" y="62" class="label" text-anchor="middle" fill="var(--warn)">E-STOP</text>
+      <text x="750" y="78" class="label-dim" text-anchor="middle" font-size="10" id="estopState">released</text>
+
+      <!-- Channel A wire -->
+      <line x1="700" y1="55" x2="650" y2="55" class="wire" id="w_estA"/>
+      <text x="640" y="50" class="label-dim" text-anchor="end" font-size="10">ch A</text>
+      <!-- Channel B wire -->
+      <line x1="700" y1="75" x2="650" y2="75" class="wire" id="w_estB"/>
+      <text x="640" y="78" class="label-dim" text-anchor="end" font-size="10">ch B</text>
+
+      <!-- Safety relay (dual-redundant) -->
+      <rect x="540" y="40" width="100" height="80" rx="4" fill="var(--bg)" stroke="var(--accent2)" stroke-width="2"/>
+      <text x="590" y="60" class="label" text-anchor="middle" fill="var(--accent2)">SAFETY</text>
+      <text x="590" y="76" class="label" text-anchor="middle" fill="var(--accent2)">RELAY</text>
+      <text x="590" y="92" class="label-dim" text-anchor="middle" font-size="10">dual-channel</text>
+      <text x="590" y="108" class="label-dim" text-anchor="middle" font-size="10" id="relayState">enabled</text>
+
+      <line x1="540" y1="65" x2="490" y2="65" class="wire" id="w_relay_cont"/>
+      <line x1="490" y1="65" x2="490" y2="180" class="wire" id="w_relay_cont2"/>
+      <text x="485" y="100" class="label-dim" text-anchor="end" font-size="10">enable contactor</text>
+
+      <line x1="540" y1="95" x2="380" y2="95" class="wire" id="w_relay_sto"/>
+      <line x1="380" y1="95" x2="380" y2="270" class="wire" id="w_relay_sto2"/>
+      <text x="385" y="90" class="label-dim" font-size="10">&rarr; STO</text>
+
+      <!-- Watchdog + Safety MCU -->
+      <rect x="700" y="130" width="100" height="60" rx="4" fill="var(--bg)" stroke="var(--accent3)" stroke-width="2"/>
+      <text x="750" y="150" class="label" text-anchor="middle" fill="var(--accent3)">SAFETY MCU</text>
+      <text x="750" y="166" class="label-dim" text-anchor="middle" font-size="10">+ watchdog</text>
+      <text x="750" y="182" class="label-dim" text-anchor="middle" font-size="10" id="wdState">healthy</text>
+      <line x1="700" y1="155" x2="640" y2="155" class="wire" id="w_wd"/>
+      <text x="635" y="158" class="label-dim" text-anchor="end" font-size="10">heartbeat &rarr; relay</text>
+
+      <!-- Main MCU (running app code) -->
+      <rect x="700" y="230" width="100" height="60" rx="4" fill="var(--bg)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="750" y="250" class="label" text-anchor="middle" fill="var(--accent)">MAIN MCU</text>
+      <text x="750" y="266" class="label-dim" text-anchor="middle" font-size="10">app code</text>
+      <text x="750" y="282" class="label-dim" text-anchor="middle" font-size="10" id="mcuState">running</text>
+      <line x1="700" y1="270" x2="500" y2="270" class="wire" id="w_mcu_drive"/>
+      <text x="500" y="295" class="label-dim" font-size="10">commands &rarr; drive</text>
+    </svg>
+
+    <div class="scenario-grid">
+      <div class="scenario active" data-id="normal">
+        <div class="lbl">1. Normal</div>
+        <div class="desc">All systems nominal. Power flows, motor runs.</div>
+      </div>
+      <div class="scenario" data-id="estop">
+        <div class="lbl">2. E-stop pressed</div>
+        <div class="desc">Operator slaps the red button. Both channels open.</div>
+      </div>
+      <div class="scenario" data-id="mcu_crash">
+        <div class="lbl">3. Main MCU crashes</div>
+        <div class="desc">App freezes. Watchdog stops getting petted.</div>
+      </div>
+      <div class="scenario" data-id="wire_fault">
+        <div class="lbl">4. Single channel fail</div>
+        <div class="desc">Channel A wire shorts. Channel B catches it.</div>
+      </div>
+      <div class="scenario" data-id="contactor_weld">
+        <div class="lbl">5. Contactor welded shut</div>
+        <div class="desc">Contactor failed closed. STO is the backup.</div>
+      </div>
+    </div>
+
+    <div class="state-grid">
+      <div class="state"><div class="lbl">Contactor</div><div class="val" id="stCont">closed</div></div>
+      <div class="state"><div class="lbl">STO input</div><div class="val" id="stSto">released</div></div>
+      <div class="state"><div class="lbl">Drive output</div><div class="val" id="stDrive">enabled</div></div>
+      <div class="state"><div class="lbl">Motor</div><div class="val" id="stMotor">spinning</div></div>
+      <div class="state"><div class="lbl">Reset required</div><div class="val" id="stReset">no</div></div>
+    </div>
+    <div class="out-status ok" id="esStatus">Normal operation. All safety layers armed.</div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Two independent paths cut the motor.</b> The contactor removes <i>bus power</i>. STO removes <i>gate drive</i> to the FETs. Either one alone stops torque; both together is defense in depth. A failure of one (welded contacts, broken STO trace) is caught by the other.</li>
+    <li><b>E-stop is dual-channel.</b> Channel A and Channel B both must close to allow operation; both must open to permit motion. If a single wire shorts or breaks, the safety relay detects mismatch and drops out anyway. Single fault tolerance is the baseline of any safety-rated system.</li>
+    <li><b>Watchdog is hardware, not software.</b> The Main MCU pets a hardware watchdog timer (typically inside a small Safety MCU or PMIC) at a fixed cadence. Miss a pet and the watchdog opens the safety relay autonomously &mdash; the crashed MCU can't stop it.</li>
+    <li><b>STO bypasses firmware.</b> "Safe Torque Off" is an industry-standard input on motor drives that disconnects gate drive at the silicon level. No code runs. Even if the drive's firmware is in an infinite loop or stuck commanding 100% PWM, STO=low means zero torque on the motor.</li>
+    <li><b>Reset is intentional, not automatic.</b> After an e-stop or fault, the system stays safe until a human takes a positive action (release button, press reset, power cycle). Automatic recovery hides intermittent faults and re-energizes mid-fault &mdash; dangerous.</li>
+    <li><b>Define the "safe state" up front.</b> For a robot arm: brake engaged (or freewheeling, depending on gravity load). For a drone: motors off (will fall &mdash; but rapidly). For an EV: drive disabled, brake on regen. There's no universal safe state &mdash; you decide per machine.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>SAFETY LAYERS (DEFENSE IN DEPTH)</h3>
+      <ul>
+        <li><b>L1: STO inputs on drives</b> &mdash; cuts gate drive, no FW.</li>
+        <li><b>L2: Safety relay + contactor</b> &mdash; removes bus.</li>
+        <li><b>L3: Dual-channel e-stop loop</b> &mdash; hardware control.</li>
+        <li><b>L4: Watchdog on Safety MCU</b> &mdash; catches FW crash.</li>
+        <li><b>L5: BMS OC/OV</b> &mdash; catches electrical faults.</li>
+        <li><b>L6: Fuse</b> &mdash; last-resort, slow.</li>
+      </ul>
+    </div>
+    <div class="cheat-card formulas">
+      <h3>SAFE STATE</h3>
+      <dl>
+        <dt>Brushed</dt><dd>terminals shorted = dynamic brake</dd>
+        <dt>BLDC</dt><dd>all low FETs on = freewheel-brake</dd>
+        <dt>Stepper</dt><dd>coils disabled = freewheel</dd>
+        <dt>w/ gravity</dt><dd>add holding brake (energize-to-release)</dd>
+        <dt>Drone</dt><dd>motors off (accept fall)</dd>
+      </dl>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Single-channel e-stop</b> &mdash; one stuck switch = no e-stop at all.</li>
+        <li><b>Software-only stop</b> &mdash; "I'll set PWM=0 in firmware" fails the moment FW crashes.</li>
+        <li><b>Auto-reset on e-stop release</b> &mdash; button releases, motors slam back on. Always require positive reset.</li>
+        <li><b>Power-to-release brake misconfigured</b> &mdash; if brake needs power to release, losing power engages it (correct); losing power releasing it (wrong wiring) means power loss = freefall.</li>
+        <li><b>Tested only when new</b> &mdash; e-stop circuit accumulates faults. Test on every powerup.</li>
+        <li><b>No I&sup2;t margin on contactor</b> &mdash; opening 50&nbsp;A under load arcs the contacts; pick a contactor rated for the inductive load type.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 6 &mdash; Power Management for EM Systems</a> &middot;
+    Topic: E-Stop &amp; Fail-Safe Shutdown
+  </footer>
+</main>
+<script>
+  const scenarios = {
+    normal:{
+      cont:'closed', sto:'released', drive:'enabled', motor:'spinning',
+      reset:'no', estop:'released', relay:'enabled', wd:'healthy', mcu:'running',
+      live:['w_bat_fuse','w_fuse_cont','w_cont_drive','w_drive_motor','w_estA','w_estB','w_relay_cont','w_relay_cont2','w_relay_sto','w_relay_sto2','w_wd','w_mcu_drive'],
+      dead:[],
+      status:{cls:'ok',msg:'Normal operation. All safety layers armed.'}
+    },
+    estop:{
+      cont:'OPEN', sto:'ASSERTED', drive:'disabled', motor:'STOPPED',
+      reset:'YES', estop:'pressed', relay:'tripped', wd:'healthy', mcu:'running',
+      live:['w_bat_fuse','w_fuse_cont','w_wd','w_mcu_drive'],
+      dead:['w_cont_drive','w_drive_motor','w_estA','w_estB','w_relay_cont','w_relay_cont2','w_relay_sto','w_relay_sto2'],
+      status:{cls:'fault',msg:'E-STOP pressed. Both channels open. Safety relay tripped &rarr; contactor opens AND STO asserts. Motor stops. Manual reset required.'}
+    },
+    mcu_crash:{
+      cont:'OPEN', sto:'ASSERTED', drive:'disabled', motor:'STOPPED',
+      reset:'YES', estop:'released', relay:'tripped', wd:'WATCHDOG FIRED', mcu:'CRASHED',
+      live:['w_bat_fuse','w_fuse_cont','w_estA','w_estB'],
+      dead:['w_cont_drive','w_drive_motor','w_relay_cont','w_relay_cont2','w_relay_sto','w_relay_sto2','w_wd','w_mcu_drive'],
+      status:{cls:'fault',msg:'Main MCU crashed. Heartbeat to watchdog stopped. Safety MCU drops the safety relay &rarr; contactor opens, STO asserts. Hardware catches what firmware could not.'}
+    },
+    wire_fault:{
+      cont:'OPEN', sto:'ASSERTED', drive:'disabled', motor:'STOPPED',
+      reset:'YES', estop:'channel A shorted', relay:'mismatch detected', wd:'healthy', mcu:'running',
+      live:['w_bat_fuse','w_fuse_cont','w_estB','w_wd','w_mcu_drive'],
+      dead:['w_cont_drive','w_drive_motor','w_estA','w_relay_cont','w_relay_cont2','w_relay_sto','w_relay_sto2'],
+      status:{cls:'warn',msg:'Channel A wire faulted. Safety relay sees mismatch between A and B &rarr; treats it as fault, trips. This is why dual-channel exists &mdash; single fault detected, system goes safe.'}
+    },
+    contactor_weld:{
+      cont:'WELDED CLOSED', sto:'ASSERTED', drive:'disabled', motor:'STOPPED',
+      reset:'YES + service', estop:'pressed', relay:'tripped', wd:'healthy', mcu:'running',
+      live:['w_bat_fuse','w_fuse_cont','w_cont_drive','w_drive_motor','w_wd','w_mcu_drive'],
+      dead:['w_estA','w_estB','w_relay_cont','w_relay_cont2','w_relay_sto','w_relay_sto2'],
+      status:{cls:'fault',msg:'Contactor failed welded closed (a real failure mode). Bus stays energized. STO catches it &mdash; gate drive removed at the drive itself. Motor stops despite contactor failure. Service required to replace contactor.'}
+    }
+  };
+
+  function apply(name){
+    const s = scenarios[name];
+    document.querySelectorAll('.scenario').forEach(el=>{
+      el.classList.toggle('active', el.dataset.id===name);
+    });
+
+    document.getElementById('stCont').textContent = s.cont;
+    document.getElementById('stSto').textContent  = s.sto;
+    document.getElementById('stDrive').textContent= s.drive;
+    document.getElementById('stMotor').textContent= s.motor;
+    document.getElementById('stReset').textContent= s.reset;
+    document.getElementById('contState').textContent = s.cont;
+    document.getElementById('estopState').textContent= s.estop;
+    document.getElementById('relayState').textContent= s.relay;
+    document.getElementById('wdState').textContent   = s.wd;
+    document.getElementById('mcuState').textContent  = s.mcu;
+    document.getElementById('driveState').textContent= s.drive;
+    document.getElementById('motorState').textContent= s.motor==='STOPPED'?'stop':'spin';
+
+    // colorize states
+    const colorFor = v => {
+      if(/STOP|OPEN|ASSERTED|CRASHED|YES|WELD|FIRE|mismatch|trip/i.test(v)) return 'val fault';
+      if(/normal|closed|enabled|spin|run|releas|health/i.test(v)) return 'val safe';
+      return 'val warn';
+    };
+    ['stCont','stSto','stDrive','stMotor','stReset'].forEach(id=>{
+      const el=document.getElementById(id);
+      el.className = colorFor(el.textContent);
+    });
+
+    // wire colors
+    const allWires = ['w_bat_fuse','w_fuse_cont','w_cont_drive','w_drive_motor',
+      'w_estA','w_estB','w_relay_cont','w_relay_cont2','w_relay_sto','w_relay_sto2',
+      'w_wd','w_mcu_drive','w_sto','w_sto2'];
+    allWires.forEach(w=>{
+      const el = document.getElementById(w);
+      if(!el) return;
+      el.classList.remove('live','dead');
+      if(s.live.includes(w)) el.classList.add('live');
+      else if(s.dead.includes(w)) el.classList.add('dead');
+    });
+
+    // contactor / estop visuals
+    document.getElementById('contactor').setAttribute('stroke',
+      s.cont==='closed' ? 'var(--accent2)' : 'var(--warn)');
+    document.getElementById('estopBtn').setAttribute('fill',
+      s.estop==='pressed' ? 'rgba(255,123,114,0.30)' : 'var(--bg)');
+
+    const st = document.getElementById('esStatus');
+    st.className = 'out-status '+s.status.cls;
+    st.textContent = s.status.msg;
+  }
+
+  document.querySelectorAll('.scenario').forEach(el=>{
+    el.addEventListener('click',()=>apply(el.dataset.id));
+  });
+  apply('normal');
+</script>
+</body>
+</html>

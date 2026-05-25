@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crosstalk and Ground Planes — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Crosstalk and Ground Planes</h1>
+  <p class="lede">Aggressor traces inject voltage onto neighbors via mutual inductance and capacitance. Spacing helps. Splits in the ground plane wreck the return path — return current is forced into a long detour, blowing up loop area and EMI.</p>
+
+  <p>Two physically separate problems sharing a single cure: keep the return current path directly underneath the signal. Crosstalk happens when two signals share too much electromagnetic neighborhood. Ground splits happen when the return current can't follow the signal trace, so it goes the long way around.</p>
+
+  <h2>Aggressor / victim crosstalk</h2>
+  <section class="controls">
+    <div class="control">
+      <label>Trace spacing (in trace widths W): <span class="readout" id="spVal">1.0</span></label>
+      <input type="range" id="sp" min="0.5" max="5" step="0.1" value="1">
+    </div>
+    <div class="control">
+      <label>Aggressor edge rate:</label>
+      <select id="edgeRate" style="background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);padding:4px 8px;border-radius:4px;font:13px ui-monospace,monospace">
+        <option value="slow">slow (10 ns)</option>
+        <option value="med" selected>medium (1 ns)</option>
+        <option value="fast">fast (200 ps)</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>Animation:</label>
+      <div style="display:flex;gap:6px">
+        <button class="btn primary" id="agPulse">Pulse aggressor</button>
+        <button class="btn" id="agAuto">Auto repeat</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3 style="margin-top:0">Board outline — top view</h3>
+    <canvas id="xtCanvas" width="900" height="290"></canvas>
+    <p style="font-size:11px;color:var(--fg-dim);margin-top:6px"><b>NEXT</b> (near-end crosstalk) appears at the victim's input (same side as the aggressor's driver). <b>FEXT</b> appears at the far end. NEXT is dominated by the duration of the aggressor's transition; FEXT scales with edge rate and trace length.</p>
+
+    <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:10px;font-size:12px;font-family:ui-monospace,monospace">
+      <span>NEXT amplitude: <span class="readout" id="nextAmp">—</span></span>
+      <span>FEXT amplitude: <span class="readout" id="fextAmp">—</span></span>
+      <span>3W rule satisfied: <span class="readout" id="threeW">no</span></span>
+    </div>
+  </div>
+
+  <h2>Return current path — the ground-split problem</h2>
+  <section class="controls">
+    <div class="control">
+      <label>Show ground split:</label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn primary" id="splitToggle">Split: OFF</button>
+      </div>
+    </div>
+    <div class="control">
+      <label>Signal frequency:</label>
+      <select id="freqSel" style="background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);padding:4px 8px;border-radius:4px;font:13px ui-monospace,monospace">
+        <option value="low">low (1 kHz — DC-ish)</option>
+        <option value="high" selected>high (100 MHz)</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3 style="margin-top:0">Return current — view through the board</h3>
+    <canvas id="gndCanvas" width="900" height="290"></canvas>
+    <p style="font-size:11px;color:var(--fg-dim);margin-top:6px">Top view: signal trace (orange, layer 1) and the return current (cyan arrows, on layer 2 GND). At high frequency, return current chooses the lowest-impedance path — directly beneath the signal. Cut the plane under the trace, and that current is forced to detour around the gap. Loop area explodes; EMI radiates from the resulting loop antenna.</p>
+
+    <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:10px;font-size:12px;font-family:ui-monospace,monospace">
+      <span>Loop area: <span class="readout" id="loopArea">small</span></span>
+      <span>EMI radiation estimate: <span class="readout" id="emiEst">low</span></span>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>3W rule</b> — center-to-center spacing ≥ 3× trace width drops crosstalk by roughly 70%. The mutual capacitance and inductance fall off rapidly with distance; doubling the gap more than halves the coupling.</li>
+    <li><b>NEXT and FEXT have different shapes</b> — NEXT is broad (lasts as long as the aggressor transition); FEXT is a sharp pulse that scales with edge rate. Differential routing cancels FEXT; spacing helps both.</li>
+    <li><b>Return current ≠ DC return path</b> at high frequency. The current chooses the inductively cheapest route, which is straight under the trace on the reference plane below.</li>
+    <li><b>Ground splits cost you in loop area, which is linear in EMI</b>. A 1 cm detour around a split, at 100 MHz, can take your radiated emissions from passing to failing FCC Class B.</li>
+    <li><b>The fix is layer-aware routing</b>: never route a high-frequency signal over a split. If you must, stitch the planes with a high-frequency capacitor right next to where the signal crosses.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>3W rule</b> — spacing ≥ 3× width → ~70% NEXT reduction.</li>
+        <li><b>Return current</b> flows directly under the signal trace at high f.</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>DECISION</h3>
+      <ul>
+        <li><b>Critical pairs</b> — route differential or with guard trace.</li>
+        <li><b>Split-plane crossings</b> = bad. Never route HF over a split.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Return current chooses inductance</b>, not DC resistance — a split plane forces a detour and inflates loop area.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 7 — Signal Integrity & PCB Design</a> ·
+    Topic: Crosstalk and ground planes
+  </footer>
+</main>
+<script>
+  // ===== Crosstalk canvas =====
+  const xt = document.getElementById('xtCanvas');
+  const xtx = xt.getContext('2d');
+  let spacing = 1.0;
+  let edgeRate = 'med';
+  let pulseTime = -1;
+  let pulseAuto = null;
+
+  const baseW = xt.width;
+  const baseH = xt.height;
+  const traceY1 = 90;
+  let traceY2 = 130;
+  const traceStartX = 60, traceEndX = baseW - 60;
+  const traceLen = traceEndX - traceStartX;
+  const traceThick = 8;
+
+  function drawXt(t){
+    xtx.clearRect(0,0,baseW,baseH);
+    // Board background
+    xtx.fillStyle = '#0a3a1f';
+    xtx.fillRect(20, 60, baseW-40, 110);
+    // Drivers / receivers
+    function pin(x,y,label,color){
+      xtx.fillStyle = '#2a313c'; xtx.strokeStyle = color; xtx.lineWidth=1.5;
+      xtx.fillRect(x, y-12, 30, 24); xtx.strokeRect(x, y-12, 30, 24);
+      xtx.fillStyle = '#dde3ec'; xtx.font='10px ui-monospace,monospace';
+      xtx.fillText(label, x+4, y+3);
+    }
+    pin(20, traceY1, 'AGdrv', '#ff7b72');
+    pin(baseW-50, traceY1, 'AGrcv', '#ff7b72');
+    pin(20, traceY2, 'VICdrv', '#5ec8ff');
+    pin(baseW-50, traceY2, 'VICrcv', '#5ec8ff');
+
+    // Traces
+    const spacingPx = Math.round(traceThick * spacing * 3);
+    traceY2 = traceY1 + traceThick + spacingPx;
+    xtx.fillStyle = '#ff7b72';
+    xtx.fillRect(traceStartX, traceY1-traceThick/2, traceLen, traceThick);
+    xtx.fillStyle = '#5ec8ff';
+    xtx.fillRect(traceStartX, traceY2-traceThick/2, traceLen, traceThick);
+
+    // Labels
+    xtx.fillStyle = '#ff7b72'; xtx.font='11px ui-monospace,monospace';
+    xtx.fillText('AGGRESSOR', traceStartX+10, traceY1-12);
+    xtx.fillStyle = '#5ec8ff';
+    xtx.fillText('VICTIM', traceStartX+10, traceY2+22);
+
+    // Spacing label
+    xtx.strokeStyle = '#a3e635'; xtx.lineWidth=1;
+    xtx.beginPath();
+    xtx.moveTo(traceEndX-20, traceY1+traceThick/2);
+    xtx.lineTo(traceEndX-20, traceY2-traceThick/2);
+    xtx.stroke();
+    xtx.fillStyle = '#a3e635';
+    xtx.fillText(spacing.toFixed(1)+'·W', traceEndX-50, (traceY1+traceY2)/2+4);
+
+    // Pulse animation
+    if(t >= 0){
+      const pulseLen = edgeRate==='slow'? 200 : edgeRate==='med'? 60 : 20;
+      const pulseX = traceStartX + t*5;
+      // Aggressor energetic pulse — bright blob
+      const grad = xtx.createRadialGradient(pulseX, traceY1, 0, pulseX, traceY1, pulseLen);
+      grad.addColorStop(0, 'rgba(255,255,255,0.9)');
+      grad.addColorStop(1, 'rgba(255,123,114,0)');
+      xtx.fillStyle = grad;
+      xtx.fillRect(pulseX-pulseLen, traceY1-12, pulseLen*2, 24);
+
+      // Coupling field — show as faint cyan glow on victim
+      const couplingStrength = Math.max(0.05, 1 / (spacing*spacing*1.5));
+      // NEXT visualization — appears at victim driver end
+      // FEXT visualization — appears at victim receiver end as the pulse arrives
+      // Draw victim disturbance proportional to pulse position
+      if(pulseX > traceStartX && pulseX < traceEndX){
+        const fextProgress = (pulseX - traceStartX) / traceLen;
+        // Disturb victim slightly: small bump under pulse
+        xtx.fillStyle = `rgba(94,200,255,${couplingStrength * 0.5})`;
+        xtx.fillRect(pulseX-pulseLen/2, traceY2-8, pulseLen, 16);
+        // arrow showing field coupling
+        xtx.strokeStyle = `rgba(255,255,255,${couplingStrength*0.6})`;
+        xtx.lineWidth=1;
+        xtx.setLineDash([2,2]);
+        for(let dx=-pulseLen/2; dx<pulseLen/2; dx+=10){
+          xtx.beginPath();
+          xtx.moveTo(pulseX+dx, traceY1+4);
+          xtx.lineTo(pulseX+dx, traceY2-4);
+          xtx.stroke();
+        }
+        xtx.setLineDash([]);
+      }
+
+      // NEXT waveform on victim — at driver end (left)
+      // The induced signal at the victim near-end is the sum of all coupling, propagated backwards
+      // Approximate: a wide blob lasting until the aggressor pulse hits the far end
+      const nextStrength = couplingStrength * 0.5;
+      const nextPulseEnd = Math.min(traceStartX + 200, pulseX);
+      if(pulseX > traceStartX + 30){
+        // NEXT pulse at near-end
+        xtx.strokeStyle = `rgba(94,200,255,${0.5 + couplingStrength*0.5})`;
+        xtx.lineWidth = 2.5;
+        const nextH = nextStrength * 50;
+        xtx.beginPath();
+        xtx.moveTo(traceStartX+5, traceY2 + 50);
+        const peakX = traceStartX + 50;
+        xtx.bezierCurveTo(peakX-15, traceY2 + 50 - nextH, peakX+15, traceY2 + 50 - nextH, peakX+30, traceY2 + 50);
+        xtx.lineTo(traceStartX + 180, traceY2 + 50);
+        xtx.stroke();
+        xtx.fillStyle = '#5ec8ff'; xtx.font='10px ui-monospace,monospace';
+        xtx.fillText('NEXT', traceStartX+8, traceY2 + 75);
+      }
+
+      // FEXT — at far end as pulse arrives
+      if(pulseX > traceEndX - 100){
+        xtx.strokeStyle = `rgba(255,184,108,${0.6})`;
+        xtx.lineWidth = 2.5;
+        const fextH = couplingStrength * 60;
+        const fxx = traceEndX - 90;
+        xtx.beginPath();
+        xtx.moveTo(fxx, traceY2 + 50);
+        xtx.bezierCurveTo(fxx+25, traceY2 + 50 - fextH, fxx+45, traceY2 + 50 - fextH, fxx+70, traceY2 + 50);
+        xtx.stroke();
+        xtx.fillStyle = '#ffb86c'; xtx.font='10px ui-monospace,monospace';
+        xtx.fillText('FEXT', traceEndX - 65, traceY2 + 75);
+      }
+    }
+
+    // Annotations
+    xtx.fillStyle = '#8f99a8'; xtx.font='10px ui-monospace,monospace';
+    xtx.fillText('NEXT shown on victim near-end (left)', traceStartX, baseH - 40);
+    xtx.fillText('FEXT shown on victim far-end (right)', traceStartX + 280, baseH - 40);
+
+    // Update readouts
+    const coup = 1 / (spacing*spacing*1.5);
+    const erMul = edgeRate==='slow'? 0.3 : edgeRate==='med'? 1.0 : 2.5;
+    document.getElementById('nextAmp').textContent = (coup * 0.5 * 100).toFixed(1) + ' % of aggressor';
+    document.getElementById('fextAmp').textContent = (coup * 0.4 * erMul * 100).toFixed(1) + ' % of aggressor';
+    document.getElementById('threeW').textContent = (spacing >= 3) ? 'YES — coupling minimized' : 'no — increase spacing';
+    document.getElementById('threeW').style.color = spacing >= 3 ? 'var(--accent3)' : 'var(--warn)';
+  }
+
+  function animate(){
+    if(pulseTime >= 0){
+      pulseTime += 1;
+      if(pulseTime > 200) pulseTime = -1;
+    }
+    drawXt(pulseTime);
+    requestAnimationFrame(animate);
+  }
+  document.getElementById('sp').oninput = e=>{
+    spacing = +e.target.value;
+    document.getElementById('spVal').textContent = spacing.toFixed(1);
+    drawXt(pulseTime);
+  };
+  document.getElementById('edgeRate').onchange = e=>{ edgeRate = e.target.value; drawXt(pulseTime); };
+  document.getElementById('agPulse').onclick = ()=>{ pulseTime = 0; };
+  document.getElementById('agAuto').onclick = ()=>{
+    if(pulseAuto){ clearInterval(pulseAuto); pulseAuto=null; document.getElementById('agAuto').textContent='Auto repeat'; return; }
+    document.getElementById('agAuto').textContent = 'Stop';
+    pulseTime = 0;
+    pulseAuto = setInterval(()=>{ pulseTime = 0; }, 2200);
+  };
+  drawXt(-1);
+  animate();
+
+  // ===== Ground plane canvas =====
+  const gc = document.getElementById('gndCanvas');
+  const gctx = gc.getContext('2d');
+  let splitOn = false;
+  let freq = 'high';
+
+  function drawGnd(){
+    const W = gc.width, H = gc.height;
+    gctx.clearRect(0,0,W,H);
+    // Board (top view, semi-transparent)
+    gctx.fillStyle = '#0a3a1f';
+    gctx.fillRect(20, 30, W-40, H-50);
+    // GND plane (layer 2) — drawn lighter
+    gctx.fillStyle = '#163b25';
+    gctx.fillRect(40, 50, W-80, H-80);
+
+    // Signal trace (top layer) - centerline
+    const tStartX = 60, tEndX = W - 60;
+    const tY = H/2 - 30;
+    gctx.fillStyle = '#ffb86c';
+    gctx.fillRect(tStartX, tY-4, tEndX-tStartX, 8);
+    gctx.fillStyle = '#ffb86c'; gctx.font='11px ui-monospace,monospace';
+    gctx.fillText('SIG (top layer)', tStartX, tY-12);
+
+    // Driver & receiver
+    gctx.fillStyle = '#2a313c'; gctx.strokeStyle='#ffb86c'; gctx.lineWidth=1.5;
+    gctx.fillRect(20, tY-15, 35, 30); gctx.strokeRect(20, tY-15, 35, 30);
+    gctx.fillStyle = '#dde3ec'; gctx.font='11px ui-monospace,monospace';
+    gctx.fillText('DRV', 26, tY+4);
+    gctx.fillStyle = '#2a313c'; gctx.strokeStyle='#ffb86c';
+    gctx.fillRect(W-55, tY-15, 35, 30); gctx.strokeRect(W-55, tY-15, 35, 30);
+    gctx.fillStyle = '#dde3ec';
+    gctx.fillText('RCV', W-50, tY+4);
+
+    // Ground plane split
+    const splitX = W/2;
+    const splitW = 14;
+    if(splitOn){
+      gctx.fillStyle = '#0e1116';
+      gctx.fillRect(splitX-splitW/2, 50, splitW, H-80);
+      gctx.strokeStyle = '#ff7b72'; gctx.lineWidth=1.5;
+      gctx.strokeRect(splitX-splitW/2, 50, splitW, H-80);
+      gctx.fillStyle = '#ff7b72'; gctx.font='10px ui-monospace,monospace';
+      gctx.fillText('SPLIT', splitX-15, 46);
+    }
+
+    // Return current path (on layer 2, shown as cyan arrows)
+    gctx.strokeStyle = '#5ec8ff'; gctx.lineWidth=2;
+    const arrowY = tY + 35; // visually slightly below trace
+    if(freq === 'low' || (freq === 'high' && !splitOn)){
+      // Direct under trace
+      gctx.beginPath();
+      gctx.moveTo(W-58, arrowY);
+      gctx.lineTo(60, arrowY);
+      gctx.stroke();
+      // Arrowheads
+      function arrow(x,y,dir){
+        gctx.beginPath();
+        gctx.moveTo(x, y);
+        gctx.lineTo(x + 6*dir, y-4);
+        gctx.lineTo(x + 6*dir, y+4);
+        gctx.closePath();
+        gctx.fillStyle = '#5ec8ff';
+        gctx.fill();
+      }
+      for(let x=W-80; x>80; x-=80) arrow(x, arrowY, -1);
+      gctx.fillStyle = '#5ec8ff'; gctx.font='11px ui-monospace,monospace';
+      gctx.fillText('return current (layer 2 GND) — directly under trace', tStartX, arrowY + 20);
+      document.getElementById('loopArea').textContent = 'small (≈ 0 cm²)';
+      document.getElementById('emiEst').textContent = 'low';
+      document.getElementById('emiEst').style.color = 'var(--accent3)';
+    } else {
+      // Forced detour around split
+      gctx.beginPath();
+      gctx.moveTo(W-58, arrowY);
+      gctx.lineTo(splitX+30, arrowY);
+      // Detour up
+      gctx.lineTo(splitX+30, 75);
+      gctx.lineTo(splitX-30, 75);
+      gctx.lineTo(splitX-30, arrowY);
+      gctx.lineTo(60, arrowY);
+      gctx.stroke();
+      // Highlight detour
+      gctx.fillStyle = 'rgba(255,123,114,0.18)';
+      gctx.fillRect(splitX-30, 70, 60, arrowY-65);
+      // Arrows
+      gctx.fillStyle = '#5ec8ff';
+      function arrowH(x,y,dir){
+        gctx.beginPath(); gctx.moveTo(x,y); gctx.lineTo(x+6*dir, y-4); gctx.lineTo(x+6*dir, y+4); gctx.closePath(); gctx.fill();
+      }
+      function arrowV(x,y,dir){
+        gctx.beginPath(); gctx.moveTo(x,y); gctx.lineTo(x-4, y+6*dir); gctx.lineTo(x+4, y+6*dir); gctx.closePath(); gctx.fill();
+      }
+      arrowH(W-100, arrowY, -1);
+      arrowH(splitX+50, arrowY, -1);
+      arrowV(splitX+30, arrowY-30, -1);
+      arrowH(splitX, 75, -1);
+      arrowV(splitX-30, arrowY-30, 1);
+      arrowH(splitX-60, arrowY, -1);
+      arrowH(150, arrowY, -1);
+      // Loop area shading: between trace and return path
+      gctx.fillStyle = 'rgba(255,123,114,0.18)';
+      gctx.fillRect(splitX-30, tY+2, 60, arrowY-tY-2);
+
+      gctx.fillStyle = '#ff7b72'; gctx.font='11px ui-monospace,monospace';
+      gctx.fillText('forced detour — loop area increases (the pink region)', tStartX, arrowY + 20);
+      gctx.fillText('this loop radiates EMI proportional to area × dI/dt', tStartX, arrowY + 36);
+      document.getElementById('loopArea').textContent = 'LARGE — antenna area';
+      document.getElementById('emiEst').textContent = 'high — radiates EMI';
+      document.getElementById('emiEst').style.color = 'var(--warn)';
+    }
+
+    // Frequency annotation
+    gctx.fillStyle = '#8f99a8'; gctx.font='11px ui-monospace,monospace';
+    gctx.fillText(`Signal: ${freq === 'low' ? '1 kHz (low — DC-like)' : '100 MHz (high — wave-like)'}`, tStartX, 32);
+  }
+
+  document.getElementById('splitToggle').onclick = ()=>{
+    splitOn = !splitOn;
+    document.getElementById('splitToggle').textContent = 'Split: ' + (splitOn?'ON':'OFF');
+    document.getElementById('splitToggle').className = 'btn ' + (splitOn?'':'primary');
+    drawGnd();
+  };
+  document.getElementById('freqSel').onchange = e=>{ freq = e.target.value; drawGnd(); };
+  drawGnd();
+</script>
+</body>
+</html>

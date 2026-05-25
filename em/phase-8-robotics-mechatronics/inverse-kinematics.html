@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inverse kinematics — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto;margin:0 auto;cursor:crosshair}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  .toggle-row{display:flex;flex-wrap:wrap;gap:14px;margin:6px 0 0}
+  .toggle-row label{display:flex;align-items:center;gap:6px;font:12px ui-monospace,monospace;color:var(--fg-dim);cursor:pointer}
+  .metric{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:8px 12px;font:12px ui-monospace,monospace}
+  .metric b{color:var(--fg-bright);font-size:14px}
+  .metric.warn{border-color:var(--warn)}
+  .metric.warn b{color:var(--warn)}
+  .metrics{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin:12px 0}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Inverse kinematics — 2-link planar arm</h1>
+  <p class="lede">Click anywhere in the workspace to set a target. The IK solver computes both joint-angle
+  solutions — elbow-up and elbow-down — via the law of cosines. Click inside the inner annulus or beyond the
+  outer radius and you'll see the unreachable zones. The pink "singularity ring" at the boundary is where the
+  Jacobian collapses: tiny target moves demand infinite joint velocity.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>L₁ (shoulder link, m)</label>
+      <input type="range" id="l1" min="0.4" max="1.2" step="0.05" value="0.8">
+      <span class="readout" id="l1RO">0.80</span>
+    </div>
+    <div class="control">
+      <label>L₂ (forearm link, m)</label>
+      <input type="range" id="l2" min="0.2" max="1.0" step="0.05" value="0.6">
+      <span class="readout" id="l2RO">0.60</span>
+    </div>
+    <div class="control">
+      <label>Active solution</label>
+      <select id="branch">
+        <option value="both" selected>Show both (elbow-up + elbow-down)</option>
+        <option value="up">Elbow-up only</option>
+        <option value="down">Elbow-down only</option>
+      </select>
+    </div>
+    <div class="control" style="grid-column:1/-1">
+      <label>Target</label>
+      <div class="toggle-row">
+        <span style="color:var(--fg)">Click anywhere on the figure to place the target.</span>
+        <button class="btn" id="demo">Trace a circle (auto)</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="armSvg" viewBox="0 0 880 520" width="100%" height="520"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>Elbow-up solution</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>Elbow-down solution</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Target</span>
+      <span><span class="swatch" style="background:#ff7b72"></span>Unreachable / singularity</span>
+    </div>
+  </div>
+
+  <h2>IK solution</h2>
+  <div class="metrics" id="metrics"></div>
+
+  <h2>The closed-form IK</h2>
+  <p>Given target (x, y) and link lengths L₁, L₂, set <code>d² = x² + y²</code>. By the law of cosines on the
+  triangle base–elbow–tool:</p>
+  <p><code>cos θ₂ = (d² − L₁² − L₂²) / (2·L₁·L₂)</code></p>
+  <p>If |cos θ₂| &gt; 1 the target is unreachable. Otherwise the two solutions are
+  <code>θ₂ = ±acos(...)</code> (elbow-down vs elbow-up). Then:</p>
+  <p><code>θ₁ = atan2(y, x) − atan2(L₂·sin θ₂, L₁ + L₂·cos θ₂)</code></p>
+  <p>For a real 6-DOF arm with a spherical wrist, the same logic generalises analytically (kinematic
+  decoupling: solve position with the first 3 joints, orientation with the last 3). When the geometry has no
+  closed form, fall back to numerical IK (damped least squares).</p>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Two solutions per reachable point.</b> Same (x, y), different joint configuration. Path planners must pick one and stay on it — switching branches mid-trajectory swings the elbow violently.</li>
+    <li><b>Unreachable zones are clearly visible.</b> Inside |L₁−L₂| (hole around the base) and outside L₁+L₂ (outer ring). Click in them — the solver returns no real solution.</li>
+    <li><b>Singularity at full extension.</b> When d = L₁+L₂, both solutions collapse to θ₂ = 0. The Jacobian loses rank and joint velocities blow up to maintain tool velocity. Avoid passing through this in motion.</li>
+    <li><b>Singularity at full fold.</b> When d = |L₁−L₂|, both solutions collapse to θ₂ = ±180°. Same loss of rank.</li>
+    <li><b>atan2 not atan.</b> The four-quadrant atan2 is essential — plain atan loses sign info and can put θ₁ in the wrong quadrant.</li>
+    <li><b>"Trace a circle" demo</b> reveals branch flips: as the target sweeps near the boundary, the two solutions cross. A controller using a single branch will see a discontinuous jump.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>2-LINK PLANAR IK (CLOSED FORM)</h3>
+      <dl>
+        <dt>d²</dt><dd><span class="eq">x² + y²</span></dd>
+        <dt>cos θ₂</dt><dd><span class="eq">(d² − L₁² − L₂²) / (2 L₁ L₂)</span></dd>
+        <dt>θ₂</dt><dd><span class="eq">± acos(cos θ₂)</span><span class="eq-note">+ = elbow-down, − = elbow-up</span></dd>
+        <dt>θ₁</dt><dd><span class="eq">atan2(y,x) − atan2(L₂ sin θ₂, L₁ + L₂ cos θ₂)</span></dd>
+        <dt>Reachable iff</dt><dd><span class="eq">|L₁−L₂| ≤ d ≤ L₁+L₂</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>IK STRATEGY DECISION</h3>
+      <ul>
+        <li><b>Analytic (closed form)</b> — fastest, deterministic. Use when geometry permits (planar arms, spherical-wrist 6-DOF).</li>
+        <li><b>IKFast</b> — auto-generates analytic IK from URDF; preferred for production arms.</li>
+        <li><b>TracIK / KDL</b> — numerical, handles arbitrary geometry; default in MoveIt 2.</li>
+        <li><b>Damped least squares</b> — gracefully handles singularities; small <span class="eq">λ²</span> traded off vs accuracy.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li><b>Branch flipping mid-path</b> — picking a different IK solution between samples = sudden joint motion. Pick a branch and bias toward it.</li>
+        <li><b>Singularity in the middle of a Cartesian path</b> — joint velocities spike. Avoid by re-planning in joint space across the singularity.</li>
+        <li><b>Near-singular targets</b> — even before reaching the boundary, condition number of J explodes. Throttle Cartesian speed near the edge of the workspace.</li>
+        <li><b>Forgetting orientation</b> — planar IK gives (x,y); a 6-DOF IK must satisfy position + orientation. Wrist offsets matter.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 8 — Robotics &amp; Mechatronics Systems</a> ·
+    Topic: inverse kinematics, 2-link arm, branch selection, singularities
+  </footer>
+</main>
+<script>
+const svg = document.getElementById('armSvg');
+function ns(tag, attrs={}, parent){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+let L1=0.8,L2=0.6;
+let target=[0.9,0.5];
+let branch='both';
+let demoTimer=null;
+
+const W=880,H=520,CX=W/2,CY=H*0.62;
+const scale=170;
+function pxFromMeters(x,y){ return [CX + x*scale, CY - y*scale]; }
+function metersFromPx(px,py){ return [(px-CX)/scale, -(py-CY)/scale]; }
+
+function solveIK(x,y){
+  const d2 = x*x+y*y;
+  const c2 = (d2 - L1*L1 - L2*L2)/(2*L1*L2);
+  if(c2 > 1 || c2 < -1) return null;
+  const s2pos = Math.sqrt(Math.max(0,1-c2*c2));
+  const t2a = Math.atan2(s2pos, c2);   // elbow-down branch (+)
+  const t2b = -t2a;                    // elbow-up branch
+  function thetas(t2){
+    const t1 = Math.atan2(y,x) - Math.atan2(L2*Math.sin(t2), L1+L2*Math.cos(t2));
+    return [t1,t2];
+  }
+  return {up: thetas(t2b), down: thetas(t2a), c2};
+}
+
+function draw(){
+  clear(svg);
+  // grid
+  for(let gx=-2;gx<=2;gx+=0.25){
+    const [x1,y1]=pxFromMeters(gx,-1.5),[x2,y2]=pxFromMeters(gx,1.5);
+    ns('line',{x1,y1,x2,y2,stroke:'#222831','stroke-width': (gx%1===0)?1:0.5},svg);
+  }
+  for(let gy=-1.5;gy<=1.5;gy+=0.25){
+    const [x1,y1]=pxFromMeters(-2.2,gy),[x2,y2]=pxFromMeters(2.2,gy);
+    ns('line',{x1,y1,x2,y2,stroke:'#222831','stroke-width': (gy%1===0)?1:0.5},svg);
+  }
+  const [bx,by]=pxFromMeters(0,0);
+  ns('line',{x1:bx-340,y1:by,x2:bx+340,y2:by,stroke:'#3a4150','stroke-width':1.2},svg);
+  ns('line',{x1:bx,y1:by-200,x2:bx,y2:by+220,stroke:'#3a4150','stroke-width':1.2},svg);
+
+  // unreachable shading
+  const outer=L1+L2, inner=Math.abs(L1-L2);
+  // outer ring (light red) and inner disk (dashed)
+  ns('circle',{cx:bx,cy:by,r:outer*scale,fill:'#ff7b72',opacity:0.04,stroke:'#ff7b72','stroke-width':1.2,'stroke-dasharray':'5 4'},svg);
+  if(inner>0.001){
+    ns('circle',{cx:bx,cy:by,r:inner*scale,fill:'#ff7b72',opacity:0.10,stroke:'#ff7b72','stroke-width':1,'stroke-dasharray':'4 3'},svg);
+  }
+  // near-singularity ring (a thin band just inside outer)
+  ns('circle',{cx:bx,cy:by,r:(outer-0.04)*scale,fill:'none',stroke:'#ff7b72',opacity:0.18,'stroke-width':6},svg);
+
+  // target
+  const sol = solveIK(target[0],target[1]);
+  const [tx,ty]=pxFromMeters(target[0],target[1]);
+
+  function drawArm(thetas,color){
+    const [t1,t2]=thetas;
+    const elb = [L1*Math.cos(t1), L1*Math.sin(t1)];
+    const tip = [elb[0]+L2*Math.cos(t1+t2), elb[1]+L2*Math.sin(t1+t2)];
+    const [eX,eY]=pxFromMeters(elb[0],elb[1]);
+    const [tX,tY]=pxFromMeters(tip[0],tip[1]);
+    ns('line',{x1:bx,y1:by,x2:eX,y2:eY,stroke:color,'stroke-width':6,'stroke-linecap':'round',opacity:0.9},svg);
+    ns('line',{x1:eX,y1:eY,x2:tX,y2:tY,stroke:color,'stroke-width':6,'stroke-linecap':'round',opacity:0.9},svg);
+    ns('circle',{cx:eX,cy:eY,r:6,fill:'#1d232c',stroke:color,'stroke-width':2},svg);
+    ns('circle',{cx:tX,cy:tY,r:5,fill:color,stroke:'#0e1116','stroke-width':1.5},svg);
+  }
+  ns('circle',{cx:bx,cy:by,r:9,fill:'#1d232c',stroke:'#dde3ec','stroke-width':2},svg);
+
+  if(sol){
+    if(branch==='both' || branch==='up') drawArm(sol.up,'#5ec8ff');
+    if(branch==='both' || branch==='down') drawArm(sol.down,'#ffb86c');
+  } else {
+    // sketch a faded arm pointing at unreachable target
+    const ang = Math.atan2(target[1],target[0]);
+    const [eX,eY]=pxFromMeters(L1*Math.cos(ang),L1*Math.sin(ang));
+    const [tX,tY]=pxFromMeters((L1+L2)*Math.cos(ang),(L1+L2)*Math.sin(ang));
+    ns('line',{x1:bx,y1:by,x2:eX,y2:eY,stroke:'#3a4150','stroke-width':6,'stroke-linecap':'round','stroke-dasharray':'4 3'},svg);
+    ns('line',{x1:eX,y1:eY,x2:tX,y2:tY,stroke:'#3a4150','stroke-width':6,'stroke-linecap':'round','stroke-dasharray':'4 3'},svg);
+  }
+
+  // target marker
+  ns('circle',{cx:tx,cy:ty,r:10,fill:'none',stroke: sol?'#a3e635':'#ff7b72','stroke-width':2},svg);
+  ns('line',{x1:tx-12,y1:ty,x2:tx+12,y2:ty,stroke: sol?'#a3e635':'#ff7b72','stroke-width':1.4},svg);
+  ns('line',{x1:tx,y1:ty-12,x2:tx,y2:ty+12,stroke: sol?'#a3e635':'#ff7b72','stroke-width':1.4},svg);
+  ns('text',{x:tx+16,y:ty-12,fill: sol?'#a3e635':'#ff7b72',font:'12px ui-monospace'},svg).textContent='target ('+target[0].toFixed(2)+', '+target[1].toFixed(2)+')';
+
+  // metrics
+  const m=document.getElementById('metrics'); m.innerHTML='';
+  function metric(label,val,warn){
+    const d=document.createElement('div');d.className='metric'+(warn?' warn':'');
+    d.innerHTML='<div style="color:var(--fg-dim)">'+label+'</div><b>'+val+'</b>';
+    m.appendChild(d);
+  }
+  const d=Math.hypot(target[0],target[1]);
+  metric('distance d', d.toFixed(3)+' m');
+  metric('outer r_max', (L1+L2).toFixed(3)+' m');
+  metric('inner r_min', Math.abs(L1-L2).toFixed(3)+' m');
+  metric('reachable', sol?'yes':'NO', !sol);
+  if(sol){
+    const rad=180/Math.PI;
+    metric('elbow-up θ₁, θ₂', (sol.up[0]*rad).toFixed(1)+'°, '+(sol.up[1]*rad).toFixed(1)+'°');
+    metric('elbow-down θ₁, θ₂', (sol.down[0]*rad).toFixed(1)+'°, '+(sol.down[1]*rad).toFixed(1)+'°');
+    const near = (Math.abs(d-(L1+L2))<0.05) || (Math.abs(d-Math.abs(L1-L2))<0.05);
+    metric('near singularity?', near?'YES':'no', near);
+  }
+}
+
+svg.addEventListener('click', (ev)=>{
+  const rect = svg.getBoundingClientRect();
+  const xPx = (ev.clientX - rect.left)/rect.width * W;
+  const yPx = (ev.clientY - rect.top)/rect.height * H;
+  target = metersFromPx(xPx,yPx);
+  draw();
+});
+['l1','l2'].forEach(id=>{
+  document.getElementById(id).oninput = e=>{
+    const v = parseFloat(e.target.value);
+    if(id==='l1') L1=v; else L2=v;
+    document.getElementById(id+'RO').textContent=v.toFixed(2);
+    draw();
+  };
+});
+document.getElementById('branch').onchange = e=>{ branch=e.target.value; draw(); };
+document.getElementById('demo').onclick = ()=>{
+  if(demoTimer){ clearInterval(demoTimer); demoTimer=null; return; }
+  let phase=0;
+  demoTimer=setInterval(()=>{
+    phase+=0.04;
+    const R = 0.8;
+    target=[R*Math.cos(phase), 0.4+R*Math.sin(phase)*0.6];
+    draw();
+    if(phase>10){ clearInterval(demoTimer); demoTimer=null; }
+  },35);
+};
+draw();
+</script>
+</body>
+</html>

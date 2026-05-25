@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stepper Motor — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px;margin:12px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px}
+  .stat .lbl{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 16px ui-monospace,monospace;color:var(--accent);margin-top:4px}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Stepper Motor — Coil Energization, Torque vs Speed, Skipped Steps</h1>
+  <p class="lede">A stepper is just a salient-pole synchronous motor driven open-loop. Energize coils in sequence, the rotor snaps to align — full-step, half-step, microstep all change <i>only</i> what currents you push, not the motor.</p>
+
+  <p>A bipolar 2-phase stepper has two coils, A and B, each capable of being driven positive or negative through an H-bridge. Four discrete combinations of polarity give four <b>full steps</b> per electrical cycle. Energize both coils equally and at full current and the rotor sees a torque vector pointing along the resultant magnetic field. By scaling I_A and I_B as <code>cos(θ)</code> and <code>sin(θ)</code> you can place the field at any angle — that's <b>microstepping</b>. The rotor follows as long as the field rotates slower than the rotor's pull-out torque allows; outrun it and the rotor <b>skips steps</b>, silently desyncing your open-loop position.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Drive mode:
+        <select id="mode">
+          <option value="full">Full-step (1-1)</option>
+          <option value="half">Half-step (1-1, 1-0 alternating)</option>
+          <option value="micro" selected>Microstep (1/16)</option>
+        </select>
+      </label>
+    </div>
+    <div class="control">
+      <label>Step rate (steps/s): <span class="readout" id="srRead">200</span></label>
+      <input id="sr" type="range" min="10" max="2000" step="10" value="200">
+    </div>
+    <div class="control">
+      <label>Coil inductance L: <span class="readout" id="lRead">3.0 mH</span></label>
+      <input id="l" type="range" min="0.5" max="20" step="0.1" value="3">
+    </div>
+    <div class="control">
+      <label>Supply voltage V: <span class="readout" id="vRead">24 V</span></label>
+      <input id="v" type="range" min="6" max="48" step="1" value="24">
+    </div>
+    <div class="control">
+      <label>Rated I_max: <span class="readout" id="imxRead">1.5 A</span></label>
+      <input id="imx" type="range" min="0.3" max="3.0" step="0.1" value="1.5">
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Coil currents I_A, I_B and rotor angle</h3>
+    <svg id="coilSvg" viewBox="0 0 700 260" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <!-- axes -->
+      <line x1="50" y1="20" x2="50" y2="220" class="axis"/>
+      <line x1="50" y1="120" x2="680" y2="120" class="axis"/>
+      <text x="50" y="14" class="axis-label" text-anchor="middle">I</text>
+      <text x="685" y="125" class="axis-label">step #</text>
+      <text x="44" y="30" class="axis-label" text-anchor="end">+I_max</text>
+      <text x="44" y="217" class="axis-label" text-anchor="end">−I_max</text>
+      <text x="44" y="124" class="axis-label" text-anchor="end">0</text>
+      <!-- traces -->
+      <polyline id="iaTrace" class="trace trace-1" points=""/>
+      <polyline id="ibTrace" class="trace trace-2" points=""/>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>Coil A current</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>Coil B current</span>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Rotor snapshot — field vector vs rotor</h3>
+    <svg viewBox="0 0 700 260" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <!-- 4 stator pole pieces (A+ top, A- bottom, B+ right, B- left) -->
+      <circle cx="350" cy="130" r="100" fill="none" stroke="var(--line)" stroke-width="1.5"/>
+
+      <!-- Pole A+ (top) -->
+      <rect id="poleAp" x="335" y="20" width="30" height="40" fill="var(--bg-elev2)" stroke="var(--fg-dim)" stroke-width="1.5"/>
+      <text x="350" y="14" class="label-dim" text-anchor="middle">A+</text>
+      <!-- Pole A- (bottom) -->
+      <rect id="poleAn" x="335" y="200" width="30" height="40" fill="var(--bg-elev2)" stroke="var(--fg-dim)" stroke-width="1.5"/>
+      <text x="350" y="255" class="label-dim" text-anchor="middle">A−</text>
+      <!-- Pole B+ (right) -->
+      <rect id="poleBp" x="440" y="115" width="40" height="30" fill="var(--bg-elev2)" stroke="var(--fg-dim)" stroke-width="1.5"/>
+      <text x="495" y="135" class="label-dim">B+</text>
+      <!-- Pole B- (left) -->
+      <rect id="poleBn" x="220" y="115" width="40" height="30" fill="var(--bg-elev2)" stroke="var(--fg-dim)" stroke-width="1.5"/>
+      <text x="215" y="135" class="label-dim" text-anchor="end">B−</text>
+
+      <!-- Rotor (permanent magnet, N-S bar) -->
+      <g id="rotorG" transform="rotate(0 350 130)">
+        <rect x="340" y="80" width="20" height="100" fill="url(#grad)" stroke="var(--fg)" stroke-width="1"/>
+        <text x="350" y="95" class="label" fill="var(--bg)" text-anchor="middle">N</text>
+        <text x="350" y="175" class="label" fill="var(--bg)" text-anchor="middle">S</text>
+      </g>
+      <defs>
+        <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--accent)"/>
+          <stop offset="100%" stop-color="var(--warn)"/>
+        </linearGradient>
+      </defs>
+
+      <!-- Resultant field arrow -->
+      <line id="fieldArrow" x1="350" y1="130" x2="350" y2="50" stroke="var(--accent3)" stroke-width="3" marker-end="url(#fa)"/>
+      <defs>
+        <marker id="fa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent3)"/>
+        </marker>
+      </defs>
+
+      <text x="40" y="40" class="label-dim">resultant B field</text>
+      <line x1="40" y1="48" x2="55" y2="48" stroke="var(--accent3)" stroke-width="3"/>
+      <text x="40" y="220" class="label-dim">rotor (PM, N-S)</text>
+    </svg>
+    <p style="margin-top:8px;font-size:12px;color:var(--fg-dim)">
+      Full-step: rotor sits aligned with the field (4 discrete positions per electrical cycle). Half-step: 8 positions. Microstep 1/16: 64. Higher microstepping means smoother motion and less audible noise, but each microstep carries less than full holding torque (~70% at 1/16, falling further with finer divisions).
+    </p>
+  </div>
+
+  <div class="figure">
+    <h3>Pull-out torque vs step rate</h3>
+    <svg id="torqueSvg" viewBox="0 0 700 280" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <line x1="60" y1="20" x2="60" y2="240" class="axis"/>
+      <line x1="60" y1="240" x2="680" y2="240" class="axis"/>
+      <text x="60" y="14" class="axis-label" text-anchor="middle">T</text>
+      <text x="685" y="255" class="axis-label">step rate (steps/s)</text>
+      <text x="55" y="30" class="axis-label" text-anchor="end">T_hold</text>
+      <text x="55" y="245" class="axis-label" text-anchor="end">0</text>
+      <!-- Pull-out curve: T(f) = T_hold / sqrt(1 + (f/f_corner)^2), f_corner ~ V/(2π·L·I_max) (electrical) -->
+      <polyline id="poTrace" class="trace trace-1" points=""/>
+      <!-- Required torque T_L line -->
+      <line id="tlLine" x1="60" y1="180" x2="680" y2="180" stroke="var(--accent2)" stroke-dasharray="3,3"/>
+      <text id="tlLabel" x="640" y="175" class="label-dim" fill="var(--accent2)">load T_L</text>
+      <!-- Current rate marker -->
+      <line id="srLine" x1="120" y1="20" x2="120" y2="245" stroke="var(--accent3)" stroke-dasharray="2,3"/>
+      <text id="srLabel" x="120" y="260" class="label-dim" fill="var(--accent3)" text-anchor="middle">200 sps</text>
+      <!-- Operating point dot -->
+      <circle id="opDotPo" cx="120" cy="60" r="6" fill="var(--warn)" stroke="var(--bg)" stroke-width="2"/>
+      <text id="opLabelPo" x="130" y="58" class="label" fill="var(--warn)"></text>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>Pull-out torque T(f)</span>
+      <span><span class="swatch" style="background:var(--accent2);height:1px;border:1px dashed var(--accent2)"></span>Required load torque T_L</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>Operating point (skip if below curve)</span>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Computed values</h3>
+    <div class="stat-grid">
+      <div class="stat"><div class="lbl">Mode</div><div class="val" id="statMode">Microstep 1/16</div></div>
+      <div class="stat"><div class="lbl">Step angle</div><div class="val" id="statSA">0.1125°</div></div>
+      <div class="stat"><div class="lbl">Holding torque</div><div class="val" id="statHT">70%</div></div>
+      <div class="stat"><div class="lbl">Electrical f</div><div class="val" id="statFel">12.5 Hz</div></div>
+      <div class="stat"><div class="lbl">L/R corner</div><div class="val" id="statFc">800 Hz</div></div>
+      <div class="stat"><div class="lbl">Pull-out @ this rate</div><div class="val" id="statPo">95%</div></div>
+      <div class="stat"><div class="lbl">Status</div><div class="val" id="statStat">OK</div></div>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Bipolar vs Unipolar wiring</h3>
+    <table>
+      <thead><tr><th>Aspect</th><th>Bipolar (4-wire)</th><th>Unipolar (6-wire)</th></tr></thead>
+      <tbody>
+        <tr><td>Driver</td><td>Two H-bridges (e.g. DRV8825, TMC2209)</td><td>Four low-side switches (simple)</td></tr>
+        <tr><td>Current direction</td><td>Reversible per coil</td><td>Always one way (center-tap to V+)</td></tr>
+        <tr><td>Torque per amp</td><td>Higher (whole coil energized)</td><td>~71% (only half coil per step)</td></tr>
+        <tr><td>Common today</td><td>Yes — almost all NEMA17/23</td><td>Mostly legacy</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Microstepping doesn't add new positions — it adds intermediate ones</b>. The motor still has 200 (or 400) <i>detents</i>; microstepping uses current-shaping to <i>hold</i> the rotor between them. Position accuracy at fine microsteps is dominated by detent torque error, not driver resolution.</li>
+    <li><b>Torque collapses with step rate</b> — inductance L means the coil takes time τ = L/R to charge. Past the L/R corner, current never reaches I_max before you commutate to the next step, so torque drops. Higher V helps; this is why stepper drivers want 24–48 V even though motor "rated voltage" might be 2.8 V.</li>
+    <li><b>Skipped step = silent failure</b>. Open-loop steppers have no encoder, so missed steps are invisible until your part is in the wrong place. Mitigations: oversizing (run at 50% of pull-out), acceleration ramps, StallGuard / closed-loop steppers.</li>
+    <li><b>Resonance dip</b> around 100–300 steps/s on real motors. Microstepping flattens it considerably; full-step at resonance can outright stall.</li>
+    <li><b>Holding ≠ running torque</b>. Datasheet quotes holding torque (static, both coils at I_max). Running torque is always lower; pull-out curves are the spec you actually want.</li>
+    <li><b>Heat is constant, not duty-cycled</b>. A stepper draws full current even at zero speed (it's holding). Plan thermals for continuous I²R, not for whatever average current you imagine.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Step angle</dt><dd><span class="eq">θ_full = 360° / N_steps</span><span class="eq-note">N=200 for 1.8°</span></dd>
+        <dt>Microstep</dt><dd><span class="eq">θ_µ = θ_full / M</span><span class="eq-note">M = 1, 2, 4, 8, 16, 32 ...</span></dd>
+        <dt>Coil current</dt><dd><span class="eq">I_A = I_max·cos(θ), I_B = I_max·sin(θ)</span></dd>
+        <dt>L/R corner</dt><dd><span class="eq">f_c ≈ V / (2π·L·I_max)</span></dd>
+        <dt>Pull-out</dt><dd><span class="eq">T(f) ≈ T_hold / √(1 + (f/f_c)²)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>1.8°/step</b> — default NEMA17. 200 full steps/rev.</li>
+        <li><b>0.9°/step</b> — high-res NEMA17. 400 full steps/rev.</li>
+        <li><b>Microstep ratios</b> — 8, 16, 32, 256 (TMC silent-step).</li>
+        <li><b>Holding torque</b> drops to ~50% by 1000 sps for typical NEMA17.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Driving at "rated voltage"</b> — that spec is for DC. Use 5–20× rated, current-limited.</li>
+        <li><b>No acceleration ramp</b> — commanding max rate from rest = guaranteed skip.</li>
+        <li><b>Microstepping for accuracy</b> — buys smoothness, not absolute position.</li>
+        <li><b>Forgetting holding heat</b> — idle current = full current; add heatsink or lower hold current.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 2 — Actuators</a> ·
+    Topic: Stepper Motors
+  </footer>
+</main>
+<script>
+  const modeEl=document.getElementById('mode');
+  const srEl=document.getElementById('sr');
+  const lEl=document.getElementById('l');
+  const vEl=document.getElementById('v');
+  const imxEl=document.getElementById('imx');
+
+  const iaTrace=document.getElementById('iaTrace');
+  const ibTrace=document.getElementById('ibTrace');
+  const rotorG=document.getElementById('rotorG');
+  const fieldArrow=document.getElementById('fieldArrow');
+  const poleAp=document.getElementById('poleAp');
+  const poleAn=document.getElementById('poleAn');
+  const poleBp=document.getElementById('poleBp');
+  const poleBn=document.getElementById('poleBn');
+  const poTrace=document.getElementById('poTrace');
+  const tlLine=document.getElementById('tlLine');
+  const srLine=document.getElementById('srLine');
+  const srLabel=document.getElementById('srLabel');
+  const opDotPo=document.getElementById('opDotPo');
+  const opLabelPo=document.getElementById('opLabelPo');
+
+  function update(){
+    const mode=modeEl.value;
+    const sr=parseFloat(srEl.value);
+    const L=parseFloat(lEl.value)*1e-3;
+    const V=parseFloat(vEl.value);
+    const Imx=parseFloat(imxEl.value);
+    const Rest = 1.5; // assumed winding R, ohms (typical NEMA17)
+
+    document.getElementById('srRead').textContent = sr.toFixed(0);
+    document.getElementById('lRead').textContent = (L*1e3).toFixed(1)+' mH';
+    document.getElementById('vRead').textContent = V.toFixed(0)+' V';
+    document.getElementById('imxRead').textContent = Imx.toFixed(1)+' A';
+
+    // Coil current waveform vs step #
+    // Full: 4 phases of 90° -> I_A = +Imx, 0, -Imx, 0; I_B = 0, +Imx, 0, -Imx (one-phase) but conventional full-step (two-phase on) is both at ±Imx
+    // We will use two-phase-on full step: I_A = +,+,-,- ; I_B = +,-,-,+
+    // Half step: alternate two-on and one-on, 8 states
+    // Micro: cos/sin
+    const Nsamp=200;
+    const aPts=[], bPts=[];
+    const xL=50, xR=680;
+    const yMid=120, yAmp=90;
+    for(let i=0;i<=Nsamp;i++){
+      const u = i/Nsamp; // 0..1, covers 2 full electrical revolutions
+      const elecAngle = u * 4 * Math.PI; // 2 cycles
+      let ia, ib;
+      if(mode==='full'){
+        const step = Math.floor(elecAngle / (Math.PI/2)) % 4;
+        if(step===0){ia=+1; ib=+1;}
+        else if(step===1){ia=-1; ib=+1;}
+        else if(step===2){ia=-1; ib=-1;}
+        else {ia=+1; ib=-1;}
+      } else if(mode==='half'){
+        const step = Math.floor(elecAngle / (Math.PI/4)) % 8;
+        const map=[[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]];
+        ia=map[step][0]; ib=map[step][1];
+      } else {
+        ia = Math.cos(elecAngle);
+        ib = Math.sin(elecAngle);
+      }
+      const x = xL + u*(xR-xL);
+      aPts.push(`${x.toFixed(1)},${(yMid - ia*yAmp).toFixed(1)}`);
+      bPts.push(`${x.toFixed(1)},${(yMid - ib*yAmp).toFixed(1)}`);
+    }
+    iaTrace.setAttribute('points', aPts.join(' '));
+    ibTrace.setAttribute('points', bPts.join(' '));
+
+    // Pull-out torque curve
+    const fc = V / (2*Math.PI*L*Imx); // crude corner (Hz)
+    document.getElementById('statFc').textContent = fc.toFixed(0)+' Hz';
+    const xL2=60, xR2=680, yT2=20, yB2=240, yRange2=yB2-yT2;
+    // x: 0..2000 sps log-ish; let's use linear 0..2000
+    const fMax = 2000;
+    const xOf = f => xL2 + (f/fMax)*(xR2-xL2);
+    const yOf = t => yB2 - t*yRange2; // t in [0,1]
+    let pts=[];
+    for(let i=0;i<=100;i++){
+      const f = (i/100)*fMax;
+      const t = 1/Math.sqrt(1 + Math.pow(f/fc, 2));
+      pts.push(`${xOf(f).toFixed(1)},${yOf(t).toFixed(1)}`);
+    }
+    poTrace.setAttribute('points', pts.join(' '));
+
+    // Load torque line at 50% of holding (illustrative)
+    const TL = 0.4;
+    const yTL = yOf(TL);
+    tlLine.setAttribute('y1', yTL);
+    tlLine.setAttribute('y2', yTL);
+    document.getElementById('tlLabel').setAttribute('y', yTL-5);
+
+    // Operating point
+    const xSr = xOf(sr);
+    const tSr = 1/Math.sqrt(1 + Math.pow(sr/fc, 2));
+    srLine.setAttribute('x1', xSr);
+    srLine.setAttribute('x2', xSr);
+    srLabel.setAttribute('x', xSr);
+    srLabel.textContent = `${sr.toFixed(0)} sps`;
+    opDotPo.setAttribute('cx', xSr);
+    opDotPo.setAttribute('cy', yOf(tSr));
+    opLabelPo.setAttribute('x', xSr+10);
+    opLabelPo.setAttribute('y', yOf(tSr)-6);
+    opLabelPo.textContent = `T = ${(tSr*100).toFixed(0)}% holding`;
+
+    document.getElementById('statPo').textContent = (tSr*100).toFixed(0)+'%';
+    document.getElementById('statFel').textContent = (sr/4).toFixed(1)+' Hz';
+    const status = tSr*100 < TL*100 ? 'SKIP RISK' : 'OK';
+    const statEl = document.getElementById('statStat');
+    statEl.textContent = status;
+    statEl.style.color = status==='OK' ? 'var(--accent3)' : 'var(--warn)';
+
+    // Mode stats
+    let modeName, sa, ht;
+    if(mode==='full'){ modeName='Full-step'; sa='1.8°'; ht='100%'; }
+    else if(mode==='half'){ modeName='Half-step'; sa='0.9°'; ht='70%'; }
+    else { modeName='Microstep 1/16'; sa='0.1125°'; ht='~70% (peak)'; }
+    document.getElementById('statMode').textContent = modeName;
+    document.getElementById('statSA').textContent = sa;
+    document.getElementById('statHT').textContent = ht;
+  }
+
+  [modeEl,srEl,lEl,vEl,imxEl].forEach(el=>el.addEventListener('input',update));
+
+  // Animate rotor + field
+  let angle=0;
+  setInterval(()=>{
+    const sr=parseFloat(srEl.value);
+    // 1 electrical rev = 4 full steps; mech step = 1.8°; map sr -> deg/frame
+    const degPerSec = sr * 1.8;
+    angle = (angle + degPerSec*0.05) % 360;
+    rotorG.setAttribute('transform', `rotate(${angle} 350 130)`);
+    // Field vector — leads rotor by some amount in full-step jumps; smooth in microstep
+    const mode=modeEl.value;
+    let fieldAng;
+    if(mode==='full'){
+      fieldAng = Math.floor(angle/90)*90 + 45;
+    } else if(mode==='half'){
+      fieldAng = Math.floor(angle/45)*45 + 22.5;
+    } else {
+      fieldAng = angle + 30; // microstep stays just ahead
+    }
+    const rad = (fieldAng - 90) * Math.PI/180;
+    const x2 = 350 + 80*Math.cos(rad);
+    const y2 = 130 + 80*Math.sin(rad);
+    fieldArrow.setAttribute('x2', x2);
+    fieldArrow.setAttribute('y2', y2);
+    // Highlight active poles based on field angle
+    const fa = ((fieldAng%360)+360)%360;
+    poleAp.setAttribute('fill', (fa>315||fa<45)?'rgba(94,200,255,0.4)':'var(--bg-elev2)');
+    poleBp.setAttribute('fill', (fa>45&&fa<135)?'rgba(94,200,255,0.4)':'var(--bg-elev2)');
+    poleAn.setAttribute('fill', (fa>135&&fa<225)?'rgba(94,200,255,0.4)':'var(--bg-elev2)');
+    poleBn.setAttribute('fill', (fa>225&&fa<315)?'rgba(94,200,255,0.4)':'var(--bg-elev2)');
+  }, 50);
+
+  update();
+</script>
+</body>
+</html>

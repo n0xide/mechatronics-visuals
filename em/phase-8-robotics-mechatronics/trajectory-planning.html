@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trajectory planning — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto;margin:0 auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .toggle-row{display:flex;flex-wrap:wrap;gap:14px;margin:6px 0 0}
+  .toggle-row label{display:flex;align-items:center;gap:6px;font:12px ui-monospace,monospace;color:var(--fg-dim);cursor:pointer}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Trajectory planning — joint-space vs Cartesian-space</h1>
+  <p class="lede">Move a 2-link arm between two waypoints. Joint-space interpolates between joint angles
+  (smooth, fast, no singularities — but the tool path is curved and unpredictable). Cartesian-space forces
+  a straight line in the tool frame (predictable, required for welding / inspection — but may demand
+  joint-space gymnastics near singularities). Watch both arms run in parallel.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Start (x, y)</label>
+      <div style="display:flex;gap:6px">
+        <input type="range" id="sx" min="-1.0" max="1.4" step="0.05" value="-0.6" style="flex:1">
+        <input type="range" id="sy" min="0.0"  max="1.3" step="0.05" value="0.8"  style="flex:1">
+      </div>
+      <span class="readout" id="sRO">(-0.60, 0.80)</span>
+    </div>
+    <div class="control">
+      <label>Goal (x, y)</label>
+      <div style="display:flex;gap:6px">
+        <input type="range" id="gx" min="-1.0" max="1.4" step="0.05" value="0.9" style="flex:1">
+        <input type="range" id="gy" min="0.0"  max="1.3" step="0.05" value="0.3" style="flex:1">
+      </div>
+      <span class="readout" id="gRO">(0.90, 0.30)</span>
+    </div>
+    <div class="control">
+      <label>Move duration (s)</label>
+      <input type="range" id="dur" min="0.5" max="4.0" step="0.1" value="2.0">
+      <span class="readout" id="durRO">2.0</span>
+    </div>
+    <div class="control">
+      <label>Profile</label>
+      <select id="prof">
+        <option value="trap" selected>Trapezoidal velocity</option>
+        <option value="scurve">S-curve (jerk-limited)</option>
+        <option value="quintic">Quintic polynomial</option>
+      </select>
+    </div>
+    <div class="control" style="grid-column:1/-1">
+      <div class="toggle-row">
+        <button class="btn primary" id="play">▶ Play</button>
+        <button class="btn" id="reset">Reset</button>
+        <label><input type="checkbox" id="showJoint" checked> Joint-space arm (blue)</label>
+        <label><input type="checkbox" id="showCart" checked> Cartesian arm (orange)</label>
+      </div>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="armSvg" viewBox="0 0 880 460" width="100%" height="460"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>Joint-space path (curved)</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>Cartesian path (straight)</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Start / goal markers</span>
+    </div>
+  </div>
+
+  <h2>Velocity profile (time)</h2>
+  <div class="figure">
+    <svg id="profSvg" viewBox="0 0 880 220" width="100%" height="220"></svg>
+  </div>
+
+  <h2>Joint-space vs Cartesian — when to use what</h2>
+  <p><b>Joint-space:</b> interpolate each θᵢ linearly (or via spline) from start joints to goal joints. The
+  tool traces whatever curve falls out of the FK. Fast, smooth, no IK at runtime — but unpredictable in
+  workspace. Use for free-space moves between unobstructed waypoints.</p>
+  <p><b>Cartesian-space:</b> interpolate (x, y) linearly between start and goal. Run IK at each sample to get
+  joint angles. Tool path is a straight line in space — required for welding, painting, deposition,
+  inspection. Risk: path may pass through a singularity or be unreachable in segments.</p>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Same endpoints, different paths.</b> Toggle both arms and run a move — the blue arm cuts a smooth arc; the orange arm holds the straight line.</li>
+    <li><b>Joint-space is always feasible</b> if both endpoints are reachable. No IK failures mid-motion.</li>
+    <li><b>Cartesian-space can fail mid-motion.</b> If the straight line crosses outside the workspace or through a singularity, the segment dies. MoveIt's Cartesian planner returns a fraction (e.g., "completed 0.62 of path").</li>
+    <li><b>Trapezoidal profile</b> = constant accel ramp, constant velocity cruise, constant decel ramp. Three-segment, jerk is impulsive at corners.</li>
+    <li><b>S-curve profile</b> = limits jerk. Acceleration ramps up smoothly, holds, ramps down. Slightly longer for same move; massively reduces vibration on stiff servos.</li>
+    <li><b>Quintic polynomial</b> = single 5th-order curve through both endpoints with matching velocity and acceleration. Smoothest of all; cannot impose a fixed cruise velocity.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>TIME SCALING</h3>
+      <dl>
+        <dt>Normalised time</dt><dd><span class="eq">s(t) ∈ [0, 1],  t ∈ [0, T]</span></dd>
+        <dt>Linear</dt><dd><span class="eq">s = t/T</span></dd>
+        <dt>Quintic</dt><dd><span class="eq">s = 10τ³ − 15τ⁴ + 6τ⁵,  τ = t/T</span></dd>
+        <dt>Path point</dt><dd><span class="eq">p(t) = p₀ + s(t)·(p₁ − p₀)</span></dd>
+        <dt>Trap. timing</dt><dd><span class="eq">T = (v_max/a) + Δp/v_max</span></dd>
+        <dt>S-curve constraint</dt><dd><span class="eq">|jerk| ≤ j_max  in every segment</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>WHEN TO USE WHICH</h3>
+      <ul>
+        <li><b>Joint-space + trapezoidal</b> — default for free-space moves; fastest.</li>
+        <li><b>Cartesian + S-curve</b> — welding, painting, glue dispensing, machining; predictable tool path + smooth servo command.</li>
+        <li><b>Quintic</b> — short, precise moves where smoothness wins over speed.</li>
+        <li><b>OMPL planner (RRT*)</b> when there are obstacles; output is a joint-space path, then time-parameterise with trapezoidal/S-curve.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li><b>Picking Cartesian for free-space moves</b> — risks singularities and IK failures for no benefit.</li>
+        <li><b>Joint discontinuity between waypoints</b> — IK branch flip mid-Cartesian-segment swings joints violently. Constrain or check branch continuity.</li>
+        <li><b>Trapezoidal on stiff servos</b> — corner jerk excites resonance; switch to S-curve.</li>
+        <li><b>Forgetting joint velocity/accel limits</b> — Cartesian planners often demand more joint speed than the motor can deliver near singularity.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 8 — Robotics &amp; Mechatronics Systems</a> ·
+    Topic: trajectory planning, joint vs Cartesian, motion profiles
+  </footer>
+</main>
+<script>
+const svg=document.getElementById('armSvg');
+const profSvg=document.getElementById('profSvg');
+function ns(tag, attrs={}, parent){
+  const e=document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k,attrs[k]);
+  parent.appendChild(e); return e;
+}
+function clear(s){ while(s.firstChild) s.removeChild(s.firstChild); }
+
+const L1=0.8,L2=0.6;
+let sx=-0.6,sy=0.8,gx=0.9,gy=0.3,dur=2.0,profile='trap';
+let showJoint=true, showCart=true;
+let playing=false, tNow=0, lastTs=0;
+
+function ikUp(x,y){
+  const d2=x*x+y*y;
+  const c2=(d2-L1*L1-L2*L2)/(2*L1*L2);
+  if(c2>1||c2<-1) return null;
+  const s2=-Math.sqrt(Math.max(0,1-c2*c2)); // elbow-up
+  const t2=Math.atan2(s2,c2);
+  const t1=Math.atan2(y,x)-Math.atan2(L2*Math.sin(t2),L1+L2*Math.cos(t2));
+  return [t1,t2];
+}
+function fk(t1,t2){
+  return [L1*Math.cos(t1)+L2*Math.cos(t1+t2), L1*Math.sin(t1)+L2*Math.sin(t1+t2)];
+}
+
+// time scaling s(t/T) in [0,1]
+function sFunc(tau){
+  if(profile==='trap'){
+    // 3-segment with accel time ratio 0.3
+    const ta=0.3;
+    if(tau<ta) return 0.5*tau*tau/(ta*(1-ta));
+    else if(tau<1-ta) return (tau-ta/2)/(1-ta);
+    else { const r=1-tau; return 1 - 0.5*r*r/(ta*(1-ta)); }
+  } else if(profile==='scurve'){
+    // smooth 5-segment jerk-limited approximation (cosine-based)
+    return 0.5 - 0.5*Math.cos(Math.PI*tau);
+  } else { // quintic
+    const t=tau;
+    return 10*t*t*t - 15*t*t*t*t + 6*t*t*t*t*t;
+  }
+}
+function vFunc(tau){
+  if(profile==='trap'){
+    const ta=0.3;
+    if(tau<ta) return tau/(ta*(1-ta));
+    else if(tau<1-ta) return 1/(1-ta);
+    else return (1-tau)/(ta*(1-ta));
+  } else if(profile==='scurve'){
+    return 0.5*Math.PI*Math.sin(Math.PI*tau);
+  } else {
+    const t=tau;
+    return 30*t*t - 60*t*t*t + 30*t*t*t*t;
+  }
+}
+function aFunc(tau){
+  if(profile==='trap'){
+    const ta=0.3;
+    if(tau<ta) return 1/(ta*(1-ta));
+    else if(tau<1-ta) return 0;
+    else return -1/(ta*(1-ta));
+  } else if(profile==='scurve'){
+    return 0.5*Math.PI*Math.PI*Math.cos(Math.PI*tau);
+  } else {
+    const t=tau;
+    return 60*t - 180*t*t + 120*t*t*t;
+  }
+}
+
+const W=880,H=460,CX=W/2,CY=H*0.62;
+const sc=160;
+function px(x,y){ return [CX+x*sc, CY-y*sc]; }
+
+function drawArm(thetas,color,opacity=0.95){
+  if(!thetas) return;
+  const [t1,t2]=thetas;
+  const e=[L1*Math.cos(t1),L1*Math.sin(t1)];
+  const tip=[e[0]+L2*Math.cos(t1+t2),e[1]+L2*Math.sin(t1+t2)];
+  const [bx,by]=px(0,0);
+  const [eX,eY]=px(e[0],e[1]);
+  const [tX,tY]=px(tip[0],tip[1]);
+  ns('line',{x1:bx,y1:by,x2:eX,y2:eY,stroke:color,'stroke-width':6,'stroke-linecap':'round',opacity},svg);
+  ns('line',{x1:eX,y1:eY,x2:tX,y2:tY,stroke:color,'stroke-width':6,'stroke-linecap':'round',opacity},svg);
+  ns('circle',{cx:tX,cy:tY,r:5,fill:color,stroke:'#0e1116','stroke-width':1.2},svg);
+}
+
+let pathJoint=[], pathCart=[];
+
+function buildPaths(){
+  pathJoint=[]; pathCart=[];
+  const ths=ikUp(sx,sy), thg=ikUp(gx,gy);
+  if(!ths||!thg) return;
+  for(let i=0;i<=80;i++){
+    const tau=i/80;
+    const s=sFunc(tau);
+    const t1=ths[0]+s*(thg[0]-ths[0]);
+    const t2=ths[1]+s*(thg[1]-ths[1]);
+    pathJoint.push(fk(t1,t2));
+    const x=sx+s*(gx-sx), y=sy+s*(gy-sy);
+    pathCart.push([x,y]);
+  }
+}
+
+function drawArms(){
+  clear(svg);
+  // grid
+  for(let i=-2;i<=2;i+=0.5){
+    const [x1,y1]=px(i,-1),[x2,y2]=px(i,1.4);
+    ns('line',{x1,y1,x2,y2,stroke:'#222831','stroke-width':0.7},svg);
+  }
+  for(let i=-1;i<=1.4;i+=0.5){
+    const [x1,y1]=px(-2,i),[x2,y2]=px(2,i);
+    ns('line',{x1,y1,x2,y2,stroke:'#222831','stroke-width':0.7},svg);
+  }
+  const [bx,by]=px(0,0);
+  ns('line',{x1:bx-340,y1:by,x2:bx+340,y2:by,stroke:'#3a4150','stroke-width':1},svg);
+  ns('line',{x1:bx,y1:by-220,x2:bx,y2:by+200,stroke:'#3a4150','stroke-width':1},svg);
+  // workspace
+  ns('circle',{cx:bx,cy:by,r:(L1+L2)*sc,fill:'none',stroke:'#ff7b72','stroke-width':1,opacity:0.25,'stroke-dasharray':'4 4'},svg);
+
+  // paths
+  buildPaths();
+  function tracePath(pts,color){
+    if(!pts.length) return;
+    let d='';
+    pts.forEach((p,i)=>{
+      const [x,y]=px(p[0],p[1]);
+      d += (i===0?'M ':' L ')+x+','+y;
+    });
+    ns('path',{d,fill:'none',stroke:color,'stroke-width':1.5,opacity:0.5,'stroke-dasharray':'4 3'},svg);
+  }
+  if(showJoint) tracePath(pathJoint,'#5ec8ff');
+  if(showCart) tracePath(pathCart,'#ffb86c');
+
+  // start/goal markers
+  function marker(x,y,label){
+    const [px_,py_]=px(x,y);
+    ns('circle',{cx:px_,cy:py_,r:8,fill:'none',stroke:'#a3e635','stroke-width':2},svg);
+    ns('text',{x:px_+11,y:py_-9,fill:'#a3e635',font:'12px ui-monospace'},svg).textContent=label;
+  }
+  marker(sx,sy,'start');
+  marker(gx,gy,'goal');
+
+  // current positions
+  const tau = Math.min(1, tNow/dur);
+  const s = sFunc(tau);
+  const ths=ikUp(sx,sy), thg=ikUp(gx,gy);
+  if(ths&&thg){
+    if(showJoint){
+      const t1=ths[0]+s*(thg[0]-ths[0]);
+      const t2=ths[1]+s*(thg[1]-ths[1]);
+      drawArm([t1,t2],'#5ec8ff');
+    }
+    if(showCart){
+      const xc=sx+s*(gx-sx), yc=sy+s*(gy-sy);
+      const thc=ikUp(xc,yc);
+      if(thc) drawArm(thc,'#ffb86c');
+      else {
+        // mark unreachable
+        const [px_,py_]=px(xc,yc);
+        ns('circle',{cx:px_,cy:py_,r:9,fill:'none',stroke:'#ff7b72','stroke-width':2},svg);
+        ns('text',{x:px_+12,y:py_,fill:'#ff7b72',font:'11px ui-monospace'},svg).textContent='unreachable!';
+      }
+    }
+  }
+  ns('circle',{cx:bx,cy:by,r:9,fill:'#1d232c',stroke:'#dde3ec','stroke-width':2},svg);
+  ns('text',{x:14,y:24,fill:'#dde3ec',font:'12px ui-monospace'},svg).textContent='t = '+tNow.toFixed(2)+' s   s = '+s.toFixed(3);
+}
+
+function drawProfile(){
+  clear(profSvg);
+  const W=880,H=220,PADL=50,PADR=20,PADT=14,PADB=30;
+  // grid
+  for(let i=0;i<=10;i++){
+    const x=PADL+i/10*(W-PADL-PADR);
+    ns('line',{x1:x,y1:PADT,x2:x,y2:H-PADB,stroke:'#222831'},profSvg);
+  }
+  for(let i=0;i<=4;i++){
+    const y=PADT+i/4*(H-PADT-PADB);
+    ns('line',{x1:PADL,y1:y,x2:W-PADR,y2:y,stroke:'#222831'},profSvg);
+  }
+  ns('line',{x1:PADL,y1:H-PADB,x2:W-PADR,y2:H-PADB,stroke:'#8f99a8'},profSvg);
+  ns('line',{x1:PADL,y1:PADT,x2:PADL,y2:H-PADB,stroke:'#8f99a8'},profSvg);
+  // sample
+  const samples=200;
+  const ptsP=[],ptsV=[],ptsA=[];
+  let vmax=0,amax=0;
+  for(let i=0;i<=samples;i++){
+    const tau=i/samples;
+    ptsP.push([tau,sFunc(tau)]);
+    const v=vFunc(tau); ptsV.push([tau,v]); if(Math.abs(v)>vmax) vmax=Math.abs(v);
+    const a=aFunc(tau); ptsA.push([tau,a]); if(Math.abs(a)>amax) amax=Math.abs(a);
+  }
+  function plotNorm(pts,color,scaleMax){
+    let d='';
+    pts.forEach((p,i)=>{
+      const x=PADL+p[0]*(W-PADL-PADR);
+      const yv = scaleMax ? (p[1]/scaleMax) : p[1];
+      const y=H-PADB - (yv*0.5+0.5)*(H-PADT-PADB);
+      d += (i===0?'M ':' L ')+x+','+y;
+    });
+    ns('path',{d,fill:'none',stroke:color,'stroke-width':2},profSvg);
+  }
+  // pos normalised already in [0,1]; render at top half
+  function plotPos(pts,color){
+    let d='';
+    pts.forEach((p,i)=>{
+      const x=PADL+p[0]*(W-PADL-PADR);
+      const y=H-PADB - p[1]*(H-PADT-PADB);
+      d += (i===0?'M ':' L ')+x+','+y;
+    });
+    ns('path',{d,fill:'none',stroke:color,'stroke-width':2},profSvg);
+  }
+  plotPos(ptsP,'#5ec8ff');
+  plotNorm(ptsV,'#ffb86c',vmax*1.05);
+  plotNorm(ptsA,'#ff7b72',amax*1.05);
+  // playhead
+  const tau=Math.min(1,tNow/dur);
+  const px_=PADL+tau*(W-PADL-PADR);
+  ns('line',{x1:px_,y1:PADT,x2:px_,y2:H-PADB,stroke:'#a3e635','stroke-width':1.5,opacity:0.8},profSvg);
+  // labels
+  ns('text',{x:PADL,y:PADT-2,fill:'#5ec8ff',font:'11px ui-monospace'},profSvg).textContent='pos s(t) — blue';
+  ns('text',{x:PADL+200,y:PADT-2,fill:'#ffb86c',font:'11px ui-monospace'},profSvg).textContent='vel — orange (norm)';
+  ns('text',{x:PADL+420,y:PADT-2,fill:'#ff7b72',font:'11px ui-monospace'},profSvg).textContent='accel — red (norm)';
+  ns('text',{x:W-PADR-60,y:H-PADB+18,fill:'#8f99a8',font:'11px ui-monospace'},profSvg).textContent='τ = t/T';
+}
+
+function redraw(){ drawArms(); drawProfile(); }
+
+['sx','sy','gx','gy','dur'].forEach(id=>{
+  document.getElementById(id).oninput = e=>{
+    const v=parseFloat(e.target.value);
+    if(id==='sx') sx=v; else if(id==='sy') sy=v;
+    else if(id==='gx') gx=v; else if(id==='gy') gy=v;
+    else dur=v;
+    document.getElementById('sRO').textContent='('+sx.toFixed(2)+', '+sy.toFixed(2)+')';
+    document.getElementById('gRO').textContent='('+gx.toFixed(2)+', '+gy.toFixed(2)+')';
+    document.getElementById('durRO').textContent=dur.toFixed(1);
+    redraw();
+  };
+});
+document.getElementById('prof').onchange=e=>{ profile=e.target.value; redraw(); };
+document.getElementById('showJoint').onchange=e=>{ showJoint=e.target.checked; redraw(); };
+document.getElementById('showCart').onchange=e=>{ showCart=e.target.checked; redraw(); };
+document.getElementById('play').onclick=()=>{
+  if(playing){ playing=false; return; }
+  playing=true; tNow=0; lastTs=performance.now();
+  function tick(ts){
+    if(!playing) return;
+    const dt=(ts-lastTs)/1000; lastTs=ts;
+    tNow += dt;
+    if(tNow>dur){ tNow=dur; playing=false; }
+    redraw();
+    if(playing) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+};
+document.getElementById('reset').onclick=()=>{ playing=false; tNow=0; redraw(); };
+redraw();
+</script>
+</body>
+</html>

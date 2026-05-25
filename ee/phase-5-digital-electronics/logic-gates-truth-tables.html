@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logic Gates and Truth Tables — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .gate-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px}
+  .gate-card{background:var(--bg-elev2);border:1px solid var(--line);border-radius:8px;
+    padding:14px;display:flex;flex-direction:column;gap:10px}
+  .gate-card h4{margin:0;color:var(--accent);font:600 14px ui-monospace,monospace}
+  .gate-card .expr{font:12px ui-monospace,monospace;color:var(--fg-dim)}
+  .gate-svg{background:var(--bg);border-radius:4px;padding:6px}
+  .gate-svg svg{width:100%;height:100px}
+  .gate-tt{font:12px ui-monospace,monospace}
+  .gate-tt table{margin:0}
+  .input-toggle{display:inline-block;width:30px;height:24px;background:var(--warn);color:var(--bg);
+    text-align:center;line-height:24px;border-radius:4px;cursor:pointer;
+    font:600 13px ui-monospace,monospace;user-select:none;border:1px solid var(--line)}
+  .input-toggle.on{background:var(--accent3)}
+  .toggles{display:flex;gap:14px;align-items:center}
+  .out-display{display:inline-block;width:40px;height:24px;background:var(--bg);
+    border:1px solid var(--accent);border-radius:4px;text-align:center;line-height:22px;
+    font:600 14px ui-monospace,monospace;color:var(--accent)}
+  .row-active{background:rgba(94,200,255,0.15) !important}
+  .cmos-wrap{margin-top:8px;padding:8px;background:var(--bg);border-radius:4px}
+  .cmos-wrap svg{width:100%;max-height:160px}
+  .nand-universal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:12px;margin:12px 0}
+  .step-card{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;padding:10px}
+  .step-card h4{margin:0 0 6px;font:600 13px ui-monospace,monospace;color:var(--accent2)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Logic Gates and Truth Tables</h1>
+  <p class="lede">Each gate with ANSI symbol, expression, truth table, and a CMOS skeleton. Click A and B on the top demo to drive any gate. Bottom: NAND-only constructions of NOT, AND, OR.</p>
+
+  <p>A gate is a function from boolean inputs to a boolean output, realized in silicon by an arrangement of transistors. Below you see all seven gates with their symbols (ANSI/IEEE), their truth tables, and a CMOS schematic showing how PMOS (top) and NMOS (bottom) networks realize each function. <b>Click the A and B toggles</b> to drive every gate at once.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Input A</label>
+      <span class="input-toggle" id="inA" onclick="toggleA()">A=0</span>
+    </div>
+    <div class="control">
+      <label>Input B</label>
+      <span class="input-toggle" id="inB" onclick="toggleB()">B=0</span>
+    </div>
+  </section>
+
+  <div class="gate-grid" id="gateGrid"></div>
+
+  <h2>NAND as universal — step by step</h2>
+  <p style="font-size:13px">A NAND gate alone can build every other gate. CMOS process designers ship NAND-only cell libraries for this reason. Each panel shows the construction with live signals — toggle A and B above to see them flow.</p>
+  <div class="nand-universal-grid">
+    <div class="step-card">
+      <h4>NOT from NAND</h4>
+      <div style="font:12px ui-monospace,monospace;color:var(--fg-dim);margin-bottom:8px">Tie both inputs together. NAND(A,A) = ¬A.</div>
+      <svg viewBox="0 0 280 80" width="100%">
+        <line x1="20" y1="40" x2="80" y2="40" class="wire"/>
+        <line x1="60" y1="40" x2="100" y2="30" class="wire"/>
+        <line x1="60" y1="40" x2="100" y2="50" class="wire"/>
+        <path d="M100,15 L100,65 Q150,65 165,40 Q150,15 100,15 Z" fill="var(--bg)" stroke="var(--fg)" stroke-width="2"/>
+        <circle cx="172" cy="40" r="5" fill="var(--bg)" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="177" y1="40" x2="240" y2="40" class="wire"/>
+        <text x="10" y="44" class="label" id="notA">A=0</text>
+        <text x="250" y="44" class="label" id="notOut" fill="#a3e635">1</text>
+      </svg>
+    </div>
+
+    <div class="step-card">
+      <h4>AND from NAND</h4>
+      <div style="font:12px ui-monospace,monospace;color:var(--fg-dim);margin-bottom:8px">NAND, then NOT (which is also a NAND). ¬¬(A·B) = A·B.</div>
+      <svg viewBox="0 0 380 80" width="100%">
+        <line x1="10" y1="30" x2="70" y2="30" class="wire"/>
+        <line x1="10" y1="50" x2="70" y2="50" class="wire"/>
+        <path d="M70,15 L70,65 Q120,65 135,40 Q120,15 70,15 Z" fill="var(--bg)" stroke="var(--fg)" stroke-width="2"/>
+        <circle cx="142" cy="40" r="5" fill="var(--bg)" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="147" y1="40" x2="190" y2="40" class="wire"/>
+        <line x1="170" y1="40" x2="210" y2="32" class="wire"/>
+        <line x1="170" y1="40" x2="210" y2="48" class="wire"/>
+        <path d="M210,18 L210,62 Q255,62 270,40 Q255,18 210,18 Z" fill="var(--bg)" stroke="var(--fg)" stroke-width="2"/>
+        <circle cx="277" cy="40" r="5" fill="var(--bg)" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="282" y1="40" x2="340" y2="40" class="wire"/>
+        <text x="0" y="34" class="label" id="aA">A=0</text>
+        <text x="0" y="54" class="label" id="aB">B=0</text>
+        <text x="345" y="44" class="label" id="aOut" fill="#a3e635">0</text>
+        <text x="155" y="20" class="label-dim" font-size="10" id="aMid">¬(A·B)=1</text>
+      </svg>
+    </div>
+
+    <div class="step-card">
+      <h4>OR from NAND</h4>
+      <div style="font:12px ui-monospace,monospace;color:var(--fg-dim);margin-bottom:8px">Invert each input then NAND. By De Morgan: NAND(¬A,¬B) = A+B.</div>
+      <svg viewBox="0 0 380 130" width="100%">
+        <line x1="10" y1="25" x2="35" y2="25" class="wire"/>
+        <line x1="25" y1="25" x2="55" y2="17" class="wire"/>
+        <line x1="25" y1="25" x2="55" y2="33" class="wire"/>
+        <path d="M55,10 L55,40 Q90,40 100,25 Q90,10 55,10 Z" fill="var(--bg)" stroke="var(--fg)" stroke-width="2"/>
+        <circle cx="106" cy="25" r="4" fill="var(--bg)" stroke="var(--fg)" stroke-width="2"/>
+
+        <line x1="10" y1="100" x2="35" y2="100" class="wire"/>
+        <line x1="25" y1="100" x2="55" y2="92" class="wire"/>
+        <line x1="25" y1="100" x2="55" y2="108" class="wire"/>
+        <path d="M55,85 L55,115 Q90,115 100,100 Q90,85 55,85 Z" fill="var(--bg)" stroke="var(--fg)" stroke-width="2"/>
+        <circle cx="106" cy="100" r="4" fill="var(--bg)" stroke="var(--fg)" stroke-width="2"/>
+
+        <line x1="110" y1="25" x2="180" y2="25" class="wire"/>
+        <line x1="180" y1="25" x2="180" y2="50" class="wire"/>
+        <line x1="110" y1="100" x2="180" y2="100" class="wire"/>
+        <line x1="180" y1="100" x2="180" y2="75" class="wire"/>
+        <line x1="180" y1="50" x2="220" y2="50" class="wire"/>
+        <line x1="180" y1="75" x2="220" y2="75" class="wire"/>
+        <path d="M220,35 L220,90 Q275,90 290,62 Q275,35 220,35 Z" fill="var(--bg)" stroke="var(--fg)" stroke-width="2"/>
+        <circle cx="297" cy="62" r="5" fill="var(--bg)" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="302" y1="62" x2="350" y2="62" class="wire"/>
+
+        <text x="0" y="29" class="label" id="oA">A=0</text>
+        <text x="0" y="104" class="label" id="oB">B=0</text>
+        <text x="355" y="66" class="label" id="oOut" fill="#a3e635">0</text>
+      </svg>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>The bubble means inversion</b> — NAND = AND + bubble, NOR = OR + bubble. Once you see it that way, the symbols stop being a memory test.</li>
+    <li><b>XOR is the "different" gate</b>, XNOR is the "equal" gate. XOR is what an adder uses for its sum bit.</li>
+    <li><b>Every CMOS gate has dual networks</b> — a PMOS network that pulls the output to VDD and an NMOS network that pulls it to GND. They are never on at the same time.</li>
+    <li><b>NAND in CMOS uses fewer transistors than NOR</b> for the same fan-in, because NMOS transistors are physically smaller and faster than PMOS. That is why NAND, not NOR, dominates real libraries.</li>
+    <li><b>NOT-from-NAND is "free"</b> — tying inputs together is just a routing choice, no extra transistors.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>7-GATE TRUTH TABLE</h3>
+      <table>
+        <tr><th>A B</th><th>AND</th><th>OR</th><th>XOR</th><th>NAND</th><th>NOR</th><th>XNOR</th></tr>
+        <tr><td>0 0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>1</td><td>1</td></tr>
+        <tr><td>0 1</td><td>0</td><td>1</td><td>1</td><td>1</td><td>0</td><td>0</td></tr>
+        <tr><td>1 0</td><td>0</td><td>1</td><td>1</td><td>1</td><td>0</td><td>0</td></tr>
+        <tr><td>1 1</td><td>1</td><td>1</td><td>0</td><td>0</td><td>0</td><td>1</td></tr>
+      </table>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>NAND-ONLY BUILDS</h3>
+      <ul>
+        <li><b>NOT</b> = NAND(A,A) — tie inputs together.</li>
+        <li><b>AND</b> = NAND then NOT (2 NANDs).</li>
+        <li><b>OR</b> = NOT each input, then NAND (3 NANDs).</li>
+        <li><b>Bubble rule</b> — bubble = inversion; pushing through swaps AND↔OR.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Fan-out limit</b> — one CMOS output drives ~10 inputs before voltage sag.</li>
+        <li><b>Propagation delay</b> — total path delay = sum of gate delays, not max.</li>
+        <li><b>Floating inputs</b> — unused inputs float to noise; tie to VCC or GND.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 5 — Digital Electronics</a> ·
+    Topic: Logic Gates and Truth Tables
+  </footer>
+</main>
+<script>
+  let A=0, B=0;
+
+  // Gate definitions
+  const gates = [
+    {
+      name:'AND', expr:'Y = A · B',
+      fn:(a,b)=>a&b,
+      svg:`<svg viewBox="0 0 200 80">
+        <line x1="0" y1="25" x2="50" y2="25" class="wire"/>
+        <line x1="0" y1="55" x2="50" y2="55" class="wire"/>
+        <path d="M50,10 L50,70 Q120,70 140,40 Q120,10 50,10 Z" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="140" y1="40" x2="190" y2="40" class="wire"/>
+        <text x="-5" y="29" class="label">A</text>
+        <text x="-5" y="59" class="label">B</text>
+        <text x="172" y="35" class="label">Y</text>
+      </svg>`,
+      cmos:`<svg viewBox="0 0 220 160">
+        <text x="110" y="14" class="label-dim" text-anchor="middle">CMOS: NAND + inverter</text>
+        <line x1="40" y1="20" x2="180" y2="20" class="wire"/>
+        <text x="190" y="24" class="label">VDD</text>
+        <rect x="30" y="30" width="20" height="14" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="55" y="40" class="label-dim">P</text>
+        <rect x="60" y="30" width="20" height="14" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="85" y="40" class="label-dim">P</text>
+        <line x1="50" y1="44" x2="100" y2="44" class="wire"/>
+        <rect x="40" y="60" width="20" height="14" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="65" y="70" class="label-dim">N</text>
+        <rect x="40" y="80" width="20" height="14" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="65" y="90" class="label-dim">N</text>
+        <line x1="50" y1="100" x2="50" y2="120" class="wire"/>
+        <line x1="40" y1="120" x2="180" y2="120" class="wire"/>
+        <text x="190" y="124" class="label">GND</text>
+        <line x1="100" y1="44" x2="100" y2="60" class="wire"/>
+        <text x="105" y="55" class="label-dim">NAND</text>
+        <line x1="100" y1="60" x2="130" y2="60" class="wire"/>
+        <rect x="130" y="40" width="20" height="14" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="155" y="50" class="label-dim">P</text>
+        <rect x="130" y="80" width="20" height="14" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="155" y="90" class="label-dim">N</text>
+        <line x1="140" y1="70" x2="200" y2="70" class="wire"/>
+        <text x="205" y="74" class="label">Y</text>
+      </svg>`
+    },
+    {
+      name:'OR', expr:'Y = A + B',
+      fn:(a,b)=>a|b,
+      svg:`<svg viewBox="0 0 200 80">
+        <line x1="0" y1="25" x2="60" y2="25" class="wire"/>
+        <line x1="0" y1="55" x2="60" y2="55" class="wire"/>
+        <path d="M40,10 Q55,40 40,70 Q90,70 130,55 Q150,40 130,25 Q90,10 40,10 Z" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="143" y1="40" x2="190" y2="40" class="wire"/>
+        <text x="-5" y="29" class="label">A</text>
+        <text x="-5" y="59" class="label">B</text>
+        <text x="172" y="35" class="label">Y</text>
+      </svg>`,
+      cmos:`<svg viewBox="0 0 220 160">
+        <text x="110" y="14" class="label-dim" text-anchor="middle">CMOS: NOR + inverter</text>
+        <line x1="40" y1="20" x2="180" y2="20" class="wire"/>
+        <text x="190" y="24" class="label">VDD</text>
+        <rect x="40" y="30" width="20" height="14" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="65" y="40" class="label-dim">P (series)</text>
+        <rect x="40" y="50" width="20" height="14" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="65" y="60" class="label-dim">P</text>
+        <line x1="50" y1="64" x2="100" y2="64" class="wire"/>
+        <rect x="30" y="80" width="20" height="14" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="20" y="90" class="label-dim" text-anchor="end">N</text>
+        <rect x="60" y="80" width="20" height="14" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="90" y="90" class="label-dim">N (parallel)</text>
+        <line x1="50" y1="100" x2="50" y2="120" class="wire"/>
+        <line x1="70" y1="100" x2="70" y2="120" class="wire"/>
+        <line x1="30" y1="120" x2="180" y2="120" class="wire"/>
+        <text x="190" y="124" class="label">GND</text>
+        <line x1="100" y1="64" x2="130" y2="64" class="wire"/>
+        <rect x="130" y="40" width="20" height="14" fill="var(--bg)" stroke="var(--fg)"/>
+        <rect x="130" y="80" width="20" height="14" fill="var(--bg)" stroke="var(--fg)"/>
+        <line x1="140" y1="70" x2="200" y2="70" class="wire"/>
+        <text x="205" y="74" class="label">Y</text>
+      </svg>`
+    },
+    {
+      name:'NOT', expr:'Y = Ā', single:true,
+      fn:(a,b)=>(~a)&1,
+      svg:`<svg viewBox="0 0 200 80">
+        <line x1="0" y1="40" x2="50" y2="40" class="wire"/>
+        <polygon points="50,15 50,65 130,40" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <circle cx="137" cy="40" r="6" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="143" y1="40" x2="190" y2="40" class="wire"/>
+        <text x="-5" y="44" class="label">A</text>
+        <text x="172" y="35" class="label">Y</text>
+      </svg>`,
+      cmos:`<svg viewBox="0 0 220 160">
+        <text x="110" y="14" class="label-dim" text-anchor="middle">CMOS inverter: 1 PMOS + 1 NMOS</text>
+        <line x1="40" y1="25" x2="180" y2="25" class="wire"/>
+        <text x="190" y="29" class="label">VDD</text>
+        <rect x="70" y="40" width="40" height="20" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="120" y="54" class="label-dim">PMOS</text>
+        <line x1="40" y1="80" x2="70" y2="80" class="wire"/>
+        <text x="20" y="84" class="label">A</text>
+        <line x1="70" y1="50" x2="70" y2="80" class="wire"/>
+        <line x1="70" y1="80" x2="70" y2="100" class="wire"/>
+        <rect x="70" y="100" width="40" height="20" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="120" y="114" class="label-dim">NMOS</text>
+        <line x1="40" y1="135" x2="180" y2="135" class="wire"/>
+        <text x="190" y="139" class="label">GND</text>
+        <line x1="90" y1="60" x2="160" y2="60" class="wire"/>
+        <line x1="160" y1="60" x2="160" y2="100" class="wire"/>
+        <line x1="90" y1="100" x2="160" y2="100" class="wire"/>
+        <line x1="160" y1="80" x2="210" y2="80" class="wire"/>
+        <text x="200" y="74" class="label">Y</text>
+      </svg>`
+    },
+    {
+      name:'NAND', expr:'Y = ¬(A · B)',
+      fn:(a,b)=>(~(a&b))&1,
+      svg:`<svg viewBox="0 0 200 80">
+        <line x1="0" y1="25" x2="50" y2="25" class="wire"/>
+        <line x1="0" y1="55" x2="50" y2="55" class="wire"/>
+        <path d="M50,10 L50,70 Q120,70 140,40 Q120,10 50,10 Z" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <circle cx="147" cy="40" r="6" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="153" y1="40" x2="190" y2="40" class="wire"/>
+        <text x="-5" y="29" class="label">A</text>
+        <text x="-5" y="59" class="label">B</text>
+        <text x="172" y="35" class="label">Y</text>
+      </svg>`,
+      cmos:`<svg viewBox="0 0 220 160">
+        <text x="110" y="14" class="label-dim" text-anchor="middle">2 PMOS parallel (pull-up) + 2 NMOS series (pull-down)</text>
+        <line x1="40" y1="25" x2="180" y2="25" class="wire"/>
+        <text x="190" y="29" class="label">VDD</text>
+        <rect x="50" y="40" width="40" height="18" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="70" y="52" class="label-dim" text-anchor="middle">P</text>
+        <rect x="100" y="40" width="40" height="18" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="120" y="52" class="label-dim" text-anchor="middle">P</text>
+        <line x1="50" y1="40" x2="50" y2="25" class="wire"/>
+        <line x1="140" y1="40" x2="140" y2="25" class="wire"/>
+        <line x1="70" y1="58" x2="120" y2="58" class="wire"/>
+        <line x1="95" y1="58" x2="95" y2="80" class="wire"/>
+        <line x1="95" y1="80" x2="170" y2="80" class="wire"/>
+        <text x="180" y="84" class="label">Y</text>
+        <rect x="75" y="90" width="40" height="18" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="95" y="102" class="label-dim" text-anchor="middle">N</text>
+        <rect x="75" y="115" width="40" height="18" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="95" y="127" class="label-dim" text-anchor="middle">N</text>
+        <line x1="95" y1="108" x2="95" y2="115" class="wire"/>
+        <line x1="95" y1="133" x2="95" y2="145" class="wire"/>
+        <line x1="40" y1="145" x2="180" y2="145" class="wire"/>
+        <text x="190" y="149" class="label">GND</text>
+      </svg>`
+    },
+    {
+      name:'NOR', expr:'Y = ¬(A + B)',
+      fn:(a,b)=>(~(a|b))&1,
+      svg:`<svg viewBox="0 0 200 80">
+        <line x1="0" y1="25" x2="60" y2="25" class="wire"/>
+        <line x1="0" y1="55" x2="60" y2="55" class="wire"/>
+        <path d="M40,10 Q55,40 40,70 Q90,70 130,55 Q150,40 130,25 Q90,10 40,10 Z" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <circle cx="155" cy="40" r="6" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="161" y1="40" x2="190" y2="40" class="wire"/>
+        <text x="-5" y="29" class="label">A</text>
+        <text x="-5" y="59" class="label">B</text>
+        <text x="172" y="35" class="label">Y</text>
+      </svg>`,
+      cmos:`<svg viewBox="0 0 220 160">
+        <text x="110" y="14" class="label-dim" text-anchor="middle">2 PMOS series (pull-up) + 2 NMOS parallel (pull-down)</text>
+        <line x1="40" y1="25" x2="180" y2="25" class="wire"/>
+        <rect x="75" y="35" width="40" height="18" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="95" y="47" class="label-dim" text-anchor="middle">P</text>
+        <rect x="75" y="58" width="40" height="18" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="95" y="70" class="label-dim" text-anchor="middle">P</text>
+        <line x1="95" y1="76" x2="95" y2="95" class="wire"/>
+        <line x1="95" y1="95" x2="170" y2="95" class="wire"/>
+        <text x="180" y="99" class="label">Y</text>
+        <rect x="50" y="105" width="40" height="18" fill="var(--bg)" stroke="var(--fg)"/>
+        <rect x="100" y="105" width="40" height="18" fill="var(--bg)" stroke="var(--fg)"/>
+        <text x="70" y="117" class="label-dim" text-anchor="middle">N</text>
+        <text x="120" y="117" class="label-dim" text-anchor="middle">N</text>
+        <line x1="70" y1="123" x2="70" y2="140" class="wire"/>
+        <line x1="120" y1="123" x2="120" y2="140" class="wire"/>
+        <line x1="40" y1="140" x2="180" y2="140" class="wire"/>
+        <text x="190" y="144" class="label">GND</text>
+      </svg>`
+    },
+    {
+      name:'XOR', expr:'Y = A ⊕ B = A·B̄ + Ā·B',
+      fn:(a,b)=>a^b,
+      svg:`<svg viewBox="0 0 200 80">
+        <line x1="0" y1="25" x2="40" y2="25" class="wire"/>
+        <line x1="0" y1="55" x2="40" y2="55" class="wire"/>
+        <path d="M35,10 Q50,40 35,70" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <path d="M45,10 Q60,40 45,70 Q95,70 135,55 Q155,40 135,25 Q95,10 45,10 Z" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="148" y1="40" x2="190" y2="40" class="wire"/>
+        <text x="-5" y="29" class="label">A</text>
+        <text x="-5" y="59" class="label">B</text>
+        <text x="172" y="35" class="label">Y</text>
+      </svg>`,
+      cmos:`<svg viewBox="0 0 220 160">
+        <text x="110" y="80" class="label-dim" text-anchor="middle">XOR = 4 NANDs (or 8–12 MOS in dedicated cell)</text>
+        <text x="110" y="100" class="label-dim" text-anchor="middle">Y = NAND(NAND(A,N), NAND(B,N))  where N = NAND(A,B)</text>
+      </svg>`
+    },
+    {
+      name:'XNOR', expr:'Y = ¬(A ⊕ B)',
+      fn:(a,b)=>(~(a^b))&1,
+      svg:`<svg viewBox="0 0 200 80">
+        <line x1="0" y1="25" x2="40" y2="25" class="wire"/>
+        <line x1="0" y1="55" x2="40" y2="55" class="wire"/>
+        <path d="M35,10 Q50,40 35,70" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <path d="M45,10 Q60,40 45,70 Q95,70 135,55 Q155,40 135,25 Q95,10 45,10 Z" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <circle cx="161" cy="40" r="6" fill="none" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="167" y1="40" x2="190" y2="40" class="wire"/>
+        <text x="-5" y="29" class="label">A</text>
+        <text x="-5" y="59" class="label">B</text>
+        <text x="172" y="35" class="label">Y</text>
+      </svg>`,
+      cmos:`<svg viewBox="0 0 220 160">
+        <text x="110" y="80" class="label-dim" text-anchor="middle">XNOR = XOR + inverter (or "equality detector")</text>
+      </svg>`
+    }
+  ];
+
+  function render(){
+    const grid = document.getElementById('gateGrid');
+    grid.innerHTML = '';
+    gates.forEach(g=>{
+      const isSingle = g.single===true;
+      const y = g.fn(A,B);
+      const rows = isSingle ? [[0],[1]] : [[0,0],[0,1],[1,0],[1,1]];
+      const activeIdx = isSingle ? A : (A*2+B);
+      let ttRows = '';
+      rows.forEach((r,i)=>{
+        const out = isSingle ? g.fn(r[0],0) : g.fn(r[0],r[1]);
+        const cls = i===activeIdx ? 'row-active':'';
+        ttRows += `<tr class="${cls}">`
+          + r.map(v=>`<td>${v}</td>`).join('')
+          + `<td style="color:${out?'var(--accent3)':'var(--warn)'};font-weight:600">${out}</td></tr>`;
+      });
+      const headerCols = isSingle ? '<th>A</th><th>Y</th>' : '<th>A</th><th>B</th><th>Y</th>';
+
+      grid.innerHTML += `
+        <div class="gate-card">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <h4>${g.name}</h4>
+            <span class="expr">${g.expr}</span>
+          </div>
+          <div class="gate-svg">${g.svg}</div>
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <table class="gate-tt" style="max-width:180px"><thead><tr>${headerCols}</tr></thead><tbody>${ttRows}</tbody></table>
+            <div style="font:13px ui-monospace,monospace;align-self:center">
+              live: <span class="out-display">${y}</span>
+            </div>
+          </div>
+          <div class="cmos-wrap">${g.cmos}</div>
+        </div>`;
+    });
+  }
+
+  function updateLive(){
+    const aT = document.getElementById('inA');
+    const bT = document.getElementById('inB');
+    aT.textContent = `A=${A}`; aT.classList.toggle('on', A===1);
+    bT.textContent = `B=${B}`; bT.classList.toggle('on', B===1);
+
+    // NAND-universal demos
+    const notOut = (~A)&1;
+    const andOut = A&B;
+    const orOut = A|B;
+    const setT = (id, txt, val) => {
+      const e = document.getElementById(id);
+      if(e){ e.textContent = txt; e.setAttribute('fill', val? '#a3e635':'#ff7b72'); }
+    };
+    document.getElementById('notA').textContent = `A=${A}`;
+    document.getElementById('notOut').textContent = notOut;
+    document.getElementById('notOut').setAttribute('fill', notOut? '#a3e635':'#ff7b72');
+
+    document.getElementById('aA').textContent = `A=${A}`;
+    document.getElementById('aB').textContent = `B=${B}`;
+    document.getElementById('aOut').textContent = andOut;
+    document.getElementById('aOut').setAttribute('fill', andOut? '#a3e635':'#ff7b72');
+    document.getElementById('aMid').textContent = `¬(A·B)=${(~andOut)&1}`;
+
+    document.getElementById('oA').textContent = `A=${A}`;
+    document.getElementById('oB').textContent = `B=${B}`;
+    document.getElementById('oOut').textContent = orOut;
+    document.getElementById('oOut').setAttribute('fill', orOut? '#a3e635':'#ff7b72');
+
+    render();
+  }
+
+  function toggleA(){ A ^= 1; updateLive(); }
+  function toggleB(){ B ^= 1; updateLive(); }
+
+  updateLive();
+</script>
+</body>
+</html>

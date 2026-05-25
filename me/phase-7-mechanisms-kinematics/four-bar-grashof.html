@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Four-bar linkage — Grashof's rule — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  /* Common SVG conventions */
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .verdict{font:600 14px ui-monospace,monospace;padding:10px 14px;border-radius:6px;
+    margin:10px 0;border:1px solid var(--line)}
+  .v-cr{background:#1a2a1a;color:var(--accent3);border-color:#3a5a3a}
+  .v-dr{background:#1a1f2a;color:var(--accent);border-color:#3a4a5a}
+  .v-2r{background:#2a2a1a;color:var(--accent2);border-color:#5a5a3a}
+  .v-3r{background:#2a1a1a;color:var(--warn);border-color:#5a3a3a}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Four-bar linkage — Grashof's rule</h1>
+  <p class="lede">Set the four link lengths. The animation pulses the input crank: if Grashof allows
+  full rotation it spins; if not, the input oscillates within its allowed arc. The classifier names
+  the mechanism (crank-rocker, drag-link, double-rocker, or triple-rocker) and traces the coupler
+  curve from a point on the floating link.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Ground link a₁ (mm)</label>
+      <input type="range" id="L1" min="20" max="200" step="2" value="120">
+      <span class="readout" id="L1RO">120</span>
+    </div>
+    <div class="control">
+      <label>Crank a₂ (mm) — input</label>
+      <input type="range" id="L2" min="10" max="160" step="2" value="40">
+      <span class="readout" id="L2RO">40</span>
+    </div>
+    <div class="control">
+      <label>Coupler a₃ (mm)</label>
+      <input type="range" id="L3" min="20" max="200" step="2" value="110">
+      <span class="readout" id="L3RO">110</span>
+    </div>
+    <div class="control">
+      <label>Rocker a₄ (mm)</label>
+      <input type="range" id="L4" min="20" max="200" step="2" value="100">
+      <span class="readout" id="L4RO">100</span>
+    </div>
+    <div class="control">
+      <label>Coupler point offset (along & perpendicular)</label>
+      <div style="display:flex;gap:6px">
+        <input type="range" id="couplerT" min="0" max="100" value="50" style="flex:1">
+        <input type="range" id="couplerN" min="-80" max="80" value="40" style="flex:1">
+      </div>
+    </div>
+    <div class="control">
+      <label>Animation</label>
+      <div style="display:flex;gap:6px">
+        <button class="btn primary" id="btnPlay">Play</button>
+        <button class="btn" id="btnPause">Pause</button>
+        <button class="btn" id="btnClear">Clear trace</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="diagram" viewBox="0 0 880 460" width="100%" height="460"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:#5ec8ff"></span>Crank a₂</span>
+      <span><span class="swatch" style="background:#ffb86c"></span>Coupler a₃</span>
+      <span><span class="swatch" style="background:#a3e635"></span>Rocker a₄</span>
+      <span><span class="swatch" style="background:#ff7b72"></span>Coupler-point trace</span>
+    </div>
+  </div>
+
+  <div id="verdict" class="verdict"></div>
+
+  <h2>Grashof breakdown</h2>
+  <table>
+    <thead><tr><th>Quantity</th><th>Value (mm)</th><th>Role</th></tr></thead>
+    <tbody id="grashofTable"></tbody>
+  </table>
+
+  <h2>Mechanism classes (Grashof's rule)</h2>
+  <table>
+    <thead><tr><th>s + l vs p + q</th><th>Shortest link is …</th><th>Class</th><th>Behaviour</th></tr></thead>
+    <tbody>
+      <tr><td>s + l &lt; p + q (Grashof)</td><td>Crank (input side)</td><td><b style="color:var(--accent3)">Crank-rocker</b></td><td>Crank rotates 360°; rocker oscillates</td></tr>
+      <tr><td>s + l &lt; p + q (Grashof)</td><td>Ground link</td><td><b style="color:var(--accent)">Drag-link / double-crank</b></td><td>Both crank and follower rotate 360°</td></tr>
+      <tr><td>s + l &lt; p + q (Grashof)</td><td>Coupler (floating link)</td><td><b style="color:var(--accent2)">Double-rocker</b></td><td>Coupler tumbles; crank & follower oscillate</td></tr>
+      <tr><td>s + l = p + q (Grashof neutral)</td><td>any</td><td>Special — change-point</td><td>Parallelogram or anti-parallelogram; can flip configuration</td></tr>
+      <tr><td>s + l &gt; p + q (non-Grashof)</td><td>any</td><td><b style="color:var(--warn)">Triple-rocker</b></td><td>No link can fully rotate; all three moving links oscillate</td></tr>
+    </tbody>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Try s + l = p + q exactly.</b> Use a₁ = a₃ and a₂ = a₄ (parallelogram). The coupler stays parallel to the ground and traces a circle — useful for keeping a payload level (pantograph, scissor lifts, drafting lamps).</li>
+    <li><b>If you can't get a full revolution</b>, you're outside the Grashof region. Many useful mechanisms (wipers, oscillating fans) are <i>intentionally</i> non-Grashof triple-rockers driven through a separate crank slider.</li>
+    <li><b>Toggle position</b> appears when the crank and coupler become collinear: torque transmission is huge, velocity transmission is zero. Locking pliers and kickstands exploit this.</li>
+    <li><b>Coupler curve</b> is the famous "magic" of four-bars — by choosing a point on the floating link you can trace approximate straight lines (Watt, Chebyshev), figure eights, eggs, or dwells.</li>
+    <li><b>Crank-rocker is the workhorse</b>: a motor rotates the short crank continuously, and the rocker oscillates back and forth. Sewing-machine needle bar, beam-pumping oil derrick.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>GRASHOF RULES</h3>
+      <ul>
+        <li><b>s+l ≤ p+q</b> → Grashof (some link rotates fully)</li>
+        <li>Shortest = <b>crank</b> → crank-rocker</li>
+        <li>Shortest = <b>ground</b> → drag-link (double-crank)</li>
+        <li>Shortest = <b>coupler</b> → double-rocker</li>
+        <li><b>s+l &gt; p+q</b> → triple-rocker (no full rotation)</li>
+      </ul>
+    </div>
+    <div class="cheat-card formulas">
+      <h3>DECISION POINTS</h3>
+      <ul>
+        <li><b>Toggle position</b>: crank + coupler collinear → max mechanical advantage, zero velocity transfer</li>
+        <li><b>Transmission angle</b> µ between coupler &amp; rocker; keep 40°–140° for smooth force flow</li>
+        <li><b>Parallelogram</b> (a₁=a₃, a₂=a₄): coupler stays parallel — payload leveler</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Non-Grashof</b> = triple-rocker — no link makes a full revolution; can't drive with a continuous motor on the input</li>
+        <li><b>Coupler curve</b> highly sensitive to length tolerances — ±1% can shift the path significantly</li>
+        <li><b>Change-point</b> (s+l = p+q) flips configuration; lock with a guide or branch-resolving link</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 7 — Mechanisms & Kinematics</a> ·
+    Topic: Four-bar linkage — Grashof's rule & coupler curves
+  </footer>
+</main>
+<script>
+const svg = document.getElementById('diagram');
+function ns(tag, attrs={}, parent=svg){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+}
+function clear(){ while(svg.firstChild) svg.removeChild(svg.firstChild); }
+
+// State
+let L1 = 120, L2 = 40, L3 = 110, L4 = 100;
+let theta2 = 0; // input crank angle
+let playing = true;
+let trace = [];
+const TRACE_MAX = 600;
+
+// Geometry: ground from O2 (0,0) to O4 (L1, 0). Crank from O2 with length L2 at angle theta2.
+// Coupler from B = O2 + L2*(cos,sin)*theta2 to C, where |BC| = L3 and |O4 C| = L4.
+// Solve for C using circle intersection.
+function solve(theta2){
+  const O2 = {x:0, y:0};
+  const O4 = {x:L1, y:0};
+  const B = {x: L2*Math.cos(theta2), y: L2*Math.sin(theta2)};
+  // Find C: |C-B| = L3, |C-O4| = L4
+  const dx = O4.x - B.x, dy = O4.y - B.y;
+  const d = Math.hypot(dx, dy);
+  if(d > L3 + L4 || d < Math.abs(L3 - L4)){
+    return null; // no solution at this crank angle
+  }
+  const a = (L3*L3 - L4*L4 + d*d) / (2*d);
+  const h2 = L3*L3 - a*a;
+  if(h2 < 0) return null;
+  const h = Math.sqrt(h2);
+  const ux = dx/d, uy = dy/d;
+  const Px = B.x + a*ux;
+  const Py = B.y + a*uy;
+  // Two solutions: pick the upper one (positive y) for "open" configuration
+  const Cx1 = Px - h*uy, Cy1 = Py + h*ux;
+  const Cx2 = Px + h*uy, Cy2 = Py - h*ux;
+  // Prefer the configuration with C above the ground line (y > 0)
+  const C = (Cy1 > Cy2) ? {x:Cx1, y:Cy1} : {x:Cx2, y:Cy2};
+  return {O2, O4, B, C};
+}
+
+function grashof(){
+  const a = [L1, L2, L3, L4];
+  const s = Math.min(...a);
+  const l = Math.max(...a);
+  const rest = a.filter(x => x !== s && x !== l);
+  // Handle duplicates
+  let p, q;
+  if(rest.length === 2){
+    p = rest[0]; q = rest[1];
+  } else {
+    // Tie cases — pick remaining sorted
+    const sorted = [...a].sort((x,y) => x - y);
+    p = sorted[1]; q = sorted[2];
+  }
+  const sl = s + l;
+  const pq = p + q;
+  const isGrashof = sl <= pq;
+  // What link is shortest?
+  let shortest;
+  if(L1 === s) shortest = 'ground';
+  else if(L2 === s) shortest = 'crank';
+  else if(L3 === s) shortest = 'coupler';
+  else shortest = 'rocker';
+  let cls, name, desc, vcls;
+  if(!isGrashof){
+    cls='triple'; name='Triple-rocker (non-Grashof)';
+    desc='s + l > p + q. No link can complete a full revolution. Crank will oscillate within an arc.';
+    vcls='v-3r';
+  } else if(sl === pq){
+    cls='special'; name='Change-point (s + l = p + q)';
+    desc='Special case — parallelogram or anti-parallelogram. Can pass through change points and switch configurations.';
+    vcls='v-dr';
+  } else if(shortest === 'crank' || shortest === 'rocker'){
+    cls='crankrocker'; name='Crank-rocker';
+    desc='Shortest link is the crank (or follower) — the input crank rotates 360°; the rocker on the opposite side oscillates.';
+    vcls='v-cr';
+  } else if(shortest === 'ground'){
+    cls='draglink'; name='Drag-link (double-crank)';
+    desc='Shortest link is ground — both crank and follower rotate fully. Useful for non-uniform output rotation.';
+    vcls='v-dr';
+  } else {
+    cls='doublerocker'; name='Double-rocker';
+    desc='Shortest link is the coupler — the coupler tumbles 360°, but the crank and follower can only oscillate.';
+    vcls='v-2r';
+  }
+  return {s,l,p,q,sl,pq,isGrashof,shortest,cls,name,desc,vcls};
+}
+
+// Render
+const W=880, H=460, OX=180, OY=H-160, SCALE=1.0;
+function px(x){ return OX + x*SCALE; }
+function py(y){ return OY - y*SCALE; }
+
+function render(){
+  clear();
+  const g = grashof();
+  const sol = solve(theta2);
+
+  // grid baseline
+  ns('line',{x1:0,y1:OY,x2:W,y2:OY,stroke:'#1a1f27','stroke-width':1});
+
+  if(sol){
+    // Ground link
+    ns('line',{x1:px(sol.O2.x),y1:py(sol.O2.y),x2:px(sol.O4.x),y2:py(sol.O4.y),
+      stroke:'#3a4a5a','stroke-width':4});
+    // Crank
+    ns('line',{x1:px(sol.O2.x),y1:py(sol.O2.y),x2:px(sol.B.x),y2:py(sol.B.y),
+      stroke:'#5ec8ff','stroke-width':7,'stroke-linecap':'round'});
+    // Coupler
+    ns('line',{x1:px(sol.B.x),y1:py(sol.B.y),x2:px(sol.C.x),y2:py(sol.C.y),
+      stroke:'#ffb86c','stroke-width':7,'stroke-linecap':'round'});
+    // Rocker
+    ns('line',{x1:px(sol.O4.x),y1:py(sol.O4.y),x2:px(sol.C.x),y2:py(sol.C.y),
+      stroke:'#a3e635','stroke-width':7,'stroke-linecap':'round'});
+
+    // Coupler point P: along coupler at fraction t and perpendicular offset n
+    const t = parseInt(document.getElementById('couplerT').value)/100;
+    const n = parseInt(document.getElementById('couplerN').value);
+    const cdx = sol.C.x - sol.B.x, cdy = sol.C.y - sol.B.y;
+    const clen = Math.hypot(cdx,cdy);
+    const ux = cdx/clen, uy = cdy/clen;
+    const pxN = -uy, pyN = ux;
+    const Pp = {x: sol.B.x + t*cdx + n*pxN, y: sol.B.y + t*cdy + n*pyN};
+
+    // Trace point
+    if(playing){
+      trace.push({x:Pp.x, y:Pp.y});
+      if(trace.length > TRACE_MAX) trace.shift();
+    }
+    if(trace.length > 1){
+      let path = `M ${px(trace[0].x)},${py(trace[0].y)}`;
+      for(let i=1;i<trace.length;i++) path += ` L ${px(trace[i].x)},${py(trace[i].y)}`;
+      ns('path',{d:path, fill:'none', stroke:'#ff7b72', 'stroke-width':1.5, opacity:0.7});
+    }
+    // Coupler point marker
+    ns('circle',{cx:px(Pp.x),cy:py(Pp.y),r:5,fill:'#ff7b72',stroke:'#fff','stroke-width':1.5});
+    // Coupler line from B to P (light)
+    ns('line',{x1:px(sol.B.x),y1:py(sol.B.y),x2:px(Pp.x),y2:py(Pp.y),
+      stroke:'#ff7b72','stroke-width':1,'stroke-dasharray':'3 3',opacity:0.5});
+
+    // Pin joints
+    function pin(p){
+      ns('circle',{cx:px(p.x),cy:py(p.y),r:5,fill:'#0e1116',stroke:'#fff','stroke-width':1.5});
+    }
+    pin(sol.O2); pin(sol.O4); pin(sol.B); pin(sol.C);
+
+    // Ground hatching at O2 and O4
+    [sol.O2, sol.O4].forEach(o=>{
+      const x = px(o.x), y = py(o.y);
+      ns('polygon',{points:`${x},${y+5} ${x-12},${y+22} ${x+12},${y+22}`,
+        fill:'none',stroke:'#dde3ec','stroke-width':1.5});
+      ns('line',{x1:x-18,y1:y+22,x2:x+18,y2:y+22,stroke:'#dde3ec','stroke-width':1.5});
+      for(let i=-14;i<=14;i+=6){
+        ns('line',{x1:x+i,y1:y+22,x2:x+i-5,y2:y+30,stroke:'#8f99a8','stroke-width':1});
+      }
+    });
+
+    // Labels
+    ns('text',{x:(px(sol.O2.x)+px(sol.B.x))/2-10,y:(py(sol.O2.y)+py(sol.B.y))/2-8,class:'label',fill:'#5ec8ff'}).textContent=`a₂=${L2}`;
+    ns('text',{x:(px(sol.B.x)+px(sol.C.x))/2,y:(py(sol.B.y)+py(sol.C.y))/2-8,class:'label',fill:'#ffb86c'}).textContent=`a₃=${L3}`;
+    ns('text',{x:(px(sol.O4.x)+px(sol.C.x))/2+12,y:(py(sol.O4.y)+py(sol.C.y))/2-8,class:'label',fill:'#a3e635'}).textContent=`a₄=${L4}`;
+    ns('text',{x:(px(sol.O2.x)+px(sol.O4.x))/2,y:py(0)+44,class:'label-dim'}).textContent=`a₁=${L1} (ground)`;
+
+    ns('text',{x:px(sol.O2.x)-8,y:py(sol.O2.y)+44,class:'label-dim'}).textContent='O₂';
+    ns('text',{x:px(sol.O4.x)-8,y:py(sol.O4.y)+44,class:'label-dim'}).textContent='O₄';
+  } else {
+    // No solution at this crank angle — show static & message
+    ns('text',{x:W/2,y:H/2,class:'label','text-anchor':'middle',fill:'#ff7b72'}).textContent='Crank angle outside reachable range — see Grashof status below.';
+  }
+
+  // Update verdict
+  const v = document.getElementById('verdict');
+  v.className = 'verdict ' + g.vcls;
+  v.innerHTML = `<div style="font-size:18px">${g.name}</div>` +
+    `<div style="font:400 13px sans-serif;margin-top:6px;opacity:0.85">${g.desc}</div>`;
+
+  // Update table
+  const tbody = document.getElementById('grashofTable');
+  tbody.innerHTML = '';
+  const rows = [
+    ['Shortest s', g.s.toFixed(0), `${g.shortest === 'ground'?'Ground (a₁)':g.shortest === 'crank'?'Crank (a₂)':g.shortest === 'coupler'?'Coupler (a₃)':'Rocker (a₄)'}`],
+    ['Longest l', g.l.toFixed(0), 'Used for Grashof inequality'],
+    ['Intermediate p', g.p.toFixed(0), 'Used for Grashof inequality'],
+    ['Intermediate q', g.q.toFixed(0), 'Used for Grashof inequality'],
+    ['s + l', g.sl.toFixed(0), `vs p + q = ${g.pq}`],
+    ['p + q', g.pq.toFixed(0), g.isGrashof ? 's + l ≤ p + q → Grashof OK' : 's + l > p + q → non-Grashof (triple-rocker)'],
+  ];
+  for(const [q,v,n] of rows){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${q}</td><td>${v}</td><td>${n}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+// Animation
+let lastT = 0;
+function animate(t){
+  if(playing){
+    const dt = lastT ? (t - lastT)/1000 : 0;
+    theta2 += dt * 1.5; // rad/s
+    // If non-Grashof, oscillate crank within an allowed range instead of rotating fully
+    const g = grashof();
+    if(!g.isGrashof){
+      // Find allowed range by sampling
+      const amp = findOscillationAmplitude();
+      theta2 = amp.center + amp.range * Math.sin(t/1000 * 0.8);
+    }
+    render();
+  }
+  lastT = t;
+  requestAnimationFrame(animate);
+}
+function findOscillationAmplitude(){
+  // Sample 360 angles, find the contiguous range where solve() returns a valid solution
+  const valid = [];
+  for(let i=0; i<360; i++){
+    const ang = i * Math.PI/180;
+    if(solve(ang)) valid.push(ang);
+  }
+  if(valid.length === 0) return {center:0, range:0};
+  // Find largest contiguous run
+  let bestRun = [valid[0]], curRun = [valid[0]];
+  for(let i=1;i<valid.length;i++){
+    if(Math.abs(valid[i]-valid[i-1]) < 0.03){
+      curRun.push(valid[i]);
+    } else {
+      if(curRun.length > bestRun.length) bestRun = curRun;
+      curRun = [valid[i]];
+    }
+  }
+  if(curRun.length > bestRun.length) bestRun = curRun;
+  const lo = bestRun[0], hi = bestRun[bestRun.length-1];
+  return {center: (lo+hi)/2, range: (hi-lo)/2 * 0.95};
+}
+
+// Controls
+['L1','L2','L3','L4'].forEach(id=>{
+  const el = document.getElementById(id);
+  el.addEventListener('input', e=>{
+    const v = parseInt(e.target.value);
+    document.getElementById(id+'RO').textContent = v;
+    if(id==='L1') L1 = v;
+    if(id==='L2') L2 = v;
+    if(id==='L3') L3 = v;
+    if(id==='L4') L4 = v;
+    trace = [];
+    render();
+  });
+});
+['couplerT','couplerN'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', ()=>{
+    trace = [];
+    render();
+  });
+});
+document.getElementById('btnPlay').onclick = ()=>{
+  playing = true;
+  document.getElementById('btnPlay').classList.add('primary');
+  document.getElementById('btnPause').classList.remove('primary');
+};
+document.getElementById('btnPause').onclick = ()=>{
+  playing = false;
+  document.getElementById('btnPlay').classList.remove('primary');
+  document.getElementById('btnPause').classList.add('primary');
+};
+document.getElementById('btnClear').onclick = ()=>{
+  trace = [];
+  render();
+};
+
+render();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Super-loop vs RTOS — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:10px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px;margin:12px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px}
+  .stat .lbl{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 16px ui-monospace,monospace;color:var(--accent);margin-top:4px}
+  .stat .val.bad{color:var(--warn)}
+  .stat .val.good{color:var(--accent3)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Super-loop vs RTOS</h1>
+  <p class="lede">Why a while(1) of function calls collapses the moment one job takes "a little too long" — and what a preemptive scheduler does about it.</p>
+
+  <p>A <b>super-loop</b> is the first architecture every embedded engineer writes: <code>while(1){ read_sensor(); update_control(); update_display(); handle_uart(); }</code>. It works perfectly when every job runs faster than the deadline of every other job. It fails the moment one job (LCD redraw, SD card flush, JSON parser) hogs the CPU and your 1 kHz control loop suddenly runs at 200 Hz with 5 ms jitter. An <b>RTOS</b> (FreeRTOS, Zephyr, ThreadX, NuttX) replaces the loop with a <b>scheduler</b>: each job is a task with its own stack and priority, and a hardware tick interrupt (typically 1 kHz) re-evaluates which task should be running. If a higher-priority task becomes ready (semaphore given, queue posted, timer elapsed), the scheduler <i>preempts</i> whatever is running and switches to it. The control loop's deadline survives the LCD redraw because the LCD task runs at a lower priority and gets shoved aside. The cost: context-switch overhead (~few µs), more RAM (one stack per task), and a much more careful conversation about shared data.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Control loop period (ms): <span class="readout" id="ctrlPRead">1.0</span></label>
+      <input id="ctrlP" type="range" min="0.5" max="5" step="0.5" value="1.0">
+    </div>
+    <div class="control">
+      <label>Control exec time (ms): <span class="readout" id="ctrlERead">0.2</span></label>
+      <input id="ctrlE" type="range" min="0.1" max="1.0" step="0.1" value="0.2">
+    </div>
+    <div class="control">
+      <label>LCD redraw exec (ms): <span class="readout" id="lcdERead">3.0</span></label>
+      <input id="lcdE" type="range" min="0.5" max="10" step="0.5" value="3.0">
+    </div>
+    <div class="control">
+      <label>UART parse exec (ms): <span class="readout" id="uartERead">0.5</span></label>
+      <input id="uartE" type="range" min="0.1" max="2" step="0.1" value="0.5">
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Timing diagram — same three jobs, two architectures</h3>
+    <svg id="diag" viewBox="0 0 920 380" width="100%" style="background:var(--bg-elev2);border-radius:6px"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>Control loop (target 1 kHz)</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>LCD redraw (target 30 Hz)</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>UART parse</span>
+      <span><span class="swatch" style="background:var(--warn);height:3px;margin-top:4px"></span>Missed deadline</span>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Measured outcomes over 20 ms window</h3>
+    <div class="stat-grid">
+      <div class="stat"><div class="lbl">Super-loop ctrl iters</div><div class="val bad" id="slIters">—</div></div>
+      <div class="stat"><div class="lbl">Super-loop max jitter</div><div class="val bad" id="slJit">—</div></div>
+      <div class="stat"><div class="lbl">Super-loop missed deadlines</div><div class="val bad" id="slMiss">—</div></div>
+      <div class="stat"><div class="lbl">RTOS ctrl iters</div><div class="val good" id="rtIters">—</div></div>
+      <div class="stat"><div class="lbl">RTOS max jitter</div><div class="val good" id="rtJit">—</div></div>
+      <div class="stat"><div class="lbl">RTOS missed deadlines</div><div class="val good" id="rtMiss">—</div></div>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Super-loop period drifts with workload</b> — the control loop fires every time it gets a chance, which is <i>after</i> the LCD finishes. Set LCD to 6 ms and control "1 kHz" becomes ~150 Hz. Worst-case latency = sum of every other job's worst-case time.</li>
+    <li><b>RTOS preempts mid-LCD</b> — the red ticks in the RTOS row are preemption boundaries: scheduler tick fires, sees control is ready, saves LCD context, runs control, restores LCD. LCD takes longer wall-clock but control hits its deadline every time.</li>
+    <li><b>Jitter ≠ latency</b> — even when the super-loop "makes it," the time-between-iterations varies wildly. PID loops, filters, and observers assume <code>dt = constant</code>; jitter pollutes derivative terms and ruins gain margins.</li>
+    <li><b>RTOS overhead is real but tiny</b> — context switch on Cortex-M4 at 168 MHz is ~30 cycles ≈ 200 ns. A 1 kHz tick adds ~0.02% CPU. The cost is RAM (each task needs ≥512 B stack) and discipline (shared data needs mutexes).</li>
+    <li><b>For the arm: 10 kHz current loop is non-negotiable</b> — that's 100 µs budget per iteration. A 3 ms LCD redraw in a super-loop would miss <i>thirty</i> deadlines. This is why FOC on a multi-job MCU lives in an RTOS task (or, more often, on a dedicated MCU).</li>
+    <li><b>Cooperative scheduling is a middle ground</b> — Arduino's loop() + yield(), MicroPython's asyncio. Tasks voluntarily yield. Simpler but one runaway task still hangs everything. Useful for UI-heavy systems with no hard-real-time work.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>SUPER-LOOP MATH</h3>
+      <dl>
+        <dt>Worst latency</dt>
+        <dd><span class="eq">L_max = Σ T_i (all jobs)</span></dd>
+        <dt>Effective period</dt>
+        <dd><span class="eq">T_ctrl_eff ≈ Σ T_i</span>
+          <span class="eq-note">if all jobs run every iteration</span></dd>
+        <dt>RTOS context switch</dt>
+        <dd><span class="eq">~30 cycles ≈ 200 ns @ 168 MHz</span></dd>
+        <dt>Tick overhead</dt>
+        <dd><span class="eq">1 kHz tick ≈ 0.02% CPU</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>WHEN TO PICK WHICH</h3>
+      <ul>
+        <li><b>Super-loop</b> — single job, OR multiple jobs all faster than smallest deadline. Blink LED, read one sensor, dumb actuator.</li>
+        <li><b>Cooperative (asyncio, Arduino)</b> — UI + IO + slow control. Easy mental model, no preemption hazards.</li>
+        <li><b>Preemptive RTOS</b> — hard-real-time control loop + slower jobs in same MCU. FOC, IMU fusion, comm stack.</li>
+        <li><b>Bare-metal ISRs + main loop</b> — only 1-2 fast jobs, both fit in ISRs; main loop does background. Common in motor drivers.</li>
+        <li><b>Multi-MCU partition</b> — when even an RTOS can't hit the deadline. Dedicate one MCU per loop. (arm-6dof: Pi 5 for MoveIt, MCU for FOC.)</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON TRAPS</h3>
+      <ul>
+        <li><b>"I'll just add a delay"</b> — <code>delay(10)</code> in a super-loop is a confession that you needed an RTOS three jobs ago.</li>
+        <li><b>RTOS tick = 1 ms ≠ resolution</b> — tasks waking on tick boundaries have 1 ms granularity. Use hardware timer ISR for sub-ms loops, not vTaskDelay.</li>
+        <li><b>"It works on the bench"</b> — super-loop timing is data-dependent (JSON parse, SD write). Bench data never exercises worst case.</li>
+        <li><b>Mixing blocking and non-blocking</b> — one <code>HAL_SPI_Transmit()</code> with a 100 ms timeout will ruin any architecture.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 5 — Real-Time Firmware</a> ·
+    Topic: Super-loop vs RTOS
+  </footer>
+</main>
+<script>
+  const ctrlPEl=document.getElementById('ctrlP');
+  const ctrlEEl=document.getElementById('ctrlE');
+  const lcdEEl=document.getElementById('lcdE');
+  const uartEEl=document.getElementById('uartE');
+
+  function update(){
+    const Tctrl = parseFloat(ctrlPEl.value);
+    const Ectrl = parseFloat(ctrlEEl.value);
+    const Elcd  = parseFloat(lcdEEl.value);
+    const Euart = parseFloat(uartEEl.value);
+    document.getElementById('ctrlPRead').textContent=Tctrl.toFixed(1);
+    document.getElementById('ctrlERead').textContent=Ectrl.toFixed(1);
+    document.getElementById('lcdERead').textContent=Elcd.toFixed(1);
+    document.getElementById('uartERead').textContent=Euart.toFixed(1);
+
+    const WINDOW = 20; // ms
+    const Tlcd = 33;   // LCD asks to refresh every 33ms (30Hz)
+    const Tuart = 8;   // UART event nominally every 8ms
+
+    // ---- Super-loop simulation ----
+    // Loop body: ctrl, then UART (if pending), then LCD (if pending)
+    const slSegs = [];
+    let t=0;
+    let lastCtrl=-999, nextLcd=0, nextUart=0;
+    let ctrlIters=0, slJit=0, slMiss=0, prevCtrl=-1;
+    while(t<WINDOW){
+      // control
+      slSegs.push({type:'C', t0:t, t1:t+Ectrl});
+      if(prevCtrl>=0){
+        const dt = t - prevCtrl;
+        const j = Math.abs(dt - Tctrl);
+        if(j>slJit) slJit=j;
+        if(dt > Tctrl*1.5) slMiss++;
+      }
+      prevCtrl = t;
+      ctrlIters++;
+      t += Ectrl;
+      // UART if pending
+      if(t >= nextUart){
+        slSegs.push({type:'U', t0:t, t1:t+Euart});
+        t += Euart;
+        nextUart += Tuart;
+      }
+      // LCD if pending
+      if(t >= nextLcd){
+        slSegs.push({type:'L', t0:t, t1:t+Elcd});
+        t += Elcd;
+        nextLcd += Tlcd;
+      }
+      // small idle
+      t += 0.05;
+    }
+
+    // ---- RTOS simulation (preemptive, ctrl priority highest) ----
+    const rtSegs=[];
+    let rt = 0;
+    // remaining work counters
+    let lcdRem = 0, uartRem = 0;
+    let nextLcdRt = 0, nextUartRt = 0, nextCtrlRt = 0;
+    let rtIters=0, rtJit=0, rtMiss=0, prevCtrlRt=-1;
+    const STEP = 0.05;
+    let currentTask = null, segStart = 0;
+    function flush(now){
+      if(currentTask){
+        rtSegs.push({type:currentTask, t0:segStart, t1:now});
+      }
+      currentTask=null;
+    }
+    while(rt < WINDOW){
+      // Events
+      if(rt >= nextCtrlRt){
+        // ctrl ready — preempt
+        flush(rt);
+        // run ctrl fully
+        const t0 = rt;
+        if(prevCtrlRt>=0){
+          const dt = rt - prevCtrlRt;
+          const j = Math.abs(dt - Tctrl);
+          if(j>rtJit) rtJit=j;
+          if(dt > Tctrl*1.2) rtMiss++;
+        }
+        prevCtrlRt = rt;
+        rtIters++;
+        rt += Ectrl;
+        rtSegs.push({type:'C', t0:t0, t1:rt});
+        nextCtrlRt += Tctrl;
+        currentTask=null;
+        continue;
+      }
+      if(rt >= nextLcdRt && lcdRem<=0){ lcdRem=Elcd; nextLcdRt += Tlcd; }
+      if(rt >= nextUartRt && uartRem<=0){ uartRem=Euart; nextUartRt += Tuart; }
+      // pick highest-priority remaining: UART > LCD
+      let pick = null;
+      if(uartRem>0) pick='U';
+      else if(lcdRem>0) pick='L';
+      else pick='I';
+      if(pick !== currentTask){
+        flush(rt);
+        currentTask = pick;
+        segStart = rt;
+      }
+      // advance to next event
+      const nextEvent = Math.min(nextCtrlRt, rt + STEP, WINDOW);
+      const dur = nextEvent - rt;
+      if(currentTask==='U'){ uartRem -= dur; if(uartRem<0) uartRem=0; }
+      else if(currentTask==='L'){ lcdRem -= dur; if(lcdRem<0) lcdRem=0; }
+      rt = nextEvent;
+    }
+    flush(rt);
+
+    // ---- Render SVG ----
+    const svg = document.getElementById('diag');
+    const W=920, H=380;
+    const xL=80, xR=900, xRange=xR-xL;
+    const x = t => xL + (t/WINDOW)*xRange;
+    const colorOf = {'C':'#5ec8ff','U':'#a3e635','L':'#ffb86c','I':'#1d232c'};
+    let html='';
+    // header
+    html += `<text x="${W/2}" y="20" text-anchor="middle" fill="#fff" font-family="ui-monospace,monospace" font-size="13" font-weight="bold">CPU timeline — 0 to 20 ms</text>`;
+    // axis x
+    for(let ms=0; ms<=WINDOW; ms+=2){
+      const xc = x(ms);
+      html += `<line x1="${xc}" y1="40" x2="${xc}" y2="340" stroke="#222831" stroke-width="${ms%5==0?1:0.5}"/>`;
+      html += `<text x="${xc}" y="358" text-anchor="middle" class="axis-label">${ms}</text>`;
+    }
+    html += `<text x="${W/2}" y="375" text-anchor="middle" class="axis-label">time (ms)</text>`;
+
+    // row super-loop
+    const yA = 80, hA = 50;
+    html += `<text x="10" y="${yA-8}" fill="#fff" font-family="ui-monospace,monospace" font-size="12" font-weight="bold">SUPER-LOOP</text>`;
+    html += `<rect x="${xL}" y="${yA}" width="${xRange}" height="${hA}" fill="#0e1116" stroke="#2a313c"/>`;
+    slSegs.forEach(s=>{
+      if(s.t0>=WINDOW) return;
+      const t1c = Math.min(s.t1, WINDOW);
+      const xc0 = x(s.t0), xc1 = x(t1c);
+      html += `<rect x="${xc0}" y="${yA+2}" width="${Math.max(xc1-xc0,1)}" height="${hA-4}" fill="${colorOf[s.type]}" opacity="0.85"/>`;
+      if(xc1-xc0 > 12){
+        html += `<text x="${(xc0+xc1)/2}" y="${yA+hA/2+4}" text-anchor="middle" fill="#0e1116" font-family="ui-monospace,monospace" font-size="10" font-weight="bold">${s.type}</text>`;
+      }
+    });
+
+    // ideal control deadlines beneath
+    html += `<text x="10" y="${yA+hA+24}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">ctrl deadlines</text>`;
+    for(let tk=0; tk<WINDOW; tk+=Tctrl){
+      const xc = x(tk);
+      html += `<line x1="${xc}" y1="${yA+hA+8}" x2="${xc}" y2="${yA+hA+22}" stroke="#ff7b72" stroke-width="1.5"/>`;
+    }
+
+    // row RTOS
+    const yB = 200, hB = 50;
+    html += `<text x="10" y="${yB-8}" fill="#fff" font-family="ui-monospace,monospace" font-size="12" font-weight="bold">RTOS (preemptive)</text>`;
+    html += `<rect x="${xL}" y="${yB}" width="${xRange}" height="${hB}" fill="#0e1116" stroke="#2a313c"/>`;
+    rtSegs.forEach(s=>{
+      if(s.t0>=WINDOW) return;
+      const t1c = Math.min(s.t1, WINDOW);
+      const xc0 = x(s.t0), xc1 = x(t1c);
+      const col = colorOf[s.type] || '#1d232c';
+      html += `<rect x="${xc0}" y="${yB+2}" width="${Math.max(xc1-xc0,1)}" height="${hB-4}" fill="${col}" opacity="0.85"/>`;
+      if(xc1-xc0 > 12 && s.type!=='I'){
+        html += `<text x="${(xc0+xc1)/2}" y="${yB+hB/2+4}" text-anchor="middle" fill="#0e1116" font-family="ui-monospace,monospace" font-size="10" font-weight="bold">${s.type}</text>`;
+      }
+    });
+    html += `<text x="10" y="${yB+hB+24}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">ctrl deadlines</text>`;
+    for(let tk=0; tk<WINDOW; tk+=Tctrl){
+      const xc = x(tk);
+      html += `<line x1="${xc}" y1="${yB+hB+8}" x2="${xc}" y2="${yB+hB+22}" stroke="#a3e635" stroke-width="1.5"/>`;
+    }
+
+    svg.innerHTML = html;
+
+    // stats
+    document.getElementById('slIters').textContent = ctrlIters;
+    document.getElementById('slJit').textContent = slJit.toFixed(2)+' ms';
+    document.getElementById('slMiss').textContent = slMiss;
+    document.getElementById('rtIters').textContent = rtIters;
+    document.getElementById('rtJit').textContent = rtJit.toFixed(2)+' ms';
+    document.getElementById('rtMiss').textContent = rtMiss;
+  }
+  [ctrlPEl,ctrlEEl,lcdEEl,uartEEl].forEach(el=>el.addEventListener('input',update));
+  update();
+</script>
+</body>
+</html>

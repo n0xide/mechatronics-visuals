@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KiCad Workflow and PCB Stackup — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace;vertical-align:top}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .flow-wrap{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+  .flow{flex:1;min-width:280px}
+  .flow-node{background:var(--bg-elev2);border:1px solid var(--line);border-radius:8px;
+             padding:10px 14px;margin:6px 0;cursor:pointer;transition:background 0.15s;
+             display:flex;justify-content:space-between;align-items:center}
+  .flow-node:hover{background:#262d38;border-color:var(--accent)}
+  .flow-node.selected{background:var(--bg-elev);border-color:var(--accent);box-shadow:0 0 0 2px rgba(94,200,255,0.2)}
+  .flow-node .name{font:600 13px ui-monospace,monospace;color:var(--fg-bright)}
+  .flow-node .step{font:11px ui-monospace,monospace;color:var(--accent)}
+  .flow-arrow{text-align:center;color:var(--accent);font:600 16px monospace;margin:-2px 0}
+  .detail{flex:1;min-width:260px;background:var(--bg-elev);border:1px solid var(--line);
+          border-radius:8px;padding:14px}
+  .detail h4{margin:0 0 6px;font:600 14px ui-monospace,monospace;color:var(--accent2)}
+  .detail .what{font-size:12px;color:var(--fg);margin-bottom:10px}
+  .detail .gotcha{background:rgba(255,123,114,0.1);border-left:3px solid var(--warn);
+                  padding:8px 10px;font-size:12px;color:var(--fg)}
+  .detail .gotcha b{color:var(--warn)}
+  .stackup-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:14px 0}
+  @media(max-width:680px){.stackup-cols{grid-template-columns:1fr}}
+  .layer{padding:10px 14px;font:12px ui-monospace,monospace;color:var(--bg);text-align:center;
+         border-bottom:1px solid rgba(0,0,0,0.2)}
+  .layer-stack{border-radius:6px;overflow:hidden;border:1px solid var(--line);margin:6px 0}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>KiCad Workflow and PCB Stackup</h1>
+  <p class="lede">From schematic to JLCPCB Gerbers, every step has a common gotcha. Click any node in the flow. Stackup cross-sections show how 2-layer and 4-layer boards differ in signal-layer rules.</p>
+
+  <p>KiCad's flow is sequential: each stage's output feeds the next. Most first-board failures happen because of a single missed step (forgot to assign a footprint, didn't run DRC, exported wrong layer set). The flowchart below lays out the path; the right panel shows the gotcha for each stage.</p>
+
+  <h2>KiCad workflow</h2>
+  <div class="flow-wrap">
+    <div class="flow">
+      <div class="flow-node selected" data-step="schematic">
+        <span class="step">1.</span><span class="name">Schematic capture</span>
+      </div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-node" data-step="footprint">
+        <span class="step">2.</span><span class="name">Footprint assignment</span>
+      </div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-node" data-step="layout">
+        <span class="step">3.</span><span class="name">PCB layout & routing</span>
+      </div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-node" data-step="drc">
+        <span class="step">4.</span><span class="name">DRC (Design Rule Check)</span>
+      </div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-node" data-step="3d">
+        <span class="step">5.</span><span class="name">3D viewer</span>
+      </div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-node" data-step="gerber">
+        <span class="step">6.</span><span class="name">Gerber + drill export</span>
+      </div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-node" data-step="jlc">
+        <span class="step">7.</span><span class="name">JLCPCB upload</span>
+      </div>
+    </div>
+
+    <div class="detail" id="detailPanel">
+      <h4 id="detailTitle">Schematic capture</h4>
+      <div class="what" id="detailWhat"></div>
+      <div class="gotcha" id="detailGotcha"></div>
+    </div>
+  </div>
+
+  <h2>PCB stackup — cross-section</h2>
+  <div class="stackup-cols">
+    <div>
+      <h3>2-layer (typical hobby)</h3>
+      <div class="layer-stack">
+        <div class="layer" style="background:#c89456">F.Cu — 1 oz (35 µm) — components + signals</div>
+        <div class="layer" style="background:#1f2937;color:#dde3ec">FR4 core — 1.6 mm — ε_r ≈ 4.4</div>
+        <div class="layer" style="background:#c89456">B.Cu — 1 oz — GND pour + secondary signals</div>
+      </div>
+      <table>
+        <tr><th>Use</th><th>Note</th></tr>
+        <tr><td>Front signals</td><td>Component-side traces</td></tr>
+        <tr><td>Back: GND pour</td><td>Return current must follow trace</td></tr>
+        <tr><td>Back: signals</td><td>OK if short, but breaks return path</td></tr>
+        <tr><td>Z<sub>0</sub> control</td><td>Difficult — large board needed</td></tr>
+      </table>
+    </div>
+
+    <div>
+      <h3>4-layer (recommended &gt;50 MHz)</h3>
+      <div class="layer-stack">
+        <div class="layer" style="background:#c89456">F.Cu — 0.5 oz — signals</div>
+        <div class="layer" style="background:#1f2937;color:#dde3ec">prepreg — ~7 mil</div>
+        <div class="layer" style="background:#9a6f3a">In1.Cu — GND plane (solid)</div>
+        <div class="layer" style="background:#1f2937;color:#dde3ec">core — 47 mil</div>
+        <div class="layer" style="background:#9a6f3a">In2.Cu — PWR plane</div>
+        <div class="layer" style="background:#1f2937;color:#dde3ec">prepreg — ~7 mil</div>
+        <div class="layer" style="background:#c89456">B.Cu — 0.5 oz — signals</div>
+      </div>
+      <table>
+        <tr><th>Layer</th><th>Use</th></tr>
+        <tr><td>Top (F.Cu)</td><td>Components + critical signals</td></tr>
+        <tr><td>In1</td><td>Solid GND — reference for top</td></tr>
+        <tr><td>In2</td><td>PWR plane (split if multi-rail)</td></tr>
+        <tr><td>Bottom</td><td>Less critical signals, references In2</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h2>Thermal via array for power packages</h2>
+  <div class="figure">
+    <svg viewBox="0 0 720 220" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <!-- IC body with exposed pad -->
+      <rect x="220" y="40" width="280" height="60" fill="#2a313c" stroke="#5ec8ff" stroke-width="1.5"/>
+      <text x="360" y="65" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace" font-size="12">DCDC / MCU / FET — QFN package</text>
+      <rect x="280" y="80" width="160" height="14" fill="#a3e635" stroke="#5a7d18"/>
+      <text x="360" y="92" text-anchor="middle" fill="#0e1116" font-family="ui-monospace" font-size="11">exposed thermal pad</text>
+
+      <!-- via array -->
+      <g fill="#5ec8ff">
+        <circle cx="295" cy="100" r="3"/><circle cx="320" cy="100" r="3"/><circle cx="345" cy="100" r="3"/>
+        <circle cx="370" cy="100" r="3"/><circle cx="395" cy="100" r="3"/><circle cx="420" cy="100" r="3"/>
+        <circle cx="295" cy="120" r="3"/><circle cx="320" cy="120" r="3"/><circle cx="345" cy="120" r="3"/>
+        <circle cx="370" cy="120" r="3"/><circle cx="395" cy="120" r="3"/><circle cx="420" cy="120" r="3"/>
+        <circle cx="295" cy="140" r="3"/><circle cx="320" cy="140" r="3"/><circle cx="345" cy="140" r="3"/>
+        <circle cx="370" cy="140" r="3"/><circle cx="395" cy="140" r="3"/><circle cx="420" cy="140" r="3"/>
+      </g>
+
+      <!-- Copper pour below (GND) -->
+      <rect x="200" y="155" width="320" height="40" fill="#9a6f3a" stroke="#5a3f1f"/>
+      <text x="360" y="180" text-anchor="middle" fill="#0e1116" font-family="ui-monospace" font-size="12">bottom-layer GND copper pour (heat-sink)</text>
+
+      <!-- Heat-flow arrows -->
+      <g stroke="#ff7b72" stroke-width="2" fill="#ff7b72">
+        <line x1="320" y1="100" x2="320" y2="150" stroke-dasharray="3,3"/>
+        <polygon points="316,148 324,148 320,156"/>
+        <line x1="395" y1="100" x2="395" y2="150" stroke-dasharray="3,3"/>
+        <polygon points="391,148 399,148 395,156"/>
+      </g>
+      <text x="540" y="125" fill="#ff7b72" font-family="ui-monospace" font-size="11">heat flow</text>
+      <text x="540" y="142" fill="#ff7b72" font-family="ui-monospace" font-size="11">through vias</text>
+
+      <!-- Label -->
+      <text x="40" y="100" fill="#dde3ec" font-family="ui-monospace" font-size="12">Top layer</text>
+      <text x="40" y="180" fill="#dde3ec" font-family="ui-monospace" font-size="12">Bottom GND</text>
+      <text x="540" y="70" fill="#ffb86c" font-family="ui-monospace" font-size="11">3×6 via array</text>
+      <text x="540" y="86" fill="#ffb86c" font-family="ui-monospace" font-size="11">~9–18 vias</text>
+    </svg>
+    <p style="font-size:12px;color:var(--fg-dim);margin-top:8px"><b>Why:</b> a single via is ~80 °C/W thermal resistance. An 18-via array drops Θ<sub>j-pad</sub> from ~80 to ~4 °C/W — enough to handle a 1 W loss without exceeding Tj-max. Standard for any QFN with a thermal pad, switching FET, regulator, or LED driver.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Schematic ERC and PCB DRC catch different things</b> — ERC checks net connectivity, DRC checks copper clearances. Both must pass; skipping either is a common bring-up regret.</li>
+    <li><b>Footprint mistakes are the #1 first-board failure</b> — wrong pin pitch, wrong pad shape, mirrored package. Always 3D-render before fab to spot mismatches.</li>
+    <li><b>2-layer is fine up to ~25 MHz</b> with careful GND pour. Above that, the lack of a solid reference plane bites you in EMC. 4-layer adds maybe $5 to a small prototype board — worth it.</li>
+    <li><b>Inner planes need stitching vias</b> — connect inner GND to top/bottom GND with a generous via grid near every IC and around the board edge for shielding.</li>
+    <li><b>Gerber export wrong layer set</b> is a classic — JLCPCB's standard expects F.Cu, B.Cu, F.Mask, B.Mask, F.Silkscreen, B.Silkscreen, Edge.Cuts, and an Excellon drill file. KiCad's "Plot" preset for JLC handles this; double-check the layer checkboxes.</li>
+    <li><b>Thermal vias scale linearly</b> — double the vias, halve the thermal resistance. Don't be shy with the array under any heat-generating package.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>1 oz Cu</b> = 35 µm thick.</li>
+        <li><b>JLCPCB min</b> — trace 0.1 mm, via drill 0.3 mm.</li>
+        <li><b>FR4 ε<sub>r</sub></b> ≈ 4.4 at 1 GHz.</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>DECISION — STACKUP</h3>
+      <ul>
+        <li><b>2-layer</b> — &lt; 100 MHz signals, simple boards.</li>
+        <li><b>4-layer</b> — USB, DDR, HDMI, RF. Solid reference plane required.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Silkscreen over pads</b> = DRC fail. Move it off.</li>
+        <li><b>Thermal vias under exposed pad</b> need solid or 4-spoke connection or they get starved by the relief.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 7 — Signal Integrity & PCB Design</a> ·
+    Topic: KiCad workflow and PCB stackup
+  </footer>
+</main>
+<script>
+  const details = {
+    schematic: {
+      title: 'Schematic capture',
+      what: 'Place components (press <code>A</code>), wire nets (<code>W</code>), assign reference designators (annotate), set values, add power symbols. ERC catches floating pins, missing power flags, multiple drivers on a single net.',
+      gotcha: '<b>Missing power flag:</b> ERC errors complaining about "Pin not driven by any source" usually mean you need <code>PWR_FLAG</code> symbols on +V/+5V/GND nets to tell ERC something is feeding power onto the net.'
+    },
+    footprint: {
+      title: 'Footprint assignment',
+      what: 'Each schematic symbol needs a PCB footprint. Tools > Assign Footprints, or in the symbol\'s properties. KiCad libraries cover most generic parts; vendor-specific connectors usually need a custom footprint.',
+      gotcha: '<b>Wrong package variant:</b> "0805" vs "0805_HandSolder" — the hand-solder version has longer pads. Pick the wrong one and your reflow paste mask won\'t match. For QFN/BGA, verify pin 1 marking and pitch against datasheet.'
+    },
+    layout: {
+      title: 'PCB layout & routing',
+      what: 'Update PCB from schematic to bring net info in. Place components (<code>M</code>), rotate (<code>R</code>), route (<code>X</code>). Set net classes for trace widths and clearance. Add copper zones (<code>B</code> to fill) for GND/PWR pours. Define board outline on Edge.Cuts.',
+      gotcha: '<b>Forgot to refill zones:</b> after editing traces, copper zones don\'t auto-refill. Press <code>B</code> to refill all zones before DRC and Gerber export, or the pour shown won\'t match what gets fabricated.'
+    },
+    drc: {
+      title: 'DRC (Design Rule Check)',
+      what: 'Tools > Design Rules Checker. Verifies clearance, track-to-pad spacing, unconnected items, courtyards. Fix all errors; review warnings (especially silkscreen-over-pad, which is fixable but harmless if not solvermask-related).',
+      gotcha: '<b>"Unconnected items"</b> often hide real bugs — a net you thought was joined but isn\'t. Don\'t suppress these; trace each one back. Outdated cached netlist is another classic — re-run "Update PCB from Schematic" before DRC.'
+    },
+    '3d': {
+      title: '3D viewer',
+      what: 'View > 3D Viewer. Lets you sanity-check component placement, connector orientation, and aesthetic issues. Most footprint libraries include 3D models; if not, the placeholder is fine for layout review.',
+      gotcha: '<b>Connector clearance to enclosure</b> — the 3D view is where you catch the USB-C jack hitting your case wall. Make a habit of rendering before ordering even for a "test" board; rev-2 boards are an avoidable expense.'
+    },
+    gerber: {
+      title: 'Gerber + drill export',
+      what: 'File > Plot. Choose RS-274X (Gerber). Layers: F.Cu, B.Cu, F.Mask, B.Mask, F.Silkscreen, B.Silkscreen, Edge.Cuts. Then File > Fabrication Outputs > Drill Files (Excellon, PTH+NPTH merged). Zip everything.',
+      gotcha: '<b>"Use auxiliary axis as origin"</b> — set the drill origin at the bottom-left of the board (or use Drill/Place File Origin). Mismatched origins between Gerber and drill files cause the holes to be offset on the fabricated board.'
+    },
+    jlc: {
+      title: 'JLCPCB upload',
+      what: 'Upload zipped Gerber set to JLCPCB. Their viewer reconstructs the board — verify layer alignment, drill positions, silkscreen visibility. Choose color, thickness (1.6 mm default), copper weight (1 oz default), surface finish (HASL default, ENIG ~$5 more).',
+      gotcha: '<b>Component library mismatch:</b> if ordering PCBA, JLCPCB only stocks specific part variants. Check parts.jlcpcb.com BEFORE layout — substituting an "extended" part adds $3 per design as setup. Verify availability of every assembled part during BOM creation.'
+    }
+  };
+
+  function showDetail(key){
+    document.querySelectorAll('.flow-node').forEach(n=>n.classList.remove('selected'));
+    document.querySelector(`.flow-node[data-step="${key}"]`).classList.add('selected');
+    const d = details[key];
+    document.getElementById('detailTitle').textContent = d.title;
+    document.getElementById('detailWhat').innerHTML = '<b>What:</b> ' + d.what;
+    document.getElementById('detailGotcha').innerHTML = '<b>Gotcha:</b> ' + d.gotcha;
+  }
+  document.querySelectorAll('.flow-node').forEach(n=>{
+    n.onclick = ()=> showDetail(n.dataset.step);
+  });
+  showDetail('schematic');
+</script>
+</body>
+</html>

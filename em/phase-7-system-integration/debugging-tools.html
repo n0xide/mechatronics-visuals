@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Debugging Tools — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace;vertical-align:top}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.good{color:var(--accent3)}
+  td.bad{color:var(--warn)}
+  td.mid{color:var(--accent2)}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  /* Tool ladder */
+  .ladder{display:grid;gap:8px;margin:14px 0}
+  .rung{display:grid;grid-template-columns:140px 1fr;gap:14px;
+    background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px;cursor:pointer;transition:background 0.15s}
+  .rung:hover{background:var(--bg-elev2)}
+  .rung.selected{border-color:var(--accent);background:rgba(94,200,255,0.04)}
+  .rung .left{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+  .rung .tool{font:600 14px ui-monospace,monospace;color:var(--fg-bright)}
+  .rung .tier{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .rung .badge{font:10px ui-monospace,monospace;padding:2px 6px;
+    border-radius:3px;display:inline-block;margin-top:4px}
+  .rung .badge.intrusive{background:rgba(255,123,114,0.15);color:var(--warn)}
+  .rung .badge.lowoverhead{background:rgba(163,230,53,0.12);color:var(--accent3)}
+  .rung .badge.noninvasive{background:rgba(94,200,255,0.12);color:var(--accent)}
+  .rung .body{display:flex;flex-direction:column;gap:6px}
+  .rung .desc{font-size:13px;color:var(--fg-dim)}
+  .rung .meta{display:flex;flex-wrap:wrap;gap:14px;font:11px ui-monospace,monospace;
+    color:var(--fg-dim)}
+  .rung .meta b{color:var(--fg)}
+  .rung .when{font-size:12px;color:var(--accent2);
+    font-family:ui-monospace,monospace;margin-top:4px}
+  /* detail panel */
+  .detail-panel{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:14px;margin-top:14px;min-height:80px}
+  .detail-panel.empty{color:var(--fg-dim);font-style:italic}
+  .detail-panel h4{margin:0 0 6px;color:var(--accent);
+    font:600 13px ui-monospace,monospace;text-transform:uppercase;
+    letter-spacing:0.04em}
+  .detail-panel ul{margin:6px 0;padding-left:18px;font-size:12.5px;color:var(--fg)}
+  .detail-panel ul li{margin:3px 0;color:var(--fg-dim)}
+  .detail-panel ul li b{color:var(--fg)}
+  .detail-panel code{font-size:11.5px}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+</style>
+</head>
+<body>
+<main>
+  <h1>Debugging Tools — Pick the Right One for the Problem</h1>
+  <p class="lede">A ladder from "easy + intrusive" to "hard + non-invasive." Reach for the lowest rung that will answer your question. Click a tool to see when to use it.</p>
+
+  <p>Embedded debugging has a ladder. <code>printf</code> is the bottom: anyone can use it, but it's slow, blocks the CPU, and stops working when the bug only happens at 20 kHz. SWO/ITM is the next rung: still text-based, but DMA'd out a dedicated pin at MHz rates with negligible overhead — perfect for tracing fast loops. A logic analyzer plugs into your digital lines and shows you what's happening on the bus at nanosecond resolution. An oscilloscope shows analog reality: actual voltages, gate-driver propagation delay, noise rides on the rail. A JTAG breakpoint halts the CPU and shows you everything — RAM, registers, call stack — but it stops time, which is useless for any timing-sensitive bug. Knowing which tool answers your question (and which would lie to you about it) is half of debugging.</p>
+
+  <div class="figure">
+    <h3>Tool ladder — fastest to slowest, most to least intrusive</h3>
+    <div class="ladder" id="ladder"></div>
+    <div id="detail" class="detail-panel empty">Click a tool above to see when to reach for it.</div>
+  </div>
+
+  <div class="figure">
+    <h3>Overhead vs visibility</h3>
+    <svg viewBox="0 0 720 320" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <text x="360" y="20" text-anchor="middle" class="label" fill="var(--accent)" font-weight="bold">CPU overhead (X) vs system visibility (Y)</text>
+      <line x1="60" y1="280" x2="700" y2="280" class="axis"/>
+      <line x1="60" y1="40" x2="60" y2="280" class="axis"/>
+      <text x="380" y="305" text-anchor="middle" class="axis-label">CPU overhead →</text>
+      <text x="35" y="160" text-anchor="middle" class="axis-label" transform="rotate(-90 35 160)">visibility →</text>
+      <text x="60" y="295" class="axis-label">none</text>
+      <text x="700" y="295" text-anchor="end" class="axis-label">halts CPU</text>
+
+      <!-- non-invasive tools (low overhead) -->
+      <g><circle cx="120" cy="120" r="14" fill="var(--accent)" opacity="0.85"/>
+        <text x="120" y="124" text-anchor="middle" class="label-dim" fill="var(--bg)" font-size="10">scope</text></g>
+      <g><circle cx="180" cy="100" r="14" fill="var(--accent)" opacity="0.85"/>
+        <text x="180" y="104" text-anchor="middle" class="label-dim" fill="var(--bg)" font-size="9">LA</text></g>
+      <g><circle cx="250" cy="170" r="14" fill="var(--accent2)" opacity="0.85"/>
+        <text x="250" y="174" text-anchor="middle" class="label-dim" fill="var(--bg)" font-size="9">bus snif</text></g>
+      <g><circle cx="320" cy="210" r="14" fill="var(--accent3)" opacity="0.85"/>
+        <text x="320" y="214" text-anchor="middle" class="label-dim" fill="var(--bg)" font-size="9">SWO/ITM</text></g>
+      <g><circle cx="450" cy="230" r="14" fill="var(--accent3)" opacity="0.85"/>
+        <text x="450" y="234" text-anchor="middle" class="label-dim" fill="var(--bg)" font-size="9">GPIO toggle</text></g>
+      <g><circle cx="540" cy="245" r="14" fill="var(--warn)" opacity="0.85"/>
+        <text x="540" y="249" text-anchor="middle" class="label-dim" fill="var(--bg)" font-size="10">printf</text></g>
+      <g><circle cx="650" cy="80" r="14" fill="var(--warn)" opacity="0.85"/>
+        <text x="650" y="84" text-anchor="middle" class="label-dim" fill="var(--bg)" font-size="9">JTAG bp</text></g>
+
+      <text x="120" y="148" text-anchor="middle" class="label-dim" font-size="10">analog truth</text>
+      <text x="180" y="80" text-anchor="middle" class="label-dim" font-size="10">protocol decode</text>
+      <text x="650" y="108" text-anchor="middle" class="label-dim" font-size="10">full state but stops time</text>
+      <text x="540" y="273" text-anchor="middle" class="label-dim" font-size="10">slow but easy</text>
+    </svg>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>printf is a Heisenberg trap</b> — printing inside a 20 kHz ISR slows that ISR enough to change behavior. The bug "disappears" with printf added, returns when removed. SWO/ITM via DMA avoids this.</li>
+    <li><b>A GPIO toggle is the simplest profiler</b> — set a pin high at the start of your ISR, low at the end. Hook a scope. The pulse width = ISR execution time. Free, deterministic, sub-µs accurate.</li>
+    <li><b>Logic analyzer for protocols, scope for signal integrity</b> — if you wonder "did the SPI message say what I expected", LA. If you wonder "is the rising edge clean or ringing", scope.</li>
+    <li><b>JTAG breakpoint freezes the world</b> — useless for real-time bugs: the PWM keeps running, the motor keeps moving, the encoder keeps spinning, but your CPU is stopped. Coming back from a breakpoint in a motor controller usually means an overcurrent fault.</li>
+    <li><b>The bus sniffer is non-negotiable for distributed systems</b> — a $20 USB-CAN dongle plus candump tells you exactly what crossed the bus. Tier 1 diagnosis for any "the joint is misbehaving" problem.</li>
+    <li><b>Always start by reproducing the bug on the bench</b> — intermittent field bugs are 10× harder than reproducible bench bugs. Spend time on reproduction before tooling.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card">
+      <h3>WHICH TOOL FOR WHICH BUG</h3>
+      <dl>
+        <dt>"Code doesn't run"</dt><dd>JTAG breakpoint at main()</dd>
+        <dt>"Logic wrong"</dt><dd>SWO printf-style traces</dd>
+        <dt>"Wrong on bus"</dt><dd>Logic analyzer with protocol decode</dd>
+        <dt>"Voltage wrong"</dt><dd>Oscilloscope on the rail/pin</dd>
+        <dt>"Slow loop"</dt><dd>GPIO toggle + scope</dd>
+        <dt>"Crashes"</dt><dd>Hardfault handler + JTAG postmortem</dd>
+        <dt>"Comms drops"</dt><dd>Bus sniffer + error counters</dd>
+        <dt>"Motor sings"</dt><dd>Scope on phase voltage / current</dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SWO/ITM SETUP (STM32)</h3>
+      <ul>
+        <li><b>Pin</b> — PB3 (SWO) on most STM32; check your part's datasheet.</li>
+        <li><b>Speed</b> — SWO at 2 MHz typical; can hit 20+ MHz.</li>
+        <li><b>API</b> — <code>ITM_SendChar()</code> from core_cm4.h.</li>
+        <li><b>Toolchain</b> — STM32CubeIDE / OpenOCD / J-Link Viewer all support.</li>
+        <li><b>Overhead</b> — ~5 cycles per char, dropped if buffer full (non-blocking).</li>
+        <li><b>Format</b> — plain ASCII; route to logger via printf retarget.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Probing without grounding</b> — scope probe ground clip skipped → measurement floats, looks like noise.</li>
+        <li><b>10:1 probe set to 1:1</b> — readings are 10× off; double-check before declaring a problem.</li>
+        <li><b>Logic analyzer threshold wrong</b> — 5 V logic with 3.3 V threshold (or vice versa) gives garbage decode.</li>
+        <li><b>SWO requires SWD (not JTAG-only) debugger</b> — old ST-LINK V1 / cheap clones may not support.</li>
+        <li><b>Bus sniffer at wrong bitrate</b> — silently drops every frame. Always confirm sniffer baud matches the bus.</li>
+        <li><b>Breakpoints in ISRs</b> — when the CPU stops, the ISR doesn't return; the next interrupt is lost; system spirals. Use SWO instead.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 7 — System Integration</a> ·
+    Topic: Debugging Tools
+  </footer>
+</main>
+<script>
+  const tools=[
+    {id:'printf',tier:'TIER 1',name:'printf / UART',
+      badge:'intrusive',badgeText:'INTRUSIVE',
+      desc:'Send text out a UART. Blocks the CPU while transmitting. Default for "first try" debugging.',
+      meta:'overhead: ~100 µs per line · speed: 115200 baud typical · cost: free',
+      when:'When to use: first-pass logic checks at &lt;100 Hz; not for inside ISRs or fast loops.',
+      detail:{
+        title:'printf / UART',
+        bullets:[
+          '<b>Cost:</b> Free — you already have a UART pin.',
+          '<b>Pro:</b> Easiest possible tool. Plain text, any terminal works.',
+          '<b>Con:</b> Blocking — a single 50-char printf at 115200 baud takes ~4 ms. Inside a 20 kHz ISR, that\'s 80 missed iterations.',
+          '<b>Workaround:</b> Use a non-blocking ring buffer + DMA TX. Now printf becomes acceptable inside ISRs (still costs a memcpy).',
+          '<b>Use for:</b> startup messages, configuration dumps, low-rate state logging.',
+          '<b>Avoid for:</b> anything inside a control loop running &gt; 1 kHz.'
+        ]
+      }},
+    {id:'gpio',tier:'TIER 2',name:'GPIO toggle',
+      badge:'lowoverhead',badgeText:'LOW OVERHEAD',
+      desc:'Set/clear a pin around code blocks; scope it to measure timing or trigger external events.',
+      meta:'overhead: ~3 cycles · resolution: sub-µs · cost: free + scope',
+      when:'When to use: profiling ISR duration, marking trigger points for the scope.',
+      detail:{
+        title:'GPIO toggle',
+        bullets:[
+          '<b>Cost:</b> Free (1 GPIO line) + you need a scope or LA.',
+          '<b>Pro:</b> Lowest possible overhead — 3 cycles to set, 3 to clear (~36 ns at 168 MHz).',
+          '<b>Pro:</b> Sub-µs resolution. The pulse width = code-block execution time, measured externally.',
+          '<b>Use case 1:</b> Set pin high at ISR entry, low at exit → pulse width tells you ISR cost. Watch it grow when you add new code.',
+          '<b>Use case 2:</b> Toggle on a specific condition → use as scope trigger for capturing a rare event.',
+          '<b>Use case 3:</b> Multi-bit pin pattern → encode states (0=idle, 1=sampling, 2=computing, 3=updating PWM) → scope shows your loop\'s state machine in real time.'
+        ]
+      }},
+    {id:'swo',tier:'TIER 2',name:'SWO / ITM trace',
+      badge:'lowoverhead',badgeText:'LOW OVERHEAD',
+      desc:'Dedicated trace pin on Cortex-M; printf-style messages at MHz rates with negligible CPU overhead.',
+      meta:'overhead: ~5 cycles/char · speed: 2–60 MHz · cost: SWD debugger (~$15)',
+      when:'When to use: tracing variables inside fast control loops; replacement for printf in ISRs.',
+      detail:{
+        title:'SWO / ITM trace',
+        bullets:[
+          '<b>Cost:</b> SWD debugger that supports SWO (ST-LINK V2/V3, J-Link, BMP). Standard on STM32CubeIDE.',
+          '<b>Pro:</b> Hardware-buffered; if the buffer fills, the message drops silently — the CPU never waits.',
+          '<b>Pro:</b> Can be enabled / disabled at runtime via a control register.',
+          '<b>Setup:</b> Enable TRACE_IOEN bit in DBGMCU_CR, set ITM stim port enable, retarget _write() to ITM_SendChar.',
+          '<b>Pro:</b> Free in release builds — code path through stim port is harmless even if no debugger attached.',
+          '<b>Con:</b> Only works while debugger is attached and trace clock is running. Not for production logging.',
+          '<b>Bonus:</b> ITM also supports timestamping + per-channel routing — different log levels go to different stim ports, the viewer filters.'
+        ]
+      }},
+    {id:'la',tier:'TIER 3',name:'Logic analyzer',
+      badge:'noninvasive',badgeText:'NON-INVASIVE',
+      desc:'Captures digital line states at high sample rate; decodes protocols (SPI, I²C, CAN, UART) automatically.',
+      meta:'sample rate: 24 MHz–500 MHz · channels: 8–16 · cost: $20 (Saleae clone) – $500 (real Saleae)',
+      when:'When to use: "is this CAN message what I expected", "is the SPI clock right", "did the chip select pulse fire".',
+      detail:{
+        title:'Logic analyzer',
+        bullets:[
+          '<b>Cost:</b> $20 for Saleae-clone "8-channel 24 MHz"; $500 for genuine Saleae Logic Pro 16.',
+          '<b>Pro:</b> Software-decodes most protocols (SPI, I²C, UART, CAN, 1-Wire) — you see "byte 0x42 sent on MOSI" not just edges.',
+          '<b>Pro:</b> Long capture buffers (seconds at MHz rates) — catch infrequent events.',
+          '<b>Use case 1:</b> SPI not working → capture CS + SCK + MOSI + MISO → check whether bytes match register map.',
+          '<b>Use case 2:</b> CAN bit-rate mismatch → capture CANH or CANL → decoder shows error frames, ACK slot integrity.',
+          '<b>Use case 3:</b> Glitch on an interrupt line → capture as digital, trigger on edge, see exact timing relative to other events.',
+          '<b>Con:</b> Digital only — won\'t show analog noise, ringing, or undershoot.',
+          '<b>Tool of choice:</b> Sigrok/PulseView (open source) or Saleae Logic 2 (proprietary, free).'
+        ]
+      }},
+    {id:'scope',tier:'TIER 3',name:'Oscilloscope',
+      badge:'noninvasive',badgeText:'NON-INVASIVE',
+      desc:'Captures analog voltage vs time. Truth source for signal integrity, motor waveforms, power-rail behavior.',
+      meta:'bandwidth: 50 MHz–1 GHz · channels: 2–4 · cost: $300 (Rigol DS1054Z) – $5000+ (Tek)',
+      when:'When to use: signal integrity, gate-driver propagation, current-shunt noise, ripple on rails, motor phase voltage.',
+      detail:{
+        title:'Oscilloscope',
+        bullets:[
+          '<b>Cost:</b> $300 Rigol DS1054Z (4-channel, 50 MHz, hackable to 100 MHz) is the standard hobbyist scope.',
+          '<b>Pro:</b> Shows actual analog reality — ringing, overshoot, ground bounce, switching noise.',
+          '<b>Use case 1:</b> Motor singing / random restarts → scope on V_bus → see voltage spikes from inductive switching.',
+          '<b>Use case 2:</b> Current loop noisy → scope on shunt amplifier output → catch ground-loop pickup or sample-timing error.',
+          '<b>Use case 3:</b> SPI clock looks weird in logic analyzer → scope on SCK → see ringing that violates setup/hold times.',
+          '<b>Pro:</b> Math channels (Ch1 − Ch2) for differential measurements without breaking ground.',
+          '<b>Con:</b> Only 2–4 channels typically; protocols possible but slow to decode vs LA.',
+          '<b>Safety:</b> Scope ground = mains earth. Probing a high-side switching node without isolation can short V_bus to earth → fireworks.'
+        ]
+      }},
+    {id:'bus',tier:'TIER 3',name:'Bus sniffer',
+      badge:'noninvasive',badgeText:'NON-INVASIVE',
+      desc:'Dedicated USB adapter for CAN/RS-485/Ethernet; sees every message without participating.',
+      meta:'cost: $20 (candleLight) – $400 (PCAN) · software: candump, PCAN-View, Wireshark',
+      when:'When to use: any time you have a distributed system and a node is misbehaving. First-line diagnostic.',
+      detail:{
+        title:'Bus sniffer (USB-CAN, etc.)',
+        bullets:[
+          '<b>Cost:</b> $20 candleLight (open source) is excellent for CAN-FD; PCAN/Kvaser/Vector for industrial-grade.',
+          '<b>Pro:</b> Sees every frame on the bus, including error frames + bus-off conditions.',
+          '<b>Use case 1:</b> "Joint 3 isn\'t responding" → sniff → see whether host\'s command frame is even hitting the bus, and whether joint\'s heartbeat is still alive.',
+          '<b>Use case 2:</b> "Bus errors" → sniff → look at error counters and error-frame patterns. Pinpoints which node is the noisemaker.',
+          '<b>Use case 3:</b> Reverse-engineering a vendor protocol → sniff during normal operation → log to PCAP, analyze in Wireshark.',
+          '<b>Tool:</b> Linux candump for CAN, screen / minicom for RS-485, Wireshark for Ethernet.',
+          '<b>Pro:</b> Read-only mode means you can\'t accidentally inject bad frames during diagnosis.'
+        ]
+      }},
+    {id:'jtag',tier:'TIER 4',name:'JTAG breakpoint / postmortem',
+      badge:'intrusive',badgeText:'INTRUSIVE',
+      desc:'Halt the CPU at a code point. Inspect every register, RAM byte, call stack. Stops time.',
+      meta:'overhead: full CPU halt · setup: SWD/JTAG debugger + IDE · cost: $15 (ST-LINK) – $500 (J-Link)',
+      when:'When to use: "code isn\'t reaching this line", crashes (hardfault), corrupted state on a non-realtime system.',
+      detail:{
+        title:'JTAG / SWD breakpoint',
+        bullets:[
+          '<b>Cost:</b> ST-LINK V3 ($25), J-Link EDU ($60), J-Link Pro ($500).',
+          '<b>Pro:</b> Total visibility — every register, every byte of RAM, full call stack, peripheral registers.',
+          '<b>Pro:</b> Watch variables update in real time at slow rates.',
+          '<b>Critical pitfall:</b> Breaking in a control-loop ISR while the motor is energized → PWM keeps running, motor keeps spinning, but the loop never updates → overcurrent fault or worse.',
+          '<b>Workflow change:</b> always disable PWM outputs (HW kill on enable line) before triggering a breakpoint in a motor controller.',
+          '<b>Postmortem:</b> on hardfault, save the fault registers + call stack to flash; on next boot read them out. Avoids the live-debugger requirement for production crashes.',
+          '<b>Bonus:</b> data watchpoints — break when a specific variable is written. Catches memory corruption in seconds.'
+        ]
+      }}
+  ];
+  const ladder=document.getElementById('ladder');
+  const detail=document.getElementById('detail');
+  tools.forEach(t=>{
+    const div=document.createElement('div');
+    div.className='rung';
+    div.innerHTML=`
+      <div class="left">
+        <div class="tier">${t.tier}</div>
+        <div class="tool">${t.name}</div>
+        <div class="badge ${t.badge}">${t.badgeText}</div>
+      </div>
+      <div class="body">
+        <div class="desc">${t.desc}</div>
+        <div class="meta">${t.meta}</div>
+        <div class="when">${t.when}</div>
+      </div>`;
+    div.addEventListener('click',()=>{
+      document.querySelectorAll('.rung').forEach(r=>r.classList.remove('selected'));
+      div.classList.add('selected');
+      detail.className='detail-panel';
+      detail.innerHTML=`<h4>${t.detail.title}</h4><ul>${t.detail.bullets.map(b=>`<li>${b}</li>`).join('')}</ul>`;
+    });
+    ladder.appendChild(div);
+  });
+</script>
+</body>
+</html>

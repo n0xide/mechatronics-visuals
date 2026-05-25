@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Power Budget &mdash; visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  button.btn.warn{background:rgba(255,123,114,0.15);color:var(--warn);border-color:var(--warn)}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:8px;margin:10px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:5px;padding:8px 10px}
+  .stat .lbl{font:10px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 14px ui-monospace,monospace;color:var(--accent);margin-top:2px}
+  .stat .val.warn{color:var(--warn)}
+  .stat .val.ok{color:var(--accent3)}
+  table.budget td:nth-child(2),
+  table.budget td:nth-child(3),
+  table.budget td:nth-child(4),
+  table.budget td:nth-child(5){text-align:right;color:var(--accent2)}
+  table.budget tr.peak td:nth-child(5){color:var(--warn);font-weight:600}
+  table.budget tr.totals{border-top:2px solid var(--accent3)}
+  table.budget tr.totals td{font-weight:600;color:var(--fg-bright);background:var(--bg-elev2)}
+  table.budget input.duty{width:50px;background:var(--bg);color:var(--accent);
+    border:1px solid var(--line);border-radius:3px;padding:2px 4px;font:12px ui-monospace,monospace}
+  table.budget button.del{background:none;border:none;color:var(--fg-dim);cursor:pointer;font:14px monospace}
+  table.budget button.del:hover{color:var(--warn)}
+  .battbar{background:var(--bg-elev2);height:24px;border-radius:12px;overflow:hidden;
+    border:1px solid var(--line);position:relative;margin:10px 0}
+  .battbar .fill{height:100%;background:linear-gradient(90deg,var(--accent3) 0%,var(--accent3) 70%,var(--accent2) 70%,var(--accent2) 90%,var(--warn) 90%);
+    transition:width 0.2s}
+  .battbar .lbl{position:absolute;top:3px;left:0;right:0;text-align:center;
+    font:12px ui-monospace,monospace;color:var(--fg-bright);text-shadow:0 0 4px #000}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+</style>
+</head>
+<body>
+<main>
+  <h1>Power Budget</h1>
+  <p class="lede">A real component-level current table: continuous load, peak load, duty cycle, estimated runtime. Add presets to see how a single high-current motor reshapes the whole budget.</p>
+
+  <p>A power budget is not optional. Before you choose a battery, before you choose a converter, before you tape out a PCB, you make a table of every load with three columns: <b>continuous</b>, <b>peak</b>, and <b>duty</b>. Continuous determines battery runtime. Peak determines wire gauge and converter rating. Duty (what fraction of time each load is active) determines the average power that actually drains the cell. Adjust the rows below; the runtime estimator updates live.</p>
+
+  <div class="controls">
+    <div class="control">
+      <label>Battery V_nom: <span class="readout" id="vbattR">11.1 V</span></label>
+      <input id="vbatt" type="range" min="3.7" max="48" step="0.1" value="11.1">
+    </div>
+    <div class="control">
+      <label>Battery capacity: <span class="readout" id="capR">3000 mAh</span></label>
+      <input id="cap" type="range" min="500" max="20000" step="100" value="3000">
+    </div>
+    <div class="control">
+      <label>Usable depth-of-discharge: <span class="readout" id="dodR">80 %</span></label>
+      <input id="dod" type="range" min="50" max="100" step="5" value="80">
+    </div>
+    <div class="control">
+      <label>Converter avg efficiency: <span class="readout" id="effR">88 %</span></label>
+      <input id="eff" type="range" min="70" max="98" step="1" value="88">
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Component table &mdash; click headers to edit, &times; to remove</h3>
+    <table class="budget">
+      <thead>
+        <tr>
+          <th>Component</th>
+          <th>V (V)</th>
+          <th>I_cont (mA)</th>
+          <th>I_peak (mA)</th>
+          <th>Duty (%)</th>
+          <th>P_avg (W)</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="budgetBody"></tbody>
+      <tfoot>
+        <tr class="totals">
+          <td>TOTAL</td>
+          <td></td>
+          <td id="tCont">0</td>
+          <td id="tPeak">0</td>
+          <td></td>
+          <td id="tPow">0.00</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0">
+      <button class="btn" data-add="mcu">+ MCU (80&nbsp;mA)</button>
+      <button class="btn" data-add="enc">+ Encoder (20&nbsp;mA)</button>
+      <button class="btn" data-add="imu">+ IMU (5&nbsp;mA)</button>
+      <button class="btn" data-add="led">+ LED (15&nbsp;mA)</button>
+      <button class="btn warn" data-add="motor">+ Motor (50&nbsp;mA / 2&nbsp;A peak)</button>
+      <button class="btn warn" data-add="servo">+ Servo (200&nbsp;mA / 1.5&nbsp;A peak)</button>
+      <button class="btn" data-add="esp">+ ESP32 WiFi (100&nbsp;mA / 500&nbsp;mA peak)</button>
+      <button class="btn" data-add="cam">+ Camera (140&nbsp;mA)</button>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Runtime &amp; headroom</h3>
+    <div class="battbar"><div class="fill" id="battFill" style="width:60%"></div><div class="lbl" id="battLbl">60 % budget used</div></div>
+    <div class="stat-grid">
+      <div class="stat"><div class="lbl">I_avg from batt</div><div class="val" id="sIavg">0 mA</div></div>
+      <div class="stat"><div class="lbl">I_peak from batt</div><div class="val" id="sIpeak">0 mA</div></div>
+      <div class="stat"><div class="lbl">Avg power</div><div class="val" id="sPavg">0 W</div></div>
+      <div class="stat"><div class="lbl">Runtime</div><div class="val" id="sRun">&infin;</div></div>
+      <div class="stat"><div class="lbl">Peak C-rate</div><div class="val" id="sCrate">0 C</div></div>
+      <div class="stat"><div class="lbl">Status</div><div class="val ok" id="sStatus">OK</div></div>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Continuous &times; duty = average.</b> A motor that draws 2&nbsp;A peak but runs only 20% of the time drains the battery at 400&nbsp;mA average. The 2&nbsp;A figure sets your wire gauge and converter rating; the 400&nbsp;mA figure sets your runtime.</li>
+    <li><b>Always-on loads kill runtime.</b> An ESP32 with WiFi continuously connected (100&nbsp;mA, duty&nbsp;100%) consumes more <i>per hour</i> than a motor running 20% duty &mdash; even though the motor's peak is 20&times; larger.</li>
+    <li><b>Peak current sizes the converter, not the average.</b> Buy a buck rated for 1.5&times; peak; a 2&nbsp;A peak load needs at least a 3&nbsp;A continuous converter, ideally 5&nbsp;A to avoid thermal throttling.</li>
+    <li><b>Don't drain below DoD limit.</b> Li-ion is rated for ~80% depth of discharge. Plan runtime against the <i>usable</i> capacity (0.8 &middot; Q_nom), not nameplate Ah. Going to 100% DoD halves cycle life.</li>
+    <li><b>C-rate ceiling.</b> A 3&nbsp;Ah cell rated 10C delivers 30&nbsp;A max. A 2&nbsp;A motor draws less than 1C &mdash; trivial. A 20&nbsp;A motor on a 3&nbsp;Ah pack draws 6.7C &mdash; cell heating becomes real.</li>
+    <li><b>Converter loss is real.</b> 88% efficiency means 12% of every watt becomes heat. A 20&nbsp;W load consumes 22.7&nbsp;W from the battery; the missing 2.7&nbsp;W warms the buck IC.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>P_avg</dt><dd><span class="eq">V&middot;I_cont&middot;duty</span></dd>
+        <dt>I_batt avg</dt><dd><span class="eq">&Sigma; P_load / (&eta;&middot;V_batt)</span></dd>
+        <dt>Runtime (h)</dt><dd><span class="eq">DoD&middot;Q_nom / I_avg</span></dd>
+        <dt>C-rate</dt><dd><span class="eq">I_peak / Q_nom (1h&minus;1)</span></dd>
+        <dt>Conv. headroom</dt><dd><span class="eq">I_rated &ge; 1.5&middot;I_peak</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>TYPICAL CURRENTS</h3>
+      <table>
+        <tr><th>Part</th><th>I_cont</th><th>I_peak</th></tr>
+        <tr><td>STM32 F4 active</td><td>80&nbsp;mA</td><td>120&nbsp;mA</td></tr>
+        <tr><td>Pico W idle</td><td>30&nbsp;mA</td><td>200&nbsp;mA</td></tr>
+        <tr><td>ESP32 WiFi</td><td>100&nbsp;mA</td><td>500&nbsp;mA</td></tr>
+        <tr><td>SG90 servo</td><td>~10&nbsp;mA</td><td>700&nbsp;mA</td></tr>
+        <tr><td>Brushed motor</td><td>0.5&nbsp;A</td><td>3&times; stall</td></tr>
+        <tr><td>Encoder mag</td><td>15&nbsp;mA</td><td>20&nbsp;mA</td></tr>
+      </table>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Quiescent leak ignored</b> &mdash; 3&nbsp;mA of "off" current on a 3&nbsp;Ah pack = 1000&nbsp;h&nbsp;= 6 weeks to flat.</li>
+        <li><b>Datasheet typical, not max</b> &mdash; budget for max + 30%, not "typical at 25&deg;C with no load."</li>
+        <li><b>Inrush forgotten</b> &mdash; capacitor charge currents at boot can spike 10&times; steady-state.</li>
+        <li><b>WiFi/BT continuous-mode</b> &mdash; assume 100&nbsp;mA average; bursting to 500&nbsp;mA every transmit is the &uarr; case.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 6 &mdash; Power Management for EM Systems</a> &middot;
+    Topic: Power Budget
+  </footer>
+</main>
+<script>
+  const presets = {
+    mcu:   {name:'MCU (STM32)',     V:3.3, cont:80,   peak:120,  duty:100},
+    enc:   {name:'Encoder',         V:3.3, cont:20,   peak:20,   duty:100},
+    imu:   {name:'IMU',             V:3.3, cont:5,    peak:8,    duty:100},
+    led:   {name:'Status LED',      V:5,   cont:15,   peak:20,   duty:100},
+    motor: {name:'Brushed motor',   V:12,  cont:50,   peak:2000, duty:25},
+    servo: {name:'RC servo',        V:6,   cont:200,  peak:1500, duty:30},
+    esp:   {name:'ESP32 + WiFi',    V:3.3, cont:100,  peak:500,  duty:100},
+    cam:   {name:'Camera',          V:3.3, cont:140,  peak:200,  duty:100}
+  };
+  let rows = [{...presets.mcu,id:0}, {...presets.enc,id:1}, {...presets.imu,id:2}, {...presets.motor,id:3}];
+  let nextId = 4;
+
+  function render(){
+    const tbody=document.getElementById('budgetBody');
+    tbody.innerHTML='';
+    let tCont=0, tPeak=0, tPow=0;
+    rows.forEach(r=>{
+      const pAvg = r.V * (r.cont/1000) * (r.duty/100);
+      const tr=document.createElement('tr');
+      if(r.peak > r.cont*5) tr.classList.add('peak');
+      tr.innerHTML = `<td>${r.name}</td>
+        <td>${r.V}</td>
+        <td>${r.cont}</td>
+        <td>${r.peak}</td>
+        <td><input class="duty" type="number" min="0" max="100" value="${r.duty}" data-id="${r.id}"></td>
+        <td>${pAvg.toFixed(2)}</td>
+        <td><button class="del" data-id="${r.id}">&times;</button></td>`;
+      tbody.appendChild(tr);
+      tCont += r.cont * (r.duty/100); // duty-weighted avg
+      tPeak += r.peak;
+      tPow  += pAvg;
+    });
+    document.getElementById('tCont').textContent = tCont.toFixed(0)+' mA*';
+    document.getElementById('tPeak').textContent = tPeak.toFixed(0)+' mA';
+    document.getElementById('tPow').textContent = tPow.toFixed(2)+' W';
+
+    // hookup events
+    document.querySelectorAll('input.duty').forEach(i=>{
+      i.addEventListener('input',e=>{
+        const id=+e.target.dataset.id;
+        const row=rows.find(r=>r.id===id);
+        row.duty = Math.max(0,Math.min(100,+e.target.value));
+        render(); // refresh
+      });
+    });
+    document.querySelectorAll('button.del').forEach(b=>{
+      b.addEventListener('click',e=>{
+        const id=+e.target.dataset.id;
+        rows = rows.filter(r=>r.id!==id);
+        render();
+      });
+    });
+
+    // Battery calculations
+    const Vb = parseFloat(document.getElementById('vbatt').value);
+    const Q  = parseFloat(document.getElementById('cap').value)/1000; // Ah
+    const dod= parseFloat(document.getElementById('dod').value)/100;
+    const eff= parseFloat(document.getElementById('eff').value)/100;
+
+    document.getElementById('vbattR').textContent = Vb.toFixed(1)+' V';
+    document.getElementById('capR').textContent   = (Q*1000).toFixed(0)+' mAh';
+    document.getElementById('dodR').textContent   = (dod*100).toFixed(0)+' %';
+    document.getElementById('effR').textContent   = (eff*100).toFixed(0)+' %';
+
+    const Iavg = (tPow / eff) / Vb; // A from battery
+    const Ipeak = rows.reduce((s,r)=> s + r.V*r.peak/1000, 0) / eff / Vb; // worst-case all at once
+    const Pavg = tPow / eff;
+    const runtime = (dod * Q) / Iavg; // h
+    const C = Ipeak / Q;
+
+    document.getElementById('sIavg').textContent  = (Iavg*1000).toFixed(0)+' mA';
+    document.getElementById('sIpeak').textContent = (Ipeak*1000).toFixed(0)+' mA';
+    document.getElementById('sPavg').textContent  = Pavg.toFixed(1)+' W';
+    document.getElementById('sRun').textContent   = isFinite(runtime) ? (runtime>=1? runtime.toFixed(1)+' h':(runtime*60).toFixed(0)+' min') : '&infin;';
+    document.getElementById('sCrate').textContent = C.toFixed(2)+' C';
+
+    // Budget bar: ratio of avg power to "comfortable" capacity*1Vb (1h reference)
+    const budgetRef = dod * Q * Vb; // Wh available
+    const hourlyUse = Pavg; // W (per hour Wh same)
+    const fillPct = Math.min(100, hourlyUse / budgetRef * 100);
+    document.getElementById('battFill').style.width = fillPct.toFixed(1)+'%';
+    document.getElementById('battLbl').textContent = (fillPct).toFixed(0)+' % of usable capacity drained per hour';
+
+    // Status
+    const status = document.getElementById('sStatus');
+    let msg='OK', cls='ok';
+    if(C > 5){ msg='C-rate hot'; cls='warn'; }
+    else if(runtime < 0.25){ msg='Short runtime'; cls='warn'; }
+    else if(Iavg*Vb > 50){ msg='High avg power'; cls='warn'; }
+    else if(rows.length===0){ msg='Empty'; cls=''; }
+    status.textContent=msg; status.className='val '+cls;
+  }
+
+  document.querySelectorAll('button[data-add]').forEach(b=>{
+    b.addEventListener('click',()=>{
+      const p = presets[b.dataset.add];
+      rows.push({...p, id:nextId++});
+      render();
+    });
+  });
+  ['vbatt','cap','dod','eff'].forEach(id=>{
+    document.getElementById(id).addEventListener('input',render);
+  });
+  render();
+</script>
+</body>
+</html>

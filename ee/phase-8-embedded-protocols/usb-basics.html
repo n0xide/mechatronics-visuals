@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>USB Basics — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number],.control input[type=text]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0;flex-wrap:wrap}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .tree-node{cursor:pointer;user-select:none}
+  .tree-node .toggle{display:inline-block;width:14px;color:var(--accent);font-weight:bold}
+  .tree-children{margin-left:18px;border-left:1px dashed var(--line);padding-left:10px}
+  .tree-hidden{display:none}
+  .pill{display:inline-block;font-size:10px;padding:1px 6px;border-radius:8px;
+    background:var(--bg-elev2);border:1px solid var(--line);color:var(--fg-dim);margin-left:6px}
+  .pill.dev{background:var(--accent);color:var(--bg)}
+  .pill.cfg{background:var(--accent2);color:var(--bg)}
+  .pill.intf{background:var(--accent3);color:var(--bg)}
+  .pill.ep{background:var(--warn);color:var(--bg)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>USB Basics</h1>
+  <p class="lede">USB hangs everything off a four-level descriptor tree. Click around the tree, watch NRZI encoding scramble a bit pattern onto D+/D−, and compare classes by bandwidth and latency.</p>
+
+  <p>A USB device is described by a fixed hierarchy: one Device, with one or more Configurations, each containing one or more Interfaces, each with one or more Endpoints. The host enumerates this tree at plug-in time to decide which driver to load.</p>
+
+  <h2>Descriptor tree (click to expand)</h2>
+  <div class="figure" id="treeFig">
+    <div class="tree-node" data-target="cfg1">
+      <span class="toggle">▼</span> <b>Device</b> <span class="pill dev">DEVICE</span> &nbsp; VID 0x2E8A · PID 0x000A · USB 2.0 · class=0 (defined at interface)
+      <div class="tree-children" id="cfg1">
+        <div class="tree-node" data-target="intf1">
+          <span class="toggle">▼</span> <b>Configuration 1</b> <span class="pill cfg">CONFIG</span> &nbsp; bConfigurationValue=1 · max power 500 mA · 2 interfaces
+          <div class="tree-children" id="intf1">
+            <div class="tree-node" data-target="ep1">
+              <span class="toggle">▼</span> <b>Interface 0: HID Keyboard</b> <span class="pill intf">IFACE</span> &nbsp; class=0x03 (HID) · subclass=1 (boot) · protocol=1 (keyboard)
+              <div class="tree-children" id="ep1">
+                <div><span class="pill ep">EP1 IN</span> Interrupt · 64 B · 10 ms polling → ~6.4 KB/s</div>
+              </div>
+            </div>
+            <div class="tree-node" data-target="ep2">
+              <span class="toggle">▼</span> <b>Interface 1: CDC Serial</b> <span class="pill intf">IFACE</span> &nbsp; class=0x02 (CDC) · subclass=2 (ACM)
+              <div class="tree-children" id="ep2">
+                <div><span class="pill ep">EP2 IN</span> Bulk · 64 B · best-effort → up to 1.2 MB/s (FS) / 53 MB/s (HS)</div>
+                <div><span class="pill ep">EP2 OUT</span> Bulk · 64 B</div>
+                <div><span class="pill ep">EP3 IN</span> Interrupt · 16 B · 16 ms (notification)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tree-node" data-target="ep0">
+          <span class="toggle">▶</span> <b>EP0 (default control)</b> <span class="pill ep">EP0</span> &nbsp; bidirectional · used for all enumeration and standard requests · always present, not inside any interface
+          <div class="tree-children tree-hidden" id="ep0">
+            <div>SETUP / IN / OUT phases handle: GET_DESCRIPTOR, SET_ADDRESS, SET_CONFIGURATION, class-specific requests</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>NRZI encoding on D+/D−</h2>
+  <p>USB does not send bits directly — it uses Non-Return-to-Zero Inverted: a "0" causes the line to toggle, a "1" keeps it the same. After 6 consecutive ones, the transmitter inserts a stuffed "0" to guarantee transitions for clock recovery. The pair D+/D− carries differential data; J-state and K-state are the two valid signaling states.</p>
+  <section class="controls">
+    <div class="control">
+      <label>Bit pattern (LSB-first on wire): <span class="readout" id="patRead">10110100</span></label>
+      <input id="patInput" type="text" value="10110100" maxlength="16">
+    </div>
+    <div class="control">
+      <button class="btn primary" id="exampleBtn">▶ load 11111110 (shows bit stuffing)</button>
+    </div>
+  </section>
+  <div class="figure">
+    <h3>D+, D− and the resulting NRZI line</h3>
+    <svg id="nrziPlot" viewBox="0 0 900 280" width="100%"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>D+</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>D−</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>bit-stuffed inserted "0"</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>NRZI transition (encoded "0")</span>
+    </div>
+  </div>
+
+  <h2>Class comparison: bandwidth vs latency</h2>
+  <table>
+    <thead><tr><th>Class</th><th>Endpoint type</th><th>Max bandwidth (FS / HS)</th><th>Latency / interval</th><th>Driver</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td>HID</td><td>Interrupt</td><td>~8 KB/s / ~24 MB/s</td><td>1 ms (HS) – 255 ms</td><td>built-in</td><td>keyboard, mouse, gamepad</td></tr>
+      <tr><td>CDC-ACM</td><td>Bulk + Interrupt</td><td>~1.2 MB/s / ~53 MB/s</td><td>best-effort (no guarantee)</td><td>built-in (Win10+/macOS/Linux)</td><td>virtual COM port, debug</td></tr>
+      <tr><td>MSC</td><td>Bulk</td><td>~1.2 MB/s / ~53 MB/s</td><td>best-effort</td><td>built-in</td><td>thumb drives, SD readers</td></tr>
+      <tr><td>UVC (video)</td><td>Isochronous</td><td>~1.0 MB/s / ~50 MB/s</td><td>fixed slot, no retry</td><td>built-in</td><td>webcam (no driver disk)</td></tr>
+      <tr><td>UAC (audio)</td><td>Isochronous</td><td>budget per frame</td><td>fixed slot, jitter-tolerant</td><td>built-in</td><td>USB DAC, microphone</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Power negotiation</h2>
+  <table>
+    <thead><tr><th>State</th><th>VBUS</th><th>Available current</th><th>Power budget</th></tr></thead>
+    <tbody>
+      <tr><td>Default (before enumeration)</td><td>5 V</td><td>≤ 100 mA</td><td>0.5 W</td></tr>
+      <tr><td>Configured, high-power (USB 2.0)</td><td>5 V</td><td>≤ 500 mA</td><td>2.5 W</td></tr>
+      <tr><td>Configured, high-power (USB 3.x)</td><td>5 V</td><td>≤ 900 mA</td><td>4.5 W</td></tr>
+      <tr><td>USB Battery Charging 1.2 (BC1.2 DCP)</td><td>5 V</td><td>≤ 1500 mA</td><td>7.5 W</td></tr>
+      <tr><td>USB-PD 3.0 (negotiated)</td><td>5 / 9 / 15 / 20 / 28 / 48 V</td><td>≤ 5 A</td><td>up to 240 W (EPR)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Endpoints, not interfaces, carry data</b> — every byte flows through an endpoint; interfaces just group endpoints by purpose. EP0 is always control; EPs 1–15 are direction-paired (IN/OUT separate).</li>
+    <li><b>HID = poll-based, CDC = stream-based</b> — HID gives a guaranteed slot every N ms but tiny payloads; CDC gets bulk endpoints with no timing guarantee but high throughput.</li>
+    <li><b>NRZI ensures transitions</b> — long runs of 1s would mean no edges; the host clock would drift. Bit stuffing forces a transition every 6 same-value bits.</li>
+    <li><b>Default power is 100 mA</b> — until enumeration completes you cannot draw more. Devices that boot >100 mA fail on some hosts. Request 500 mA in the configuration descriptor and stay under it before SET_CONFIGURATION.</li>
+    <li><b>Isochronous has no retry</b> — used for audio/video where late data is useless. CRC errors drop the packet; codec deals with the gap.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>Wires</b> — D+ / D− differential, 90 Ω characteristic.</li>
+        <li><b>Speeds</b> — LS 1.5M / FS 12M / HS 480M / SS 5G bps.</li>
+        <li><b>Classes</b> — HID = no driver, CDC = virtual COM, MSC = storage.</li>
+        <li><b>Power</b> — 100 mA default, 500 mA configured, 900 mA USB 3.</li>
+      </ul>
+    </div>
+    <div class="cheat-card">
+      <h3>CLASS DECISION</h3>
+      <ul>
+        <li><b>HID</b> — keyboard, mouse, gamepad (low rate, no driver).</li>
+        <li><b>CDC</b> — serial-over-USB (Arduino, modems).</li>
+        <li><b>MSC</b> — flash drive, SD-card reader.</li>
+        <li><b>Audio / Video</b> — UAC, UVC (isochronous, no retry).</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Slow enumeration</b> — host expects descriptors within ms; blocking init fails detect.</li>
+        <li><b>No USB on MCU</b> — need CH340 / CP2102 / FT232 bridge for plain UART parts.</li>
+        <li><b>Power draw before SET_CONFIG</b> — must stay under 100 mA.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 8 — Embedded Interface Protocols</a> ·
+    Topic: USB Basics
+  </footer>
+</main>
+<script>
+  // Tree toggle
+  document.querySelectorAll('.tree-node').forEach(n=>{
+    n.addEventListener('click', e=>{
+      e.stopPropagation();
+      const tgt = n.dataset.target;
+      const child = document.getElementById(tgt);
+      if(!child) return;
+      const tog = n.querySelector('.toggle');
+      const open = !child.classList.contains('tree-hidden');
+      if(open){ child.classList.add('tree-hidden'); tog.textContent='▶'; }
+      else    { child.classList.remove('tree-hidden'); tog.textContent='▼'; }
+    });
+  });
+
+  function drawNRZI(){
+    let pat = document.getElementById('patInput').value.replace(/[^01]/g,'');
+    if(!pat) pat='10110100';
+    document.getElementById('patRead').textContent=pat;
+    const bits = pat.split('').map(Number);
+
+    // Bit stuffing: after 6 consecutive '1's, insert a '0'
+    const stuffed=[];
+    let runOnes=0;
+    for(let i=0;i<bits.length;i++){
+      stuffed.push({v:bits[i], stuffed:false});
+      if(bits[i]===1) runOnes++; else runOnes=0;
+      if(runOnes===6){
+        stuffed.push({v:0, stuffed:true});
+        runOnes=0;
+      }
+    }
+
+    const svg=document.getElementById('nrziPlot');
+    const W=900, H=280, mL=70, mR=20, mT=20, mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const n = stuffed.length;
+    const cellW = pw/Math.max(8, n);
+    const rowH = ph/3;
+    const dpY0 = mT+10, dpY1 = mT+rowH-10;
+    const dmY0 = mT+rowH+10, dmY1 = mT+2*rowH-10;
+    const dataY0 = mT+2*rowH+10, dataY1 = mT+3*rowH-10;
+
+    let s='';
+    s+=`<text x="${mL-8}" y="${(dpY0+dpY1)/2+5}" class="label" text-anchor="end">D+</text>`;
+    s+=`<text x="${mL-8}" y="${(dmY0+dmY1)/2+5}" class="label" text-anchor="end">D−</text>`;
+    s+=`<text x="${mL-8}" y="${(dataY0+dataY1)/2+5}" class="label" text-anchor="end">bit</text>`;
+
+    // NRZI: starts in 'J' state (D+ HIGH, D− LOW for FS). On each bit:
+    //   '0' = toggle (transition)
+    //   '1' = no transition
+    let state='J'; // J: D+ high, D− low ; K: D+ low, D− high
+    // For each bit cell we'll plot the line state for the whole cell
+    let dpPath = `M${mL},${state==='J'?dpY0:dpY1}`;
+    let dmPath = `M${mL},${state==='J'?dmY1:dmY0}`;
+    let prevDp = state==='J'?dpY0:dpY1;
+    let prevDm = state==='J'?dmY1:dmY0;
+    for(let i=0;i<n;i++){
+      const b=stuffed[i];
+      if(b.v===0) state = (state==='J'?'K':'J'); // toggle on '0'
+      const dpY = state==='J'?dpY0:dpY1;
+      const dmY = state==='J'?dmY1:dmY0;
+      const x0 = mL + i*cellW;
+      const x1 = mL + (i+1)*cellW;
+      dpPath += ` L${x0},${prevDp} L${x0},${dpY} L${x1},${dpY}`;
+      dmPath += ` L${x0},${prevDm} L${x0},${dmY} L${x1},${dmY}`;
+      prevDp=dpY; prevDm=dmY;
+
+      // bit label
+      const cx=(x0+x1)/2;
+      const color = b.stuffed?'var(--accent3)':'var(--fg)';
+      s+=`<text x="${cx}" y="${(dataY0+dataY1)/2+5}" class="label" text-anchor="middle" style="fill:${color}">${b.v}</text>`;
+      if(b.stuffed){
+        s+=`<text x="${cx}" y="${dataY1+14}" class="label" text-anchor="middle" style="fill:var(--accent3);font-size:10px">stuffed</text>`;
+      }
+      // mark transitions with red ticks
+      if(b.v===0){
+        s+=`<line x1="${x0}" y1="${dpY0-4}" x2="${x0}" y2="${dpY1+4}" stroke="var(--warn)" stroke-width="1.5"/>`;
+      }
+    }
+    s+=`<path d="${dpPath}" class="trace trace-1"/>`;
+    s+=`<path d="${dmPath}" class="trace trace-2"/>`;
+
+    // baseline labels
+    s+=`<text x="${mL+pw+4}" y="${dpY0+4}" class="label-dim">HIGH</text>`;
+    s+=`<text x="${mL+pw+4}" y="${dpY1+4}" class="label-dim">LOW</text>`;
+    s+=`<text x="${mL+pw+4}" y="${dmY0+4}" class="label-dim">HIGH</text>`;
+    s+=`<text x="${mL+pw+4}" y="${dmY1+4}" class="label-dim">LOW</text>`;
+
+    s+=`<text x="${W/2}" y="${H-8}" class="axis-label" text-anchor="middle">bit time →  · "0" forces transition · "1" no transition · stuffed "0" after 6 consecutive 1s</text>`;
+
+    svg.innerHTML=s;
+  }
+  document.getElementById('patInput').addEventListener('input',drawNRZI);
+  document.getElementById('exampleBtn').addEventListener('click',()=>{
+    document.getElementById('patInput').value='11111110';
+    drawNRZI();
+  });
+  drawNRZI();
+</script>
+</body>
+</html>

@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heat transfer modes — conduction, convection, radiation — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  /* Common SVG conventions */
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .panel-row{display:grid;grid-template-columns:1fr;gap:16px}
+  @media (min-width:780px){.panel-row{grid-template-columns:1fr 1fr 1fr}}
+  .panel-row .figure{margin:0}
+  .big-number{font:600 22px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Heat transfer — three modes, side by side</h1>
+  <p class="lede">Conduction (Fourier), convection (Newton), and radiation (Stefan–Boltzmann) all move heat from
+  hot to cold, but they obey different laws and dominate at different scales. Sweep the inputs and watch the
+  heat flow change. Compare numbers on identical surface areas to feel why a black-anodized fin matters and a
+  bare-aluminum one barely radiates.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>Surface area A (cm²) — applies to all three</label>
+      <input type="range" id="area" min="1" max="200" step="1" value="25">
+      <span class="readout" id="areaRO">25 cm²</span>
+    </div>
+    <div class="control">
+      <label>Hot surface T₁ (°C)</label>
+      <input type="range" id="t1" min="30" max="200" step="1" value="80">
+      <span class="readout" id="t1RO">80 °C</span>
+    </div>
+    <div class="control">
+      <label>Cold side T₂ / ambient (°C)</label>
+      <input type="range" id="t2" min="0" max="100" step="1" value="25">
+      <span class="readout" id="t2RO">25 °C</span>
+    </div>
+  </section>
+
+  <div class="panel-row">
+    <!-- (a) Conduction -->
+    <div class="figure">
+      <h3>(a) Conduction</h3>
+      <p style="font-size:12px;color:var(--fg-dim);margin:2px 0 8px">
+        <code>q = k·A·ΔT / L</code>
+      </p>
+      <div class="control">
+        <label>Material k (W/m·K)</label>
+        <select id="material">
+          <option value="400">Copper (400)</option>
+          <option value="205" selected>Aluminum (205)</option>
+          <option value="50">Steel (50)</option>
+          <option value="0.3">FR4 PCB (0.3)</option>
+          <option value="0.025">Air (0.025)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Thickness L (mm)</label>
+        <input type="range" id="L" min="0.1" max="20" step="0.1" value="2">
+        <span class="readout" id="LRO">2.0 mm</span>
+      </div>
+      <svg id="vCond" viewBox="0 0 280 180" width="100%" height="180"></svg>
+      <p style="margin-top:8px">Heat flux: <span class="big-number" id="qCond">— W</span></p>
+      <p style="font-size:12px;color:var(--fg-dim)">R = L/(k·A) = <span class="readout" id="rCond">—</span> °C/W</p>
+    </div>
+
+    <!-- (b) Convection -->
+    <div class="figure">
+      <h3>(b) Convection</h3>
+      <p style="font-size:12px;color:var(--fg-dim);margin:2px 0 8px">
+        <code>q = h·A·ΔT</code>
+      </p>
+      <div class="control">
+        <label>Flow regime</label>
+        <select id="hMode">
+          <option value="10" selected>Natural (h≈10 W/m²·K)</option>
+          <option value="50">Forced — small fan (h≈50)</option>
+          <option value="150">Forced — strong fan (h≈150)</option>
+          <option value="1000">Liquid-cooled (h≈1000)</option>
+        </select>
+      </div>
+      <svg id="vConv" viewBox="0 0 280 220" width="100%" height="220"></svg>
+      <p style="margin-top:8px">Heat flux: <span class="big-number" id="qConv">— W</span></p>
+      <p style="font-size:12px;color:var(--fg-dim)">R = 1/(h·A) = <span class="readout" id="rConv">—</span> °C/W</p>
+    </div>
+
+    <!-- (c) Radiation -->
+    <div class="figure">
+      <h3>(c) Radiation</h3>
+      <p style="font-size:12px;color:var(--fg-dim);margin:2px 0 8px">
+        <code>q = ε·σ·A·(T₁⁴ − T₂⁴)</code>
+      </p>
+      <div class="control">
+        <label>Surface ε (emissivity)</label>
+        <select id="emiss">
+          <option value="0.05">Polished aluminum (0.05)</option>
+          <option value="0.03">Bare copper (0.03)</option>
+          <option value="0.9" selected>Black anodized Al (0.9)</option>
+          <option value="0.95">Black paint (0.95)</option>
+        </select>
+      </div>
+      <svg id="vRad" viewBox="0 0 280 220" width="100%" height="220"></svg>
+      <p style="margin-top:8px">Heat flux: <span class="big-number" id="qRad">— W</span></p>
+      <p style="font-size:12px;color:var(--fg-dim)">σ = 5.67e-8 W/m²·K⁴ · T uses Kelvin</p>
+    </div>
+  </div>
+
+  <h2>Side-by-side comparison</h2>
+  <table>
+    <thead><tr><th>Mode</th><th>Driver</th><th>Law</th><th>Heat removed (current settings)</th></tr></thead>
+    <tbody id="cmpTable"></tbody>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Conductivity matters by factor of ~10⁴.</b> A 2 mm slab of copper passes ~1300× more heat than the same slab of FR4 — and ~16000× more than still air. This is why heat needs <i>a path</i>, not just space.</li>
+    <li><b>Forced convection wins on h.</b> Going from natural (h≈10) to a tiny 40 mm fan (h≈50) gives a 5× improvement <i>without</i> changing the heatsink. That's why every laptop has a fan.</li>
+    <li><b>Radiation depends on emissivity.</b> Polished aluminum (ε=0.05) radiates almost nothing. Black-anodize it (ε=0.9) and it radiates 18× more — same metal, same fin geometry. This is why heatsinks are anodized black.</li>
+    <li><b>Radiation scales as T⁴.</b> Push T₁ from 80 °C to 150 °C and radiation roughly triples while convection only doubles — radiation becomes more important at high temperature (LEDs, power resistors, MOSFETs running hot).</li>
+    <li><b>Convection beats radiation at low ΔT.</b> For typical electronics (ΔT &lt; 50 °C), well-anodized natural convection radiates roughly 1× the convective amount — useful, but secondary. Forced convection swamps both.</li>
+    <li><b>Thickness is linear; area is linear; ΔT is linear (for conduction & convection).</b> Doubling area doubles heat removed. Halving L doubles conducted heat. There's no magic — these are linear laws until you change <i>which</i> law applies (laminar → turbulent, etc.).</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>conduction</dt><dd><span class="eq">q = k · A · ΔT / L</span></dd>
+        <dt>convection</dt><dd><span class="eq">q = h · A · ΔT</span></dd>
+        <dt>radiation</dt><dd><span class="eq">q = ε · σ · A · (T₁⁴ − T₂⁴)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <table>
+        <tr><th>k (W/m·K)</th><th>h (W/m²·K)</th><th>ε</th></tr>
+        <tr><td>Cu 400</td><td>nat air 5–25</td><td>polish Al 0.05</td></tr>
+        <tr><td>Al 205</td><td>forced 25–250</td><td>anodized 0.9</td></tr>
+        <tr><td>steel 50</td><td>liquid 500–10k</td><td>black paint 0.9</td></tr>
+        <tr><td>FR4 0.3 / air 0.025</td><td></td><td></td></tr>
+      </table>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Radiation uses K, not °C</b> — T⁴ is meaningless in Celsius.</li>
+        <li><b>Conduction assumes steady state</b> — transient needs ρ·c_p.</li>
+        <li><b>h depends on geometry + orientation</b> — vertical ≠ horizontal.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">ME Phase 9 — Thermal Engineering</a> ·
+    Topic: Heat transfer modes
+  </footer>
+</main>
+<script>
+function nsIn(svg, tag, attrs={}, text=null){
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(text!==null) e.textContent = text;
+  svg.appendChild(e);
+  return e;
+}
+function clear(svg){ while(svg.firstChild) svg.removeChild(svg.firstChild); }
+
+let A_cm2 = 25, T1 = 80, T2 = 25;
+let k = 205, L_mm = 2;
+let h = 10;
+let eps = 0.9;
+const SIGMA = 5.67e-8;
+
+const vCond = document.getElementById('vCond');
+const vConv = document.getElementById('vConv');
+const vRad  = document.getElementById('vRad');
+
+function tempColor(tempC){
+  // map ~20°C (cool, blue) to ~150°C (red)
+  const t = Math.max(0, Math.min(1, (tempC-20)/130));
+  const r = Math.round(94 + t*(255-94));
+  const g = Math.round(200 - t*120);
+  const b = Math.round(255 - t*200);
+  return `rgb(${r},${g},${b})`;
+}
+
+function drawConduction(){
+  clear(vCond);
+  // A horizontal wall between hot (left) and cold (right)
+  const wallX = 100, wallW = 80;
+  const hotColor = tempColor(T1), coldColor = tempColor(T2);
+  // Hot reservoir
+  nsIn(vCond,'rect',{x:10,y:30,width:90,height:120,fill:hotColor,opacity:0.5,rx:4});
+  nsIn(vCond,'text',{x:55,y:25,class:'label-dim','text-anchor':'middle'},`T₁=${T1.toFixed(0)}°C`);
+  // Cold reservoir
+  nsIn(vCond,'rect',{x:180,y:30,width:90,height:120,fill:coldColor,opacity:0.5,rx:4});
+  nsIn(vCond,'text',{x:225,y:25,class:'label-dim','text-anchor':'middle'},`T₂=${T2.toFixed(0)}°C`);
+  // Wall — color gradient from hot side to cold side
+  for(let i=0;i<10;i++){
+    const f = i/9;
+    const tx = T1 + (T2 - T1)*f;
+    nsIn(vCond,'rect',{x:wallX + i*8, y:30, width:8, height:120, fill:tempColor(tx), opacity:0.95});
+  }
+  nsIn(vCond,'rect',{x:wallX, y:30, width:wallW, height:120, fill:'none', stroke:'#fff','stroke-width':1});
+  nsIn(vCond,'text',{x:wallX + wallW/2, y:170, class:'label','text-anchor':'middle'},`L=${L_mm.toFixed(1)}mm`);
+  // Heat-flow arrows
+  for(let i=0;i<3;i++){
+    const y = 50 + i*30;
+    nsIn(vCond,'line',{x1:60,y1:y,x2:220,y2:y,stroke:'#ffb86c','stroke-width':2,opacity:0.85});
+    nsIn(vCond,'polygon',{points:`220,${y} 213,${y-4} 213,${y+4}`,fill:'#ffb86c'});
+  }
+
+  // Compute q
+  const A = A_cm2 * 1e-4; // m²
+  const L = L_mm * 1e-3;  // m
+  const dT = T1 - T2;
+  const q = (dT > 0) ? k*A*dT/L : 0;
+  const R = L/(k*A);
+  document.getElementById('qCond').textContent = q.toFixed(2) + ' W';
+  document.getElementById('rCond').textContent = R.toFixed(3);
+  return q;
+}
+
+function drawConvection(){
+  clear(vConv);
+  // Hot surface (left vertical bar), air on right with little flow arrows
+  const hotColor = tempColor(T1), coldColor = tempColor(T2);
+  // Surface
+  nsIn(vConv,'rect',{x:30,y:30,width:30,height:160,fill:hotColor,opacity:0.85,rx:4});
+  nsIn(vConv,'text',{x:45,y:25,class:'label-dim','text-anchor':'middle'},`Ts=${T1.toFixed(0)}°C`);
+  // Air region
+  nsIn(vConv,'rect',{x:70,y:30,width:200,height:160,fill:coldColor,opacity:0.2,rx:4});
+  nsIn(vConv,'text',{x:170,y:25,class:'label-dim','text-anchor':'middle'},`T∞=${T2.toFixed(0)}°C  (h=${h} W/m²·K)`);
+  // Boundary layer hint
+  nsIn(vConv,'path',{d:'M 60 30 Q 80 100 60 190', fill:'none', stroke:'#ffb86c', 'stroke-width':1.5, 'stroke-dasharray':'3 3', opacity:0.8});
+  nsIn(vConv,'text',{x:90,y:200,class:'label-dim'},'boundary layer');
+  // Flow streamlines — more lines and faster (longer arrows) as h increases
+  const nStreams = Math.min(8, Math.round(2 + h/30));
+  for(let i=0;i<nStreams;i++){
+    const y = 45 + i*(140/Math.max(1,nStreams-1));
+    const startX = 80;
+    const len = Math.min(160, 40 + h*0.6);
+    nsIn(vConv,'line',{x1:startX,y1:y,x2:startX+len,y2:y-5, stroke:'#5ec8ff','stroke-width':1.5,opacity:0.85});
+    nsIn(vConv,'polygon',{points:`${startX+len},${y-5} ${startX+len-6},${y-9} ${startX+len-6},${y-1}`,fill:'#5ec8ff'});
+  }
+
+  const A = A_cm2 * 1e-4;
+  const dT = T1 - T2;
+  const q = (dT > 0) ? h*A*dT : 0;
+  const R = 1/(h*A);
+  document.getElementById('qConv').textContent = q.toFixed(2) + ' W';
+  document.getElementById('rConv').textContent = R.toFixed(2);
+  return q;
+}
+
+function drawRadiation(){
+  clear(vRad);
+  // Hot body in center, wavy radiation arrows in all directions
+  const hotColor = tempColor(T1), coldColor = tempColor(T2);
+  // Surrounding envelope
+  nsIn(vRad,'rect',{x:5,y:5,width:270,height:210,fill:coldColor,opacity:0.18,rx:6});
+  nsIn(vRad,'text',{x:140,y:18,class:'label-dim','text-anchor':'middle'},`Enclosure T₂=${T2.toFixed(0)}°C`);
+  // Body
+  const cx=140, cy=115;
+  nsIn(vRad,'circle',{cx,cy,r:30,fill:hotColor,opacity:0.9,stroke:'#fff','stroke-width':1});
+  nsIn(vRad,'text',{x:cx,y:cy+5,class:'label','text-anchor':'middle',fill:'#0e1116'},`T₁`);
+  nsIn(vRad,'text',{x:cx,y:cy+50,class:'label-dim','text-anchor':'middle'},`ε=${eps.toFixed(2)}`);
+  // Wavy arrows in 8 directions, intensity scaled by eps
+  const dirs = 8;
+  for(let i=0;i<dirs;i++){
+    const ang = (i/dirs)*Math.PI*2;
+    const r0 = 32, r1 = 32 + 40 + eps*40;
+    // Path: small sinusoidal wave along the line
+    let d = '';
+    const steps = 16;
+    for(let s=0;s<=steps;s++){
+      const r = r0 + (r1-r0)*(s/steps);
+      const perp = Math.sin(s*0.9)*3;
+      const x = cx + r*Math.cos(ang) + perp*Math.cos(ang+Math.PI/2);
+      const y = cy + r*Math.sin(ang) + perp*Math.sin(ang+Math.PI/2);
+      d += (s===0?'M ':'L ') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+    }
+    nsIn(vRad,'path',{d, fill:'none', stroke:'#ff7b72', 'stroke-width':1.5, opacity:0.4 + eps*0.5});
+    // arrow head at end
+    const ex = cx + r1*Math.cos(ang), ey = cy + r1*Math.sin(ang);
+    const back = 6;
+    const tx1 = ex - back*Math.cos(ang) + 4*Math.cos(ang+Math.PI/2);
+    const ty1 = ey - back*Math.sin(ang) + 4*Math.sin(ang+Math.PI/2);
+    const tx2 = ex - back*Math.cos(ang) - 4*Math.cos(ang+Math.PI/2);
+    const ty2 = ey - back*Math.sin(ang) - 4*Math.sin(ang+Math.PI/2);
+    nsIn(vRad,'polygon',{points:`${ex},${ey} ${tx1},${ty1} ${tx2},${ty2}`,fill:'#ff7b72',opacity:0.4+eps*0.5});
+  }
+
+  const A = A_cm2 * 1e-4;
+  const T1K = T1 + 273.15;
+  const T2K = T2 + 273.15;
+  const q = eps * SIGMA * A * (Math.pow(T1K,4) - Math.pow(T2K,4));
+  document.getElementById('qRad').textContent = q.toFixed(2) + ' W';
+  return q;
+}
+
+function updateAll(){
+  const qC = drawConduction();
+  const qV = drawConvection();
+  const qR = drawRadiation();
+  const tbody = document.getElementById('cmpTable');
+  tbody.innerHTML = '';
+  const rows = [
+    ['Conduction', 'k·A·ΔT/L', 'q = k·A·ΔT/L', qC.toFixed(2)+' W'],
+    ['Convection', 'h·A·ΔT',   'q = h·A·ΔT',   qV.toFixed(2)+' W'],
+    ['Radiation',  'ε·σ·A·(T₁⁴−T₂⁴)', 'q = ε·σ·A·(T₁⁴−T₂⁴)', qR.toFixed(2)+' W'],
+  ];
+  for(const [m,d,law,q] of rows){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${m}</td><td>${d}</td><td><code>${law}</code></td><td>${q}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+document.getElementById('area').oninput = e=>{ A_cm2=+e.target.value; document.getElementById('areaRO').textContent=A_cm2+' cm²'; updateAll(); };
+document.getElementById('t1').oninput   = e=>{ T1=+e.target.value;   document.getElementById('t1RO').textContent=T1+' °C'; updateAll(); };
+document.getElementById('t2').oninput   = e=>{ T2=+e.target.value;   document.getElementById('t2RO').textContent=T2+' °C'; updateAll(); };
+document.getElementById('material').onchange = e=>{ k=+e.target.value; updateAll(); };
+document.getElementById('L').oninput    = e=>{ L_mm=+e.target.value; document.getElementById('LRO').textContent=L_mm.toFixed(1)+' mm'; updateAll(); };
+document.getElementById('hMode').onchange = e=>{ h=+e.target.value; updateAll(); };
+document.getElementById('emiss').onchange = e=>{ eps=+e.target.value; updateAll(); };
+
+updateAll();
+</script>
+</body>
+</html>

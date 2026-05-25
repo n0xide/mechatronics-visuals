@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wireless Spectrum & ISM Bands — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px;margin:12px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px}
+  .stat .lbl{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 16px ui-monospace,monospace;color:var(--accent);margin-top:4px}
+  .band-rect{cursor:pointer;transition:opacity 0.15s}
+  .band-rect:hover{opacity:0.85}
+  .band-rect.active{stroke:var(--fg-bright);stroke-width:2}
+  .band-detail{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;
+    padding:14px;margin-top:10px;display:none}
+  .band-detail.show{display:block}
+  .band-detail h4{margin:0 0 6px;color:var(--fg-bright);font:600 14px ui-monospace,monospace}
+  .kv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:8px}
+  .kv{background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;padding:6px 10px}
+  .kv .k{font:10px ui-monospace,monospace;color:var(--fg-dim);text-transform:uppercase}
+  .kv .v{font:13px ui-monospace,monospace;color:var(--fg);margin-top:2px}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Wireless Spectrum — common bands 100 MHz – 6 GHz</h1>
+  <p class="lede">Where the popular protocols live, on a log frequency axis. Click any band for modulation, data rate, range, and antenna size.</p>
+
+  <p>Most of the wireless protocols a hobbyist encounters fit between 100 MHz and 6 GHz. The horizontal axis below is <b>log frequency</b>, which makes equal multiplicative jumps look equal-width — perfect for spotting why 915 MHz, 2.4 GHz, and 5 GHz are roughly equidistant on the chart (each is ~2.6× the previous). Higher frequency means shorter wavelength (smaller antenna), more data capacity (wider channels available), but more attenuation by walls and bodies.</p>
+
+  <div class="figure">
+    <h3>Spectrum overview — click a band</h3>
+    <svg viewBox="0 0 900 300" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+      <!-- Define log scale 100 MHz to 6 GHz: log10(100)=2, log10(6000)=3.778; range 1.778 -->
+      <!-- x axis from 50 to 870 (820 pixels) -->
+      <line x1="50" y1="240" x2="870" y2="240" class="axis"/>
+      <!-- Tick marks at 100, 200, 500, 1000, 2000, 5000 -->
+      <g id="xticks"></g>
+      <text x="460" y="290" class="label-dim" text-anchor="middle">Frequency (MHz, log scale)</text>
+
+      <!-- Band rectangles -->
+      <g id="bands"></g>
+
+      <!-- Spot frequencies (point markers) -->
+      <g id="spots"></g>
+    </svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--accent)"></span>ISM/unlicensed</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>Broadcast / aviation</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>GNSS / weather</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>Mobile / licensed</span>
+    </div>
+  </div>
+
+  <div id="bandDetail" class="band-detail">
+    <h4 id="detailTitle">Pick a band</h4>
+    <p id="detailDesc" style="color:var(--fg-dim);font-size:13px;margin:6px 0"></p>
+    <div class="kv-grid" id="detailKV"></div>
+  </div>
+
+  <h2>Cheat-sheet</h2>
+  <div class="figure">
+    <table>
+      <tr><th>Band</th><th>Where</th><th>Why it's useful</th></tr>
+      <tr><td>FM broadcast</td><td>88–108 MHz</td><td>Long range, wide audio bandwidth; first SDR demo target</td></tr>
+      <tr><td>VHF aircraft</td><td>118–137 MHz</td><td>Voice; AM modulation persists for safety reasons</td></tr>
+      <tr><td>ADS-B</td><td>1090 MHz</td><td>Aircraft position broadcasts; popular SDR project</td></tr>
+      <tr><td>GPS L1</td><td>1575.42 MHz</td><td>Civilian GNSS; very weak signal (–125 dBm)</td></tr>
+      <tr><td>433 MHz ISM</td><td>433.05–434.79 MHz</td><td>EU low-power remote-control, garage doors, weather sensors</td></tr>
+      <tr><td>868 MHz ISM</td><td>863–870 MHz</td><td>EU LoRa, Sigfox; long-range IoT</td></tr>
+      <tr><td>915 MHz ISM</td><td>902–928 MHz</td><td>US LoRa, Z-Wave; 1 W ERP limit, longest range</td></tr>
+      <tr><td>2.4 GHz ISM</td><td>2400–2483.5 MHz</td><td>WiFi 2.4 + BLE + Zigbee + microwave ovens</td></tr>
+      <tr><td>5 GHz WiFi</td><td>5150–5825 MHz</td><td>Wi-Fi 5/6; many non-overlapping channels</td></tr>
+    </table>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Log axis equalizes ratios</b> — equal pixel distance = equal frequency ratio. Going from 500 MHz to 1 GHz is the same "distance" as 1 GHz to 2 GHz. That's also the same dB cost in path loss.</li>
+    <li><b>ISM bands are crowded</b> — 2.4 GHz packs WiFi, BLE, Zigbee, BT classic, microwave ovens, baby monitors, and cordless phones into 83.5 MHz. Don't expect a clean channel.</li>
+    <li><b>Sub-GHz is sparse</b> — 868/915 MHz LoRa has the band nearly to itself. That's part of why range is so good — low noise floor.</li>
+    <li><b>Higher frequency = smaller antenna, smaller range</b> — 5 GHz λ/4 is 15 mm and convenient on tiny PCBs, but walls eat the signal. 433 MHz λ/4 is 173 mm but penetrates a building easily.</li>
+    <li><b>GPS L1 (1575.42 MHz)</b> sits right between LoRa and 2.4 GHz on this scale. Its signal is below the noise floor — only correlation against the known PRN code recovers it.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <table>
+        <tr><th>band</th><th>use</th></tr>
+        <tr><td>88–108 MHz</td><td>FM broadcast</td></tr>
+        <tr><td>433 / 868 / 915 MHz</td><td>ISM (LoRa, sub-GHz)</td></tr>
+        <tr><td>1090 MHz</td><td>ADS-B</td></tr>
+        <tr><td>1575.42 MHz</td><td>GPS L1</td></tr>
+        <tr><td>2.4 GHz</td><td>WiFi / BT / Zigbee</td></tr>
+        <tr><td>5 GHz</td><td>WiFi (5/5.8)</td></tr>
+      </table>
+    </div>
+    <div class="cheat-card">
+      <h3>DECISION</h3>
+      <ul>
+        <li><b>LoRa</b> — long range, low data-rate (telemetry, fleet).</li>
+        <li><b>BLE</b> — short range, low power (wearables, sensors).</li>
+        <li><b>WiFi</b> — high data-rate, close range, mains power.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>2.4 GHz channels</b> — only 1, 6, 11 are non-overlapping in WiFi.</li>
+        <li><b>Higher freq = more wall absorption</b> — 5 GHz dies through brick, 433 MHz walks through.</li>
+        <li><b>ISM ≠ unregulated</b> — duty-cycle and ERP limits still apply per region.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 9 — RF & Wireless</a> ·
+    Topic: Wireless Spectrum Overview
+  </footer>
+</main>
+<script>
+  // Map MHz → x in [50,870] using log10 from 100 to 6000
+  const LOG_MIN = Math.log10(100);
+  const LOG_MAX = Math.log10(6000);
+  const X_LEFT = 50, X_RIGHT = 870;
+  function fToX(mhz){
+    return X_LEFT + (Math.log10(mhz) - LOG_MIN)/(LOG_MAX - LOG_MIN) * (X_RIGHT - X_LEFT);
+  }
+
+  // X ticks
+  const tickFreqs = [100,200,300,500,700,1000,1500,2000,3000,5000];
+  let tickHtml = '';
+  tickFreqs.forEach(f=>{
+    const x = fToX(f);
+    tickHtml += `<line x1="${x}" y1="240" x2="${x}" y2="246" class="axis"/>`;
+    const lbl = f>=1000 ? (f/1000)+' GHz' : f+' MHz';
+    tickHtml += `<text x="${x}" y="260" class="axis-label" text-anchor="middle">${lbl}</text>`;
+  });
+  document.getElementById('xticks').innerHTML = tickHtml;
+
+  // Bands: [name, fStart, fEnd, color, row, key]
+  const bands = [
+    {key:'fm',     name:'FM',          fs:88,  fe:108,  color:'var(--accent2)', row:0, dy:0},
+    {key:'air',    name:'Aviation',    fs:118, fe:137,  color:'var(--accent2)', row:1, dy:0},
+    {key:'ism433', name:'433 MHz ISM', fs:433, fe:434.79,color:'var(--accent)',  row:0, dy:0},
+    {key:'ism868', name:'868 MHz EU',  fs:863, fe:870,  color:'var(--accent)',  row:1, dy:0},
+    {key:'ism915', name:'915 MHz US',  fs:902, fe:928,  color:'var(--accent)',  row:0, dy:0},
+    {key:'cell',   name:'LTE B7/B5',   fs:700, fe:2600, color:'var(--warn)',    row:2, dy:0},
+    {key:'adsb',   name:'ADS-B',       fs:1080,fe:1100, color:'var(--accent2)', row:1, dy:0},
+    {key:'gps',    name:'GPS L1',      fs:1572,fe:1578, color:'var(--accent3)', row:1, dy:0},
+    {key:'wifi24', name:'WiFi 2.4 / BLE / ISM 2.4 GHz', fs:2400, fe:2484, color:'var(--accent)', row:0, dy:0},
+    {key:'wifi5',  name:'WiFi 5 GHz',  fs:5150,fe:5825, color:'var(--accent)',  row:0, dy:0},
+  ];
+  const rowY = [100, 140, 180];
+  const rowH = 30;
+  let bandsHtml = '';
+  bands.forEach(b=>{
+    const x1 = fToX(b.fs);
+    const x2 = fToX(b.fe);
+    const w = Math.max(x2-x1, 6);
+    const y = rowY[b.row];
+    bandsHtml += `<rect class="band-rect" data-band="${b.key}" x="${x1}" y="${y}" width="${w}" height="${rowH}" fill="${b.color}" opacity="0.55" rx="3"/>`;
+    // label only if wide enough
+    if(w >= 30){
+      bandsHtml += `<text x="${(x1+x2)/2}" y="${y+rowH/2+4}" class="label" text-anchor="middle" style="pointer-events:none">${b.name}</text>`;
+    } else {
+      bandsHtml += `<text x="${x1}" y="${y-3}" class="label-dim" text-anchor="middle" style="pointer-events:none">${b.name}</text>`;
+    }
+  });
+  document.getElementById('bands').innerHTML = bandsHtml;
+
+  // Spot markers (single frequencies)
+  const spots = [
+    {f:1575.42, name:'GPS L1', color:'var(--accent3)'},
+    {f:1090,    name:'ADS-B 1090', color:'var(--accent2)'},
+    {f:2440,    name:'BLE adv 2440', color:'var(--accent)'},
+  ];
+  let spotsHtml = '';
+  spots.forEach(s=>{
+    const x = fToX(s.f);
+    spotsHtml += `<line x1="${x}" y1="80" x2="${x}" y2="220" stroke="${s.color}" stroke-dasharray="3,3" stroke-width="1" opacity="0.45"/>`;
+    spotsHtml += `<text x="${x}" y="75" class="label-dim" text-anchor="middle" fill="${s.color}">${s.name}</text>`;
+  });
+  document.getElementById('spots').innerHTML = spotsHtml;
+
+  // Band details
+  const bandDetails = {
+    fm: {
+      title:'FM broadcast (88–108 MHz)',
+      desc:'Wideband FM audio broadcasting. The first protocol every RTL-SDR user demodulates.',
+      kv:{Modulation:'Wideband FM', 'Channel BW':'200 kHz','Data rate':'Analog audio + RDS metadata 1187.5 bps','Range':'50+ km','λ/4 antenna':'~70 cm','Power':'Up to 100 kW (commercial)'}
+    },
+    air: {
+      title:'VHF aircraft (118–137 MHz)',
+      desc:'AM voice (yes, still AM — for fail-safe overlap of conversations) and ACARS data.',
+      kv:{Modulation:'AM (voice), MSK (ACARS)','Channel BW':'25 kHz / 8.33 kHz','Range':'~370 km LOS','λ/4 antenna':'~55 cm','Power':'5–25 W (aircraft)'}
+    },
+    ism433: {
+      title:'433 MHz ISM (433.05–434.79 MHz)',
+      desc:'EU low-power region 1. Garage door remotes, weather sensors, cheap RC.',
+      kv:{Modulation:'OOK, FSK, LoRa','Data rate':'1–50 kbps typical','Range':'500 m – 10 km (LoRa)','λ/4 antenna':'~17 cm','TX power':'10 mW EU, 1 W US (with restrictions)'}
+    },
+    ism868: {
+      title:'868 MHz ISM (863–870 MHz)',
+      desc:'European LoRa / Sigfox / SRD band. 1% duty cycle limit.',
+      kv:{Modulation:'LoRa CSS, FSK, Sigfox D-BPSK','Data rate':'50 bps – 50 kbps','Range':'2–15 km urban, 40 km LOS','λ/4 antenna':'8.6 cm','TX power':'14 dBm (25 mW) ERP'}
+    },
+    ism915: {
+      title:'915 MHz ISM (902–928 MHz)',
+      desc:'US/Americas LoRa, Z-Wave, IoT. 26 MHz of usable spectrum.',
+      kv:{Modulation:'LoRa CSS, FSK, FHSS','Data rate':'300 bps – 50 kbps','Range':'2–20 km LOS','λ/4 antenna':'8.2 cm','TX power':'+30 dBm (1 W) max ERP'}
+    },
+    cell: {
+      title:'Cellular (700 MHz – 2.6 GHz, varies by carrier/region)',
+      desc:'Licensed spectrum for LTE/5G. Many bands; B5 (850), B7 (2600) shown approximate.',
+      kv:{Modulation:'OFDMA','Data rate':'1 Mbps – 1 Gbps','Range':'1–35 km cell radius','TX power':'+33 dBm handset, kW range tower'}
+    },
+    adsb: {
+      title:'ADS-B (1090 MHz)',
+      desc:'Aircraft surveillance broadcasts. Each plane chirps position 1× per second.',
+      kv:{Modulation:'PPM (pulse position)','Data rate':'1 Mbps burst','Range':'200–400 km LOS','λ/4 antenna':'6.9 cm','Receiver':'Common RTL-SDR project'}
+    },
+    gps: {
+      title:'GPS L1 (1575.42 MHz)',
+      desc:'Civilian C/A code GNSS. Below the noise floor — only correlation reveals it.',
+      kv:{Modulation:'BPSK with PRN code','Chip rate':'1.023 Mchip/s','Data rate':'50 bps navigation message','Received power':'–125 dBm typical','λ/4 antenna':'4.8 cm'}
+    },
+    wifi24: {
+      title:'2.4 GHz ISM (2.400–2.4835 GHz)',
+      desc:'WiFi 2.4 GHz, BLE, Zigbee, classic Bluetooth, microwave-oven leakage, baby monitors, etc.',
+      kv:{Modulation:'OFDM (WiFi), GFSK (BLE), O-QPSK (Zigbee)','Channel BW':'20/40 MHz WiFi, 2 MHz BLE','Data rate':'1 Mbps – 600 Mbps','Range':'10–100 m indoor','λ/4 antenna':'3.1 cm','TX power':'+20 dBm (100 mW) max EIRP'}
+    },
+    wifi5: {
+      title:'5 GHz WiFi (5.15–5.825 GHz)',
+      desc:'Wi-Fi 5 / 6. Many non-overlapping 20/40/80/160 MHz channels. Shorter range than 2.4.',
+      kv:{Modulation:'OFDM, OFDMA','Channel BW':'20 / 40 / 80 / 160 MHz','Data rate':'Up to 9.6 Gbps (Wi-Fi 6)','Range':'5–30 m indoor (more wall loss)','λ/4 antenna':'1.3 cm','TX power':'+30 dBm in some sub-bands (US)'}
+    },
+  };
+
+  function showBand(key){
+    document.querySelectorAll('.band-rect').forEach(r=>r.classList.toggle('active', r.dataset.band===key));
+    const d=bandDetails[key];
+    if(!d) return;
+    document.getElementById('bandDetail').classList.add('show');
+    document.getElementById('detailTitle').textContent = d.title;
+    document.getElementById('detailDesc').textContent = d.desc;
+    let html='';
+    Object.entries(d.kv).forEach(([k,v])=>{
+      html += `<div class="kv"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+    });
+    document.getElementById('detailKV').innerHTML = html;
+  }
+
+  document.querySelectorAll('.band-rect').forEach(r=>{
+    r.addEventListener('click',()=>showBand(r.dataset.band));
+  });
+
+  // Default open: ism915
+  showBand('ism915');
+</script>
+</body>
+</html>

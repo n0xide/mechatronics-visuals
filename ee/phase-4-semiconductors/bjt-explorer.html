@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BJT Explorer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .tabs{display:flex;gap:2px;margin:14px 0 0;flex-wrap:wrap}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .region-box{padding:8px 10px;border-radius:4px;background:var(--bg-elev2);
+    border:1px solid var(--line);font:12px ui-monospace,monospace;color:var(--fg-dim)}
+  .region-box b{color:var(--fg-bright)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>BJT Explorer</h1>
+  <p class="lede">Four-tab tour of the bipolar junction transistor: physical structure, output I–V curves, switch-mode design, and common-emitter amplifier gain.</p>
+
+  <p>BJTs are <b>current-controlled</b>: a small base current Ib steers a much larger collector current Ic = β·Ib. The whole device economy collapses to picking your operating region — cutoff (off-switch), saturation (on-switch), or active (amplifier) — and choosing Rb, Rc, and Vcc so you land where you want.</p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="structure">Structure</div>
+    <div class="tab" data-tab="iv">Output I–V</div>
+    <div class="tab" data-tab="switch">Switch mode</div>
+    <div class="tab" data-tab="amp">Small-signal amp</div>
+  </div>
+
+  <!-- TAB: STRUCTURE -->
+  <div class="tab-panel active" id="tab-structure">
+    <h3>NPN vs PNP — doping &amp; carrier flow</h3>
+    <svg viewBox="0 0 920 380" width="100%">
+      <!-- NPN -->
+      <text x="180" y="22" class="label" text-anchor="middle" style="font-weight:600;fill:var(--accent)">NPN</text>
+      <!-- emitter -->
+      <rect x="40" y="60" width="100" height="80" fill="#1d3a55" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="90" y="105" class="label" text-anchor="middle">N+ (emitter)</text>
+      <text x="90" y="155" class="label-dim" text-anchor="middle">heavily doped</text>
+      <!-- base -->
+      <rect x="140" y="60" width="40" height="80" fill="#553838" stroke="var(--warn)" stroke-width="1.5"/>
+      <text x="160" y="105" class="label" text-anchor="middle" style="font-size:11px">P (base)</text>
+      <text x="160" y="170" class="label-dim" text-anchor="middle">thin · light</text>
+      <!-- collector -->
+      <rect x="180" y="60" width="140" height="80" fill="#2a4d66" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="250" y="105" class="label" text-anchor="middle">N (collector)</text>
+      <text x="250" y="155" class="label-dim" text-anchor="middle">moderate</text>
+
+      <!-- electrons flow E→B→C in NPN (conventional current C→E) -->
+      <g>
+        <line x1="90" y1="190" x2="250" y2="190" stroke="var(--accent)" stroke-width="2" marker-end="url(#arrowE)"/>
+        <text x="170" y="210" class="label-dim" text-anchor="middle">electron flow (E→C)</text>
+        <line x1="250" y1="230" x2="90" y2="230" stroke="var(--accent2)" stroke-width="2" marker-end="url(#arrowC)"/>
+        <text x="170" y="250" class="label-dim" text-anchor="middle">conventional current Ic (C→E)</text>
+        <line x1="160" y1="260" x2="160" y2="295" stroke="var(--warn)" stroke-width="2" marker-end="url(#arrowB)"/>
+        <text x="160" y="315" class="label-dim" text-anchor="middle">Ib base</text>
+      </g>
+
+      <!-- symbol NPN -->
+      <g transform="translate(60,260)">
+        <line x1="40" y1="0" x2="40" y2="80" class="wire"/>
+        <line x1="40" y1="40" x2="0" y2="40" class="wire"/>
+        <text x="-8" y="44" class="label" text-anchor="end">B</text>
+        <line x1="40" y1="22" x2="70" y2="0" class="wire"/>
+        <line x1="40" y1="58" x2="70" y2="80" class="wire"/>
+        <polygon points="62,68 70,80 56,76" fill="var(--fg)"/>
+        <text x="78" y="6" class="label">C</text>
+        <text x="78" y="86" class="label">E</text>
+      </g>
+
+      <!-- PNP -->
+      <text x="640" y="22" class="label" text-anchor="middle" style="font-weight:600;fill:var(--accent2)">PNP</text>
+      <rect x="500" y="60" width="100" height="80" fill="#5a3a1f" stroke="var(--accent2)" stroke-width="1.5"/>
+      <text x="550" y="105" class="label" text-anchor="middle">P+ (emitter)</text>
+      <text x="550" y="155" class="label-dim" text-anchor="middle">heavily doped</text>
+      <rect x="600" y="60" width="40" height="80" fill="#1d3a55" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="620" y="105" class="label" text-anchor="middle" style="font-size:11px">N (base)</text>
+      <text x="620" y="170" class="label-dim" text-anchor="middle">thin · light</text>
+      <rect x="640" y="60" width="140" height="80" fill="#5a3a1f" stroke="var(--accent2)" stroke-width="1.5"/>
+      <text x="710" y="105" class="label" text-anchor="middle">P (collector)</text>
+      <text x="710" y="155" class="label-dim" text-anchor="middle">moderate</text>
+
+      <g>
+        <line x1="550" y1="190" x2="710" y2="190" stroke="var(--accent2)" stroke-width="2" marker-end="url(#arrowH)"/>
+        <text x="630" y="210" class="label-dim" text-anchor="middle">hole flow (E→C)</text>
+        <line x1="550" y1="230" x2="710" y2="230" stroke="var(--accent2)" stroke-width="2" marker-end="url(#arrowC2)"/>
+        <text x="630" y="250" class="label-dim" text-anchor="middle">conventional current Ic (E→C)</text>
+        <line x1="620" y1="295" x2="620" y2="260" stroke="var(--warn)" stroke-width="2" marker-end="url(#arrowB2)"/>
+        <text x="620" y="315" class="label-dim" text-anchor="middle">Ib base (sinks current)</text>
+      </g>
+
+      <!-- symbol PNP -->
+      <g transform="translate(660,260)">
+        <line x1="40" y1="0" x2="40" y2="80" class="wire"/>
+        <line x1="40" y1="40" x2="0" y2="40" class="wire"/>
+        <text x="-8" y="44" class="label" text-anchor="end">B</text>
+        <line x1="40" y1="22" x2="70" y2="0" class="wire"/>
+        <line x1="40" y1="58" x2="70" y2="80" class="wire"/>
+        <polygon points="48,28 40,22 54,18" fill="var(--fg)"/>
+        <text x="78" y="6" class="label">E</text>
+        <text x="78" y="86" class="label">C</text>
+      </g>
+
+      <defs>
+        <marker id="arrowE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon points="0,0 10,5 0,10" fill="var(--accent)"/></marker>
+        <marker id="arrowC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon points="0,0 10,5 0,10" fill="var(--accent2)"/></marker>
+        <marker id="arrowB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon points="0,0 10,5 0,10" fill="var(--warn)"/></marker>
+        <marker id="arrowH" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon points="0,0 10,5 0,10" fill="var(--accent2)"/></marker>
+        <marker id="arrowC2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon points="0,0 10,5 0,10" fill="var(--accent2)"/></marker>
+        <marker id="arrowB2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><polygon points="0,0 10,5 0,10" fill="var(--warn)"/></marker>
+      </defs>
+    </svg>
+    <p style="color:var(--fg-dim);font-size:12px">In NPN the <b style="color:var(--accent)">arrow on the emitter points out</b>; in PNP it <b style="color:var(--accent2)">points in</b>. Mnemonic: NPN = "Not Pointing iN."</p>
+  </div>
+
+  <!-- TAB: I-V CURVES -->
+  <div class="tab-panel" id="tab-iv">
+    <h3>Output characteristics (Ic vs Vce, stepped Ib)</h3>
+    <p style="color:var(--fg-dim);font-size:12px">β = <span class="readout" id="ivBetaRead">100</span>. Each curve is a fixed Ib; the family sweeps Ib from 10 µA to 60 µA.</p>
+    <section class="controls">
+      <div class="control">
+        <label>β (current gain): <span class="readout" id="ivBetaLabel">100</span></label>
+        <input id="ivBeta" type="range" min="50" max="300" step="10" value="100">
+      </div>
+    </section>
+    <div class="figure">
+      <svg id="ivPlot" viewBox="0 0 600 400" width="100%"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--warn)"></span>cutoff</span>
+        <span><span class="swatch" style="background:var(--accent3)"></span>active (Ic = β·Ib)</span>
+        <span><span class="swatch" style="background:var(--accent2)"></span>saturation</span>
+      </div>
+    </div>
+    <p style="color:var(--fg-dim);font-size:12px">Curves rise steeply until Vce ≈ Vce_sat (~0.2 V) then flatten. In the flat region, Ic ≈ β·Ib regardless of Vce — that's the active region where amplifiers live.</p>
+  </div>
+
+  <!-- TAB: SWITCH -->
+  <div class="tab-panel" id="tab-switch">
+    <h3>Low-side NPN switch driving an LED</h3>
+    <section class="controls">
+      <div class="control">
+        <label>Vcc: <span class="readout" id="swVccRead">5.0 V</span></label>
+        <input id="swVcc" type="range" min="3" max="12" step="0.1" value="5">
+      </div>
+      <div class="control">
+        <label>Rb (base resistor): <span class="readout" id="swRbRead">10 kΩ</span></label>
+        <input id="swRb" type="range" min="1000" max="100000" step="500" value="10000">
+      </div>
+      <div class="control">
+        <label>Rc (LED + series): <span class="readout" id="swRcRead">220 Ω</span></label>
+        <input id="swRc" type="range" min="100" max="2200" step="10" value="220">
+      </div>
+      <div class="control">
+        <label>β_min: <span class="readout" id="swBetaRead">100</span></label>
+        <input id="swBeta" type="range" min="20" max="300" step="10" value="100">
+      </div>
+    </section>
+    <div class="figure">
+      <svg viewBox="0 0 600 360" width="100%">
+        <!-- Vcc rail -->
+        <line x1="60" y1="40" x2="540" y2="40" class="wire"/>
+        <text x="60" y="32" class="label">+Vcc</text>
+        <text x="540" y="32" class="label-dim" text-anchor="end" id="swVccLabel">5.0 V</text>
+        <!-- Rc -->
+        <rect x="290" y="70" width="20" height="50" class="wire" fill="var(--bg-elev2)"/>
+        <line x1="300" y1="40" x2="300" y2="70" class="wire"/>
+        <text x="320" y="100" class="label">Rc</text>
+        <text x="320" y="115" class="label-dim" id="swRcLabel">220 Ω</text>
+        <!-- LED -->
+        <line x1="300" y1="120" x2="300" y2="145" class="wire"/>
+        <polygon points="290,145 310,145 300,165" fill="var(--accent3)" id="swLed" opacity="0.3"/>
+        <line x1="288" y1="167" x2="312" y2="167" class="wire"/>
+        <text x="320" y="160" class="label">LED</text>
+        <!-- to collector -->
+        <line x1="300" y1="170" x2="300" y2="210" class="wire"/>
+        <!-- transistor symbol -->
+        <circle cx="300" cy="240" r="26" class="node"/>
+        <line x1="300" y1="214" x2="300" y2="232" class="wire"/>
+        <line x1="274" y1="240" x2="290" y2="240" class="wire"/>
+        <line x1="290" y1="226" x2="310" y2="216" class="wire"/>
+        <line x1="290" y1="254" x2="310" y2="264" class="wire"/>
+        <polygon points="302,262 310,264 304,258" fill="var(--fg)"/>
+        <text x="320" y="232" class="label">C</text>
+        <text x="262" y="244" class="label" text-anchor="end">B</text>
+        <text x="320" y="268" class="label">E</text>
+        <!-- to emitter -->
+        <line x1="300" y1="266" x2="300" y2="320" class="wire"/>
+        <!-- ground -->
+        <line x1="270" y1="320" x2="330" y2="320" class="wire" stroke-width="2"/>
+        <line x1="280" y1="326" x2="320" y2="326" class="wire"/>
+        <line x1="290" y1="332" x2="310" y2="332" class="wire"/>
+        <text x="345" y="324" class="label-dim">GND</text>
+        <!-- base drive -->
+        <line x1="180" y1="240" x2="274" y2="240" class="wire"/>
+        <rect x="120" y="230" width="50" height="20" class="wire" fill="var(--bg-elev2)"/>
+        <text x="145" y="222" class="label" text-anchor="middle">Rb</text>
+        <text x="145" y="270" class="label-dim" text-anchor="middle" id="swRbLabel">10 kΩ</text>
+        <line x1="60" y1="240" x2="120" y2="240" class="wire"/>
+        <circle cx="60" cy="240" r="3" fill="var(--accent)"/>
+        <text x="50" y="244" class="label" text-anchor="end">Vbb 3.3 V</text>
+        <!-- readouts -->
+        <g transform="translate(380,200)">
+          <rect x="0" y="0" width="200" height="140" fill="var(--bg-elev2)" stroke="var(--line)"/>
+          <text x="10" y="22" class="label">Ib = <tspan class="label" style="fill:var(--accent)" id="swIb">0.26 mA</tspan></text>
+          <text x="10" y="42" class="label">Ic_max = <tspan style="fill:var(--accent)" id="swIcMax">21.4 mA</tspan></text>
+          <text x="10" y="62" class="label">Ic_sat = <tspan style="fill:var(--accent)" id="swIcSat">21.4 mA</tspan></text>
+          <text x="10" y="82" class="label">β·Ib = <tspan style="fill:var(--accent)" id="swBetaIb">26.0 mA</tspan></text>
+          <text x="10" y="102" class="label" id="swMode">mode: <tspan style="fill:var(--accent3)">SATURATED</tspan></text>
+          <text x="10" y="122" class="label-dim" id="swOverdrive">overdrive: 1.2×</text>
+        </g>
+      </svg>
+    </div>
+    <p style="color:var(--fg-dim);font-size:12px">To <b>guarantee saturation</b>, you want β·Ib ≥ ~5× the load current (Ic_max from Vcc/Rc). Below that, the transistor stays in active region and acts as a current source — bad for switching, the LED dims.</p>
+  </div>
+
+  <!-- TAB: AMPLIFIER -->
+  <div class="tab-panel" id="tab-amp">
+    <h3>Common-emitter amplifier — Av = −gm·Rc</h3>
+    <section class="controls">
+      <div class="control">
+        <label>Ic (Q-point): <span class="readout" id="ampIcRead">1.0 mA</span></label>
+        <input id="ampIc" type="range" min="0.1" max="10" step="0.1" value="1.0">
+      </div>
+      <div class="control">
+        <label>Rc (collector resistor): <span class="readout" id="ampRcRead">4.7 kΩ</span></label>
+        <input id="ampRc" type="range" min="100" max="22000" step="100" value="4700">
+      </div>
+    </section>
+    <div class="figure">
+      <svg viewBox="0 0 600 320" width="100%">
+        <!-- rails -->
+        <line x1="60" y1="40" x2="540" y2="40" class="wire"/>
+        <text x="60" y="32" class="label">+Vcc</text>
+        <line x1="60" y1="290" x2="540" y2="290" class="wire" stroke-width="2"/>
+        <text x="60" y="306" class="label-dim">GND</text>
+        <!-- Rc -->
+        <rect x="290" y="60" width="20" height="50" class="wire" fill="var(--bg-elev2)"/>
+        <line x1="300" y1="40" x2="300" y2="60" class="wire"/>
+        <text x="320" y="86" class="label">Rc</text>
+        <!-- transistor -->
+        <line x1="300" y1="110" x2="300" y2="170" class="wire"/>
+        <circle cx="300" cy="190" r="26" class="node"/>
+        <line x1="274" y1="190" x2="290" y2="190" class="wire"/>
+        <line x1="290" y1="176" x2="310" y2="166" class="wire"/>
+        <line x1="290" y1="204" x2="310" y2="214" class="wire"/>
+        <polygon points="302,212 310,214 304,208" fill="var(--fg)"/>
+        <!-- Vout node -->
+        <circle cx="300" cy="140" r="3" fill="var(--accent2)"/>
+        <text x="320" y="144" class="label" style="fill:var(--accent2)">Vout</text>
+        <!-- Re to ground -->
+        <line x1="300" y1="216" x2="300" y2="260" class="wire"/>
+        <rect x="290" y="240" width="20" height="40" class="wire" fill="var(--bg-elev2)"/>
+        <text x="320" y="266" class="label-dim">Re</text>
+        <line x1="300" y1="280" x2="300" y2="290" class="wire"/>
+        <!-- input -->
+        <line x1="100" y1="190" x2="274" y2="190" class="wire"/>
+        <circle cx="100" cy="190" r="3" fill="var(--accent)"/>
+        <text x="90" y="194" class="label" text-anchor="end" style="fill:var(--accent)">Vin</text>
+        <!-- gain box -->
+        <g transform="translate(380,80)">
+          <rect x="0" y="0" width="200" height="160" fill="var(--bg-elev2)" stroke="var(--line)"/>
+          <text x="10" y="22" class="label">gm = Ic/VT</text>
+          <text x="10" y="42" class="label">    = <tspan style="fill:var(--accent)" id="ampGm">38.5 mS</tspan></text>
+          <text x="10" y="68" class="label">Av = −gm·Rc</text>
+          <text x="10" y="88" class="label">   = <tspan style="fill:var(--accent2);font-weight:600" id="ampAv">−181</tspan></text>
+          <text x="10" y="114" class="label">|Av| dB = <tspan style="fill:var(--accent)" id="ampAvDb">45.2 dB</tspan></text>
+          <text x="10" y="140" class="label">rπ = β/gm = <tspan style="fill:var(--accent)" id="ampRpi">2.60 kΩ</tspan></text>
+        </g>
+      </svg>
+      <h3>Transfer: Vout = Vcc − Vin·Av (small-signal)</h3>
+      <svg id="ampPlot" viewBox="0 0 600 240" width="100%"></svg>
+    </div>
+    <p style="color:var(--fg-dim);font-size:12px">The inversion (Av is negative) means: <b>Vin up → Ic up → drop across Rc up → Vout down</b>. Bigger Rc gives more gain but pushes Q-point toward saturation — you trade headroom for gain.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Three regions, one device</b> — cutoff (Ib=0), active (Ic=β·Ib, Vce > 0.2 V), saturation (Vce ≈ 0.2 V, Ic limited by external Rc). Switch design lives in cutoff/saturation, amplifier in active.</li>
+    <li><b>Overdrive matters</b> — for guaranteed saturation across temperature and β-spread, force Ib to 5–10× what β_min·Ic_load would need. Skimping leaves the BJT in active region, which dissipates more heat.</li>
+    <li><b>gm scales with Ic</b> — gm = Ic/VT (VT = 26 mV at room temp). Higher bias current → more gain — but also more power dissipation and lower output swing headroom.</li>
+    <li><b>Inversion comes from the Rc drop</b> — a CE stage flips signal polarity. Cascading two CE stages restores polarity (and squares the gain).</li>
+    <li><b>β is unreliable</b> — vendor specs β as 50–300 for the same part number. Robust designs use voltage-divider bias plus emitter resistor so the Q-point is set by resistors, not by β.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>NPN</b> — current C→E when B is high.</li>
+        <li><b>PNP</b> — current E→C when B is low.</li>
+        <li><b>Vbe ≈ 0.7 V</b> active; <b>Vce_sat ≈ 0.2 V</b>.</li>
+      </ul>
+    </div>
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Active</dt><dd><span class="eq">Ic = β·Ib</span><span class="eq-note">β = 50–300</span></dd>
+        <dt>Sat Rb</dt><dd><span class="eq">Rb = (V_drive − 0.7) / Ib</span></dd>
+        <dt>Overdrive</dt><dd><span class="eq">Ib_sat = (Ic / β_min) × 5–10</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>β drifts</b> — varies with temperature and Ic.</li>
+        <li><b>Saturation kills β</b> — use <span class="eq">Ic = (Vcc − V_sat) / Rc</span>, NOT β·Ib.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 4 — Semiconductor Devices</a> ·
+    Topic: BJT
+  </footer>
+</main>
+<script>
+  // Tab switching
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.addEventListener('click',()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('tab-'+t.dataset.tab).classList.add('active');
+      if(t.dataset.tab==='iv') drawIV();
+      if(t.dataset.tab==='amp') drawAmp();
+    });
+  });
+
+  // === IV CURVES ===
+  function drawIV(){
+    const svg=document.getElementById('ivPlot');
+    const beta=parseFloat(document.getElementById('ivBeta').value);
+    document.getElementById('ivBetaRead').textContent=beta.toFixed(0);
+    document.getElementById('ivBetaLabel').textContent=beta.toFixed(0);
+    const W=600,H=400,mL=60,mR=20,mT=20,mB=50;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const VceMax=10, IcMax=20; // mA
+    const xs = v => mL + (v/VceMax)*pw;
+    const ys = i => mT + ph - (i/IcMax)*ph;
+    let s='';
+    // grid
+    for(let i=0;i<=10;i++){
+      const x=xs(i);
+      s+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" class="grid-line"/>`;
+      s+=`<text x="${x}" y="${H-mB+18}" class="axis-label" text-anchor="middle">${i}</text>`;
+    }
+    for(let i=0;i<=10;i++){
+      const y=ys(i*2);
+      s+=`<line x1="${mL}" y1="${y}" x2="${mL+pw}" y2="${y}" class="grid-line"/>`;
+      s+=`<text x="${mL-6}" y="${y+3}" class="axis-label" text-anchor="end">${i*2}</text>`;
+    }
+    // axis
+    s+=`<line x1="${mL}" y1="${mT+ph}" x2="${mL+pw}" y2="${mT+ph}" class="axis"/>`;
+    s+=`<line x1="${mL}" y1="${mT}" x2="${mL}" y2="${mT+ph}" class="axis"/>`;
+    s+=`<text x="${W/2}" y="${H-8}" class="axis-label" text-anchor="middle">Vce (V)</text>`;
+    s+=`<text x="${mL-40}" y="${mT+ph/2}" class="axis-label" text-anchor="middle" transform="rotate(-90,${mL-40},${mT+ph/2})">Ic (mA)</text>`;
+
+    // Saturation boundary Vce = 0.2 + (something tiny)
+    const Vsat=0.2;
+    // Shade saturation region
+    s+=`<rect x="${xs(0)}" y="${mT}" width="${xs(Vsat)-xs(0)}" height="${ph}" fill="var(--accent2)" opacity="0.08"/>`;
+    s+=`<text x="${xs(0.1)}" y="${mT+14}" class="label-dim" style="fill:var(--accent2)">sat</text>`;
+    s+=`<text x="${xs(5)}" y="${mT+14}" class="label-dim" style="fill:var(--accent3)">active</text>`;
+    s+=`<text x="${xs(8)}" y="${ys(0.5)}" class="label-dim" style="fill:var(--warn)">cutoff (Ib=0)</text>`;
+
+    // Stepped Ib curves
+    const Ibs=[0, 10e-6, 20e-6, 30e-6, 40e-6, 50e-6, 60e-6]; // amps
+    for(const Ib of Ibs){
+      const IcSat=Math.min(IcMax/1000, beta*Ib); // in A
+      // build path
+      let path='';
+      const steps=120;
+      for(let k=0;k<=steps;k++){
+        const Vce=k/steps*VceMax;
+        let Ic_mA;
+        if(Ib===0){ Ic_mA = 0; }
+        else if(Vce < Vsat){
+          // ohmic ramp from 0 to IcSat as Vce goes 0→Vsat
+          Ic_mA = (Vce/Vsat) * IcSat * 1000;
+        } else {
+          // active region — slight Early-effect slope
+          Ic_mA = IcSat*1000 * (1 + 0.01*(Vce-Vsat));
+        }
+        const x=xs(Vce), y=ys(Math.min(IcMax,Ic_mA));
+        path += (k===0?'M':'L')+x+','+y+' ';
+      }
+      const color=Ib===0?'var(--warn)':'var(--accent3)';
+      s+=`<path d="${path}" class="trace" stroke="${color}" stroke-width="${Ib===0?1.5:2}"/>`;
+      if(Ib>0){
+        s+=`<text x="${mL+pw-8}" y="${ys(Math.min(IcMax,beta*Ib*1000))-4}" class="label-dim" text-anchor="end">Ib=${(Ib*1e6).toFixed(0)} µA</text>`;
+      }
+    }
+    svg.innerHTML=s;
+  }
+  document.getElementById('ivBeta').addEventListener('input',drawIV);
+
+  // === SWITCH ===
+  function fmtR(r){
+    if(r>=1e6) return (r/1e6).toFixed(2)+" MΩ";
+    if(r>=1e3) return (r/1e3).toFixed(1)+" kΩ";
+    return r.toFixed(0)+" Ω";
+  }
+  function fmtI(i){
+    if(Math.abs(i)<1e-3) return (i*1e6).toFixed(1)+" µA";
+    if(Math.abs(i)<1) return (i*1e3).toFixed(2)+" mA";
+    return i.toFixed(3)+" A";
+  }
+  function updateSwitch(){
+    const Vcc=parseFloat(document.getElementById('swVcc').value);
+    const Rb=parseFloat(document.getElementById('swRb').value);
+    const Rc=parseFloat(document.getElementById('swRc').value);
+    const beta=parseFloat(document.getElementById('swBeta').value);
+    const Vbb=3.3, Vbe=0.7, VceSat=0.2, Vled=2.0;
+    document.getElementById('swVccRead').textContent=Vcc.toFixed(1)+" V";
+    document.getElementById('swVccLabel').textContent=Vcc.toFixed(1)+" V";
+    document.getElementById('swRbRead').textContent=fmtR(Rb);
+    document.getElementById('swRbLabel').textContent=fmtR(Rb);
+    document.getElementById('swRcRead').textContent=fmtR(Rc);
+    document.getElementById('swRcLabel').textContent=fmtR(Rc);
+    document.getElementById('swBetaRead').textContent=beta.toFixed(0);
+    const Ib=Math.max(0,(Vbb-Vbe)/Rb);
+    const IcMax=Math.max(0,(Vcc-Vled-VceSat)/Rc); // saturation current
+    const betaIb=beta*Ib;
+    const Ic = Math.min(IcMax, betaIb);
+    const saturated = betaIb >= IcMax;
+    const overdrive = IcMax>0 ? betaIb/IcMax : 0;
+    document.getElementById('swIb').textContent=fmtI(Ib);
+    document.getElementById('swIcMax').textContent=fmtI(IcMax);
+    document.getElementById('swIcSat').textContent=fmtI(Ic);
+    document.getElementById('swBetaIb').textContent=fmtI(betaIb);
+    document.getElementById('swMode').innerHTML = saturated
+      ? 'mode: <tspan style="fill:var(--accent3)">SATURATED</tspan>'
+      : 'mode: <tspan style="fill:var(--warn)">ACTIVE (dim)</tspan>';
+    document.getElementById('swOverdrive').textContent='overdrive: '+overdrive.toFixed(2)+'×';
+    // LED brightness
+    document.getElementById('swLed').setAttribute('opacity', Math.min(1, 0.2 + Ic/0.03));
+  }
+  ['swVcc','swRb','swRc','swBeta'].forEach(id=>
+    document.getElementById(id).addEventListener('input',updateSwitch));
+  updateSwitch();
+
+  // === AMPLIFIER ===
+  function drawAmp(){
+    const Ic_mA=parseFloat(document.getElementById('ampIc').value);
+    const Rc=parseFloat(document.getElementById('ampRc').value);
+    const beta=150;
+    const VT=0.026;
+    const Ic=Ic_mA/1000;
+    const gm=Ic/VT;
+    const Av=-gm*Rc;
+    const rpi=beta/gm;
+    document.getElementById('ampIcRead').textContent=Ic_mA.toFixed(2)+" mA";
+    document.getElementById('ampRcRead').textContent=fmtR(Rc);
+    document.getElementById('ampGm').textContent=(gm*1000).toFixed(1)+" mS";
+    document.getElementById('ampAv').textContent=Av.toFixed(0);
+    document.getElementById('ampAvDb').textContent=(20*Math.log10(Math.abs(Av))).toFixed(1)+" dB";
+    document.getElementById('ampRpi').textContent=fmtR(rpi);
+
+    // Transfer plot Vout = 5 - Ic_mA*Rc + Av*Vin (treat as small-signal around Q)
+    const svg=document.getElementById('ampPlot');
+    const W=600,H=240,mL=60,mR=20,mT=20,mB=40;
+    const pw=W-mL-mR, ph=H-mT-mB;
+    const VinRange=0.05; // ±50mV small signal
+    const xs=v=>mL+((v+VinRange)/(2*VinRange))*pw;
+    const VoutMax=10, VoutMin=0;
+    const ys=v=>mT+ph-((v-VoutMin)/(VoutMax-VoutMin))*ph;
+    const Vcc=10;
+    const Vout_Q = Vcc - Ic*Rc;
+    let s='';
+    // grid
+    for(let i=-5;i<=5;i++){
+      const x=xs(i*0.01);
+      s+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" class="grid-line"/>`;
+      s+=`<text x="${x}" y="${H-mB+16}" class="axis-label" text-anchor="middle">${(i*10).toFixed(0)}</text>`;
+    }
+    for(let i=0;i<=10;i++){
+      const y=ys(i);
+      s+=`<line x1="${mL}" y1="${y}" x2="${mL+pw}" y2="${y}" class="grid-line"/>`;
+      s+=`<text x="${mL-6}" y="${y+3}" class="axis-label" text-anchor="end">${i}</text>`;
+    }
+    s+=`<text x="${W/2}" y="${H-6}" class="axis-label" text-anchor="middle">Vin small-signal (mV)</text>`;
+    s+=`<text x="${mL-40}" y="${mT+ph/2}" class="axis-label" text-anchor="middle" transform="rotate(-90,${mL-40},${mT+ph/2})">Vout (V)</text>`;
+    // transfer curve (clipped to supply rails)
+    let path='';
+    for(let k=0;k<=100;k++){
+      const Vin=-VinRange + k/100*2*VinRange;
+      let Vout = Vout_Q + Av*Vin;
+      Vout = Math.max(0.2, Math.min(Vcc, Vout));
+      const x=xs(Vin), y=ys(Vout);
+      path+=(k===0?'M':'L')+x+','+y+' ';
+    }
+    s+=`<path d="${path}" class="trace trace-2"/>`;
+    // Q-point dot
+    s+=`<circle cx="${xs(0)}" cy="${ys(Vout_Q)}" r="4" fill="var(--accent3)"/>`;
+    s+=`<text x="${xs(0)+8}" y="${ys(Vout_Q)-6}" class="label-dim" style="fill:var(--accent3)">Q (${Vout_Q.toFixed(2)}V)</text>`;
+    svg.innerHTML=s;
+  }
+  ['ampIc','ampRc'].forEach(id=>
+    document.getElementById(id).addEventListener('input',drawAmp));
+  drawIV();
+  drawAmp();
+</script>
+</body>
+</html>

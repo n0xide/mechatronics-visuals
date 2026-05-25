@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stepper Drivers — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:10px;margin:12px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px}
+  .stat .lbl{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 16px ui-monospace,monospace;color:var(--accent);margin-top:4px}
+  .tabs{display:flex;gap:2px;margin:14px 0 0}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Stepper Drivers — A4988 &amp; TMC2209</h1>
+  <p class="lede">A stepper driver is a current-controlled H-bridge per phase. It chops the supply to hold a target coil current, then steps that current through a sine table to microstep.</p>
+
+  <p>A stepper motor's torque is set by coil current, not voltage. The driver IC uses a supply &gt;&gt; motor's rated voltage and chops it with a current-controlled PWM (a "chopper") to enforce a setpoint current. The setpoint comes from a sine/cosine table indexed by a microstep counter. Each STEP pulse increments the counter; with 256 microsteps per full step, you sweep the sine smoothly enough that the rotor feels continuous torque instead of detents. Two families dominate hobby/desktop: the classic A4988/DRV8825 (Vref pin sets the current, fixed-decay or fast-decay chopper, audible), and Trinamic TMC2208/2209 (UART configured, silent StealthChop or torque-y SpreadCycle, StallGuard sensorless homing). Modern 3D printers and most arm-joint stepper builds use TMC.</p>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="micro">Microstep table</div>
+    <div class="tab" data-tab="vref">Vref → current</div>
+    <div class="tab" data-tab="chop">Chopper</div>
+    <div class="tab" data-tab="modes">StealthChop vs SpreadCycle</div>
+  </div>
+
+  <div class="tab-panel active" data-panel="micro">
+    <h3>Microstepping — sine-table interpolation</h3>
+    <p style="color:var(--fg-dim);font-size:13px">Each STEP pulse advances the microstep counter; the driver indexes a sine table to set coil-A current and a 90°-shifted cosine for coil-B. Smaller microsteps = smoother motion + more position-resolution / step pulse, but the same physical detent torque limit applies.</p>
+    <section class="controls">
+      <div class="control">
+        <label>Microstep mode</label>
+        <select id="microMode">
+          <option value="1">Full step (1)</option>
+          <option value="2">Half step (1/2)</option>
+          <option value="4">1/4</option>
+          <option value="8">1/8</option>
+          <option value="16" selected>1/16</option>
+          <option value="32">1/32</option>
+          <option value="64">1/64 (TMC)</option>
+          <option value="256">1/256 (TMC interpolated)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Steps shown</label>
+        <input id="stepsN" type="range" min="2" max="8" step="1" value="4">
+      </div>
+    </section>
+    <div class="figure">
+      <svg id="microSvg" viewBox="0 0 700 280" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+        <line x1="50" y1="20" x2="50" y2="260" class="axis"/>
+        <line x1="50" y1="140" x2="680" y2="140" stroke="var(--grid)" stroke-dasharray="2,3"/>
+        <text x="40" y="30" class="axis-label" text-anchor="end">+I</text>
+        <text x="40" y="145" class="axis-label" text-anchor="end">0</text>
+        <text x="40" y="260" class="axis-label" text-anchor="end">−I</text>
+        <text x="685" y="270" class="axis-label">step</text>
+        <polyline id="iaTrace" class="trace trace-1" points=""/>
+        <polyline id="ibTrace" class="trace trace-2" points=""/>
+        <g id="stepDots"></g>
+      </svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>I_A = I_max·sin(θ)</span>
+        <span><span class="swatch" style="background:var(--accent2)"></span>I_B = I_max·cos(θ)</span>
+        <span>· dots = STEP-pulse instants</span>
+      </div>
+    </div>
+    <table>
+      <tr><th>Mode</th><th>Steps / full</th><th>Angle / step (1.8°/step motor)</th><th>Pulses for 360°</th><th>Notes</th></tr>
+      <tr><td>Full</td><td>1</td><td>1.800°</td><td>200</td><td>Highest torque per step, loudest</td></tr>
+      <tr><td>1/2</td><td>2</td><td>0.900°</td><td>400</td><td>"Half-step" mode, ~70% smoother</td></tr>
+      <tr><td>1/4</td><td>4</td><td>0.450°</td><td>800</td><td>A4988 default</td></tr>
+      <tr><td>1/8</td><td>8</td><td>0.225°</td><td>1600</td><td>Classic 3D-printer setting</td></tr>
+      <tr><td>1/16</td><td>16</td><td>0.1125°</td><td>3200</td><td>Modern 3D-printer default</td></tr>
+      <tr><td>1/32</td><td>32</td><td>0.0563°</td><td>6400</td><td>DRV8825 / TMC max native</td></tr>
+      <tr><td>1/256</td><td>256</td><td>0.0070°</td><td>51200</td><td>TMC interpolation from 1/16 internally</td></tr>
+    </table>
+  </div>
+
+  <div class="tab-panel" data-panel="vref">
+    <h3>Setting motor current — Vref method (A4988 / DRV8825)</h3>
+    <p style="color:var(--fg-dim);font-size:13px">The driver's reference voltage pin sets the chopper's current setpoint. Turn the potentiometer until V_ref hits target. Wrong V_ref = overheated coils (too high) or skipped steps under load (too low).</p>
+    <section class="controls">
+      <div class="control">
+        <label>Driver chip</label>
+        <select id="chip">
+          <option value="a4988">A4988 (I = V_ref / (8·R_s))</option>
+          <option value="drv8825">DRV8825 (I = V_ref / (5·R_s))</option>
+          <option value="tmc2209">TMC2209 (I_rms = V_ref · 1.77 / (R_s + 0.02))</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>R_sense: <span class="readout" id="rsRead">0.10 Ω</span></label>
+        <input id="rsense" type="range" min="0.05" max="1" step="0.01" value="0.1">
+      </div>
+      <div class="control">
+        <label>V_ref: <span class="readout" id="vrefRead">0.80 V</span></label>
+        <input id="vref" type="range" min="0.1" max="2.5" step="0.01" value="0.8">
+      </div>
+      <div class="control">
+        <label>Motor rated current: <span class="readout" id="iRateRead">1.2 A</span></label>
+        <input id="iRate" type="range" min="0.2" max="3" step="0.05" value="1.2">
+      </div>
+    </section>
+    <div class="figure">
+      <h3>Computed</h3>
+      <div class="stat-grid">
+        <div class="stat"><div class="lbl">I_max (peak)</div><div class="val" id="statImax">1.0 A</div></div>
+        <div class="stat"><div class="lbl">I_rms (full step)</div><div class="val" id="statIrms">0.71 A</div></div>
+        <div class="stat"><div class="lbl">vs rated</div><div class="val" id="statRatio">83%</div></div>
+        <div class="stat"><div class="lbl">Coil P (×2)</div><div class="val" id="statP">2.0 W</div></div>
+      </div>
+      <p style="margin-top:8px;font-size:12px;color:var(--fg-dim)">
+        Set <code>I_max ≈ 0.85 · I_rated</code> at first (gives margin against thermal). Bump to 100% only if torque is borderline. TMC uses I_RMS in firmware; A4988/DRV8825 set I_PEAK.
+      </p>
+    </div>
+  </div>
+
+  <div class="tab-panel" data-panel="chop">
+    <h3>Chopper current control — fixed off-time</h3>
+    <p style="color:var(--fg-dim);font-size:13px">The coil is an inductor across V_motor &gt;&gt; I·R. Coil current ramps up fast (V/L). When current hits I_target (sensed across R_sense), the driver turns OFF for a fixed t_off (typ 20–30 µs A4988; adaptive for TMC SpreadCycle). Current decays during off-time. Loop runs ~30–50 kHz.</p>
+    <section class="controls">
+      <div class="control">
+        <label>V_motor: <span class="readout" id="vmRead">24 V</span></label>
+        <input id="vm" type="range" min="6" max="48" step="1" value="24">
+      </div>
+      <div class="control">
+        <label>Coil L: <span class="readout" id="lcRead">4.0 mH</span></label>
+        <input id="lc" type="range" min="0.5" max="20" step="0.1" value="4">
+      </div>
+      <div class="control">
+        <label>Coil R: <span class="readout" id="rcRead">2.0 Ω</span></label>
+        <input id="rc" type="range" min="0.5" max="10" step="0.1" value="2">
+      </div>
+      <div class="control">
+        <label>I_target: <span class="readout" id="itRead">1.0 A</span></label>
+        <input id="it" type="range" min="0.2" max="3" step="0.05" value="1">
+      </div>
+      <div class="control">
+        <label>t_off: <span class="readout" id="toffRead">25 µs</span></label>
+        <input id="toff" type="range" min="5" max="60" step="1" value="25">
+      </div>
+      <div class="control">
+        <label>Decay mode</label>
+        <select id="decay">
+          <option value="slow">Slow (recirculate)</option>
+          <option value="mixed" selected>Mixed</option>
+          <option value="fast">Fast (reverse)</option>
+        </select>
+      </div>
+    </section>
+    <div class="figure">
+      <svg viewBox="0 0 700 240" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+        <line x1="50" y1="20" x2="50" y2="210" class="axis"/>
+        <line x1="50" y1="210" x2="680" y2="210" class="axis"/>
+        <text x="685" y="222" class="axis-label">t</text>
+        <line id="itLine" x1="50" y1="80" x2="680" y2="80" stroke="var(--accent2)" stroke-dasharray="4,3" stroke-width="2"/>
+        <text id="itLabel" x="600" y="75" class="label" fill="var(--accent2)" text-anchor="end">I_target</text>
+        <polyline id="chopTrace" class="trace trace-1" points=""/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="tab-panel" data-panel="modes">
+    <h3>TMC StealthChop vs SpreadCycle</h3>
+    <table>
+      <tr><th></th><th>StealthChop (voltage mode)</th><th>SpreadCycle (current mode)</th></tr>
+      <tr><td>Sound</td><td>Silent (audible &lt; 25 dBA)</td><td>Faint hiss at chopper rate</td></tr>
+      <tr><td>Algorithm</td><td>Open-loop PWM voltage tuned to follow current target</td><td>Closed-loop current chopper, fast-decay during fall</td></tr>
+      <tr><td>Best for</td><td>Low/medium speed, holding, smooth feeds</td><td>High speed, hard load steps, hard direction changes</td></tr>
+      <tr><td>Torque @ high RPM</td><td>Drops off — voltage saturates</td><td>Holds — current loop forces it</td></tr>
+      <tr><td>Hybrid threshold</td><td colspan="2">TMC switches Stealth→Spread above TPWMTHRS rpm</td></tr>
+    </table>
+    <p style="font-size:13px;color:var(--fg-dim)">For arm joints: enable both, set TPWMTHRS so you get silent holding + quiet slow moves, but full SpreadCycle torque on fast point-to-point. StallGuard2 (sensorless endstop via back-EMF dip) only works in SpreadCycle.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Microstepping is interpolation, not extra torque</b> — full-step torque ≈ I_max². At 1/256, the per-microstep incremental torque is sin(0.0070°) · T_full ≈ 0.4% — tiny. You get smooth motion + position resolution; you do <i>not</i> get 256× the positioning accuracy under load (the rotor settles in the nearest detent if load exceeds incremental torque).</li>
+    <li><b>Vref sets the current, R_sense sets the formula</b> — A4988: I = V_ref / (8·R_s). DRV8825: I = V_ref / (5·R_s). TMC2209: configured by UART, but R_sense still scales the headroom. Measure V_ref with a multimeter on the trimpot wiper. Wrong by 2× = coils smoke.</li>
+    <li><b>The driver runs at high V_motor on purpose</b> — coil V_rated is what it draws when stalled (zero back-EMF). At running RPM, back-EMF + I·R needs &gt;&gt; that to keep up; 24 V driving a 2 V-rated coil is normal. The chopper does the math.</li>
+    <li><b>Decay mode = current ripple shape</b> — slow decay (recirculate through low-side body diodes) keeps ripple low at high duty, but at the top of the sine it can't decrease fast enough → distortion. Fast decay (reverse the bridge) tracks better but rings audibly. Mixed (start slow, finish fast) is the modern default.</li>
+    <li><b>TMC StealthChop is voltage-mode PWM</b> — it computes the voltage needed for the target current at the current rotor speed (using a learned coil-R model). Silent because no hard chopper edges. Loses torque above its tuned speed range; switch to SpreadCycle at TPWMTHRS.</li>
+    <li><b>StallGuard senses load on the motor itself</b> — measures back-EMF drop into the coil during the off interval. As load rises, drop falls. Threshold trips → "sensorless endstop" homing without a switch. Only works in SpreadCycle mode and above a minimum speed (~2 rps).</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>VREF FORMULAS</h3>
+      <dl>
+        <dt>A4988</dt><dd><span class="eq">I_max = V_ref / (8 · R_sense)</span></dd>
+        <dt>DRV8825</dt><dd><span class="eq">I_max = V_ref / (5 · R_sense)</span></dd>
+        <dt>TMC2209</dt><dd><span class="eq">I_rms ≈ V_ref · 1.77 / (R_s + 0.02)</span><br><span class="eq-note">but usually set by UART IRUN</span></dd>
+        <dt>I_rms ↔ peak</dt><dd><span class="eq">I_rms = I_peak / √2</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SET CURRENT (BEGINNER PATH)</h3>
+      <ul>
+        <li><b>Read motor I_rated</b> from datasheet (e.g. 1.2 A/phase).</li>
+        <li><b>Target 85% of rated</b> first → 1.0 A.</li>
+        <li><b>Compute V_ref</b> from chip formula → set trimpot.</li>
+        <li><b>Touch coil after 5 min</b> — warm OK, painful = too high.</li>
+        <li><b>Listen at slow feed</b> — skipped steps = bump up 10%.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Vref on EN pin</b> — wrong pin destroys driver instantly.</li>
+        <li><b>Hot-unplug stepper</b> — never disconnect motor with power on, back-EMF spike kills driver.</li>
+        <li><b>Wrong R_sense assumption</b> — fake A4988s ship with 0.05 Ω, original with 0.05/0.1; check the board silkscreen.</li>
+        <li><b>StealthChop missed steps</b> — high accel + low torque headroom = stall. Enable SpreadCycle above TPWMTHRS.</li>
+        <li><b>Bipolar = 4 wires</b> — 8-wire motors → wire pairs in series (high voltage, low current) or parallel.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 3 — Motor Control</a> ·
+    Topic: Stepper Drivers (A4988 / DRV8825 / TMC2209)
+  </footer>
+</main>
+<script>
+  // Tab switching
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.addEventListener('click',()=>{
+      document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      document.querySelector(`.tab-panel[data-panel="${t.dataset.tab}"]`).classList.add('active');
+    });
+  });
+
+  function fmtSI(v,unit,dec=2){
+    const a=Math.abs(v);
+    if(a===0) return '0 '+unit;
+    if(a>=1) return v.toFixed(dec)+' '+unit;
+    if(a>=1e-3) return (v*1e3).toFixed(dec)+' m'+unit;
+    if(a>=1e-6) return (v*1e6).toFixed(dec)+' µ'+unit;
+    return (v*1e9).toFixed(dec)+' n'+unit;
+  }
+
+  // ---- Microstep tab ----
+  const microMode=document.getElementById('microMode');
+  const stepsN=document.getElementById('stepsN');
+
+  function drawMicro(){
+    const micro=parseInt(microMode.value);
+    const fullSteps=parseInt(stepsN.value);
+    const totalMicro=fullSteps*micro;
+    // smooth continuous sine; mark dots at each microstep
+    const xL=50,xR=680,xRange=xR-xL;
+    const yMid=140,ampY=120;
+    let ia=[],ib=[];
+    const N=600;
+    for(let i=0;i<=N;i++){
+      const phase=i/N*fullSteps*Math.PI/2; // each full step = 90° quarter-cycle
+      const x=xL+i/N*xRange;
+      ia.push(`${x},${yMid-Math.sin(phase)*ampY}`);
+      ib.push(`${x},${yMid-Math.cos(phase)*ampY}`);
+    }
+    document.getElementById('iaTrace').setAttribute('points',ia.join(' '));
+    document.getElementById('ibTrace').setAttribute('points',ib.join(' '));
+
+    // Dots
+    let dots='';
+    for(let k=0;k<=totalMicro;k++){
+      const t=k/(fullSteps*micro);
+      const phase=t*fullSteps*Math.PI/2;
+      const x=xL+t*xRange;
+      const ya=yMid-Math.sin(phase)*ampY;
+      const yb=yMid-Math.cos(phase)*ampY;
+      const r = micro>32 ? 1.2 : 2;
+      dots += `<circle cx="${x}" cy="${ya}" r="${r}" fill="var(--accent)"/>`;
+      dots += `<circle cx="${x}" cy="${yb}" r="${r}" fill="var(--accent2)"/>`;
+    }
+    document.getElementById('stepDots').innerHTML=dots;
+  }
+  microMode.addEventListener('change',drawMicro);
+  stepsN.addEventListener('input',drawMicro);
+  drawMicro();
+
+  // ---- Vref tab ----
+  const chip=document.getElementById('chip');
+  const rsense=document.getElementById('rsense');
+  const vref=document.getElementById('vref');
+  const iRate=document.getElementById('iRate');
+
+  function updateVref(){
+    const Rs=parseFloat(rsense.value);
+    const Vr=parseFloat(vref.value);
+    const Ir=parseFloat(iRate.value);
+    document.getElementById('rsRead').textContent=Rs.toFixed(2)+' Ω';
+    document.getElementById('vrefRead').textContent=Vr.toFixed(2)+' V';
+    document.getElementById('iRateRead').textContent=Ir.toFixed(2)+' A';
+
+    let Imax;
+    if(chip.value==='a4988') Imax = Vr/(8*Rs);
+    else if(chip.value==='drv8825') Imax = Vr/(5*Rs);
+    else Imax = Vr*1.77/(Rs+0.02); // TMC formula (returns rms-ish, treat as peak for simplicity)
+
+    const Irms = Imax/Math.sqrt(2);
+    const ratio = (Imax/Ir*100);
+    const P = 2*Irms*Irms*1.5; // rough: 2 coils, R~1.5 Ω avg
+    document.getElementById('statImax').textContent=Imax.toFixed(2)+' A';
+    document.getElementById('statIrms').textContent=Irms.toFixed(2)+' A';
+    document.getElementById('statRatio').textContent=ratio.toFixed(0)+'%';
+    document.getElementById('statP').textContent=P.toFixed(2)+' W';
+  }
+  [chip,rsense,vref,iRate].forEach(el=>el.addEventListener('input',updateVref));
+  updateVref();
+
+  // ---- Chopper tab ----
+  const vm=document.getElementById('vm');
+  const lc=document.getElementById('lc');
+  const rc=document.getElementById('rc');
+  const it=document.getElementById('it');
+  const toff=document.getElementById('toff');
+  const decay=document.getElementById('decay');
+
+  function updateChop(){
+    const V=parseFloat(vm.value);
+    const L=parseFloat(lc.value)*1e-3;
+    const R=parseFloat(rc.value);
+    const It=parseFloat(it.value);
+    const Toff=parseFloat(toff.value)*1e-6;
+
+    document.getElementById('vmRead').textContent=V+' V';
+    document.getElementById('lcRead').textContent=L*1e3+' mH';
+    document.getElementById('rcRead').textContent=R+' Ω';
+    document.getElementById('itRead').textContent=It+' A';
+    document.getElementById('toffRead').textContent=(Toff*1e6).toFixed(0)+' µs';
+
+    // Simulate chopper: tON to reach It from Imin; tOFF fixed; decay rate depends on mode.
+    // Slow: dI/dt during off = -I·R/L (recirculate through low-side, only IR loss)
+    // Fast: dI/dt during off = -(V + I·R)/L (reverse voltage)
+    // Mixed: half each
+    // tON: dI/dt up = (V - I·R)/L; approx average
+    const tau = L/R;
+
+    // Simulate ~250 µs
+    const totalT = 250e-6;
+    const dt = totalT/2000;
+    let I=0, on=true, tOn=0, tOff=0;
+    let pts=[];
+    const xL=50,xR=680;
+    // y: I=0 at 210, I=It+0.3 at 30
+    const yScale = 180/(It*1.5);
+    const yI=(i)=> 210 - i*yScale;
+    let t=0;
+    while(t<totalT){
+      if(on){
+        // ramp up toward V/R asymptote
+        const dI = ((V - I*R)/L)*dt;
+        I += dI;
+        if(I>=It){ on=false; tOff=0; }
+      } else {
+        let dI;
+        if(decay.value==='slow') dI = -(I*R)/L * dt;
+        else if(decay.value==='fast') dI = -((V + I*R)/L) * dt;
+        else dI = -((V*0.5 + I*R)/L) * dt; // mixed
+        I += dI;
+        if(I<0) I=0;
+        tOff += dt;
+        if(tOff >= Toff){ on=true; }
+      }
+      const x = xL + t/totalT*(xR-xL);
+      pts.push(`${x},${yI(I)}`);
+      t += dt;
+    }
+    document.getElementById('chopTrace').setAttribute('points', pts.join(' '));
+    const yIt = yI(It);
+    document.getElementById('itLine').setAttribute('y1',yIt);
+    document.getElementById('itLine').setAttribute('y2',yIt);
+    document.getElementById('itLabel').setAttribute('y',yIt-4);
+    document.getElementById('itLabel').textContent=`I_target = ${It.toFixed(2)} A`;
+  }
+  [vm,lc,rc,it,toff,decay].forEach(el=>el.addEventListener('input',updateChop));
+  updateChop();
+</script>
+</body>
+</html>

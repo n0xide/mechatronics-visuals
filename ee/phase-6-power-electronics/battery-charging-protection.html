@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Battery Charging &amp; Protection — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;
+    font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .node{fill:var(--bg);stroke:var(--fg);stroke-width:1.5}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .panel-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:12px 0}
+  @media (max-width:780px){ .panel-grid{grid-template-columns:1fr} }
+  .protect-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px;margin:12px 0}
+  .protect{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px;cursor:pointer;transition:all 0.15s;
+    user-select:none}
+  .protect:hover{border-color:var(--accent)}
+  .protect.on{background:rgba(163,230,53,0.10);border-color:var(--accent3)}
+  .protect.on .name{color:var(--accent3)}
+  .protect .name{font:600 13px ui-monospace,monospace;color:var(--fg);
+    display:flex;justify-content:space-between;align-items:center}
+  .protect .toggle{display:inline-block;width:32px;height:18px;
+    background:var(--bg);border-radius:9px;position:relative;
+    border:1px solid var(--line)}
+  .protect .toggle::after{content:'';position:absolute;width:12px;height:12px;
+    background:var(--fg-dim);border-radius:50%;top:2px;left:3px;
+    transition:left 0.2s}
+  .protect.on .toggle{background:var(--accent3);border-color:var(--accent3)}
+  .protect.on .toggle::after{left:17px;background:var(--bg)}
+  .protect .desc{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    margin-top:6px;line-height:1.4}
+  .phase-pill{display:inline-block;padding:2px 8px;border-radius:10px;
+    font:11px ui-monospace,monospace;margin:2px 4px 2px 0}
+  .phase-pill.cc{background:rgba(94,200,255,0.18);color:var(--accent)}
+  .phase-pill.cv{background:rgba(255,184,108,0.18);color:var(--accent2)}
+  .phase-pill.done{background:rgba(163,230,53,0.18);color:var(--accent3)}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:8px;margin:10px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:5px;padding:8px 10px}
+  .stat .lbl{font:10px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 14px ui-monospace,monospace;color:var(--accent);margin-top:2px}
+  .out-status{padding:10px 14px;border-radius:6px;
+    font:13px ui-monospace,monospace;margin:10px 0}
+  .out-status.ok{background:rgba(163,230,53,0.10);border:1px solid var(--accent3);color:var(--accent3)}
+  .out-status.fault{background:rgba(255,123,114,0.10);border:1px solid var(--warn);color:var(--warn)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card table{margin:0;font-size:11px}
+  .cheat-card table th,.cheat-card table td{padding:3px 6px}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Battery Charging &amp; Protection</h1>
+  <p class="lede">CC/CV profile for a 1S Li-Po, plus the protection toolkit: reverse-polarity FET, OVP, UVLO, OCP, thermal shutdown.</p>
+
+  <p>Lithium chemistries demand strict charge management. Push past 4.20 V per cell and the electrolyte starts to plate lithium on the anode (recoverable cycles drop fast; severe overcharge causes thermal runaway). Pull below ~2.5 V and copper from the current collector dissolves into the electrolyte; dendrites form on next charge. <b>CC/CV</b> is the standard: bulk the energy in at constant current while voltage rises, then hold voltage steady while current tapers. Stop when the taper current falls below C/10.</p>
+
+  <div class="panel-grid">
+
+    <!-- PANEL A: CC/CV CHARGING -->
+    <div class="figure" style="margin:0">
+      <h3>(a) CC/CV charging profile — 1S Li-Po</h3>
+      <div class="controls" style="grid-template-columns:1fr;margin:8px 0">
+        <div class="control">
+          <label>I_chg — charge current: <span class="readout" id="ichgRead">0.5 A</span></label>
+          <input id="ichg" type="range" min="0.1" max="2" step="0.05" value="0.5">
+        </div>
+        <div class="control">
+          <label>Capacity: <span class="readout" id="capRead">1000 mAh</span></label>
+          <input id="cap" type="range" min="200" max="3000" step="100" value="1000">
+        </div>
+        <div class="control">
+          <label>Start V: <span class="readout" id="vstartRead">3.5 V</span></label>
+          <input id="vstart" type="range" min="3.0" max="4.0" step="0.05" value="3.5">
+        </div>
+      </div>
+
+      <svg id="ccvSvg" viewBox="0 0 460 320" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+        <!-- axes -->
+        <line x1="50" y1="30" x2="50" y2="270" class="axis"/>
+        <line x1="50" y1="270" x2="430" y2="270" class="axis"/>
+        <text x="50" y="22" class="axis-label" text-anchor="middle">V / I</text>
+        <text x="435" y="285" class="axis-label">t</text>
+        <!-- gridlines and labels -->
+        <line x1="50" y1="60" x2="430" y2="60" stroke="var(--grid)" stroke-dasharray="2,3"/>
+        <text x="45" y="64" class="label-dim" text-anchor="end">4.20V</text>
+        <line x1="50" y1="120" x2="430" y2="120" stroke="var(--grid)" stroke-dasharray="2,3"/>
+        <text x="45" y="124" class="label-dim" text-anchor="end">3.7V</text>
+        <line x1="50" y1="220" x2="430" y2="220" stroke="var(--grid)" stroke-dasharray="2,3"/>
+        <text x="45" y="224" class="label-dim" text-anchor="end">3.0V</text>
+
+        <!-- V trace (charging up) -->
+        <polyline id="vTrace" class="trace trace-1" points=""/>
+        <text x="80" y="50" class="label" fill="var(--accent)">V_batt</text>
+
+        <!-- I trace -->
+        <polyline id="iTrace" class="trace trace-2" points=""/>
+        <text x="80" y="170" class="label" fill="var(--accent2)">I_chg</text>
+
+        <!-- Phase backgrounds -->
+        <rect id="ccBg" x="50" y="30" width="0" height="240" fill="var(--accent)" opacity="0.05"/>
+        <rect id="cvBg" x="0" y="30" width="0" height="240" fill="var(--accent2)" opacity="0.05"/>
+        <rect id="doneBg" x="0" y="30" width="0" height="240" fill="var(--accent3)" opacity="0.05"/>
+
+        <!-- Phase labels -->
+        <text id="ccLbl" x="100" y="295" class="label-dim" text-anchor="middle" fill="var(--accent)">CC phase</text>
+        <text id="cvLbl" x="250" y="295" class="label-dim" text-anchor="middle" fill="var(--accent2)">CV phase</text>
+        <text id="doneLbl" x="380" y="295" class="label-dim" text-anchor="middle" fill="var(--accent3)">term</text>
+
+        <!-- Termination line -->
+        <line id="termLine" x1="50" y1="240" x2="430" y2="240" stroke="var(--accent3)" stroke-dasharray="3,3" opacity="0.6"/>
+        <text x="435" y="244" class="label-dim" fill="var(--accent3)">I_term=C/10</text>
+
+        <!-- Live marker -->
+        <circle id="liveDot" cx="50" cy="180" r="4" fill="var(--warn)"/>
+      </svg>
+
+      <div style="margin-top:10px">
+        <span class="phase-pill cc">CC: I=I_chg, V rises 3.5→4.20V</span>
+        <span class="phase-pill cv">CV: V=4.20V, I tapers</span>
+        <span class="phase-pill done">Done when I &lt; C/10</span>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat"><div class="lbl">C-rate</div><div class="val" id="statC">0.5C</div></div>
+        <div class="stat"><div class="lbl">I_term (C/10)</div><div class="val" id="statTerm">100 mA</div></div>
+        <div class="stat"><div class="lbl">CC duration</div><div class="val" id="statCC">42 min</div></div>
+        <div class="stat"><div class="lbl">Total time</div><div class="val" id="statTotal">95 min</div></div>
+        <div class="stat"><div class="lbl">Current phase</div><div class="val" id="statPhase">CC</div></div>
+      </div>
+
+      <button class="btn primary" id="playBtn">Replay charge cycle</button>
+    </div>
+
+    <!-- PANEL B: PROTECTION CIRCUITS -->
+    <div class="figure" style="margin:0">
+      <h3>(b) Protection circuit toolkit</h3>
+      <p style="font-size:12px;color:var(--fg-dim)">Click toggles. Effect on output is computed live.</p>
+
+      <svg id="protectSvg" viewBox="0 0 460 220" width="100%" style="background:var(--bg-elev2);border-radius:6px">
+        <!-- Input -->
+        <text x="20" y="40" class="label" text-anchor="start">V_in</text>
+        <line x1="40" y1="50" x2="40" y2="180" class="wire"/>
+        <line x1="40" y1="50" x2="100" y2="50" class="wire"/>
+        <text x="20" y="68" class="label-dim">+</text>
+
+        <!-- Reverse polarity P-MOSFET -->
+        <g id="gRevpol" opacity="1">
+          <rect x="100" y="38" width="50" height="24" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="125" y="55" class="label" text-anchor="middle">P-FET</text>
+          <text x="125" y="30" class="label-dim" text-anchor="middle">revpol</text>
+        </g>
+        <line id="revpolBypass" x1="100" y1="50" x2="150" y2="50" class="wire" opacity="0"/>
+        <line x1="150" y1="50" x2="200" y2="50" class="wire"/>
+
+        <!-- OVP -->
+        <g id="gOvp" opacity="0.3">
+          <rect x="200" y="38" width="50" height="24" fill="var(--bg-elev2)" stroke="var(--accent2)" stroke-width="1.5"/>
+          <text x="225" y="55" class="label" text-anchor="middle">OVP</text>
+          <text x="225" y="30" class="label-dim" text-anchor="middle">clamp/cut</text>
+        </g>
+        <line x1="250" y1="50" x2="290" y2="50" class="wire"/>
+
+        <!-- OCP shunt -->
+        <g id="gOcp" opacity="0.3">
+          <rect x="290" y="42" width="30" height="16" fill="var(--bg-elev2)" stroke="var(--accent3)" stroke-width="1.5"/>
+          <text x="305" y="34" class="label-dim" text-anchor="middle">R_sense</text>
+          <text x="305" y="76" class="label-dim" text-anchor="middle">→ shunt-amp → SD</text>
+        </g>
+        <line x1="320" y1="50" x2="380" y2="50" class="wire"/>
+
+        <!-- Thermal shutdown indicator -->
+        <g id="gTherm" opacity="0.3">
+          <circle cx="395" cy="90" r="14" fill="var(--bg-elev2)" stroke="var(--warn)" stroke-width="1.5"/>
+          <text x="395" y="94" class="label" text-anchor="middle" font-size="10">TSD</text>
+          <line x1="380" y1="80" x2="380" y2="50" class="wire" stroke="var(--warn)" stroke-dasharray="2,3"/>
+        </g>
+
+        <!-- UVLO indicator on input -->
+        <g id="gUvlo" opacity="0.3">
+          <circle cx="65" cy="115" r="14" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="65" y="119" class="label" text-anchor="middle" font-size="10">UVLO</text>
+          <line x1="65" y1="100" x2="65" y2="80" class="wire" stroke="var(--accent)" stroke-dasharray="2,3"/>
+        </g>
+
+        <!-- Output -->
+        <line x1="380" y1="50" x2="430" y2="50" class="wire"/>
+        <text x="438" y="48" class="label" fill="var(--accent3)">V_out</text>
+        <text x="438" y="62" class="label-dim" id="outAnnot">5.0V</text>
+        <line x1="40" y1="180" x2="430" y2="180" class="wire"/>
+        <line x1="420" y1="175" x2="420" y2="190" stroke="var(--fg)" stroke-width="2"/>
+        <line x1="412" y1="190" x2="428" y2="190" stroke="var(--fg)" stroke-width="2"/>
+
+        <!-- Fault indicator -->
+        <g id="faultBolt" opacity="0">
+          <polygon points="200,140 215,140 205,160 220,160 195,200 207,170 195,170" fill="var(--warn)"/>
+          <text x="240" y="180" class="label" fill="var(--warn)">FAULT</text>
+        </g>
+      </svg>
+
+      <div class="controls" style="grid-template-columns:1fr;margin:8px 0">
+        <div class="control">
+          <label>Test V_in: <span class="readout" id="vinpRead">5.0 V</span></label>
+          <input id="vinp" type="range" min="-15" max="25" step="0.5" value="5">
+        </div>
+        <div class="control">
+          <label>Test I_load: <span class="readout" id="ilpRead">1.0 A</span></label>
+          <input id="ilp" type="range" min="0" max="5" step="0.1" value="1">
+        </div>
+        <div class="control">
+          <label>Die temp: <span class="readout" id="tempRead">45 °C</span></label>
+          <input id="temp" type="range" min="25" max="180" step="1" value="45">
+        </div>
+      </div>
+
+      <div class="protect-grid">
+        <div class="protect on" data-id="revpol">
+          <div class="name">Reverse-polarity<div class="toggle"></div></div>
+          <div class="desc">P-MOSFET ideal diode. Blocks if V_in&lt;0.</div>
+        </div>
+        <div class="protect" data-id="ovp">
+          <div class="name">OVP<div class="toggle"></div></div>
+          <div class="desc">Comparator + cutoff FET if V_in &gt; 6V.</div>
+        </div>
+        <div class="protect" data-id="uvlo">
+          <div class="name">UVLO<div class="toggle"></div></div>
+          <div class="desc">Disable if V_in &lt; 4V (cannot regulate).</div>
+        </div>
+        <div class="protect" data-id="ocp">
+          <div class="name">OCP<div class="toggle"></div></div>
+          <div class="desc">R_sense+amp. Trip if I &gt; 3A.</div>
+        </div>
+        <div class="protect" data-id="tsd">
+          <div class="name">Thermal shutdown<div class="toggle"></div></div>
+          <div class="desc">Disable above 150°C, re-enable at 130°C.</div>
+        </div>
+      </div>
+
+      <div class="out-status ok" id="outStatus">Output OK — V_out = 5.0V</div>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>CC phase delivers most of the energy</b> — typically 60–80% of capacity is bulked in during CC. The CV phase only adds the last 20–40% but takes nearly as long, because the cell internal resistance limits how fast it can absorb at fixed voltage.</li>
+    <li><b>0.5–1C is the sweet spot</b> — slower (0.1C) is gentle on the cell, faster (2C) heats it. Above 1C, expect noticeable capacity fade over hundreds of cycles. Modern fast-charge Li-Po cells are rated to 3–5C, but it's a wear-life tradeoff.</li>
+    <li><b>Termination matters</b> — keeping CV indefinitely "tops up" the cell but accelerates aging. Most chargers terminate at I &lt; C/10 (e.g., 100 mA for a 1000 mAh cell), then stop. Some restart top-off if V drops below ~4.05 V.</li>
+    <li><b>P-MOSFET reverse polarity beats Schottky</b> — a Schottky diode drops 0.4 V at 1 A = 0.4 W loss. A P-FET drops I·R_DSON = 20 mV at 1 A = 20 mW. The body diode provides the initial path; once V_in is positive, V_GS = -V_in turns the channel fully on.</li>
+    <li><b>OCP requires hysteresis</b> — naive comparator OCP will oscillate at the threshold. Real OCP latches off and requires a fault-clear (cycle V_in, or recover after timer).</li>
+    <li><b>UVLO ≠ over-discharge protection</b> — UVLO disables the converter when V_in is too low to regulate. To protect the <i>battery</i> from over-discharge, use a separate cell-voltage monitor IC (e.g., DW01A for 1S, BQ7693 for multi-cell packs).</li>
+    <li><b>Thermal shutdown is last-resort</b> — by the time the IC hits 150 °C, the PCB is hot, components are stressed, and the user notices. Design for the heat first: copper area, thermal vias, ambient margins. TSD should fire only on unexpected faults.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE — LiPo cell</h3>
+      <dl>
+        <dt>V_max</dt><dd>4.20 V</dd>
+        <dt>V_nom</dt><dd>3.7 V</dd>
+        <dt>V_min</dt><dd>3.0 V</dd>
+        <dt>CC rate</dt><dd>0.5–1C until 4.20 V</dd>
+        <dt>CV end</dt><dd>I tapers to C/10</dd>
+        <dt>Precond</dt><dd>0.1C if cell &lt; 3.0 V</dd>
+      </dl>
+    </div>
+    <div class="cheat-card">
+      <h3>DECISION — charger IC</h3>
+      <table>
+        <tr><th>IC</th><th>Use</th></tr>
+        <tr><td>TP4056</td><td>1S LiPo, USB input</td></tr>
+        <tr><td>BQ24074</td><td>1S, power-path mgmt</td></tr>
+        <tr><td>BQ25895</td><td>Multi-cell, fast charge</td></tr>
+      </table>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Reverse-biased tantalum</b> — instant short; tantalums fail unforgivingly under reverse polarity.</li>
+        <li><b>Fuse sized too tight</b> — PPTC rating = 125–150% of max load, else nuisance trips on inrush.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 6 — Power Electronics</a> ·
+    Topic: Battery Charging &amp; Protection
+  </footer>
+</main>
+<script>
+  // ============= PANEL A: CC/CV =============
+  const ichgEl=document.getElementById('ichg');
+  const capEl=document.getElementById('cap');
+  const vstartEl=document.getElementById('vstart');
+
+  function ccvUpdate(){
+    const I=parseFloat(ichgEl.value); // A
+    const Q=parseFloat(capEl.value)/1000; // Ah
+    const Vs=parseFloat(vstartEl.value);
+    const Vmax=4.20, Vmin=3.0;
+    const Iterm = Q*0.1; // C/10 in A
+
+    document.getElementById('ichgRead').textContent=I.toFixed(2)+' A';
+    document.getElementById('capRead').textContent=(Q*1000).toFixed(0)+' mAh';
+    document.getElementById('vstartRead').textContent=Vs.toFixed(2)+' V';
+
+    // Phase 1 (CC): V rises from Vs to Vmax at constant I; time = (Vmax-Vs)/slope ≈ proportional
+    // Simplified: assume CC delivers ~70% of capacity, time_cc = 0.7*Q/I hours
+    const t_cc = 0.7*Q/I; // hours
+    // CV phase: I drops exponentially from I to I_term with tau ~ Q*0.3/I_avg, time ~ 0.5h typical
+    const t_cv = 0.4*Q/I; // simplified
+    const t_total = t_cc + t_cv;
+
+    document.getElementById('statC').textContent=(I/Q).toFixed(2)+'C';
+    document.getElementById('statTerm').textContent=(Iterm*1000).toFixed(0)+' mA';
+    document.getElementById('statCC').textContent=(t_cc*60).toFixed(0)+' min';
+    document.getElementById('statTotal').textContent=(t_total*60).toFixed(0)+' min';
+
+    // Build traces. x: 50..430 = t=0..t_total
+    const xL=50,xR=430,xRange=xR-xL;
+    const yV = v => 30 + ((4.30-v)/1.30)*240; // 4.30V at top (y=30), 3.00V at bottom (y=270)
+    const yI = i => 30 + ((I*1.1 - i)/(I*1.1))*240; // 0 = bottom
+
+    // V trace: rises linearly during CC then stays at Vmax during CV
+    const t_cc_norm = t_cc/t_total;
+    const xCC = xL + t_cc_norm*xRange;
+
+    const vPts = [];
+    const N = 60;
+    for(let k=0;k<=N;k++){
+      const tn = k/N;
+      let v;
+      if(tn <= t_cc_norm){
+        v = Vs + (Vmax-Vs) * (tn/t_cc_norm);
+      } else {
+        v = Vmax;
+      }
+      vPts.push(`${xL+tn*xRange},${yV(v)}`);
+    }
+    document.getElementById('vTrace').setAttribute('points', vPts.join(' '));
+
+    // I trace: flat at I during CC then exponentially decay during CV to Iterm
+    const iPts = [];
+    for(let k=0;k<=N;k++){
+      const tn = k/N;
+      let i;
+      if(tn <= t_cc_norm){
+        i = I;
+      } else {
+        const tau = (tn - t_cc_norm)/(1-t_cc_norm); // 0..1 across CV
+        i = I * Math.exp(-3*tau) + Iterm*0.5; // decay
+      }
+      iPts.push(`${xL+tn*xRange},${yI(i)}`);
+    }
+    document.getElementById('iTrace').setAttribute('points', iPts.join(' '));
+
+    // Termination line
+    document.getElementById('termLine').setAttribute('y1', yI(Iterm));
+    document.getElementById('termLine').setAttribute('y2', yI(Iterm));
+
+    // Phase backgrounds
+    document.getElementById('ccBg').setAttribute('width', xCC-xL);
+    document.getElementById('cvBg').setAttribute('x', xCC);
+    document.getElementById('cvBg').setAttribute('width', xR-xCC);
+    document.getElementById('ccLbl').setAttribute('x', (xL+xCC)/2);
+    document.getElementById('cvLbl').setAttribute('x', (xCC+xR)/2);
+    document.getElementById('doneLbl').setAttribute('x', xR-20);
+    document.getElementById('doneLbl').style.display='none';
+  }
+
+  [ichgEl,capEl,vstartEl].forEach(el=>el.addEventListener('input',ccvUpdate));
+
+  // Animate live dot
+  let animT=0;
+  let animPlaying=true;
+  document.getElementById('playBtn').addEventListener('click',()=>{animT=0;animPlaying=true});
+  setInterval(()=>{
+    if(!animPlaying) return;
+    animT += 0.005;
+    if(animT > 1){ animT=1; animPlaying=false; }
+    const I=parseFloat(ichgEl.value);
+    const Q=parseFloat(capEl.value)/1000;
+    const Vs=parseFloat(vstartEl.value);
+    const Vmax=4.20;
+    const Iterm=Q*0.1;
+    const t_cc=0.7*Q/I;
+    const t_cv=0.4*Q/I;
+    const t_total=t_cc+t_cv;
+    const t_cc_norm=t_cc/t_total;
+
+    const xL=50,xR=430,xRange=xR-xL;
+    const yV = v => 30 + ((4.30-v)/1.30)*240;
+    let v,phase;
+    if(animT <= t_cc_norm){
+      v = Vs + (Vmax-Vs)*(animT/t_cc_norm);
+      phase='CC';
+    } else {
+      v = Vmax;
+      phase='CV';
+    }
+    document.getElementById('liveDot').setAttribute('cx', xL + animT*xRange);
+    document.getElementById('liveDot').setAttribute('cy', yV(v));
+    document.getElementById('statPhase').textContent = animT>=0.99 ? 'DONE' : phase;
+  }, 50);
+
+  ccvUpdate();
+
+  // ============= PANEL B: PROTECTION =============
+  const vinpEl=document.getElementById('vinp');
+  const ilpEl=document.getElementById('ilp');
+  const tempEl=document.getElementById('temp');
+  const protects = {revpol:true, ovp:false, uvlo:false, ocp:false, tsd:false};
+
+  document.querySelectorAll('.protect').forEach(p=>{
+    p.addEventListener('click',()=>{
+      const id=p.dataset.id;
+      protects[id]=!protects[id];
+      p.classList.toggle('on', protects[id]);
+      protectUpdate();
+    });
+  });
+
+  function protectUpdate(){
+    const Vin=parseFloat(vinpEl.value);
+    const Il=parseFloat(ilpEl.value);
+    const T=parseFloat(tempEl.value);
+
+    document.getElementById('vinpRead').textContent=Vin.toFixed(1)+' V';
+    document.getElementById('ilpRead').textContent=Il.toFixed(1)+' A';
+    document.getElementById('tempRead').textContent=T+' °C';
+
+    let faults=[];
+    let Vout=Vin>=0 ? Math.min(Vin, 5.0) : 0;
+
+    if(protects.revpol && Vin < 0){
+      faults.push('reverse polarity');
+      Vout=0;
+    } else if(!protects.revpol && Vin<0){
+      // no protection: damage indicated by red text
+      Vout=Vin; // back-current would damage
+      faults.push('NO REVPOL — reverse current flows!');
+    }
+
+    if(protects.ovp && Vin>6){
+      faults.push(`OVP tripped at ${Vin}V`);
+      Vout=0;
+    } else if(!protects.ovp && Vin>6){
+      Vout=Math.min(Vin,5); // converter survives but downstream might not
+      faults.push('NO OVP — downstream stressed');
+    }
+
+    if(protects.uvlo && Vin>=0 && Vin<4){
+      faults.push(`UVLO active V_in=${Vin}V`);
+      Vout=0;
+    }
+
+    if(protects.ocp && Il>3){
+      faults.push(`OCP tripped I=${Il}A`);
+      Vout=0;
+    } else if(!protects.ocp && Il>3){
+      faults.push('NO OCP — current unlimited');
+    }
+
+    if(protects.tsd && T>=150){
+      faults.push(`TSD active T=${T}°C`);
+      Vout=0;
+    } else if(!protects.tsd && T>=150){
+      faults.push('NO TSD — die degrading');
+    }
+
+    // Visual feedback
+    document.getElementById('gRevpol').setAttribute('opacity', protects.revpol?'1':'0.3');
+    document.getElementById('gOvp').setAttribute('opacity', protects.ovp?'1':'0.3');
+    document.getElementById('gUvlo').setAttribute('opacity', protects.uvlo?'1':'0.3');
+    document.getElementById('gOcp').setAttribute('opacity', protects.ocp?'1':'0.3');
+    document.getElementById('gTherm').setAttribute('opacity', protects.tsd?'1':'0.3');
+    document.getElementById('faultBolt').setAttribute('opacity', faults.length>0?'1':'0');
+
+    document.getElementById('outAnnot').textContent = Vout.toFixed(2)+'V';
+    const status=document.getElementById('outStatus');
+    if(faults.length===0){
+      status.className='out-status ok';
+      status.textContent=`Output OK — V_out = ${Vout.toFixed(2)} V at ${Il.toFixed(1)} A, T=${T}°C`;
+    } else {
+      status.className='out-status fault';
+      status.textContent='Faults: '+faults.join(' · ');
+    }
+  }
+
+  [vinpEl,ilpEl,tempEl].forEach(el=>el.addEventListener('input',protectUpdate));
+  protectUpdate();
+</script>
+</body>
+</html>

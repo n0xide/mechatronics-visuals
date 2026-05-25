@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ISR vs Task — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px}
+  .legend .swatch{display:inline-block;width:14px;height:10px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px;margin:12px 0}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px;padding:10px 12px}
+  .stat .lbl{font:11px ui-monospace,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.05em}
+  .stat .val{font:600 16px ui-monospace,monospace;color:var(--accent);margin-top:4px}
+  pre.code{background:#0a0d12;border:1px solid var(--line);border-radius:6px;
+    padding:10px 12px;font:12px/1.5 ui-monospace,Menlo,monospace;color:var(--fg);
+    overflow:auto;margin:10px 0}
+  .key{color:var(--accent)} .str{color:var(--accent3)} .com{color:var(--fg-dim)}
+  .num{color:var(--accent2)} .bad{color:var(--warn)}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+  @media(max-width:720px){.two-col{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+  <h1>ISR vs Task — context, rules, latency budget</h1>
+  <p class="lede">Interrupts and tasks live in different worlds. ISRs are short, non-blocking, and run at hardware priority. Tasks do the heavy lifting. The bridge between them is a semaphore or queue.</p>
+
+  <p>An <b>ISR</b> (interrupt service routine) runs in hardware interrupt context: the CPU saves the current register state, jumps to the handler, runs it, and returns — all while the RTOS scheduler is locked out. ISRs cannot block (no <code>vTaskDelay</code>, no mutex take, no malloc), cannot use the full FreeRTOS API (only <code>...FromISR</code> variants), and should be <i>short</i> — measured in microseconds, not milliseconds. The pattern is <b>deferred work</b>: ISR grabs the hardware data, signals a task via <code>xSemaphoreGiveFromISR</code>, and returns. The task does the heavy processing (filter, log, parse). <b>Latency budget</b> for a hard-real-time path is the sum of: interrupt entry latency (CPU saves context, ~12 cycles on Cortex-M4), ISR body, exit latency, RTOS context switch (~30 cycles), and the task's processing time. For the arm's 10 kHz current loop, the entire path must finish in &lt;100 µs — and it's usually run <i>inside</i> the ISR with no deferred task, because the deferred-work overhead would blow the budget.</p>
+
+  <section class="controls">
+    <div class="control">
+      <label>CPU clock (MHz): <span class="readout" id="clkRead">168</span></label>
+      <input id="clk" type="range" min="48" max="600" step="4" value="168">
+    </div>
+    <div class="control">
+      <label>ISR body (cycles): <span class="readout" id="isrRead">80</span></label>
+      <input id="isr" type="range" min="20" max="500" step="10" value="80">
+    </div>
+    <div class="control">
+      <label>Task body (µs): <span class="readout" id="tskRead">15</span></label>
+      <input id="tsk" type="range" min="1" max="100" step="1" value="15">
+    </div>
+    <div class="control">
+      <label>Target deadline (µs): <span class="readout" id="ddRead">100</span></label>
+      <input id="dd" type="range" min="20" max="500" step="10" value="100">
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3>Latency-budget waterfall — ADC EOC interrupt → process sample</h3>
+    <svg id="waterfall" viewBox="0 0 920 280"></svg>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--fg-dim)"></span>Other task running</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>ISR entry latency (~12 cyc)</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>ISR body</span>
+      <span><span class="swatch" style="background:var(--warn)"></span>ISR exit latency</span>
+      <span><span class="swatch" style="background:var(--accent)"></span>RTOS context switch (~30 cyc)</span>
+      <span><span class="swatch" style="background:var(--accent3)"></span>Task body (filter/process)</span>
+    </div>
+  </div>
+
+  <div class="figure">
+    <h3>Numbers</h3>
+    <div class="stat-grid">
+      <div class="stat"><div class="lbl">Cycle time</div><div class="val" id="cyclet">—</div></div>
+      <div class="stat"><div class="lbl">ISR entry latency</div><div class="val" id="entL">—</div></div>
+      <div class="stat"><div class="lbl">ISR body</div><div class="val" id="isrB">—</div></div>
+      <div class="stat"><div class="lbl">ISR exit + switch</div><div class="val" id="exitL">—</div></div>
+      <div class="stat"><div class="lbl">Task body</div><div class="val" id="tskB">—</div></div>
+      <div class="stat"><div class="lbl">Total end-to-end</div><div class="val" id="totL">—</div></div>
+      <div class="stat"><div class="lbl">Within deadline?</div><div class="val" id="meets">—</div></div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <h3>ISR — correct: short, signal, return</h3>
+      <pre class="code"><span class="key">void</span> ADC_IRQHandler(<span class="key">void</span>) {
+  uint16_t s = ADC1-&gt;DR;          <span class="com">// read DR clears flag</span>
+  latest_sample = s;              <span class="com">// volatile, atomic 16-bit</span>
+  BaseType_t woken = pdFALSE;
+  xSemaphoreGiveFromISR(sem, &amp;woken);
+  portYIELD_FROM_ISR(woken);
+}</pre>
+      <p style="color:var(--accent3);font-size:12px">~80 cycles. Deterministic. Composable.</p>
+    </div>
+    <div>
+      <h3>ISR — wrong: long, blocking, dangerous</h3>
+      <pre class="code"><span class="key">void</span> ADC_IRQHandler(<span class="key">void</span>) {
+  uint16_t s = ADC1-&gt;DR;
+  <span class="bad">printf("sample: %u\n", s);</span>      <span class="com">// blocks on UART</span>
+  <span class="bad">float f = (float)s * scale;</span>     <span class="com">// FPU not saved → corrupt</span>
+  <span class="bad">xQueueSend(q, &amp;f, 100);</span>         <span class="com">// blocking call illegal</span>
+  <span class="bad">xSemaphoreTake(mx, 0);</span>           <span class="com">// mutex from ISR — undefined</span>
+}</pre>
+      <p style="color:var(--warn);font-size:12px">Hangs the system, corrupts FPU state, will pass the bench, fail in field.</p>
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Entry/exit latency is fixed by the chip</b> — Cortex-M4 lazy-stacking pushes 8 registers (~12 cycles entry, ~10 exit). At 168 MHz that's ~70 ns each way. You can't optimize this.</li>
+    <li><b>ISR body should be measured in dozens of cycles</b> — read peripheral, set flag/post sem, return. Anything iterative or floating belongs in a task.</li>
+    <li><b>Context switch only happens if you yield</b> — <code>portYIELD_FROM_ISR(woken)</code> is the conditional switch. Without it, the high-priority task you just woke waits until the current task yields anyway.</li>
+    <li><b>For the arm's 10 kHz loop</b> — slide CPU to 168 MHz, deadline to 100 µs. Even with conservative 80-cycle ISR + 15 µs task body, you have ~80 µs of headroom. That's why ARM Cortex-M4 at 168 MHz is the floor for FOC; M0+ at 48 MHz would miss.</li>
+    <li><b>"Deferred work" pattern is the standard</b> — ISR: 1) grab data 2) signal 3) return. Task: 1) take sem 2) do real work 3) loop. Decouples interrupt rate from task complexity.</li>
+    <li><b>NVIC priority levels are inverted</b> — on Cortex-M, lower number = higher priority. <code>configMAX_SYSCALL_INTERRUPT_PRIORITY</code> sets the boundary: any interrupt calling FreeRTOS API must have priority numerically ≥ this value. Priorities lower than the boundary (higher actual priority) cannot use FreeRTOS API but also cannot be preempted by it — useful for emergency-stop interrupts.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>LATENCY BUDGET</h3>
+      <dl>
+        <dt>Total</dt>
+        <dd><span class="eq">L = t_entry + t_isr + t_exit + t_switch + t_task</span></dd>
+        <dt>Cortex-M4 entry/exit</dt>
+        <dd><span class="eq">~12 cyc + ~10 cyc</span>
+          <span class="eq-note">lazy FPU stacking adds ~17 cyc if FPU used</span></dd>
+        <dt>FreeRTOS switch</dt>
+        <dd><span class="eq">~30 cyc on M4 @ 168 MHz ≈ 180 ns</span></dd>
+        <dt>Cycle time</dt>
+        <dd><span class="eq">t_cyc = 1 / f_clk</span>
+          <span class="eq-note">168 MHz → 5.95 ns/cycle</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>ISR RULES (memorize)</h3>
+      <ul>
+        <li><b>No blocking</b> — no vTaskDelay, no Take (with timeout &gt; 0).</li>
+        <li><b>No malloc</b> — pvPortMalloc uses a critical section; double fault risk.</li>
+        <li><b>No printf</b> — blocks on UART, calls malloc, format machinery is huge.</li>
+        <li><b>Use ...FromISR variants only</b>.</li>
+        <li><b>portYIELD_FROM_ISR(woken)</b> at the end if you signaled a task.</li>
+        <li><b>Mark shared vars volatile</b>.</li>
+        <li><b>Priority &gt; configMAX_SYSCALL_INTERRUPT_PRIORITY</b> (numerically less than) cannot use FreeRTOS API.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>BUGS THAT BITE</h3>
+      <ul>
+        <li><b>Forgot volatile</b> — compiler caches in register; ISR write never seen.</li>
+        <li><b>Multi-byte non-atomic read</b> — read uint32 mid-update → torn value.</li>
+        <li><b>Forgot portYIELD_FROM_ISR</b> — high-priority task wakes but waits.</li>
+        <li><b>FPU use in ISR without enabling lazy stacking</b> — corrupts caller's FPU regs.</li>
+        <li><b>Long ISR holds off other interrupts</b> — IMU sample missed, UART byte lost.</li>
+        <li><b>NVIC priority set above configMAX</b> — silent illegal-API at runtime.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 5 — Real-Time Firmware</a> ·
+    Topic: ISR vs Task — rules and latency budget
+  </footer>
+</main>
+<script>
+  const clkEl=document.getElementById('clk');
+  const isrEl=document.getElementById('isr');
+  const tskEl=document.getElementById('tsk');
+  const ddEl =document.getElementById('dd');
+
+  function update(){
+    const fMHz = parseFloat(clkEl.value);
+    const isrCyc = parseFloat(isrEl.value);
+    const tskUs = parseFloat(tskEl.value);
+    const ddUs = parseFloat(ddEl.value);
+    document.getElementById('clkRead').textContent=fMHz;
+    document.getElementById('isrRead').textContent=isrCyc;
+    document.getElementById('tskRead').textContent=tskUs;
+    document.getElementById('ddRead').textContent=ddUs;
+
+    const cycNs = 1000/fMHz; // ns per cycle
+    const entryNs = 12 * cycNs;
+    const exitNs  = 10 * cycNs;
+    const switchNs= 30 * cycNs;
+    const isrNs   = isrCyc * cycNs;
+    const tskNs   = tskUs * 1000;
+    const totalNs = entryNs + isrNs + exitNs + switchNs + tskNs;
+    const ddNs = ddUs * 1000;
+
+    document.getElementById('cyclet').textContent = cycNs.toFixed(2)+' ns';
+    document.getElementById('entL').textContent = entryNs.toFixed(0)+' ns';
+    document.getElementById('isrB').textContent = isrNs.toFixed(0)+' ns';
+    document.getElementById('exitL').textContent = (exitNs+switchNs).toFixed(0)+' ns';
+    document.getElementById('tskB').textContent = (tskNs/1000).toFixed(1)+' µs';
+    document.getElementById('totL').textContent = (totalNs/1000).toFixed(2)+' µs';
+    const meetsEl = document.getElementById('meets');
+    if(totalNs<=ddNs){
+      meetsEl.textContent = 'YES (+'+((ddNs-totalNs)/1000).toFixed(1)+' µs slack)';
+      meetsEl.style.color = 'var(--accent3)';
+    } else {
+      meetsEl.textContent = 'NO (over by '+((totalNs-ddNs)/1000).toFixed(1)+' µs)';
+      meetsEl.style.color = 'var(--warn)';
+    }
+
+    // ---- Waterfall SVG ----
+    const svg = document.getElementById('waterfall');
+    const W=920;
+    const padL=80, padR=20;
+    const innerW = W - padL - padR;
+    // x scale uses max(total, deadline) for context
+    const maxNs = Math.max(totalNs*1.1, ddNs*1.05, totalNs+1000);
+    const x = ns => padL + (ns/maxNs)*innerW;
+
+    let html='';
+    html += `<text x="${W/2}" y="20" text-anchor="middle" fill="#fff" font-family="ui-monospace,monospace" font-size="13" font-weight="bold">Interrupt latency waterfall (1 division ≈ ${(maxNs/10/1000).toFixed(1)} µs)</text>`;
+
+    // x grid
+    for(let i=0;i<=10;i++){
+      const xc = padL + (i/10)*innerW;
+      const ns = (i/10)*maxNs;
+      html += `<line x1="${xc}" y1="50" x2="${xc}" y2="210" stroke="#222831"/>`;
+      html += `<text x="${xc}" y="226" text-anchor="middle" class="axis-label">${(ns/1000).toFixed(1)}</text>`;
+    }
+    html += `<text x="${W/2}" y="244" text-anchor="middle" class="axis-label">time (µs after interrupt fires)</text>`;
+
+    // segments
+    const segs = [
+      {t0:0, dur:entryNs, label:'entry', color:'#ff7b72'},
+      {t0:entryNs, dur:isrNs, label:'ISR body', color:'#ffb86c'},
+      {t0:entryNs+isrNs, dur:exitNs, label:'exit', color:'#ff7b72'},
+      {t0:entryNs+isrNs+exitNs, dur:switchNs, label:'switch', color:'#5ec8ff'},
+      {t0:entryNs+isrNs+exitNs+switchNs, dur:tskNs, label:'task body', color:'#a3e635'},
+    ];
+    const rowY=120, rowH=50;
+    html += `<rect x="${padL}" y="${rowY}" width="${innerW}" height="${rowH}" fill="#0e1116" stroke="#2a313c"/>`;
+    segs.forEach(s=>{
+      const xc0 = x(s.t0), xc1 = x(s.t0+s.dur);
+      const w = Math.max(xc1-xc0, 1);
+      html += `<rect x="${xc0}" y="${rowY+2}" width="${w}" height="${rowH-4}" fill="${s.color}" opacity="0.9"/>`;
+      if(w>40){
+        html += `<text x="${xc0+w/2}" y="${rowY+rowH/2+5}" text-anchor="middle" fill="#0e1116" font-family="ui-monospace,monospace" font-size="10" font-weight="bold">${s.label}</text>`;
+      }
+    });
+
+    // interrupt arrow
+    const xInt = x(0);
+    html += `<line x1="${xInt}" y1="80" x2="${xInt}" y2="120" stroke="#ff7b72" stroke-width="2" marker-end="url(#wfArr)"/>`;
+    html += `<defs><marker id="wfArr" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><polygon points="0 0,8 4,0 8" fill="#ff7b72"/></marker></defs>`;
+    html += `<text x="${xInt+4}" y="76" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="11" font-weight="bold">IRQ fires</text>`;
+
+    // deadline marker
+    const xDd = x(ddNs);
+    html += `<line x1="${xDd}" y1="60" x2="${xDd}" y2="210" stroke="#ff7b72" stroke-dasharray="4,3"/>`;
+    html += `<text x="${xDd}" y="56" text-anchor="middle" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="11" font-weight="bold">deadline ${ddUs} µs</text>`;
+
+    // total marker
+    const xTot = x(totalNs);
+    const within = totalNs<=ddNs;
+    html += `<line x1="${xTot}" y1="120" x2="${xTot}" y2="${rowY+rowH+30}" stroke="${within?'#a3e635':'#ff7b72'}" stroke-width="2"/>`;
+    html += `<text x="${xTot}" y="${rowY+rowH+45}" text-anchor="middle" fill="${within?'#a3e635':'#ff7b72'}" font-family="ui-monospace,monospace" font-size="11" font-weight="bold">finished @ ${(totalNs/1000).toFixed(2)} µs</text>`;
+
+    svg.innerHTML = html;
+  }
+  [clkEl,isrEl,tskEl,ddEl].forEach(el=>el.addEventListener('input',update));
+  update();
+</script>
+</body>
+</html>
