@@ -120,3 +120,9 @@ artefacts; the curriculum itself is the author's personal study material.
 These visuals are generated from a personal study workspace at path
 `mechatronics/study/docs/`. The bundle here is the published-static form;
 the workspace is where new visuals get added before being re-exported here.
+
+## Maintaining / contributing
+
+See [`MAINTAINING.md`](MAINTAINING.md) for the round-trip workflow (edit
+source first, mirror to bundle, push), the integrity checklist run before
+every push, and the rules for adding new visuals / disciplines.
