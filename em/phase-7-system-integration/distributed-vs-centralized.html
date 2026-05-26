@@ -182,6 +182,24 @@
     <li><b>Hybrid is real</b> — many real robots: one host (Pi/Jetson) + smart motor controllers (ODrive, Moteus) per joint. ODrive already does FOC, so you talk to it over CAN at the velocity-loop tier. This is distributed at the joint level + centralized at the planning tier.</li>
   </ul>
 
+  <h2>Worked example — picking architecture for arm-6dof-pa612 (6 joints + gripper)</h2>
+  <div style="background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0">
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Constraints</h3>
+    <p>6 joints + 1 gripper = 7 motor channels. Each needs 20 kHz current loop + 1 kHz position loop. Cable runs through the arm (up to 2 m). Industrial standard: must continue to operate if any single component fails.</p>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Architecture A: centralized (one fast MCU)</h3>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">CPU: 7 FOC loops × 20 kHz × 25 µs each = 3.5 ms / period (way over 50 µs budget!)</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Even on Cortex-M7 @ 400 MHz with parallel ADC: 7 loops × 5 µs = 35 µs (just barely fits)</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Wiring: 6 × 3-phase + 7 encoders + 7 brake = ~40 wires through entire arm. Bulky and fault-intolerant.</div>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Architecture B: distributed (one MCU per joint)</h3>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">CPU per joint: 1 FOC × 20 kHz × 20 µs = 0.4 ms/period (8% CPU, comfortable margin)</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Wiring: CAN-FD twisted pair + power = 4 wires through arm. Cleaner, easier to repair.</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Bus load at 1 kHz position commands: 7 × 16 bytes × 1 kHz × 8 = 896 kbps over 5 Mbps CAN-FD = 18% load ✓</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Cost: 7 × $15 STM32G474 = $105 for MCUs vs one $40 STM32H750. Distributed costs more in BOM but lower wiring + repair costs.</div>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Decision</h3>
+    <p>arm-6dof-pa612 picks distributed (Architecture B). 7 wire pairs through joint = mechanically simpler; one MCU failure isolates to one joint, not the whole arm; CAN-FD bus load comfortable; each driver is independently testable. Industrial robots (KUKA, UR, ABB) all use distributed for the same reasons.</p>
+    <p><b>Counterexample</b>: a SCARA arm with only 3 joints + tightly-coupled trajectory generation might prefer centralized — simpler, cheaper, and the 3-joint compute easily fits one MCU.</p>
+  </div>
+
   <h2>Cheat sheet</h2>
   <section class="cheatsheet">
     <div class="cheat-card">

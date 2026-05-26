@@ -176,6 +176,28 @@
     <li><b>EDF is optimal but tricky</b> — Earliest-Deadline-First can hit 100% utilization. But priority changes at runtime, harder to debug, less common in safety-critical embedded. Fixed-priority RMS dominates the field for a reason.</li>
   </ul>
 
+  <h2>Worked example — robot-arm joint controller with 3 tasks</h2>
+  <div style="background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0">
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">The tasks</h3>
+    <table style="font-size:12px">
+    <tr><th>Task</th><th>Period T (ms)</th><th>Exec C (ms)</th><th>Utilization U = C/T</th><th>Deadline type</th></tr>
+    <tr><td>Current loop</td><td class="num">0.1 (10 kHz)</td><td class="num">0.03</td><td class="num">30 %</td><td>HARD</td></tr>
+    <tr><td>Position loop</td><td class="num">1.0 (1 kHz)</td><td class="num">0.20</td><td class="num">20 %</td><td>HARD</td></tr>
+    <tr><td>Comms (CAN-FD)</td><td class="num">10 (100 Hz)</td><td class="num">1.5</td><td class="num">15 %</td><td>FIRM</td></tr>
+    <tr><td colspan="3"><b>Total U_sum</b></td><td class="num"><b>65 %</b></td><td>↓</td></tr>
+    </table>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Liu-Layland test</h3>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">LL bound for N=3: 3·(2^(1/3) − 1) = 3·0.2599 = 0.779 = 77.9%</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">U_sum = 65% &lt; 77.9% → <b style="color:var(--accent3)">schedulable under Rate-Monotonic ✓</b></div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">RMS assignment: shortest period → highest priority. Current loop gets prio 0 (highest), position loop prio 1, comms prio 2.</div>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Response-time analysis (tighter than LL)</h3>
+    <p>Current loop (highest prio): no preemption, response = exec = 0.03 ms ≪ 0.1 ms deadline ✓</p>
+    <p>Position loop: can be preempted by current loop. Worst-case = own exec + 10 × current_exec (10 firings per 1 ms) = 0.20 + 10·0.03 = 0.50 ms &lt; 1.0 ms ✓</p>
+    <p>Comms: preempted by both. R = 1.5 + ⌈10/0.1⌉·0.03 + ⌈10/1⌉·0.20 = 1.5 + 100·0.03 + 10·0.20 = 1.5 + 3.0 + 2.0 = 6.5 ms &lt; 10 ms ✓</p>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">What kills it</h3>
+    <p>Add a 4th task: encoder filtering at 5 kHz (T=0.2 ms, C=0.04 ms, U=20%). New U_sum = 85% &gt; LL bound for N=4 (75.7%). Response-time analysis still says yes (~75% worst-case for position loop) but Liu-Layland fails. Either accept higher analytical risk or drop the encoder filter rate.</p>
+  </div>
+
   <h2>Cheat sheet</h2>
   <section class="cheatsheet">
     <div class="cheat-card formulas">

@@ -174,6 +174,22 @@
     <li><b>Quiescent of <i>everything else</i> matters too.</b> Killing MCU draw to 1&nbsp;&micro;A is pointless if your buck converter has 5&nbsp;mA quiescent. Sleep modes only pay off in tandem with low-Iq regulators and properly powered-down peripherals.</li>
   </ul>
 
+  <h2>Worked example — environmental sensor on a CR2032 button cell</h2>
+  <div style="background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0">
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">The setup</h3>
+    <p>Wireless thermometer wakes once per minute, takes a temperature reading from a SHT40 sensor, transmits 8 bytes over BLE, and sleeps. CR2032 battery: 220 mAh nominal, 200 mAh derated. Target life: ≥ 2 years.</p>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Power budget per cycle (60-second cycle)</h3>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Standby (sleep mode): 1.5 µA × 59.9 s = 90 µA·s per cycle</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Wakeup + sensor read: 5 mA × 100 ms = 500 µA·s</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">BLE advertise + TX: 12 mA × 5 ms = 60 µA·s</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Total per cycle: 90 + 500 + 60 = 650 µA·s</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Average current: 650 / 60 = 10.8 µA</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Battery life: 200,000 / 10.8 ≈ 18,500 hours = 2.1 years ✓</div>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Sensitivity analysis</h3>
+    <p>If we'd used Standby instead of Sleep (slower wake, but lower I_sleep at 0.5 µA): standby = 0.5 µA × 59.9 = 30 µA·s. Average drops to 9.0 µA → battery life = 22,200 h = 2.5 years. Worth it if 1.5 ms extra wake-time is acceptable (we have 5 ms of BLE budget left, so yes).</p>
+    <p>If we'd kept the MCU awake polling (50 µA active idle): 50 µA × 60 s = 3000 µA·s per cycle → 50 µA avg → battery dies in 167 days. <b>5× shorter life by skipping sleep modes</b>. Sleep is mandatory for any sub-mA application.</p>
+  </div>
+
   <h2>Cheat sheet</h2>
   <section class="cheatsheet">
     <div class="cheat-card formulas">

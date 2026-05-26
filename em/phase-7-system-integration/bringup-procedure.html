@@ -131,6 +131,28 @@
     <li><b>Bring-up is bidirectional</b> — when something breaks in production, the same procedure runs in reverse: is the position loop bad? Disable it, test velocity. Bad? Disable it, test current. Etc. Bring-up procedure = diagnostic procedure.</li>
   </ul>
 
+  <h2>Worked example — arm-6dof-pa612 joint controller bring-up</h2>
+  <div style="background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0">
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Step-by-step procedure (after PCB assembly)</h3>
+    <table style="font-size:12px">
+    <tr><th>Step</th><th>Action</th><th>Gate (must pass)</th><th>Common failure</th></tr>
+    <tr><td>1</td><td>Visual + multimeter: short-circuit between rails?</td><td>VBUS-GND &gt; 100 kΩ; 3V3-GND &gt; 50 kΩ</td><td>Solder bridge under BGA → reflow</td></tr>
+    <tr><td>2</td><td>Current-limited PSU at 0.1 A, 24 V. Watch current draw</td><td>≤ 50 mA quiescent (no smoke)</td><td>Reversed cap polarity, wrong-rail load</td></tr>
+    <tr><td>3</td><td>Probe each rail: 24 V → 5 V → 3.3 V → 1.8 V</td><td>All within ±5 % of nominal</td><td>Bad LDO, wrong feedback divider</td></tr>
+    <tr><td>4</td><td>Flash empty firmware, blink LED</td><td>LED blinks at 1 Hz (proves clock, GPIO, flash)</td><td>Wrong crystal load caps; BOOT pin float</td></tr>
+    <tr><td>5</td><td>Read encoder: spin shaft by hand, log raw counts</td><td>Counts increment smoothly, no missed ticks at any angle</td><td>Z-pulse alignment off; SPI mode wrong</td></tr>
+    <tr><td>6</td><td>Apply fixed PWM (open-loop) to one phase, watch rotor cog</td><td>Rotor cogs to a known electrical position</td><td>Wrong phase order; FET gate not driven</td></tr>
+    <tr><td>7</td><td>Six-step block commutation, open-loop velocity</td><td>Rotor spins smoothly, ~no audible cogging</td><td>BEMF zero-cross timing off; dead-time too long</td></tr>
+    <tr><td>8</td><td>Close current loop (Iq command from console)</td><td>Step Iq → measured Iq settles in &lt;5 ms, no oscillation</td><td>Kp_i too high; ADC sample point wrong</td></tr>
+    <tr><td>9</td><td>Close velocity loop, command 100 RPM</td><td>Velocity tracks ±2 % steady-state</td><td>Velocity estimation noise; Ki_v windup</td></tr>
+    <tr><td>10</td><td>Close position loop, command 90° step</td><td>Position settles in &lt;200 ms with &lt;1% overshoot</td><td>Encoder counts/rev wrong; gear ratio mis-set</td></tr>
+    <tr><td>11</td><td>Run CAN-FD on bench harness, send commands from host</td><td>Acks every command, no error frames</td><td>Termination missing; baud mismatch</td></tr>
+    <tr><td>12</td><td>Integrate to arm chassis, repeat steps 8-11 with cable run</td><td>Same behavior as on bench</td><td>EMI on bus from motor PWM; ground loop</td></tr>
+    </table>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">When a step fails</h3>
+    <p>Do not skip ahead. The arm-6dof-pa612 spec sheet has each gate's expected scope/multimeter reading; deviations indicate the specific failure mode. Logbook every reading — when production units fail later, the bench-baseline is the comparison.</p>
+  </div>
+
   <h2>Cheat sheet</h2>
   <section class="cheatsheet">
     <div class="cheat-card memorize">

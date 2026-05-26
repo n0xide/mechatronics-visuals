@@ -189,6 +189,32 @@
     <li><b>Always leave headroom</b> — never plan for 95% loop utilization. 50–70% is the safety margin for interrupt jitter, branch mispredictions, and the surprise function call that turns into 30 µs.</li>
   </ul>
 
+  <h2>Worked example — current-controlled BLDC with sensor-to-PWM latency</h2>
+  <div style="background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0">
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">The setup</h3>
+    <p>STM32G474 (Cortex-M4F at 170 MHz) driving a 6-FET BLDC at 20 kHz PWM. ADC samples shunt current at PWM midpoint. FOC update + new PWM duty must finish before the next sample.</p>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Latency budget (per 50 µs PWM cycle)</h3>
+    <table style="font-size:12px">
+    <tr><th>Stage</th><th>Time</th><th>Note</th></tr>
+    <tr><td>ADC triple-conversion + DMA</td><td class="num">2.5 µs</td><td>3 phase currents in parallel via Multi-mode ADC</td></tr>
+    <tr><td>DMA transfer complete IRQ → ISR entry</td><td class="num">0.3 µs</td><td>NVIC vector + context save (M4F lazy FPU)</td></tr>
+    <tr><td>Clarke transform (3 → α,β)</td><td class="num">0.4 µs</td><td>3 multiplies on G474 FPU</td></tr>
+    <tr><td>Park transform (α,β → d,q with sin/cos)</td><td class="num">1.2 µs</td><td>CMSIS arm_sin_cos_f32 lookup</td></tr>
+    <tr><td>2× PI loops (Id, Iq)</td><td class="num">1.5 µs</td><td>Per loop: error, integ, sat, output</td></tr>
+    <tr><td>Inverse Park</td><td class="num">0.8 µs</td><td>Same sin/cos cached</td></tr>
+    <tr><td>SVPWM duty calc</td><td class="num">1.8 µs</td><td>Two-phase modulation with min-mid-max</td></tr>
+    <tr><td>Write timer CCRx + buffer mode</td><td class="num">0.3 µs</td><td>3 writes; latch at next update event</td></tr>
+    <tr><td colspan="2"><b>Total measurement→PWM:</b></td><td class="num"><b>8.8 µs</b></td></tr>
+    </table>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">PWM-update delay</h3>
+    <p>New duty takes effect at the next timer update event. With 50 µs period and center-aligned PWM, the new duty applies 25 µs after the ISR finishes → effective control delay = 8.8 µs (ISR) + 25 µs (half PWM period) ≈ <b>34 µs latency</b> from sample to actuation.</p>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Comparison: same loop on a slower MCU</h3>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Cortex-M0+ at 48 MHz, no FPU: ISR time ~50 µs (FPU emulation) → can't even close at 20 kHz. Drop to 10 kHz (100 µs period).</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Cortex-M4F at 100 MHz, FPU: ISR ~15 µs at 20 kHz. Workable with care.</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Cortex-M7 at 400 MHz: ISR ~3 µs; can push PWM to 40 kHz with margin.</div>
+    <p>For modern servo applications, M4F is the floor. M7 / R52 for high-end. Anything M0-class belongs on stepper motors with simpler step/direction control.</p>
+  </div>
+
   <h2>Cheat sheet</h2>
   <section class="cheatsheet">
     <div class="cheat-card formulas">

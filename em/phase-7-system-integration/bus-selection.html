@@ -223,6 +223,25 @@
     <li><b>SPI for sensors, CAN-FD for actuators, Ethernet for the host</b> — common modern split. Each subsystem uses the bus that fits its constraints.</li>
   </ul>
 
+  <h2>Worked example — 6-DOF arm bus split</h2>
+  <div style="background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0">
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">The architecture</h3>
+    <p>Industrial 6-DOF arm with separate joint controllers, an IMU on the end-effector, a force/torque sensor at the wrist, and a Linux host running ROS 2 / MoveIt. Three bus tiers:</p>
+    <table style="font-size:12px">
+    <tr><th>Tier</th><th>Bus</th><th>Why</th><th>Bandwidth</th></tr>
+    <tr><td>Host ↔ controller node</td><td>Gigabit Ethernet (ROS 2 DDS)</td><td>Need MB/s for joint trajectories + images; host has spare CPU</td><td>1 Gbps available, ~10 MB/s used</td></tr>
+    <tr><td>Controller node ↔ 6 joint drivers</td><td>CAN-FD at 1 Mbps arb / 5 Mbps data</td><td>Single twisted pair through robot arm; deterministic priority; 8-byte joint command + 8-byte feedback</td><td>5 Mbps theoretical, ~500 kbps used at 1 kHz update rate</td></tr>
+    <tr><td>Joint driver ↔ motor encoder</td><td>SSI / BiSS-C inside the driver PCB</td><td>Local, point-to-point, deterministic; encoder is a sensor</td><td>10 Mbps to encoder, &lt; 1 µs latency</td></tr>
+    <tr><td>End-effector IMU + F/T → controller</td><td>SPI on the local PCB, then via the joint-driver CAN bus to host</td><td>SPI is fast + low latency; aggregated by joint driver</td><td>10 Mbps SPI local, 200 kbps over CAN</td></tr>
+    </table>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Why this split</h3>
+    <p>The host's CPU + Ethernet are abundant. The wire run inside the arm is precious — only 2 conductors of CAN-FD instead of 8+ for Ethernet. The drivers handle their own encoder loop at &gt; 10 kHz locally (SPI/SSI), then report up at 1 kHz over CAN. The Ethernet host doesn't need to see every encoder sample — only the joint state.</p>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Anti-patterns</h3>
+    <p><b>Don't run Ethernet through robot joints.</b> CAT 5e cable doesn't bend a million times. Bus failures from cable break are 90% of robot maintenance issues.</p>
+    <p><b>Don't use I²C for inter-board communication.</b> I²C tolerates 50 cm at 100 kHz indoors; in a robot arm with EMI from motor PWM, you'll get sporadic data corruption that won't reproduce on the bench. Use differential CAN or RS-485 across joints.</p>
+    <p><b>Don't oversubscribe a single bus.</b> The CAN-FD bus at 65% utilization works fine; at 90% one bad ECU causes cascade failures. Cross-check Liu-Layland-style schedulability with real frame mix.</p>
+  </div>
+
   <h2>Cheat sheet</h2>
   <section class="cheatsheet">
     <div class="cheat-card">
