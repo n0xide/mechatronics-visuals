@@ -117,9 +117,13 @@
   .gv-card .new-badge{position:absolute;top:6px;right:6px;margin:0}
 
   /* VISITED CHECK */
-  .vis .check{display:inline-block;width:10px;color:var(--accent3);font-size:11px;
-    margin-right:4px;opacity:0;transition:opacity 0.15s}
-  .vis.visited .check{opacity:1}
+  .vis .check{display:inline-block;width:14px;color:var(--accent3);font-size:11px;
+    margin-right:4px;opacity:0;transition:all 0.15s;text-align:center;
+    border-radius:2px;cursor:default;flex-shrink:0}
+  .vis.visited .check{opacity:1;cursor:pointer}
+  .vis.visited .check:hover{background:var(--warn);color:#000;opacity:1}
+  .vis.visited .check:hover::before{content:'✗'}
+  .vis.visited .check:hover .checkmark{display:none}
   .vis.visited .vt{color:var(--fg-dim);text-decoration:line-through;text-decoration-color:rgba(143,153,168,0.3)}
   .vis.visited.active .vt{color:var(--fg-bright);text-decoration:none}
 
@@ -192,7 +196,12 @@
   .ph-vcard.visited:hover{opacity:1}
   .ph-vcard .ph-vt{font:600 13px ui-monospace,Menlo,monospace;color:var(--fg-bright);
     display:block;margin-bottom:4px}
-  .ph-vcard.visited .ph-vt::before{content:'✓ ';color:var(--accent3);font-weight:600}
+  .ph-vcard .ph-check{display:none;color:var(--accent3);margin-right:5px;font-weight:700;
+    padding:0 3px;border-radius:2px;cursor:pointer}
+  .ph-vcard.visited .ph-check{display:inline}
+  .ph-vcard.visited .ph-check:hover{background:var(--warn);color:#000}
+  .ph-vcard.visited .ph-check:hover::before{content:'✗'}
+  .ph-vcard.visited .ph-check:hover .checkmark{display:none}
   .ph-vcard .ph-vd{font-size:11px;color:var(--fg-dim);line-height:1.4}
   .ph-vcard .new-badge{position:absolute;top:6px;right:6px;margin:0}
   .ph-tour-link{background:var(--bg-elev);border:1px solid var(--accent);
@@ -428,8 +437,14 @@
   </table>
   <p style="margin-top:16px;font-size:11px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace">
     URLs are deep-linkable: <code>#em/phase-4-feedback-control/pid-explorer</code> — bookmark or share any visual.<br>
-    Visited visuals show <span style="color:var(--accent3)">✓</span> in the sidebar. Progress bars per phase show your coverage.
-    Visit history persists locally in your browser.
+    Visited visuals show <span style="color:var(--accent3)">✓</span> in the sidebar — click the ✓ to unmark
+    if you opened it by accident. Phase progress bars show your coverage. Visit history persists locally
+    in your browser.
+  </p>
+  <p style="margin-top:12px;text-align:center">
+    <button class="hbtn" onclick="clearAllVisited()" style="background:var(--bg-elev2);border-color:var(--warn);color:var(--warn);padding:6px 12px">
+      Clear all visited markers
+    </button>
   </p>
 </dialog>
 
@@ -785,7 +800,32 @@ function markVisited(path){
 function clearVisited(){
   try { localStorage.removeItem(LS_VISITED); } catch(e) {}
 }
+function unmarkVisited(path){
+  const v = getVisited();
+  v.delete(path);
+  try { localStorage.setItem(LS_VISITED, JSON.stringify([...v])); } catch(e) {}
+  VISITED = v;
+  // Re-render tree so the check disappears + phase progress bar updates
+  renderTree(currentFilter);
+  // If a phase view is open, re-render it
+  const phaseHash = location.hash.match(/^#phase:(\w+):(\d+)$/);
+  if(phaseHash && !document.getElementById('phaseview').classList.contains('hidden')){
+    showPhase(phaseHash[1], parseInt(phaseHash[2]));
+  }
+}
+function clearAllVisited(){
+  if(!confirm('Clear all visited markers? This cannot be undone.')) return;
+  clearVisited();
+  VISITED = getVisited();
+  renderTree(currentFilter);
+  const phaseHash = location.hash.match(/^#phase:(\w+):(\d+)$/);
+  if(phaseHash && !document.getElementById('phaseview').classList.contains('hidden')){
+    showPhase(phaseHash[1], parseInt(phaseHash[2]));
+  }
+}
 let VISITED = getVisited();
+window.unmarkVisited = unmarkVisited; // expose for inline onclick handlers
+window.clearAllVisited = clearAllVisited;
 
 // ============================================================
 // TOUR STATE
@@ -957,9 +997,11 @@ function renderVis(v, filter){
   const id = idFor(v);
   const path = pathFor(v);
   const newBadge = NEW_VISUALS.has(v.f) ? '<span class="new-badge">NEW</span>' : '';
-  const visited = VISITED.has(path) ? ' visited' : '';
+  const isVisited = VISITED.has(path);
+  const visited = isVisited ? ' visited' : '';
+  const checkTitle = isVisited ? 'Click to unmark as visited' : '';
   return `<a class="vis${visited}" data-id="${id}" data-idx="${VISUALS.indexOf(v)}" onclick="loadByPath('${path}');return false" title="${escapeHtml(decodeHtmlEntities(v.x))}">
-    <span class="check">✓</span><span class="vt">${highlight(v.t, filter)}${newBadge}</span>
+    <span class="check" title="${checkTitle}" onclick="event.stopPropagation();event.preventDefault();if(VISITED.has('${path}'))unmarkVisited('${path}');return false"><span class="checkmark">✓</span></span><span class="vt">${highlight(v.t, filter)}${newBadge}</span>
     <span class="vd">${highlight(v.x, filter)}</span>
   </a>`;
 }
@@ -1119,10 +1161,12 @@ function showPhase(disc, p){
   html += `  <div class="ph-visuals-grid">`;
   for(const v of visuals){
     const path = pathFor(v);
-    const visited = VISITED.has(path) ? ' visited' : '';
+    const isVisited = VISITED.has(path);
+    const visited = isVisited ? ' visited' : '';
     const newBadge = NEW_VISUALS.has(v.f) ? '<span class="new-badge">NEW</span>' : '';
+    const checkTitle = isVisited ? 'Click to unmark as visited' : '';
     html += `<a class="ph-vcard${visited}" href="#" onclick="event.preventDefault();loadByPath('${path}')" title="${escapeHtml(decodeHtmlEntities(v.x))}">`;
-    html += `  ${newBadge}<span class="ph-vt">${escapeHtml(decodeHtmlEntities(v.t))}</span>`;
+    html += `  ${newBadge}<span class="ph-vt"><span class="ph-check" title="${checkTitle}" onclick="event.stopPropagation();event.preventDefault();unmarkVisited('${path}');return false"><span class="checkmark">✓</span></span>${escapeHtml(decodeHtmlEntities(v.t))}</span>`;
     html += `  <span class="ph-vd">${escapeHtml(decodeHtmlEntities(v.x))}</span>`;
     html += `</a>`;
   }
