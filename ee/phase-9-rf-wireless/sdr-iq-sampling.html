@@ -90,6 +90,55 @@ footer a{color:var(--accent)}
 <tr><td>USRP X310</td><td>200 MHz</td><td>10 MHz – 6 GHz</td><td>16</td><td>$5000+</td></tr>
 </table>
 
+<h2>Worked example — demodulating a 433 MHz LoRa packet with an RTL-SDR</h2>
+<div style="background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0">
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">The setup</h3>
+<p>A LoRa transmitter sends at 433.92 MHz with 125 kHz bandwidth, SF7. You want to capture and decode the chirps on an RTL-SDR (8-bit ADC, 2.4 MHz max sample rate).</p>
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">The signal chain</h3>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">1. Tune LO to 433.92 MHz (zero-IF) OR 434.42 MHz (low-IF, offset by 500 kHz to dodge DC hump)</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">2. Set fs = 1 MHz (8× oversample for 125 kHz BW; better noise floor than 250 kHz minimum)</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">3. RTL-SDR delivers interleaved 8-bit I,Q,I,Q,... → 2×1 MB/s data rate</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">4. Convert to complex samples: c[n] = (I[n] − 127.5) + j(Q[n] − 127.5) — center on zero</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">5. De-chirp: multiply by exp(−j·2π·k·n²/N) where k is the chirp slope (SF7 → k = 1/2^7)</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">6. FFT each de-chirped symbol (2^SF samples) → peak bin index is the symbol value (0 to 2^SF−1)</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">7. Apply Gray decoding, header parse, FEC decode, dewhiten → packet bytes</div>
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Why I/Q matters here</h3>
+<p>The LoRa chirp <em>direction</em> (up-chirp vs down-chirp) is the key to symbol detection. With real-only samples, you couldn't distinguish an up-chirp at +50 kHz from a down-chirp at +50 kHz (they look identical in magnitude). I/Q's complex rotation direction immediately distinguishes them.</p>
+</div>
+
+<h2>The DC-offset hump (and how to dodge it)</h2>
+<p>Zero-IF receivers suffer two systematic offsets that create a "hump" at DC:</p>
+<ul class="notice">
+<li><b>LO leakage</b> — the receiver's local oscillator at f_LO bleeds through the RF amplifier and into the I/Q mixer. The leaked LO mixes with itself to produce DC. Show up as a tall spike at 0 Hz on the spectrum.</li>
+<li><b>I/Q DC offset</b> — analog imperfections in the I and Q ADC paths produce different DC biases on each channel. The I-Q vector has a non-zero average.</li>
+<li><b>1/f flicker noise</b> — the amplifier and ADC have 1/f noise that piles up near DC.</li>
+</ul>
+<p><b>Three fixes:</b></p>
+<ul class="notice">
+<li><b>Tune off-center (low-IF)</b> — set LO 500 kHz below the signal of interest, then digitally shift to baseband. DC hump is now well clear of the band of interest.</li>
+<li><b>DC blocker filter</b> — single-pole high-pass at ~10 Hz removes static offsets without distorting modulation.</li>
+<li><b>Background measurement</b> — record a "no signal" segment, average the I/Q, subtract from every sample.</li>
+</ul>
+
+<h2>Image rejection — the I/Q imbalance trap</h2>
+<p>Real I/Q paths aren't perfectly matched. Two errors create a ghost image at the mirror frequency:</p>
+<div style="background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)">
+<span style="display:block;margin:4px 0;color:var(--fg)">Gain mismatch: |G_I| ≠ |G_Q|. Define ε = (G_I − G_Q)/(G_I + G_Q).</span>
+<span style="display:block;margin:4px 0;color:var(--fg)">Phase mismatch: LO phases not exactly 90° apart. Define φ = phase error in radians.</span>
+<span style="display:block;margin:4px 0;color:var(--fg)">Image rejection ratio (IRR) ≈ 20·log(2/√(ε² + φ²)) dB</span>
+<span style="display:block;margin:4px 0;color:var(--fg)">With ε = 5 % and φ = 5° = 0.087 rad → IRR ≈ 20·log(2/√(0.0025 + 0.0076)) ≈ 26 dB</span>
+<span style="display:block;margin:4px 0;color:var(--fg)">Calibrated SDRs (USRP) achieve 60–80 dB IRR after digital correction tables.</span>
+</div>
+
+<h2>Common pitfalls</h2>
+<ul class="notice">
+<li><b>Forgetting to subtract DC offset</b> — RTL-SDR's 8-bit ADC nominally has midpoint at 127.5; not 128 nor 0. Subtracting 128 leaves a ~0.5-LSB residual that aliases as a tiny DC spike.</li>
+<li><b>Sample-rate too low</b> — Nyquist demands fs ≥ signal_bandwidth. For complex sampling, the full fs is usable (vs fs/2 for real), but allow margin (3-4× oversample) for filter rolloff.</li>
+<li><b>Clock drift</b> — RTL-SDR's 28.8 MHz reference has ±10 ppm tolerance. For 433 MHz, that's ±4.3 kHz of LO error. Re-tune to find the signal; or buy a TCXO-equipped RTL-SDR.</li>
+<li><b>Saturation on strong signals</b> — 8-bit ADC saturates at ±127 counts. Lower gain or add attenuator if the signal pegs.</li>
+<li><b>I/Q-swap bug</b> — swapping I and Q channels mirrors the spectrum. If signal appears at the wrong sideband, swap them in software.</li>
+</ul>
+
 <footer>Curriculum: <a target="_top" href="../../index.html">EE Phase 9 — RF &amp; Wireless</a> · Cross-links: <a href="lora-modulation.html">LoRa Modulation</a>, <a href="spread-spectrum.html">Spread Spectrum</a>, <a href="wireless-spectrum.html">Wireless Spectrum</a>.</footer>
 
 </main><script>

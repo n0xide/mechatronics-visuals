@@ -82,6 +82,40 @@ footer a{color:var(--accent)}
 <tr><td>10Gbase-KR</td><td>±150 mV</td><td>0.6 UI</td><td>10⁻¹²</td></tr>
 </table>
 
+<h2>Worked example — USB 3.0 SuperSpeed eye on a 6-inch FR-4 trace</h2>
+<div style="background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0">
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">The setup</h3>
+<p>5 Gbps USB 3.0 (Gen 1), 6-inch differential trace on standard FR-4, 90 Ω differential impedance. What's the eye look like at the receiver?</p>
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">The numbers</h3>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">UI = 1 / 5e9 = 200 ps</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">FR-4 loss at 2.5 GHz (Nyquist of 5 Gbps): ~0.4 dB/inch → 2.4 dB over 6 inches</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Eye height at TX: ±400 mV (USB 3 spec)</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">After 2.4 dB loss: ±400 × 10^(−2.4/20) = ±303 mV (closed by ISI; high-freq attenuated more)</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">USB 3 RX spec: ±100 mV minimum at RX after CTLE → fits with ~200 mV margin</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Total budget: 2.4 dB trace + 1 dB connector ≈ 3.4 dB. USB 3 spec allows up to 12 dB end-to-end → headroom</div>
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">If the trace gets longer</h3>
+<p>At 12 inches: 4.8 dB loss, eye drops to ±230 mV. Borderline without CTLE. Add CTLE peaking at 2.5 GHz to flatten the channel response — now ±330 mV with clean eye.</p>
+<p>At 24 inches: 9.6 dB loss, raw eye ±130 mV. Requires CTLE + DFE (decision feedback equalizer) at RX. This is standard in USB 3 PHY chips (e.g., TUSB1310A, PI3DPX series).</p>
+</div>
+
+<h2>The TX pre-emphasis / RX equalization toolkit</h2>
+<table>
+<tr><th>Technique</th><th>Where</th><th>What it does</th></tr>
+<tr><td>De-emphasis</td><td>TX</td><td>Reduce voltage on long runs of same bit — emphasizes transitions over DC content</td></tr>
+<tr><td>Pre-emphasis</td><td>TX</td><td>Boost the first bit after a transition — overdrives high-freq content lost to ISI</td></tr>
+<tr><td>CTLE (Continuous-Time Linear Equalizer)</td><td>RX analog</td><td>High-pass / peaking filter that compensates for channel rolloff. ~10 dB of equalization at Nyquist.</td></tr>
+<tr><td>DFE (Decision Feedback Equalizer)</td><td>RX digital</td><td>Subtract ISI from previous bits using feedback loop. Adds another 6-10 dB equalization.</td></tr>
+<tr><td>FFE (Feed Forward Equalizer)</td><td>RX or TX</td><td>FIR filter that compensates the channel impulse response. Common in PCIe Gen4+.</td></tr>
+</table>
+
+<h2>Measuring eye in the lab</h2>
+<ul class="notice">
+<li><b>Mask test on scope</b> — most modern scopes (Keysight, Tek) have eye-mask analysis built in. Trigger on clock, accumulate many UIs, check if any sample falls inside the mask polygon. Pass = zero violations after N samples (typical N = 10^9 to validate 10⁻⁹ BER).</li>
+<li><b>BERTscope</b> — dedicated bit-error tester sweeps decision threshold + sample time, builds a bathtub curve. Reveals the eye's true horizontal and vertical margin.</li>
+<li><b>SDR-based</b> — for slower interfaces (1 Gbps and below), an oscilloscope or even SDR can capture and software-correlate to build the eye offline.</li>
+</ul>
+
+
 <footer>Curriculum: <a target="_top" href="../../index.html">EE Phase 7 — Signal Integrity &amp; PCB</a> · Cross-links: <a href="transmission-line.html">Transmission Line</a>, <a href="impedance-matching.html">Impedance Matching</a>, <a href="crosstalk-ground.html">Crosstalk &amp; Ground</a>.</footer>
 
 </main><script>

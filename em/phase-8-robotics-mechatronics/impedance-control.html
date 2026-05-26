@@ -94,6 +94,48 @@ footer a{color:var(--accent)}
 <li><b>Stability with environment stiffness</b> — soft robot + stiff environment can chatter. Pick K_robot &lt; K_environment for stable contact.</li>
 </ul>
 
+<h2>Worked example — peg-in-hole assembly</h2>
+<div style="background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0">
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">The task</h3>
+<p>Insert a 10 mm steel peg into a 10.1 mm hole. Clearance is 100 µm — much less than typical robot positioning accuracy (~1 mm). A position-controlled robot would jam or break the peg. Impedance control allows the peg to "slide" along the chamfer until aligned.</p>
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Impedance choice (lateral)</h3>
+<p>Soft in lateral directions, stiff in vertical insertion direction (selective compliance):</p>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">K_lateral = 500 N/m (lateral position error of 100 µm produces 0.05 N — peg slides freely)</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">B_lateral = 30 N·s/m → for m = 0.2 kg: ζ = 30/(2·√(500·0.2)) = 1.5 (over-damped, no oscillation)</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">K_vertical = 5000 N/m (sufficient to push 0.5 N insertion force when at target position)</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">K_vertical too high → jams; too low → doesn't insert. 5000 N/m is a typical sweet spot.</div>
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Result</h3>
+<p>Robot commands position above-and-into the hole. If the peg hits the chamfer, lateral force pushes the peg sideways (with K_lateral compliance), the robot's lateral position drifts to follow, and the peg slides into alignment with the hole. Insertion completes naturally. Typical success rate &gt; 95 % even with ±2 mm positioning uncertainty.</p>
+</div>
+
+<h2>Hogan's classification — task-relevant impedance</h2>
+<p>Neville Hogan (MIT, 1985) classified impedance control by what it regulates. Each is appropriate for a different task:</p>
+<table>
+<tr><th>Type</th><th>Regulated</th><th>Task</th></tr>
+<tr><td>Position control</td><td>Position only (infinite K)</td><td>Free-space motion, no contact</td></tr>
+<tr><td>Impedance (passive)</td><td>K, B, M — virtual mechanical impedance</td><td>Constrained motion, assembly, gentle gripping</td></tr>
+<tr><td>Impedance (active)</td><td>K, B, M shaped by feedback</td><td>Same as passive but lower achievable impedance</td></tr>
+<tr><td>Admittance</td><td>Inverse: measure F, command motion</td><td>Stiff environment + sensor noise OK; faster contact response</td></tr>
+<tr><td>Hybrid</td><td>Position in some directions, force in others</td><td>Surface tracking (polishing, deburring)</td></tr>
+<tr><td>Variable impedance</td><td>K(t), B(t) modulated during task</td><td>Human-robot collaboration; stiff during transport, soft on contact</td></tr>
+</table>
+
+<h2>Cartesian vs joint impedance</h2>
+<ul class="notice">
+<li><b>Joint impedance</b> — each joint gets its own (K_i, B_i). Simple, robust, decoupled from kinematics. But the end-effector compliance depends on the Jacobian, varying across the workspace.</li>
+<li><b>Cartesian impedance</b> — desired stiffness K_C ∈ ℝ^6×6 is specified in task space. Joint torques computed as τ = J^T · K_C · (x_des − x). Constant Cartesian behavior, but breaks down at singularities.</li>
+<li><b>Hybrid</b> — joint impedance for safety + position control + Cartesian impedance overlay near the workpiece. KUKA iiwa, Franka Emika Panda, FrankaResearch3 all support this natively in their controllers.</li>
+</ul>
+
+<h2>Stability — the colocation requirement</h2>
+<p>For an impedance controller to be stable in contact with a passive environment (Lyapunov), the robot must appear as a <b>passive port</b> from the environment's viewpoint. Several requirements:</p>
+<ul class="notice">
+<li><b>Co-location</b> — the force sensor (or virtual point of compliance) must be at the same location as the position controller. Separated → ZMP instability.</li>
+<li><b>Damping ≥ minimum threshold</b> — too low B = no energy dissipation, robot ringtones into environment.</li>
+<li><b>Sampling-rate Nyquist</b> — the impedance loop must run at &gt;&gt; ω_n. For K = 1000 N/m, m = 1 kg → ω_n = 31.6 rad/s = 5 Hz. Loop at 1000 Hz is plenty. For K = 10000, ω_n = 100 rad/s = 16 Hz → loop at 200 Hz minimum.</li>
+<li><b>Render-impedance &gt; actuator stiffness</b> — actuator's intrinsic stiffness (gear ratio + motor encoder resolution) limits the minimum K. A geared motor naturally renders K ~10000+ N/m even with controller commanding K = 100.</li>
+</ul>
+
 <footer>Curriculum: <a target="_top" href="../../index.html">EM Phase 8 — Robotics &amp; Mechatronics</a> · Cross-links: <a href="forward-kinematics.html">Forward Kinematics</a>, <a href="jacobian.html">Jacobian</a>, <a href="../phase-1-sensors/force-torque-sensor.html">Force/Torque Sensor</a>.</footer>
 
 </main><script>

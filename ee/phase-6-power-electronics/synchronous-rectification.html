@@ -131,6 +131,43 @@
     <li><b>Reverse current issues</b> — sync converters can sink current (motor regen), which a diode cannot. Useful for bi-directional, but can dump unwanted current into the supply.</li>
   </ul>
 
+  <h2>Worked example — laptop USB-C PD 100 W buck (20 V to 5 V at 20 A)</h2>
+  <div class="worked">
+    <h3>Why sync is mandatory here</h3>
+    <p>USB-C PD power-bricks deliver up to 100 W. Cell phones routinely pull 5 V at 5 A; tablets and laptops at 20 V × 5 A. At the receive-side buck (20 V → 5 V at 20 A), conduction losses are everything.</p>
+    <h3>Schottky vs sync MOSFET</h3>
+    <span class="eq">D = 5/20 = 0.25 → (1−D) = 0.75 (long off-time, freewheel-heavy)</span>
+    <span class="eq">Schottky (V_f = 0.4 V): P = 0.4 × 20 × 0.75 = 6.0 W (6 % of output!) — too much</span>
+    <span class="eq">Sync (R_DS = 5 mΩ): P = 400 × 0.005 × 0.75 = 1.5 W (1.5 %) → 4.5 W savings</span>
+    <span class="eq">Plus high-side MOSFET conduction: I² × R_DS × D = 400 × 0.005 × 0.25 = 0.5 W</span>
+    <span class="eq">Total FET conduction: 2.0 W (2 % loss). With switching loss ~1 W, total: 3 W loss → η = 100/103 = 97 %</span>
+    <h3>Why dead time matters</h3>
+    <span class="eq">Body-diode V_f during dead time: ~0.7 V (worse than Schottky)</span>
+    <span class="eq">If dead time = 50 ns per edge × 2 edges × 500 kHz f_sw = 50 µs/sec = 5 % duty in body-diode mode</span>
+    <span class="eq">Body-diode power: 0.7 × 20 × 0.05 = 0.7 W — same as MOSFET conduction</span>
+    <span class="eq">Drop dead time to 10 ns each: 0.14 W → 0.5 % efficiency back</span>
+    <h3>Modern PMIC implementation</h3>
+    <p>The TPS546B24A (TI) or MP2965 (MPS) integrates HS+LS MOSFETs + driver + adaptive dead-time + current-balance for parallel phases. Just add bulk caps, an inductor, and feedback resistors. 50 W in a 5×5 mm package at 95% efficiency.</p>
+  </div>
+
+  <h2>Adaptive dead-time control</h2>
+  <p>Fixed dead-time is a compromise: too short risks shoot-through, too long bleeds body-diode loss. Modern controllers <b>measure</b> the switch node voltage and adapt:</p>
+  <ul class="notice">
+    <li><b>Voltage detection</b> — when LS turns off, the switch node voltage falls (driven by inductor current through body diode). Controller waits for V_sw to drop below ~−0.3 V, confirming body diode conduction, then turns on HS. Result: 5-20 ns dead time, optimal across load conditions.</li>
+    <li><b>Zero-current detection (ZCD)</b> — for synchronous boost / SEPIC topologies, sense when L current crosses zero; turn off the freewheel MOSFET to prevent reverse current.</li>
+    <li><b>Predictive dead-time</b> — controller learns the optimal dead time over a few switching cycles based on measured efficiency. TPS40425, LT8654 implement this.</li>
+  </ul>
+
+  <h2>GaN MOSFETs and the dead-time win</h2>
+  <p>Gallium-nitride power FETs change the equation. GaN devices have:</p>
+  <ul class="notice">
+    <li><b>No body diode</b> — conduction in the reverse direction is via the channel itself (called "reverse conduction"), with V_f ~1-2 V and zero Q_rr.</li>
+    <li><b>Very fast switching</b> — 1-5 ns rise/fall, allowing 1-5 MHz switching frequencies with reasonable losses.</li>
+    <li><b>Higher reverse V_f than Si</b> — so longer dead times hurt more in absolute power. Adaptive dead-time mandatory.</li>
+    <li><b>EPC2025 / GS61008P</b> — popular 100 V / 30 A GaN devices for 5-30 V step-down designs at 1 MHz.</li>
+  </ul>
+  <p>GaN-based sync rectification has pushed power-supply efficiency past 98% at moderate load, made USB-C 100W bricks the size of a credit card, and is the basis of 1 kW+ server PSUs.</p>
+
   <h2>Cheat sheet</h2>
   <section class="cheatsheet">
     <div class="cheat-card formulas">

@@ -128,6 +128,47 @@ footer a{color:var(--accent);text-decoration:none}
 <li><b>Long-Range / Coded PHY</b> — BLE 5+ supports 125 kbps coded PHY for ~4× range. Lower data rate but better link budget; pick per use case.</li>
 </ul>
 
+<h2>Worked example — battery-powered fitness tracker</h2>
+<div style="background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0">
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Use case</h3>
+<p>Heart-rate monitor wristband, CR2032 battery (220 mAh, 3 V). Sends HR sample every 5 seconds; activity update every minute. Target battery life: 6 months.</p>
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Connection-parameter tuning</h3>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Connection interval: 200 ms — fast enough that HR ack feels live but not wasteful</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Slave latency: 24 → effective heartbeat = 200 ms × 25 = 5 s (peripheral skips 24 events when nothing to send)</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Supervision timeout: 32 s (must be ≥ 6 × eff_heartbeat = 30 s; 32 s safe margin)</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">PHY: 1 Mbps (default) — Coded PHY would extend range but 2× current draw</div>
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Battery math</h3>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Active TX/RX current: 8 mA for ~1 ms per HR sample</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Active charge per sample: 8 mA × 1 ms = 8 µA·s</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Sample rate: 1 per 5 s → avg active current = 8 µA·s / 5 s = 1.6 µA</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Sleep current (RTC + LDO + flash): 5 µA</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Total avg current: ~7 µA</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Battery life: 220 mAh / 0.007 mA = 31000 h = 3.6 years (theoretical, with 50% derating: 1.8 years)</div>
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Comparison: bad connection interval</h3>
+<p>If we used 30 ms connection interval with latency 0 → wakes 33×/sec instead of 0.2×/sec. Current = 8 mA × 33 = 264 mA·ms/sec = 264 µA. Battery life: 220/0.264 = 830 h = 35 days. The connection-parameter choice is 50× more important than radio efficiency.</p>
+</div>
+
+<h2>Pairing, bonding, and security</h2>
+<p>BLE security has evolved across versions. Important to pick the right level:</p>
+<table>
+<tr><th>Method</th><th>Security</th><th>Use case</th></tr>
+<tr><td>Just Works</td><td>Eavesdropping protection only; MITM-vulnerable</td><td>Toys, basic IoT</td></tr>
+<tr><td>Passkey Entry</td><td>6-digit code displayed on one device, entered on other — MITM-resistant</td><td>Keyboards, locks</td></tr>
+<tr><td>Numeric Comparison</td><td>Both devices show 6-digit code; user confirms match</td><td>Phones pairing with smart-home devices (most common)</td></tr>
+<tr><td>OOB (Out-of-Band)</td><td>NFC tap or QR code transfers key — strongest</td><td>Medical, high-security</td></tr>
+<tr><td>LE Secure Connections (BLE 4.2+)</td><td>ECDH key exchange P-256, FIPS-grade</td><td>All modern apps</td></tr>
+</table>
+<p><b>Bonding</b> stores the key for later reconnects. Without bonding, devices re-pair every connection — annoying user experience.</p>
+
+<h2>Common pitfalls (extended)</h2>
+<ul class="notice">
+<li><b>WiFi co-existence</b> — 2.4 GHz radio inside the same chip needs careful interleaving. BLE adv channels (37/38/39) at 2402/2426/2480 MHz overlap WiFi channels 1/6/11. Many chips handle this with Adaptive Frequency Hopping or PTA (packet-traffic-arbiter).</li>
+<li><b>Antenna near body</b> — wearable trackers have antennas detuned by the wearer's body (mostly water). Use a chip antenna at the band edge or a planar inverted-F antenna (PIFA) designed for body proximity.</li>
+<li><b>OTA updates over BLE</b> — slow. BLE bulk-data is ~50-100 KB/s on 1 Mbps PHY. A 200 KB firmware update takes 2-4 seconds + retransmits. Use 2 Mbps PHY (BLE 5+) and DLE (Data Length Extension) to push to ~700 KB/s.</li>
+<li><b>NRF connect cache</b> — phones cache GATT discovery results. If you change the GATT layout in a firmware update, phones may not see the new characteristics until they un-bond and re-bond.</li>
+<li><b>iOS BLE limitations</b> — iOS will throttle connection intervals to its preferred range (15-60 ms typical, 1000+ ms in deep idle). Your firmware may negotiate 200 ms but iOS will renegotiate at any time.</li>
+</ul>
+
 <h2>Cheat sheet</h2>
 <section class="cheatsheet">
 <div class="cheat-card formulas"><h3>KEY NUMBERS</h3><ul>

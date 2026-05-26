@@ -108,6 +108,46 @@ footer a{color:var(--accent)}
 <li><b>Diode reverse recovery</b> — at the high switching frequency + high voltage, Q_rr matters. Use SiC Schottky for 600 V class.</li>
 </ul>
 
+<h2>Worked example — 800 W server-PSU PFC stage (universal AC input)</h2>
+<div style="background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0">
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Specs</h3>
+<p>Input: 85–265 V AC (universal). Output: 400 V DC. Power: 800 W continuous. Target efficiency: 95 %+. Target PF: &gt; 0.99. THD &lt; 5 %.</p>
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Worst-case design (low line, 85 V_RMS)</h3>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">I_in_RMS = 800 / 85 = 9.4 A</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">I_in_peak = 9.4 × √2 = 13.3 A (sets MOSFET + inductor sat current)</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">V_in_peak = 85 × √2 = 120 V</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Duty at V_in_peak: 1 − 120/400 = 0.70 (high duty, lots of switch on-time)</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Switching freq: 100 kHz CCM (compromise between size + EMI)</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">L (CCM, 30 % peak-to-peak ripple): V_pk · D / (f · ΔI) = 120 × 0.70 / (1e5 × 4) = 210 µH</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">L sat current: I_peak + ΔI/2 = 13.3 + 2 = 15.3 A → pick L sat rated 20 A</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Output cap (1 % ripple at 120 Hz): C = 800 / (400 × 0.01 × 2π × 120) = 265 µF → use 470 µF 450 V electrolytic + 1 µF film</div>
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Component picks</h3>
+<table>
+<tr><th>Part</th><th>Spec</th><th>Example</th></tr>
+<tr><td>MOSFET (switch)</td><td>650 V, ~25 mΩ R_DS(on), 20 A continuous</td><td>STW48N60M2 (Si), C2M0080120D (SiC for higher efficiency)</td></tr>
+<tr><td>Diode (output)</td><td>650 V SiC Schottky, low Q_rr</td><td>C3D08065A (8 A, 650 V SiC)</td></tr>
+<tr><td>Inductor</td><td>210 µH, 20 A sat, low DCR</td><td>Sendust or Kool Mu toroid, ~40 turns AWG 16</td></tr>
+<tr><td>Controller (CCM)</td><td>Average-current-mode + power factor</td><td>UCC28180, NCP1654, FAN9672</td></tr>
+<tr><td>Controller (CrM)</td><td>For ≤500 W, simpler</td><td>UCC28019, L6562A</td></tr>
+<tr><td>Output cap</td><td>470 µF 450 V, low ESR @ 120 Hz</td><td>Nichicon UPM series, 105 °C rated</td></tr>
+<tr><td>NTC inrush limiter</td><td>5–10 Ω cold, &lt; 0.5 Ω hot at 10 A</td><td>Ametherm SL22</td></tr>
+</table>
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Efficiency breakdown</h3>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">MOSFET conduction: I² · R_DS(on) · D = 13.3² × 0.025 × 0.70 = 3.1 W</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">MOSFET switching: ½·V·I·f·(t_on+t_off) ≈ ½·400·13·1e5·30e-9 = 7.8 W</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Diode: V_f · I_avg = 1.5 × 2 = 3.0 W</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Inductor copper loss: I² · DCR = 9.4² × 0.05 Ω = 4.4 W</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Total loss: ~20 W → η = 800/(800+20) = 97.5 % ✓</div>
+</div>
+
+<h2>Bridgeless PFC — the next step</h2>
+<p>A diode bridge at the AC input is the largest loss in a classic PFC topology (4 diode drops × I_rms = ~3 W at 8 A). <b>Bridgeless PFC</b> eliminates the bridge by using two boost inductors and four MOSFETs configured as a totem-pole structure. The MOSFETs handle both the rectification and the boost switching, dropping V_f losses to near zero.</p>
+<ul class="notice">
+<li><b>Totem-pole PFC</b> — most common bridgeless variant. Two MOSFETs in series across the bus + two low-frequency MOSFETs for rectification. Achievable: 98%+ efficiency.</li>
+<li><b>Requires fast-switching low-Q_rr devices</b> — SiC or GaN. Si MOSFETs body-diode Q_rr ruins efficiency.</li>
+<li><b>Modern data-center PSU standard</b> — Open Rack v3 and 80-PLUS Titanium spec require 96%+ efficiency at 50 % load. Bridgeless totem-pole + SiC is the recipe.</li>
+</ul>
+
 <footer>Curriculum: <a target="_top" href="../../index.html">EE Phase 6 — Power Electronics</a> · Cross-links: <a href="buck-converter.html">Buck</a>, <a href="boost-converter.html">Boost</a>, <a href="synchronous-rectification.html">Synchronous Rectification</a>.</footer>
 
 </main><script>

@@ -123,6 +123,48 @@ footer a{color:var(--accent)}
 <li><b>Transceiver-without-isolation in noisy environments</b> — common-mode noise causes errors. Use isolated transceivers (ISO1050) when bus crosses ground domains.</li>
 </ul>
 
+<h2>Worked example — automotive 500 kbps CAN with body controllers</h2>
+<div style="background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0">
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">The setup</h3>
+<p>Modern car body bus: 500 kbps, 4-meter run, 8 ECUs (door modules, BCM, instrument cluster, telematics, etc.). What does each frame look like and how much bandwidth do you have?</p>
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Per-frame numbers</h3>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Bit time: 1/500e3 = 2 µs</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Standard CAN frame with 8 data bytes: SOF(1) + ID(11) + RTR(1) + IDE(1) + r0(1) + DLC(4) + Data(64) + CRC(15) + CRC-delim(1) + ACK(2) + EOF(7) + IFS(3) = 111 bits raw</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Plus ~20% bit-stuffing overhead worst case → 133 bits</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Frame airtime: 133 × 2 µs = 266 µs</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Max frames/sec at 100% bus utilization: 1e6 / 266 ≈ 3760</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Useful data: 3760 × 8 bytes = 30 kB/sec, or 240 kbps net throughput from 500 kbps raw</div>
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Practical bus loading</h3>
+<p>Industry rule of thumb: stay below <b>60–70 % bus load</b> to keep worst-case latency bounded. At 500 kbps × 70 % = 350 kbps effective, you can run ~1300 frames/sec (1 frame every 750 µs average). Allocate:</p>
+<ul class="notice">
+<li>High-priority (steering, brakes, engine): low ID 0x000–0x0FF, fast cycle (10 ms = 100/sec)</li>
+<li>Medium-priority (lights, HVAC, doors): ID 0x100–0x4FF, 100 ms cycle</li>
+<li>Low-priority (diagnostics, telematics): ID 0x500+, on-demand or 1 s cycle</li>
+</ul>
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Why CAN-FD?</h3>
+<p>Same 500 kbps arbitration phase, but data phase at 2 Mbps and up to 64-byte payload. Same arbitration semantics, much higher throughput — important for ADAS sensors generating MB/sec.</p>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">CAN-FD with 64 byte payload at 2 Mbps data phase: ~333 µs per frame → 8 KB/s useful per frame</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">10× the throughput of classic CAN at 500 kbps. Now standard in most 2020+ vehicles.</div>
+</div>
+
+<h2>Error states + bus-off recovery</h2>
+<p>Every CAN node maintains <b>two error counters</b>: Transmit Error Counter (TEC) and Receive Error Counter (REC). They increment on errors detected during transmission or reception, and decrement on successful frames.</p>
+<table>
+<tr><th>State</th><th>Condition</th><th>Behavior</th></tr>
+<tr><td>Error active</td><td>TEC &lt; 128 AND REC &lt; 128</td><td>Normal — can transmit active error frames (drives bus dominant)</td></tr>
+<tr><td>Error passive</td><td>TEC ≥ 128 OR REC ≥ 128</td><td>Can transmit, but must wait extra suspend time after own frame; sends passive error frames (recessive)</td></tr>
+<tr><td>Bus off</td><td>TEC ≥ 256</td><td>Node disconnects from bus; can only re-join after 128 × 11 recessive bits seen</td></tr>
+</table>
+<p>This auto-isolation is critical: a faulty node that's generating constant errors won't lock up the bus. It's banished and the rest of the network keeps running.</p>
+
+<h2>CAN physical layer — High-speed (ISO 11898-2) vs Low-speed (ISO 11898-3)</h2>
+<ul class="notice">
+<li><b>High-speed (HS-CAN)</b>: 125 kbps – 1 Mbps. Differential pair with 120 Ω termination at both ends. Most common.</li>
+<li><b>Low-speed / fault-tolerant (LS-CAN)</b>: up to 125 kbps. Bus continues operating even with one wire shorted to ground or +12 V. Used for non-critical body electronics.</li>
+<li><b>Single-wire CAN (SW-CAN)</b>: GMLAN spec, J2411. Cheap, used for door modules in some GM vehicles. Limited to 33 kbps.</li>
+<li><b>CAN XL (ISO 11898-1:2024)</b>: up to 10 Mbps data phase, 2048-byte payload. Designed for future ADAS / EV high-throughput needs.</li>
+</ul>
+
 <footer>Curriculum: <a target="_top" href="../../index.html">EE Phase 8 — Embedded Protocols</a> · Cross-links: <a href="rs485-differential.html">RS-485</a>, <a href="uart-timing.html">UART Timing</a>.</footer>
 
 </main><script>
