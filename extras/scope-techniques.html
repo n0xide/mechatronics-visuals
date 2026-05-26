@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Oscilloscope Techniques — visual</title>
+<style>
+:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,sans-serif}
+main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,monospace;color:var(--accent2)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.warn{border-left:3px solid var(--warn)}.panel.tip{border-left:3px solid var(--accent3)}.panel.story{border-left:3px solid var(--accent2)}
+.panel h3{margin-top:0}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>Oscilloscope Techniques</h1>
+<p class="lede">An oscilloscope is the most useful instrument in your lab and the most misused. The probe matters more than the scope. The ground clip matters more than the probe. And triggering is what separates "looking at a wave" from "diagnosing the problem". This visual walks through probe loading, triggering modes, math channels, and the specific captures you'll do every week as an engineer.</p>
+
+<div class="anchors">
+<span class="anchor"><b>Probe ratio</b>: 10× standard (10 MΩ ‖ ~10 pF)</span>
+<span class="anchor"><b>Scope BW</b>: ≥ 3× signal max freq</span>
+<span class="anchor"><b>Sample rate</b>: ≥ 4× BW (Nyquist + margin)</span>
+<span class="anchor"><b>Ground clip</b>: short!</span>
+<span class="anchor"><b>Triggering</b>: edge / pulse-width / runt / I²C-decode</span>
+</div>
+
+<h2>Scope anatomy + the specs that matter</h2>
+<table>
+<tr><th>Spec</th><th>What it sets</th><th>Typical entry-level (e.g., Siglent SDS1104X-E)</th></tr>
+<tr><td>Bandwidth</td><td>Max signal frequency you can see (3 dB roll-off)</td><td>100–200 MHz</td></tr>
+<tr><td>Sample rate</td><td>Time resolution per channel</td><td>1 GSa/s (1 GHz sample rate)</td></tr>
+<tr><td>Memory depth</td><td>How long you can capture at full sample rate</td><td>14 Mpts (= 14 ms at 1 GSa/s)</td></tr>
+<tr><td>Channels</td><td>How many signals simultaneously</td><td>4 analog, 16 logic (MSO models)</td></tr>
+<tr><td>Vertical resolution</td><td>ADC bits; quantization noise floor</td><td>8 bits (256 levels)</td></tr>
+<tr><td>Trigger options</td><td>What event starts capture</td><td>Edge, pulse-width, slew, video, I²C, SPI, UART, CAN</td></tr>
+</table>
+
+<div class="panel tip">
+<h3>The bandwidth rule</h3>
+<p>Scope bandwidth should be 3–5× your maximum signal frequency. A 100 MHz scope reliably shows up to ~30 MHz signals. For a 1 Mbps UART (rise time ~50 ns equivalent BW ~7 MHz), a 50 MHz scope is plenty. For 200 Mbps USB 2.0 (rise time 5 ns, BW ~70 MHz), you need a 200+ MHz scope.</p>
+</div>
+
+<h2>Probes — the underrated component</h2>
+<table>
+<tr><th>Probe type</th><th>Ratio</th><th>Input impedance</th><th>Best for</th></tr>
+<tr><td>Passive 1×</td><td>1×</td><td>1 MΩ ‖ 100+ pF</td><td>Audio + low-frequency only. Heavy loading.</td></tr>
+<tr><td>Passive 10×</td><td>10×</td><td>10 MΩ ‖ ~10 pF</td><td>Standard for digital + medium-frequency analog. The default.</td></tr>
+<tr><td>Passive 100×</td><td>100×</td><td>100 MΩ ‖ ~5 pF</td><td>High-voltage (up to 2 kV) or very high-impedance nodes</td></tr>
+<tr><td>Active FET</td><td>1× or 10×</td><td>10 MΩ ‖ &lt; 2 pF</td><td>High-frequency analog, RF — much less loading</td></tr>
+<tr><td>Differential</td><td>10× / 100×</td><td>~5 MΩ + huge CMRR</td><td>Floating measurements (motor phases, mains)</td></tr>
+<tr><td>Current</td><td>varies</td><td>—</td><td>Measure current via clip-on Hall sensor or transformer</td></tr>
+</table>
+
+<div class="panel warn">
+<h3>Probe loading kills high-frequency signals</h3>
+<p>A 10× probe presents 10 pF of capacitance to your circuit. At 100 MHz, that's an impedance of 1/(2π·100e6·10e-12) = 160 Ω. A 50 Ω source driving a 160 Ω load loses 30% of its amplitude at the probe tip. <b>You're measuring the probe's effect, not the actual circuit.</b></p>
+<p>Solution: active FET probe (typ 2 pF) → 800 Ω load at 100 MHz, much smaller perturbation.</p>
+</div>
+
+<h2>The ground clip — short it!</h2>
+<div class="panel warn">
+<h3>The longest cable in your scope is your ground loop</h3>
+<p>A typical scope probe has a 10–20 cm flying ground lead. That lead is an inductor (≈ 10 nH/cm = 100–200 nH). At 100 MHz, that's an impedance of 60–120 Ω. Combined with the probe tip capacitance (10 pF), you've built an LC tank at ~50 MHz.</p>
+<p>When you probe a fast edge, this LC tank rings — and you see "ringing" on the signal that isn't actually there. The signal is clean; your ground lead is ringing.</p>
+<p><b>Fix</b>: use a short ground spring (1–2 cm) or solder a tiny ground tab right next to the probed point. For sub-ns edges, this matters even at low voltages.</p>
+</div>
+
+<h2>Triggering — the difference between "wave" and "diagnosis"</h2>
+<table>
+<tr><th>Trigger type</th><th>Catches</th><th>Use for</th></tr>
+<tr><td>Edge (rising/falling)</td><td>Any voltage crossing threshold</td><td>Default. Sync to clock or data edge.</td></tr>
+<tr><td>Pulse width</td><td>Pulse narrower or wider than X</td><td>Glitches, runt pulses, missed bits</td></tr>
+<tr><td>Slew rate</td><td>Edge faster than X V/ns</td><td>ESD events, ringing on signals</td></tr>
+<tr><td>Runt</td><td>Pulse that crosses one threshold but not the other</td><td>Signal integrity failures, marginal logic levels</td></tr>
+<tr><td>Setup/hold violation</td><td>Data + clock relationship</td><td>Catching metastability events on flip-flops</td></tr>
+<tr><td>Pattern / sequence</td><td>Specific bit pattern across N channels</td><td>Bus protocol decode, FSM debug</td></tr>
+<tr><td>Serial bus (I²C, SPI, UART, CAN)</td><td>Specific address or data byte</td><td>Catch one bad transaction in millions</td></tr>
+<tr><td>Video / TV</td><td>Sync pulses</td><td>Old video signal debug; rarely useful now</td></tr>
+</table>
+
+<h2>Common captures you'll do every week</h2>
+
+<h3>1. Power-supply ripple</h3>
+<p>Probe across the output cap. AC coupling. 20 mV/div vertical. Bandwidth limit on (20 MHz). Triggering on the switching ripple if visible.</p>
+<p>Look for: peak-to-peak ripple, switching frequency, load-step response (touch a 1 Ω resistor across output, watch the dip + recovery).</p>
+
+<h3>2. Switching MOSFET Vds + gate</h3>
+<p>Differential probe across Vds (to handle high-side switching). Standard 10× on gate. Trigger on gate rising edge.</p>
+<p>Look for: Miller plateau on gate, ringing on Vds (parasitic LC), overshoot above Vbus (snubber design).</p>
+
+<h3>3. Serial bus capture (I²C / SPI / UART)</h3>
+<p>One probe on clock, one on data. Trigger on clock edge or serial-bus decode mode. Modern scopes can decode the bus in real time and overlay the bytes on the screen.</p>
+<p>Look for: clock duty cycle, setup/hold timing, ACK bits, stuck devices, fast-mode timing violations.</p>
+
+<h3>4. Eye diagram (high-speed serial)</h3>
+<p>Set the scope to "persistence" mode (infinite or long), trigger on data, sample many bit periods, view the overlaid eye. Measure eye height + width.</p>
+<p>For USB 3 or DDR signals, use a differential probe + a scope with ≥ 4 GS/s.</p>
+
+<h3>5. Current waveform with shunt + math</h3>
+<p>Probe across a known shunt resistor (e.g., 100 mΩ). Apply scope math: V_probe / 0.1 = I in amps. Display the math channel.</p>
+<p>Combine with another probe to compute instantaneous power: <code>P = V_load · I_load</code>.</p>
+
+<h3>6. FFT of a noisy supply</h3>
+<p>Use the FFT math function. Window: Hann or Blackman. Look for switching harmonics + their sidebands. A 100 kHz switcher should show clean peaks at 100 kHz, 200, 300; spreading or floor lift indicates EMI / instability.</p>
+
+<h2>Math channel — what you can compute</h2>
+<table>
+<tr><th>Function</th><th>Use</th></tr>
+<tr><td>CH1 − CH2</td><td>Differential measurement (with floating reference)</td></tr>
+<tr><td>CH1 × CH2</td><td>Instantaneous power (V × I)</td></tr>
+<tr><td>FFT(CH1)</td><td>Frequency-domain view of a signal — spot harmonics + noise</td></tr>
+<tr><td>Integral(CH1)</td><td>Charge from current, or voltage from current sense</td></tr>
+<tr><td>Derivative(CH1)</td><td>Slope of voltage; speed estimate from position signal</td></tr>
+<tr><td>Filter(CH1)</td><td>Low-pass / high-pass / band-pass real-time</td></tr>
+<tr><td>Reference waveform</td><td>Save a known-good capture; overlay on next capture</td></tr>
+</table>
+
+<h2>Probe compensation — do this every session</h2>
+<div class="panel tip">
+<h3>The 1 kHz square wave test</h3>
+<ol>
+<li>Plug 10× probe into scope, ground clip to scope's chassis ground.</li>
+<li>Touch the probe to the scope's calibration output (usually 1 kHz square wave, 3 V peak).</li>
+<li>Observe the displayed square wave.</li>
+<li>If the corners are rounded → probe compensation cap is too low. If overshooting → too high. Adjust the small screw on the probe head until corners are square.</li>
+</ol>
+<p>Why this matters: an uncompensated 10× probe will show fast edges as overshooting or sagging. Misdiagnosed as circuit problems, lost hours.</p>
+</div>
+
+<h2>Common debugging recipes</h2>
+
+<div class="panel story">
+<h3>"My SMPS output is unstable"</h3>
+<p>Probe output cap with AC coupling, 20 mV/div, 20 MHz bandwidth limit. Trigger on AC line. Watch for: sub-harmonic oscillation (bursts every 1/2 or 1/3 switching cycle), gradual sag during load steps, big swings during transients.</p>
+</div>
+
+<div class="panel story">
+<h3>"My MCU randomly resets"</h3>
+<p>Probe Vcc with AC coupling. Trigger on a downward edge below the brownout threshold (typically 80% of nominal). Watch for: ground bounce during load events (motor switching, current pulses), brownout dips, slow rail droop.</p>
+</div>
+
+<div class="panel story">
+<h3>"My I²C bus is hanging"</h3>
+<p>Probe SCL + SDA. Use I²C decode trigger on a specific slave address. Watch for: missed ACKs, clock-stretching by a slave taking too long, glitches on SDA during clock-high, slow rise times indicating R_pullup too high.</p>
+</div>
+
+<div class="panel story">
+<h3>"My ADC reading drifts"</h3>
+<p>Use a differential probe across the ADC pin + analog ground (right at the chip, not at the connector). Look for: noise from nearby digital signals coupling in, sampling at the wrong time relative to PWM, ripple from a noisy LDO supply.</p>
+</div>
+
+<h2>Differential vs single-ended — when to switch</h2>
+<ul class="notice">
+<li><b>Single-ended (standard)</b>: probe tip on signal, ground clip on board ground. Measures voltage relative to scope ground. Limited to ~30 V_rms safely.</li>
+<li><b>Differential</b>: two probe inputs measure the voltage difference. Allows floating measurements (motor windings between phases, mains, current shunts on the high side, isolated supplies).</li>
+<li><b>NEVER use single-ended on a high-side switch</b> — the scope ground will short the high-side switch to mains ground through the scope's chassis. Best case: dead scope. Worst case: fire.</li>
+<li><b>Common-mode range</b> matters: a differential probe rated 100 V common-mode but 10 V differential won't work on a 400 V motor bus. Get a high-voltage diff probe.</li>
+</ul>
+
+<h2>FFT — frequency-domain debugging</h2>
+<p>The FFT function turns a time-domain signal into a frequency spectrum. Critical for:</p>
+<ul class="notice">
+<li><b>EMI debug</b>: identify which frequencies are leaking. 100 kHz peaks → SMPS fundamental. 27 MHz → suspicious; might be a clock harmonic.</li>
+<li><b>Resonance identification</b>: spot the LC tank resonance on a PCB power rail.</li>
+<li><b>Modulation analysis</b>: see the AM/FM sidebands on a transmitter output.</li>
+<li><b>Audio noise floor</b>: identify hum at 50/60 Hz, 100/120 Hz harmonics, switching pickup.</li>
+</ul>
+
+<h2>Tips that took me too long to learn</h2>
+<ul class="notice">
+<li><b>Save references early</b>: when something works, save the waveform. Future comparison is gold.</li>
+<li><b>Use chan colors</b>: dedicate yellow=clock, blue=data, green=power, red=ground/anomaly across all captures.</li>
+<li><b>Persistence on, then off</b>: turn on infinite persistence for 5 seconds — anomalies show up. Turn off, use peak-detect mode to find rare glitches.</li>
+<li><b>Trigger on the bad event, not the normal one</b>: edge-trigger on a normal pulse to verify it; pulse-width trigger on a too-short pulse to catch the glitch.</li>
+<li><b>10× probe with ground spring</b> for any signal &gt; 10 MHz. The flying ground lead is the enemy.</li>
+<li><b>Coupling — DC for the DC component, AC for ripple, GND to find the zero-level</b>. Three different views.</li>
+<li><b>X-Y mode</b>: feed two phases of a motor onto X and Y inputs; visualize the rotating field as a Lissajous figure. Beautiful + diagnostic.</li>
+</ul>
+
+<footer>Cross-links: <a href="component-picker.html">Component Picker</a> · <a href="design-recipes.html">Design Recipes</a> · <a href="../em/phase-7-system-integration/debugging-tools.html">Debugging Tools</a> · <a href="../em/phase-7-system-integration/bringup-procedure.html">Bring-up Procedure</a></footer>
+
+</main><script>console.log('Scope Techniques loaded');</script>
+</body>
+</html>

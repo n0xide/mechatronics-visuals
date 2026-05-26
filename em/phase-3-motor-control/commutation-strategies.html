@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Commutation Strategies — visual</title>
+<style>
+  :root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+  *{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+  .control input,.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 8px;font:13px ui-monospace,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+  .figure svg{display:block;max-width:100%;height:auto}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+  th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left;vertical-align:top}
+  th{background:var(--bg-elev2);color:var(--fg-bright)}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,monospace;color:var(--accent2)}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+  .panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+  .panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}
+  .panel h3{margin-top:0}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+  footer a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+<h1>Commutation Strategies — Trapezoidal vs Sinusoidal vs FOC</h1>
+<p class="lede">A 3-phase BLDC has three windings that must be energized in the right sequence to spin the rotor. There are three increasingly sophisticated ways to do this: 6-step trapezoidal (simple), sinusoidal (smoother), and Field-Oriented Control / FOC (smoothest, most efficient, most complex). This visual walks the progression — what each gives you, what it costs, and when to pick which.</p>
+
+<div class="anchors">
+<span class="anchor"><b>Trap</b>: 6 discrete states, Hall sensors enough</span>
+<span class="anchor"><b>Sinusoidal</b>: continuous, smoother, needs encoder</span>
+<span class="anchor"><b>FOC</b>: Park transform, decoupled torque/flux</span>
+<span class="anchor"><b>Torque ripple</b>: trap ~14%, sin ~4%, FOC &lt;1%</span>
+</div>
+
+<section class="controls">
+<div class="control"><label>Strategy</label>
+<select id="strat">
+<option value="trap" selected>Trapezoidal (6-step block commutation)</option>
+<option value="sin">Sinusoidal commutation</option>
+<option value="foc">Field-Oriented Control (FOC)</option>
+</select>
+</div>
+<div class="control"><label>Electrical angle (°): <span class="readout" id="angRead">90</span></label><input id="ang" type="range" min="0" max="360" step="1" value="90"></div>
+<div class="control"><label>Speed (rad/s): <span class="readout" id="spdRead">10</span></label><input id="spd" type="range" min="1" max="100" step="1" value="10"></div>
+<div class="control"><label>Pole pairs: <span class="readout" id="ppRead">7</span></label><input id="pp" type="range" min="1" max="14" step="1" value="7"></div>
+</section>
+
+<div class="figure">
+<svg id="phaseSvg" viewBox="0 0 720 280" width="100%"></svg>
+<table>
+<tr><th>Quantity</th><th>Value</th></tr>
+<tr><td>Strategy</td><td id="tStrat">Trapezoidal</td></tr>
+<tr><td>Active sector</td><td id="tSector">A+ B− (Sector 1)</td></tr>
+<tr><td>Torque ripple (typical)</td><td id="tRipple">~14 %</td></tr>
+<tr><td>Audible noise</td><td id="tNoise">Cogging hum</td></tr>
+<tr><td>Sensors needed</td><td id="tSensors">3× Hall (or BEMF zero-cross)</td></tr>
+<tr><td>MCU compute</td><td id="tCompute">~1 µs per cycle (Cortex-M0)</td></tr>
+</table>
+</div>
+
+<h2>The three strategies — how they differ</h2>
+
+<h3>1. Trapezoidal (6-step block commutation)</h3>
+<p>Energize 2 of 3 windings at a time. The current path through the motor stays the same for 60° of electrical rotation, then jumps to the next 2-winding combination. Six discrete states (sectors) per electrical revolution. Need to know which sector you're in — either Hall sensors (3 of them) or BEMF zero-cross detection (sensorless).</p>
+
+<table>
+<tr><th>Sector</th><th>Electrical angle</th><th>A</th><th>B</th><th>C</th></tr>
+<tr><td>1</td><td>0–60°</td><td>+ (high)</td><td>− (low)</td><td>off</td></tr>
+<tr><td>2</td><td>60–120°</td><td>+ (high)</td><td>off</td><td>− (low)</td></tr>
+<tr><td>3</td><td>120–180°</td><td>off</td><td>+ (high)</td><td>− (low)</td></tr>
+<tr><td>4</td><td>180–240°</td><td>− (low)</td><td>+ (high)</td><td>off</td></tr>
+<tr><td>5</td><td>240–300°</td><td>− (low)</td><td>off</td><td>+ (high)</td></tr>
+<tr><td>6</td><td>300–360°</td><td>off</td><td>− (low)</td><td>+ (high)</td></tr>
+</table>
+
+<div class="panel tip">
+<h3>Pros + cons</h3>
+<p><b>+</b> Simple. Runs on Cortex-M0 with no FPU. Cheap. Hall sensors widely available. Sensorless BEMF detection works on outrunner motors at modest speeds.</p>
+<p><b>−</b> Torque ripple ~14 % (peaks each commutation). Audible cogging at low speed. Difficult to operate at very low speed (no BEMF for sensorless).</p>
+<p><b>Use for</b>: hobby drones, fans, simple pumps, low-cost appliances. Anywhere where smoothness isn't critical.</p>
+</div>
+
+<h3>2. Sinusoidal commutation</h3>
+<p>Instead of 6 discrete states, apply continuous 3-phase sinusoidal voltages with 120° phase shifts. The motor sees smoothly rotating stator field with no abrupt commutation jumps. Requires accurate rotor position (encoder, not just Hall) so the sinusoid is correctly aligned.</p>
+
+<div class="deriv">
+<span class="step">V_A = V_peak · sin(θ_elec)</span>
+<span class="step">V_B = V_peak · sin(θ_elec − 120°)</span>
+<span class="step">V_C = V_peak · sin(θ_elec − 240°)</span>
+<span class="step">θ_elec = pole_pairs · θ_mechanical</span>
+<span class="step">PWM modulates each phase's average voltage to match the sinusoid.</span>
+</div>
+
+<div class="panel tip">
+<h3>Pros + cons</h3>
+<p><b>+</b> Smooth torque (ripple ~4 %). Quieter motor. Better at low speed than trapezoidal sensorless.</p>
+<p><b>−</b> Requires encoder for accurate alignment. Compute slightly higher than trap (need to compute sin × 3 phases at PWM rate). Doesn't decouple flux from torque — still inefficient at high speed.</p>
+<p><b>Use for</b>: HVAC fans, dishwasher pumps, mid-grade industrial automation. Used widely in the 2000s before FOC became cheap.</p>
+</div>
+
+<h3>3. Field-Oriented Control (FOC)</h3>
+<p>The Park transform rotates the stator current vector into the rotor's reference frame: the d-axis (along the rotor flux) and q-axis (perpendicular, torque-producing). Closed loops control I_d (typically held at 0) and I_q (proportional to torque). After computation, the inverse Park transform rotates back to stator (a, b, c) coordinates for the PWM.</p>
+
+<div class="deriv">
+<span class="step">1. Measure phase currents I_a, I_b, I_c (Kirchhoff: I_a + I_b + I_c = 0)</span>
+<span class="step">2. Clarke: (I_a, I_b, I_c) → (I_α, I_β) — stationary 2-axis</span>
+<span class="step">3. Park: (I_α, I_β) → (I_d, I_q) using rotor angle θ</span>
+<span class="step">4. PI loops: control I_d → 0 (no flux command) and I_q → I_q_ref (torque command)</span>
+<span class="step">5. Output: V_d, V_q from PI controllers</span>
+<span class="step">6. Inverse Park: (V_d, V_q) → (V_α, V_β)</span>
+<span class="step">7. SVPWM: (V_α, V_β) → 3-phase PWM duty cycles</span>
+<span class="step">8. Apply to gate drivers → MOSFETs → motor</span>
+</div>
+
+<div class="panel tip">
+<h3>Pros + cons</h3>
+<p><b>+</b> Torque ripple &lt; 1 %. Maximum efficiency (decoupled flux + torque means correct current for any speed). Field-weakening above base speed extends speed range. Industry standard for premium servos, EVs, robotics.</p>
+<p><b>−</b> Compute-heavy (multiplies + sin/cos + 2 PI loops at 10–20 kHz). Needs encoder for rotor angle (or sensorless observer like SMO / EKF). Tuning is harder — current loops bandwidth ~kHz, position loop bandwidth ~100 Hz.</p>
+<p><b>Use for</b>: robotics (every modern joint controller), e-bikes, e-scooters, EV drivetrains, drone gimbals, industrial servos.</p>
+</div>
+
+<h2>Side-by-side comparison</h2>
+<table>
+<tr><th>Aspect</th><th>Trapezoidal</th><th>Sinusoidal</th><th>FOC</th></tr>
+<tr><td>Torque ripple</td><td>~14 %</td><td>~4 %</td><td>&lt; 1 %</td></tr>
+<tr><td>Efficiency</td><td>~85 %</td><td>~90 %</td><td>~95 %</td></tr>
+<tr><td>Low-speed smoothness</td><td>Poor (cogging)</td><td>Good</td><td>Excellent</td></tr>
+<tr><td>Field-weakening</td><td>No</td><td>No (without modifications)</td><td>Yes — extends speed range 2-3×</td></tr>
+<tr><td>Position sensor</td><td>3 Hall (or sensorless BEMF)</td><td>Encoder</td><td>Encoder (or sensorless observer)</td></tr>
+<tr><td>MCU class</td><td>Cortex-M0</td><td>Cortex-M3</td><td>Cortex-M4F + with FPU</td></tr>
+<tr><td>Compute per cycle</td><td>~1 µs</td><td>~3 µs</td><td>~5–20 µs</td></tr>
+<tr><td>Tuning complexity</td><td>Trivial</td><td>Modest</td><td>Significant (2 current loops + speed/position)</td></tr>
+<tr><td>Audible noise</td><td>Cogging hum</td><td>Soft whine</td><td>Nearly silent</td></tr>
+<tr><td>Use case</td><td>Drones, fans, pumps</td><td>Mid-grade industrial</td><td>Robotics, EVs, premium servos</td></tr>
+</table>
+
+<h2>Worked example — picking strategy for a robot joint</h2>
+<div class="panel" style="border-left:3px solid var(--accent3)">
+<h3>The use case</h3>
+<p>6-DOF robot arm joint. Motor: 100 W BLDC, 1500 RPM rated, 14 pole-pairs. Encoder: 4096 counts/rev absolute. Update rate: 1 kHz position loop, 20 kHz current loop. MCU: STM32G474 (Cortex-M4F @ 170 MHz).</p>
+
+<h3>Why FOC</h3>
+<ul>
+<li>Robot joints need to <b>hold position smoothly at zero speed</b> — only FOC delivers (trap cogs visibly).</li>
+<li>The 1500 RPM × 14 pole-pairs = 350 Hz electrical fundamental. Both sinusoidal and FOC can handle this at 20 kHz PWM (57 PWM cycles per electrical cycle).</li>
+<li>The encoder is already there for the position loop — using it for FOC is free.</li>
+<li>STM32G474 has an FPU and runs FOC inner loops in &lt; 10 µs of its 50 µs PWM period. Plenty of margin for position loop, comms, safety.</li>
+<li>FOC's decoupled flux + torque means you can <b>scale to high torque without efficiency loss</b>. Trap loses efficiency at low speed / high torque.</li>
+</ul>
+
+<h3>Why NOT FOC (the alternative)</h3>
+<p>If the motor was driving a propeller (drone): trap is fine. Torque ripple averages out over the prop's inertia. The 6-step approach is simpler, fewer compute cycles, lower latency. Use a Cortex-M0 if cost matters.</p>
+</div>
+
+<h2>Hardware requirements</h2>
+<table>
+<tr><th>Requirement</th><th>Trap</th><th>Sinusoidal</th><th>FOC</th></tr>
+<tr><td>Phase current sensing</td><td>1 shunt (DC bus) is enough</td><td>2-of-3 phase shunts</td><td>3 phase shunts (or 2 + Kirchhoff)</td></tr>
+<tr><td>Current sense ADC</td><td>1 channel, 12-bit</td><td>2 channels, 12-bit</td><td>3 channels, 12-bit synchronously sampled at PWM mid-point</td></tr>
+<tr><td>Rotor angle</td><td>3 Hall sensors (60° resolution) or BEMF</td><td>Encoder (~1000 counts/rev minimum)</td><td>Encoder (~4000 counts/rev minimum) or observer</td></tr>
+<tr><td>MOSFET / gate driver</td><td>Any 3-phase H-bridge</td><td>Any 3-phase H-bridge</td><td>3-phase + low-side current sense + isolated drivers</td></tr>
+<tr><td>PWM</td><td>Centered or edge-aligned, 20 kHz typical</td><td>Centered, 20 kHz</td><td>Centered with synchronous ADC trigger at PWM mid-point</td></tr>
+</table>
+
+<h2>Common pitfalls</h2>
+<ul class="notice">
+<li><b>Trap commutation tied to wrong sector</b> — phase order or Hall mapping wrong. Motor judders or runs backward. Always verify open-loop spin first.</li>
+<li><b>Sinusoidal without encoder calibration</b> — sinusoid alignment is off by some offset; torque is suboptimal. Calibrate by parking the rotor at a known electrical angle (apply DC to one phase) and recording encoder count.</li>
+<li><b>FOC current loop bandwidth too high</b> — drives saturation in PWM duty; current chatters. Set bandwidth ~ω_PWM / 10.</li>
+<li><b>FOC d-axis current not zero</b> — wastes copper losses (heat) for no torque. Always check I_d output of current PI; it should be small at steady state.</li>
+<li><b>Sample point wrong in FOC</b> — current ADC must sample at PWM midpoint (when switching is quiet). Misaligned → noisy current readings → poor torque.</li>
+<li><b>Sensorless BEMF at low speed</b> — BEMF is proportional to speed; below ~5 % rated speed it's lost in noise. Use a startup ramp (I-f or HFI) until BEMF is reliable.</li>
+</ul>
+
+<h2>Code sketch — FOC inner loop in C</h2>
+<pre style="background:var(--bg-elev2);padding:14px;border-radius:6px;font:12px ui-monospace,monospace;color:var(--fg);overflow-x:auto">
+void foc_inner_loop(void) {
+    // 1. Read currents (synchronized to PWM midpoint via ADC trigger)
+    float ia = adc_to_amps(adc.ch_a);
+    float ib = adc_to_amps(adc.ch_b);
+    float ic = -(ia + ib);  // Kirchhoff
+
+    // 2. Read encoder, compute electrical angle
+    float theta_mech = encoder_read_rad();
+    float theta_elec = theta_mech * POLE_PAIRS;
+    float c = cosf(theta_elec);
+    float s = sinf(theta_elec);
+
+    // 3. Clarke (a,b,c) -> (alpha, beta)
+    float i_alpha = ia;
+    float i_beta  = (ia + 2.0f*ib) * (1.0f / SQRT3);
+
+    // 4. Park (alpha,beta) -> (d, q) with rotor angle
+    float i_d =  c * i_alpha + s * i_beta;
+    float i_q = -s * i_alpha + c * i_beta;
+
+    // 5. PI controllers (current loop, bandwidth ~ kHz)
+    float v_d = pi_update(&pi_d, 0.0f      - i_d);  // I_d ref = 0
+    float v_q = pi_update(&pi_q, iq_ref    - i_q);  // I_q ref from position loop
+
+    // 6. Voltage saturation, anti-windup
+    saturate_voltage(&v_d, &v_q, V_BUS * 0.9f);
+
+    // 7. Inverse Park (d, q) -> (alpha, beta)
+    float v_alpha = c * v_d - s * v_q;
+    float v_beta  = s * v_d + c * v_q;
+
+    // 8. SVPWM: (alpha, beta) -> 3 duty cycles
+    svpwm_set(v_alpha, v_beta);
+}
+</pre>
+
+<h2>Field-weakening (FOC bonus)</h2>
+<p>Above base speed, back-EMF saturates available bus voltage. FOC can <b>weaken the rotor flux</b> by injecting negative I_d. This reduces effective back-EMF, allowing higher speeds at lower torque. The motor's speed-torque envelope extends 2–3×.</p>
+<p>Catch: weakening also reduces maximum torque available. Trade-off: high-speed low-torque region (e.g., cruise on a Tesla). Critical for EVs and high-speed BLDC.</p>
+
+<footer>Cross-links: <a href="bldc-commutation.html">BLDC Commutation</a> · <a href="foc-overview.html">FOC Overview</a> · <a href="../phase-2-actuators/bldc-motor.html">BLDC Motor Fundamentals</a> · <a href="field-weakening.html">Field-Weakening</a> · <a href="sensorless-bldc.html">Sensorless BLDC</a></footer>
+
+</main>
+<script>
+const els = ['strat','ang','spd','pp'].reduce((m,k)=>{m[k]=document.getElementById(k);return m;},{});
+
+function drawPhases(){
+  const svg = document.getElementById('phaseSvg');
+  const strat = els.strat.value;
+  const ang = parseFloat(els.ang.value);
+  const W = 720, H = 280, M = 40;
+  let s = '';
+  // axes
+  s += `<line x1="${M}" y1="${H/2}" x2="${W-M}" y2="${H/2}" stroke="#8f99a8" stroke-width="0.5"/>`;
+  s += `<line x1="${M}" y1="${30}" x2="${M}" y2="${H-30}" stroke="#8f99a8" stroke-width="0.5"/>`;
+  s += `<text x="${M-30}" y="${H/2+4}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">0</text>`;
+  s += `<text x="${W/2}" y="${H-10}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10" text-anchor="middle">Electrical angle (0° → 360°)</text>`;
+
+  const xOf = a => M + (a / 360) * (W - 2*M);
+  const yOf = v => H/2 - v * (H/2 - 40);
+
+  // Draw 3 phase waveforms
+  const colors = ['#5ec8ff','#ffb86c','#a3e635'];
+  const offsets = [0, 120, 240]; // phase offsets in degrees
+
+  for(let p = 0; p < 3; p++){
+    let path = 'M ';
+    for(let a = 0; a <= 360; a += 2){
+      const theta = (a - offsets[p]) % 360;
+      let v;
+      if(strat === 'trap'){
+        // Trapezoidal: +1 in middle, ramp transitions
+        const t = theta / 360;
+        if(t < 1/12)        v = 12 * t;            // 0 to 1 ramp
+        else if(t < 5/12)   v = 1;                  // flat +1
+        else if(t < 7/12)   v = 1 - 12 * (t - 5/12); // 1 to -1 ramp
+        else if(t < 11/12)  v = -1;                 // flat -1
+        else                v = -1 + 12 * (t - 11/12); // back to 0
+      } else if(strat === 'sin'){
+        v = Math.sin(theta * Math.PI / 180);
+      } else { // foc
+        // For FOC viz: show the d-q rotating frame as sinusoids on stator
+        v = Math.sin(theta * Math.PI / 180);
+      }
+      path += (a === 0 ? '' : 'L ') + xOf(a).toFixed(1) + ',' + yOf(v).toFixed(1) + ' ';
+    }
+    s += `<path d="${path}" fill="none" stroke="${colors[p]}" stroke-width="2"/>`;
+    s += `<text x="${xOf(60 + offsets[p]) - 10}" y="${yOf(0.8) - 5}" fill="${colors[p]}" font-family="ui-monospace,monospace" font-size="11">Phase ${'ABC'[p]}</text>`;
+  }
+
+  // Current angle marker
+  const cx = xOf(ang);
+  s += `<line x1="${cx}" y1="${30}" x2="${cx}" y2="${H-30}" stroke="#fff" stroke-width="1" stroke-dasharray="2,3"/>`;
+  s += `<text x="${cx + 4}" y="${40}" fill="#fff" font-family="ui-monospace,monospace" font-size="10">θ=${ang}°</text>`;
+
+  svg.innerHTML = s;
+}
+
+function update(){
+  const strat = els.strat.value;
+  const ang = parseFloat(els.ang.value);
+  const spd = parseFloat(els.spd.value);
+  const pp = parseInt(els.pp.value);
+
+  document.getElementById('angRead').textContent = ang.toFixed(0);
+  document.getElementById('spdRead').textContent = spd;
+  document.getElementById('ppRead').textContent = pp;
+
+  const sectorInfo = (() => {
+    if(strat !== 'trap') return null;
+    const sec = Math.floor(ang / 60);
+    const labels = [
+      'A+ B− (Sector 1)','A+ C− (Sector 2)','B+ C− (Sector 3)',
+      'B+ A− (Sector 4)','C+ A− (Sector 5)','C+ B− (Sector 6)'
+    ];
+    return labels[sec % 6];
+  })();
+
+  document.getElementById('tStrat').textContent =
+    strat === 'trap' ? 'Trapezoidal' : strat === 'sin' ? 'Sinusoidal' : 'FOC (Field-Oriented Control)';
+  document.getElementById('tSector').textContent = sectorInfo || '— (continuous waveform)';
+  document.getElementById('tRipple').textContent =
+    strat === 'trap' ? '~14 % (peaks at commutation)' :
+    strat === 'sin'  ? '~4 % (smooth)' : '< 1 % (excellent)';
+  document.getElementById('tNoise').textContent =
+    strat === 'trap' ? 'Cogging hum (audible)' :
+    strat === 'sin'  ? 'Soft whine' : 'Nearly silent';
+  document.getElementById('tSensors').textContent =
+    strat === 'trap' ? '3× Hall (or BEMF zero-cross for sensorless)' :
+    strat === 'sin'  ? 'Encoder (~1000 counts/rev)' :
+                       'Encoder (~4000 counts/rev) or sensorless observer';
+  document.getElementById('tCompute').textContent =
+    strat === 'trap' ? '~1 µs per cycle (Cortex-M0 fine)' :
+    strat === 'sin'  ? '~3 µs per cycle (Cortex-M3)' :
+                       '~5-20 µs per cycle (Cortex-M4F with FPU)';
+
+  drawPhases();
+}
+
+['strat','ang','spd','pp'].forEach(k => els[k].addEventListener('input', update));
+els.strat.addEventListener('change', update);
+update();
+</script>
+</body>
+</html>
