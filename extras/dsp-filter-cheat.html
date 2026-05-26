@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DSP &amp; Filter Cheat Card — visual</title>
+<style>:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,sans-serif}
+main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,monospace;color:var(--accent2)}
+pre{background:var(--bg-elev2);padding:12px 14px;border-radius:6px;font:12px ui-monospace,monospace;color:var(--fg);overflow-x:auto;margin:10px 0}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}
+.panel h3{margin-top:0}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>DSP &amp; Filter Cheat Card</h1>
+<p class="lede">The core math behind digital signal processing — sampling, the FFT, FIR vs IIR filters, windowing, and the choice between them. Every embedded system that touches a sensor or audio signal needs DSP. This card distills the must-know formulas + design rules.</p>
+
+<div class="anchors">
+<span class="anchor"><b>Nyquist</b>: fs ≥ 2·f_max (no aliasing)</span>
+<span class="anchor"><b>Practical fs</b>: 4-10× f_max</span>
+<span class="anchor"><b>FFT cost</b>: N·log₂(N) operations</span>
+<span class="anchor"><b>FIR</b>: linear phase, stable always</span>
+<span class="anchor"><b>IIR</b>: efficient, may be unstable</span>
+</div>
+
+<h2>Sampling — Nyquist + anti-aliasing</h2>
+<div class="deriv">
+<span class="step">Nyquist criterion: sample rate fs must be at least 2× the highest signal frequency f_max</span>
+<span class="step">If you sample below 2·f_max: aliasing — signals at &gt;fs/2 fold back into the baseband. Permanent loss of info.</span>
+<span class="step">Practical rule: pick fs = 4-10× f_max for headroom. Anti-alias filter at ~fs/3 in analog before ADC.</span>
+<span class="step">Sample-rate examples: audio CD = 44.1 kHz (covers 0-20 kHz); IMU = 1-8 kHz (motion freq &lt; 100 Hz); current sense = 20-100 kHz (PWM at 20 kHz).</span>
+</div>
+
+<table>
+<tr><th>Application</th><th>Signal BW</th><th>Typical fs</th></tr>
+<tr><td>Audio</td><td>0-20 kHz</td><td>44.1 / 48 kHz (CD/professional)</td></tr>
+<tr><td>Telephone voice</td><td>0-4 kHz</td><td>8 kHz (G.711)</td></tr>
+<tr><td>IMU / accelerometer</td><td>0-200 Hz</td><td>1-8 kHz</td></tr>
+<tr><td>ECG / biopotential</td><td>0-250 Hz</td><td>500-2000 Hz</td></tr>
+<tr><td>Motor current sense</td><td>0-10 kHz</td><td>20-100 kHz (sync to PWM)</td></tr>
+<tr><td>Power-quality monitoring</td><td>0-3 kHz (50 harmonics of 60 Hz)</td><td>10-20 kHz</td></tr>
+<tr><td>Software-defined radio</td><td>varies</td><td>1.024 - 200 MHz</td></tr>
+</table>
+
+<h2>The DFT and FFT</h2>
+<p>The Discrete Fourier Transform converts N time-domain samples into N frequency-domain bins:</p>
+<div class="deriv">
+<span class="step">X[k] = Σ_{n=0..N-1} x[n] · exp(-j·2π·k·n/N)</span>
+<span class="step">Direct DFT: O(N²) operations</span>
+<span class="step">FFT (Cooley-Tukey): O(N log N) — for N=1024, 10× faster; for N=1M, 50,000× faster</span>
+<span class="step">Frequency resolution: Δf = fs / N — finer if you take more samples</span>
+<span class="step">Time resolution: ΔT = N / fs — coarser if you take more samples (the uncertainty principle)</span>
+</div>
+
+<table>
+<tr><th>N</th><th>FFT operations</th><th>At 1 GHz</th></tr>
+<tr><td>64</td><td>~ 200</td><td>0.2 µs</td></tr>
+<tr><td>256</td><td>~ 1,000</td><td>1 µs</td></tr>
+<tr><td>1024</td><td>~ 5,000</td><td>5 µs</td></tr>
+<tr><td>4096</td><td>~ 25,000</td><td>25 µs</td></tr>
+<tr><td>16384</td><td>~ 115,000</td><td>115 µs</td></tr>
+<tr><td>65536</td><td>~ 524,000</td><td>0.5 ms</td></tr>
+</table>
+
+<h2>Windowing — taming spectral leakage</h2>
+<p>An FFT of a non-periodic signal exhibits "leakage" — energy from one frequency spreads to adjacent bins. Windowing tapers the signal at both ends to reduce this.</p>
+
+<table>
+<tr><th>Window</th><th>Main-lobe width</th><th>Side-lobe attenuation</th><th>Use for</th></tr>
+<tr><td>Rectangular (none)</td><td>0.89 / N bins</td><td>−13 dB</td><td>Periodic signals; max frequency resolution</td></tr>
+<tr><td>Hann</td><td>1.44 / N</td><td>−32 dB</td><td>General-purpose; good default</td></tr>
+<tr><td>Hamming</td><td>1.30 / N</td><td>−43 dB</td><td>Similar to Hann; slightly different tradeoff</td></tr>
+<tr><td>Blackman</td><td>1.68 / N</td><td>−58 dB</td><td>Low-noise spectral analysis</td></tr>
+<tr><td>Flat-top</td><td>3.72 / N</td><td>−93 dB</td><td>Accurate amplitude measurement (calibration)</td></tr>
+<tr><td>Kaiser-Bessel</td><td>tunable</td><td>tunable (β param)</td><td>Filter design; adjustable trade-off</td></tr>
+</table>
+
+<h2>FIR vs IIR filters — the big choice</h2>
+<table>
+<tr><th>Aspect</th><th>FIR (Finite Impulse Response)</th><th>IIR (Infinite Impulse Response)</th></tr>
+<tr><td>Output formula</td><td>y[n] = Σ b_k · x[n-k]</td><td>y[n] = Σ b_k · x[n-k] − Σ a_k · y[n-k]</td></tr>
+<tr><td>Feedback</td><td>None — feed-forward only</td><td>Feedback present</td></tr>
+<tr><td>Stability</td><td>Always stable</td><td>Can be unstable if poles outside unit circle</td></tr>
+<tr><td>Phase response</td><td>Can be exactly linear (no phase distortion)</td><td>Generally non-linear phase</td></tr>
+<tr><td>Compute cost</td><td>O(N) per sample for order-N filter</td><td>O(N) but N is much smaller for same response</td></tr>
+<tr><td>Order for sharp roll-off</td><td>High (100s of taps for steep)</td><td>Low (4-10 for steep, e.g., Butterworth)</td></tr>
+<tr><td>Implementation</td><td>Direct convolution or FFT-based</td><td>Difference equations / biquad cascades</td></tr>
+<tr><td>Memory</td><td>N delay taps</td><td>Few state variables</td></tr>
+<tr><td>Numerical robustness</td><td>Excellent (no accumulation)</td><td>Coefficient quantization can shift poles → instability</td></tr>
+<tr><td>Best for</td><td>Audio (linear phase), beam-forming, image filters</td><td>Real-time control loops, sensor smoothing, telecoms</td></tr>
+</table>
+
+<h2>The biquad — IIR's building block</h2>
+<p>Any IIR filter can be implemented as a cascade of <b>biquads</b> — 2nd-order sections. A biquad has the difference equation:</p>
+<pre>y[n] = (b0·x[n] + b1·x[n-1] + b2·x[n-2]
+        − a1·y[n-1] − a2·y[n-2]) / a0</pre>
+<p>5 coefficients (a0 typically normalized to 1). Filter designers compute the coefficients from desired cutoff + Q + filter type.</p>
+
+<h3>Robert Bristow-Johnson biquad cookbook (audio EQ classic)</h3>
+<table>
+<tr><th>Type</th><th>Use</th></tr>
+<tr><td>Low-pass</td><td>Smooth a noisy signal; integrator-like</td></tr>
+<tr><td>High-pass</td><td>Remove DC drift, baseline wander</td></tr>
+<tr><td>Band-pass</td><td>Isolate a frequency band (tone detection)</td></tr>
+<tr><td>Notch</td><td>Remove a specific frequency (50/60 Hz hum)</td></tr>
+<tr><td>Peaking EQ</td><td>Boost or cut at a frequency (audio EQ)</td></tr>
+<tr><td>Low-shelf / high-shelf</td><td>Bass/treble adjustment</td></tr>
+<tr><td>All-pass</td><td>Phase shift only, magnitude flat</td></tr>
+</table>
+
+<h2>Filter design — by topology</h2>
+<table>
+<tr><th>Topology</th><th>Behavior</th><th>Best for</th></tr>
+<tr><td>Butterworth</td><td>Maximally flat passband; gradual roll-off</td><td>Audio, general-purpose</td></tr>
+<tr><td>Chebyshev I</td><td>Steeper roll-off; ripple in passband</td><td>When sharp cutoff matters more than flat passband</td></tr>
+<tr><td>Chebyshev II</td><td>Flat passband, ripple in stopband</td><td>Anti-aliasing where ringing in stopband is OK</td></tr>
+<tr><td>Elliptic (Cauer)</td><td>Sharpest possible; ripple in both</td><td>Minimum-order requirement</td></tr>
+<tr><td>Bessel</td><td>Maximally flat group delay (no phase distortion)</td><td>Pulse signals; transient preservation</td></tr>
+</table>
+
+<h2>Worked example — designing a low-pass for IMU smoothing</h2>
+<div class="panel" style="border-left:3px solid var(--accent3)">
+<h3>Setup</h3>
+<p>MPU-6050 IMU at 1 kHz sample rate. We want to smooth accelerometer data with cutoff at 50 Hz to filter out vibration noise.</p>
+<h3>Filter choice</h3>
+<p>Butterworth IIR, 2nd order (one biquad). Cutoff fc = 50 Hz.</p>
+<div class="deriv">
+<span class="step">Normalized cutoff: w0 = 2π·50/1000 = 0.314 rad/sample</span>
+<span class="step">Q = 0.707 for Butterworth</span>
+<span class="step">From RBJ cookbook LPF:</span>
+<span class="step">  α = sin(w0) / (2·Q) = 0.219</span>
+<span class="step">  cos_w0 = cos(0.314) = 0.951</span>
+<span class="step">  b0 = (1 - cos_w0) / 2 = 0.0245</span>
+<span class="step">  b1 = 1 - cos_w0 = 0.0489</span>
+<span class="step">  b2 = (1 - cos_w0) / 2 = 0.0245</span>
+<span class="step">  a0 = 1 + α = 1.219</span>
+<span class="step">  a1 = -2·cos_w0 = -1.902</span>
+<span class="step">  a2 = 1 - α = 0.781</span>
+</div>
+<h3>C code (single biquad, direct form II transposed)</h3>
+<pre>typedef struct { float b0,b1,b2,a1,a2; float z1,z2; } biquad_t;
+
+float biquad_step(biquad_t *b, float x) {
+    float y = b-&gt;b0 * x + b-&gt;z1;
+    b-&gt;z1   = b-&gt;b1 * x + b-&gt;z2 - b-&gt;a1 * y;
+    b-&gt;z2   = b-&gt;b2 * x        - b-&gt;a2 * y;
+    return y;
+}</pre>
+<p>One biquad = 5 multiplies + 4 adds per sample. At 1 kHz, takes 9 µs on a Cortex-M4F. Negligible.</p>
+</div>
+
+<h2>Common DSP recipes</h2>
+
+<h3>Moving average (boxcar) filter</h3>
+<p>Simplest FIR: average last N samples. Linear phase. N=5 gives ~6 dB attenuation at fs/(2N). Good for: smoothing noisy sensor data when phase doesn't matter much.</p>
+<pre>float avg = 0;
+for (int i = 0; i &lt; N; i++) avg += buf[(idx-i) % N];
+avg /= N;</pre>
+
+<h3>Exponential moving average (EMA, "leaky integrator")</h3>
+<p>One-pole IIR: <code>y[n] = α·x[n] + (1-α)·y[n-1]</code>. α between 0 (no update) and 1 (no filter). Cutoff ≈ α·fs / (2π).</p>
+<pre>// alpha sets cutoff. alpha = 0.1 at 1 kHz ≈ 16 Hz LPF
+y = alpha * x + (1 - alpha) * y_prev;
+y_prev = y;</pre>
+
+<h3>Notch filter for 60 Hz hum (US mains pickup)</h3>
+<p>2nd-order biquad with Q=10 at fc=60 Hz removes ±0.5 Hz around 60. Use in audio + biomed.</p>
+
+<h3>FFT-based spectral analysis</h3>
+<pre>// Capture N samples, apply window, FFT, magnitude
+window_hann(buf, N);
+fft(buf, N);  // CMSIS-DSP: arm_rfft_q15(...)
+for (int k = 0; k &lt; N/2; k++) {
+    magnitude[k] = sqrtf(re[k]*re[k] + im[k]*im[k]);
+}</pre>
+
+<h2>Performance tips</h2>
+<ul class="notice">
+<li><b>Use CMSIS-DSP on Cortex-M</b> — hand-tuned ARM-optimized FFT/biquad/FIR. Up to 10× faster than naive C.</li>
+<li><b>Use Q15 or Q31 fixed-point</b> on M0/M0+ without FPU. M4F and up: just use float.</li>
+<li><b>Pre-allocate buffers</b>; never malloc in DSP callbacks.</li>
+<li><b>Use double-buffering</b> for DMA-fed ADC: process buffer N while DMA fills buffer N+1.</li>
+<li><b>Watch for accumulator overflow</b> in fixed-point FIR with many taps. CMSIS handles this via 64-bit accumulator internally.</li>
+<li><b>For order-100+ FIR: switch to overlap-add FFT convolution</b> — faster than direct convolution past ~100 taps.</li>
+</ul>
+
+<h2>Z-domain and stability</h2>
+<p>An IIR filter's stability depends on its <b>poles</b> — the roots of the denominator polynomial. For stability, all poles must lie inside the unit circle in the complex z-plane.</p>
+<div class="deriv">
+<span class="step">Transfer function: H(z) = (b0 + b1·z⁻¹ + b2·z⁻²) / (1 + a1·z⁻¹ + a2·z⁻²)</span>
+<span class="step">Poles: roots of (1 + a1·z⁻¹ + a2·z⁻²) = 0</span>
+<span class="step">For biquad: |poles| &lt; 1 ⇔ |a2| &lt; 1 AND |a1| &lt; 1 + a2</span>
+<span class="step">Coefficient quantization in fixed-point can move poles outside the circle → instability.</span>
+</div>
+
+<footer>Cross-links: <a href="filter-designer.html">Filter Designer</a> · <a href="../ee/phase-3-ac-analysis/bode-filters.html">Bode &amp; Filters (analog)</a> · <a href="../ee/phase-8-embedded-protocols/adc-explorer.html">ADC Explorer</a></footer>
+
+</main><script>console.log('DSP &amp; Filter Cheat loaded');</script>
+</body></html>

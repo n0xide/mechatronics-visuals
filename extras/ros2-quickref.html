@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ROS 2 Quick Reference — visual</title>
+<style>:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,sans-serif}
+main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,monospace;color:var(--accent2)}
+pre{background:var(--bg-elev2);padding:12px 14px;border-radius:6px;font:12px ui-monospace,monospace;color:var(--fg);overflow-x:auto;margin:10px 0}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}
+.panel h3{margin-top:0}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>ROS 2 Quick Reference</h1>
+<p class="lede">ROS 2 is the robotics middleware running on every modern robot — autonomous cars, arms, drones. The conceptual model is the same as ROS 1 (nodes / topics / services / actions) but the wire protocol is DDS, and that brings QoS profiles, discovery, lifecycle nodes. This card is the everyday CLI + Python/C++ + launch-file reference.</p>
+
+<div class="anchors">
+<span class="anchor"><b>Current LTS</b>: Humble (2022 → 2027)</span>
+<span class="anchor"><b>Wire</b>: DDS (Fast-DDS, Cyclone DDS)</span>
+<span class="anchor"><b>Build</b>: colcon, ament_cmake / ament_python</span>
+<span class="anchor"><b>Languages</b>: Python (rclpy) + C++ (rclcpp)</span>
+</div>
+
+<h2>The CLI you'll use every day</h2>
+<table>
+<tr><th>Command</th><th>What it does</th></tr>
+<tr><td><code>ros2 topic list</code></td><td>List all active topics</td></tr>
+<tr><td><code>ros2 topic echo /topic_name</code></td><td>Dump messages from a topic to console</td></tr>
+<tr><td><code>ros2 topic hz /topic_name</code></td><td>Measure publish rate</td></tr>
+<tr><td><code>ros2 topic pub --once /topic_name std_msgs/String "data: hello"</code></td><td>Publish a one-shot message</td></tr>
+<tr><td><code>ros2 topic info /topic_name -v</code></td><td>Show publishers, subscribers, QoS</td></tr>
+<tr><td><code>ros2 node list</code></td><td>List all running nodes</td></tr>
+<tr><td><code>ros2 node info /node_name</code></td><td>Show topics/services/actions a node uses</td></tr>
+<tr><td><code>ros2 service list</code></td><td>List active services</td></tr>
+<tr><td><code>ros2 service call /service_name srv_type "{}"</code></td><td>Call a service synchronously</td></tr>
+<tr><td><code>ros2 action list</code></td><td>List actions</td></tr>
+<tr><td><code>ros2 action send_goal /action ActionType "{}"</code></td><td>Send a goal to an action server</td></tr>
+<tr><td><code>ros2 param list /node</code></td><td>List a node's parameters</td></tr>
+<tr><td><code>ros2 param set /node param value</code></td><td>Set a parameter at runtime</td></tr>
+<tr><td><code>ros2 launch &lt;pkg&gt; &lt;launch_file&gt;.launch.py</code></td><td>Launch a multi-node configuration</td></tr>
+<tr><td><code>ros2 bag record -a</code></td><td>Record ALL topics to disk</td></tr>
+<tr><td><code>ros2 bag play foo.bag</code></td><td>Play back a recorded bag</td></tr>
+<tr><td><code>ros2 doctor</code></td><td>Diagnose common setup issues</td></tr>
+<tr><td><code>ros2 daemon stop / start</code></td><td>Restart the discovery daemon if topics seem stuck</td></tr>
+<tr><td><code>ros2 interface show std_msgs/msg/String</code></td><td>Show message definition</td></tr>
+</table>
+
+<h2>Concepts — the 4 communication types</h2>
+<table>
+<tr><th>Type</th><th>Wire</th><th>Use when</th></tr>
+<tr><td><b>Topic</b></td><td>One-way publish/subscribe, asynchronous</td><td>Continuous data: sensor readings, status, /cmd_vel</td></tr>
+<tr><td><b>Service</b></td><td>Synchronous request/response, blocking</td><td>Configuration, one-shot queries: <code>/spawn_entity</code></td></tr>
+<tr><td><b>Action</b></td><td>Async long-running goal with feedback + result</td><td>Move-to-pose, navigate-to-goal, follow trajectory</td></tr>
+<tr><td><b>Parameter</b></td><td>Per-node key/value config, can be set at runtime</td><td>Gains, thresholds, mode flags</td></tr>
+</table>
+
+<h2>QoS profiles — the DDS gift (and trap)</h2>
+<p>Every topic publisher and subscriber has a Quality-of-Service profile. They must be <b>compatible</b> for the connection to form. The common settings:</p>
+<table>
+<tr><th>QoS field</th><th>Values</th><th>What it controls</th></tr>
+<tr><td>Reliability</td><td>BEST_EFFORT or RELIABLE</td><td>Retransmit on packet loss? (Reliable = TCP-like; Best-effort = UDP-like)</td></tr>
+<tr><td>Durability</td><td>VOLATILE or TRANSIENT_LOCAL</td><td>Does a publisher remember the last message for late-joining subscribers?</td></tr>
+<tr><td>History</td><td>KEEP_LAST(n) or KEEP_ALL</td><td>How many old messages buffered</td></tr>
+<tr><td>Depth</td><td>integer (e.g., 10)</td><td>Buffer size for KEEP_LAST</td></tr>
+<tr><td>Deadline</td><td>duration</td><td>Max time between consecutive publishes; missed = trigger callback</td></tr>
+<tr><td>Lifespan</td><td>duration</td><td>How long a published message stays valid</td></tr>
+<tr><td>Liveliness</td><td>AUTOMATIC or MANUAL</td><td>How publisher signals "I'm alive"</td></tr>
+</table>
+
+<div class="panel warn">
+<h3>The QoS compatibility trap</h3>
+<p>If publisher is RELIABLE but subscriber is BEST_EFFORT — INCOMPATIBLE. Connection silently fails. <code>ros2 topic info -v</code> shows the QoS, and the offending mismatch.</p>
+<p>Most-common-mistake: high-rate sensor (camera/lidar) publishing as BEST_EFFORT (default), then trying to subscribe with the default RELIABLE in rviz2 — sees no data. Set rviz topic reliability to BEST_EFFORT.</p>
+</div>
+
+<h2>Common QoS profile choices</h2>
+<table>
+<tr><th>Use case</th><th>Reliability</th><th>Durability</th><th>Depth</th></tr>
+<tr><td>Sensor stream (camera, lidar, IMU)</td><td>BEST_EFFORT</td><td>VOLATILE</td><td>1-5</td></tr>
+<tr><td>Command (/cmd_vel)</td><td>RELIABLE</td><td>VOLATILE</td><td>10</td></tr>
+<tr><td>Map / static TF</td><td>RELIABLE</td><td>TRANSIENT_LOCAL</td><td>1</td></tr>
+<tr><td>Status / health</td><td>RELIABLE</td><td>VOLATILE</td><td>10</td></tr>
+<tr><td>Telemetry / log</td><td>BEST_EFFORT</td><td>VOLATILE</td><td>100</td></tr>
+</table>
+
+<h2>Minimal Python publisher (rclpy)</h2>
+<pre>import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+
+class MyPub(Node):
+    def __init__(self):
+        super().__init__('my_pub')
+        self.pub = self.create_publisher(String, 'chat', 10)
+        self.timer = self.create_timer(1.0, self.tick)
+        self.i = 0
+
+    def tick(self):
+        msg = String()
+        msg.data = f'hello #{self.i}'
+        self.pub.publish(msg)
+        self.get_logger().info(f'published: {msg.data}')
+        self.i += 1
+
+def main():
+    rclpy.init()
+    rclpy.spin(MyPub())
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()</pre>
+
+<h2>Minimal Python subscriber</h2>
+<pre>import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+
+class MySub(Node):
+    def __init__(self):
+        super().__init__('my_sub')
+        self.sub = self.create_subscription(
+            String, 'chat', self.cb, 10)
+
+    def cb(self, msg):
+        self.get_logger().info(f'got: {msg.data}')
+
+def main():
+    rclpy.init()
+    rclpy.spin(MySub())
+    rclpy.shutdown()</pre>
+
+<h2>Minimal launch file (Python)</h2>
+<pre>from launch import LaunchDescription
+from launch_ros.actions import Node
+
+def generate_launch_description():
+    return LaunchDescription([
+        Node(
+            package='my_pkg',
+            executable='my_pub',
+            name='publisher_a',
+            parameters=[{'rate_hz': 1.0}],
+            remappings=[('chat', '/topic_a')],
+        ),
+        Node(
+            package='my_pkg',
+            executable='my_sub',
+            name='subscriber_a',
+            remappings=[('chat', '/topic_a')],
+        ),
+    ])</pre>
+
+<h2>Package layout (ament_python)</h2>
+<pre>my_pkg/
+├── package.xml          # metadata
+├── setup.py             # Python build
+├── setup.cfg
+├── resource/
+│   └── my_pkg
+├── my_pkg/              # Python package
+│   ├── __init__.py
+│   ├── my_pub.py
+│   └── my_sub.py
+├── launch/
+│   └── demo.launch.py
+├── config/
+│   └── params.yaml
+└── test/</pre>
+
+<h2>Common standard messages + types</h2>
+<table>
+<tr><th>Package</th><th>Common types</th><th>Use</th></tr>
+<tr><td>std_msgs</td><td>Bool, Int32, Float64, String, Header</td><td>Trivial scalar messages</td></tr>
+<tr><td>geometry_msgs</td><td>Point, Vector3, Quaternion, Pose, Twist, Transform</td><td>Spatial data, robot commands</td></tr>
+<tr><td>sensor_msgs</td><td>Image, LaserScan, PointCloud2, Imu, JointState</td><td>Sensor data</td></tr>
+<tr><td>nav_msgs</td><td>Odometry, Path, OccupancyGrid, MapMetaData</td><td>Navigation</td></tr>
+<tr><td>tf2_msgs</td><td>TFMessage</td><td>Coordinate frame transforms</td></tr>
+<tr><td>trajectory_msgs</td><td>JointTrajectory, MultiDOFJointTrajectory</td><td>Robot arm motion</td></tr>
+<tr><td>diagnostic_msgs</td><td>DiagnosticArray, DiagnosticStatus</td><td>Health + status reporting</td></tr>
+</table>
+
+<h2>TF2 — the coordinate frame tree</h2>
+<p>TF2 manages all frames in the robot: <code>map</code> → <code>odom</code> → <code>base_link</code> → joint frames → camera frames. Each transform is a 6-DOF pose between two frames, published as a TF message.</p>
+<pre>// Lookup transform in Python
+from tf2_ros import Buffer, TransformListener
+import rclpy
+
+self.tf_buffer = Buffer()
+self.tf_listener = TransformListener(self.tf_buffer, self)
+# ...
+try:
+    t = self.tf_buffer.lookup_transform(
+        'map', 'base_link', rclpy.time.Time())
+    print(t.transform.translation.x, ...)
+except Exception as e:
+    self.get_logger().warn(f'TF lookup failed: {e}')</pre>
+
+<h2>Build + workspace</h2>
+<pre># From workspace root
+colcon build                          # build all packages
+colcon build --packages-select my_pkg  # build just one
+colcon build --symlink-install         # python edit without rebuild
+source install/setup.bash              # add to PATH
+
+# Useful flags
+colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
+colcon test --packages-select my_pkg
+colcon test-result --verbose
+</pre>
+
+<h2>Debugging recipes</h2>
+<div class="panel tip">
+<h3>"My subscriber isn't receiving anything"</h3>
+<ol><li><code>ros2 topic list</code> — does the topic exist?</li>
+<li><code>ros2 topic info /topic -v</code> — pubs + subs + QoS shown?</li>
+<li><code>ros2 topic echo /topic</code> — does data flow when you watch?</li>
+<li>Check QoS mismatch in topic info output.</li>
+<li>Check namespace remapping in launch file.</li>
+<li>Check DDS interface (Cyclone DDS may need <code>ROS_DOMAIN_ID</code> match).</li></ol>
+</div>
+
+<div class="panel tip">
+<h3>"My launch file has a node that immediately exits"</h3>
+<ol><li>Launch with <code>output='screen'</code> to see stderr.</li>
+<li><code>ros2 run my_pkg my_node</code> directly outside launch to see crash.</li>
+<li>Check exception in Python — most likely missing parameter or wrong message type.</li>
+<li>Check that executable name in setup.py matches what launch file references.</li></ol>
+</div>
+
+<div class="panel tip">
+<h3>"TF tree has gaps"</h3>
+<ol><li><code>ros2 run tf2_tools view_frames</code> generates a PDF of the tree.</li>
+<li>Look for orphaned frames (not connected to map or world).</li>
+<li>Check broadcast timing — TF lookups fail if no transform within ~0.1 s.</li>
+<li>Static transforms (URDF) need <code>robot_state_publisher</code> + <code>joint_state_publisher</code> running.</li></ol>
+</div>
+
+<h2>Multi-machine + cross-network</h2>
+<table>
+<tr><th>Setting</th><th>Use</th></tr>
+<tr><td><code>export ROS_DOMAIN_ID=42</code></td><td>Isolate from other ROS networks on same LAN</td></tr>
+<tr><td><code>export ROS_LOCALHOST_ONLY=1</code></td><td>Don't broadcast — useful on dev machine</td></tr>
+<tr><td><code>RMW_IMPLEMENTATION=rmw_cyclonedds_cpp</code></td><td>Switch DDS impl (default Fast-DDS in newer)</td></tr>
+<tr><td>Cyclone DDS YAML config</td><td>Network interface selection, discovery range</td></tr>
+</table>
+
+<h2>Performance tips</h2>
+<ul class="notice">
+<li><b>Use Best-effort QoS for sensor streams</b> — saves CPU, drops gracefully on overload.</li>
+<li><b>Set History to KEEP_LAST(1)</b> for high-rate sensors — don't buffer old data.</li>
+<li><b>Avoid std::cout in callbacks</b> — use <code>get_logger()</code> which can be filtered. cout serializes.</li>
+<li><b>Profile with <code>ros2 topic hz</code> + <code>top</code></b> — identify whether your bottleneck is rate, payload, or CPU.</li>
+<li><b>For heavy compute (perception)</b>: separate Composer process. Components in shared process avoid serialization between nodes (intra-process communication).</li>
+<li><b>Cyclone DDS</b> generally outperforms Fast-DDS on Linux. Try switching if hitting bandwidth limits.</li>
+</ul>
+
+<footer>Cross-links: <a href="../em/phase-7-system-integration/ros2-dds-qos.html">ROS 2 DDS QoS</a> · <a href="../em/phase-8-robotics-mechatronics/tf-tree.html">TF Tree</a> · <a href="../em/phase-5-rtos-firmware/realtime-deadlines.html">Real-time Deadlines</a></footer>
+
+</main><script>console.log('ROS 2 Quick Reference loaded');</script>
+</body></html>
