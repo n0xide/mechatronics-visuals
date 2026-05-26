@@ -112,6 +112,9 @@
   .vis.active .vd{color:var(--fg-dim)}
 
   .hit{background:rgba(94,200,255,0.15);color:var(--fg-bright);padding:0 1px;border-radius:2px}
+  .new-badge{display:inline-block;background:var(--accent3);color:#000;font:600 9px ui-monospace,monospace;
+    padding:1px 5px;border-radius:3px;margin-left:6px;vertical-align:middle;letter-spacing:0.05em}
+  .gv-card .new-badge{position:absolute;top:6px;right:6px;margin:0}
 
   /* IFRAME PANE */
   main{flex:1;background:var(--bg);position:relative;overflow:hidden}
@@ -249,8 +252,8 @@
 <div class="body">
   <aside id="sidebar">
     <div class="search-row">
-      <input id="search" type="text" placeholder="Search 162 visuals... ( / )" autocomplete="off">
-      <div class="search-meta"><span id="searchMeta">162 visuals across 26 phases + 3 extras</span></div>
+      <input id="search" type="text" placeholder="Search 257 visuals... ( / )" autocomplete="off">
+      <div class="search-meta"><span id="searchMeta">257 visuals across 26 phases + 14 extras</span></div>
     </div>
     <nav id="tree"></nav>
   </aside>
@@ -576,6 +579,62 @@ const PHASES = {
 const DISC_LABELS = {ee:'EE — Electrical', me:'ME — Mechanical', em:'EM — Electro-Mechanical', extras:'Extras'};
 const DISC_ORDER = ['ee','me','em','extras'];
 
+// 95 new visuals added in the May 2026 expansion (current-divider + extras + sweeps + gap-fills)
+const NEW_VISUALS = new Set([
+  // EE Phase 1
+  'current-divider-explorer.html','mesh-analysis.html','nodal-analysis.html','source-transformations.html',
+  // EE Phase 2
+  'diode-iv-curve.html','energy-storage-cl.html','rlc-step-response.html','transformer-explorer.html',
+  // EE Phase 3
+  'crystal-pierce.html','phasor-rotation.html',
+  // EE Phase 4
+  'bjt-small-signal.html','cmrr-explorer.html','instrumentation-amp.html','integrator-differentiator.html','latch-up-esd.html','schmitt-comparator.html',
+  // EE Phase 5
+  'logic-families-level-shift.html','setup-hold-metastability.html','shift-registers.html',
+  // EE Phase 6
+  'converter-filters.html','pfc-boost.html','synchronous-rectification.html',
+  // EE Phase 7
+  'eye-diagrams.html','ground-bounce.html','skin-effect.html',
+  // EE Phase 8
+  'can-bus.html','usb-enumeration.html',
+  // EE Phase 9
+  'ble-gatt.html','sdr-iq-sampling.html','spread-spectrum.html','wifi-channels-ofdm.html',
+  // EM Phase 1
+  'adc-input-protection.html','capacitive-touch.html','force-torque-sensor.html','inductive-proximity.html','strain-bridge.html','thermistor-linearization.html',
+  // EM Phase 2
+  'linear-actuator-types.html','linear-motor-voice-coil.html','mems-sensors.html','piezo-actuator.html','pneumatics-basics.html',
+  // EM Phase 3
+  'integrated-hbridge.html',
+  // EM Phase 5
+  'dma-circular-buffer.html','memory-map.html','reset-brownout.html',
+  // EM Phase 6
+  'inductive-kickback.html','isolation-selector.html','regen-braking.html',
+  // EM Phase 7
+  'connector-matrix.html','wire-derating.html',
+  // EM Phase 8
+  'ackermann-geometry.html','camera-calibration-aruco.html','complementary-filter.html','diff-drive.html','impedance-control.html','path-planning.html',
+  // ME Phase 1
+  'auxiliary-views.html','section-views.html','surface-finish-symbols.html','tolerance-stackup.html',
+  // ME Phase 2
+  'anisotropic-fdm.html','anodize-dimension.html','creep-relaxation.html','galvanic-corrosion.html',
+  // ME Phase 3
+  'frames-machines.html','friction-types.html','hydrostatics.html','parallel-axis-theorem.html',
+  // ME Phase 4
+  'indeterminate-axial.html','mohrs-circle.html','pressure-vessel.html',
+  // ME Phase 5
+  'bend-allowance.html','lost-pla-casting.html','speeds-feeds.html',
+  // ME Phase 6
+  'thread-engagement.html','vibration-loosening.html',
+  // ME Phase 7
+  'gear-types.html','leadscrew-efficiency.html','timing-belt-tension.html',
+  // ME Phase 8
+  'impulse-restitution.html','log-decrement.html','transmissibility.html',
+  // ME Phase 9
+  'fin-efficiency.html',
+  // Extras
+  'component-picker.html','unit-converter.html','pcb-calculator.html','battery-power-budget.html','fastener-picker.html','heatsink-sizer.html','antenna-calculator.html','filter-designer.html','opamp-picker.html','mcu-pinout-templates.html','design-recipes.html',
+]);
+
 /* ============== STATE ============== */
 let currentVisual = null;  // index into VISUALS
 let currentFilter = '';
@@ -656,7 +715,7 @@ function renderTree(filter){
   if(filter){
     document.getElementById('searchMeta').innerHTML = `<b>${totalMatch}</b> match${totalMatch===1?'':'es'}`;
   } else {
-    document.getElementById('searchMeta').textContent = '162 visuals across 26 phases + 3 extras';
+    document.getElementById('searchMeta').textContent = '257 visuals across 26 phases + 14 extras';
   }
   // Mark active
   if(currentVisual !== null) markActive();
@@ -664,8 +723,9 @@ function renderTree(filter){
 function renderVis(v, filter){
   const id = idFor(v);
   const path = pathFor(v);
+  const newBadge = NEW_VISUALS.has(v.f) ? '<span class="new-badge">NEW</span>' : '';
   return `<a class="vis" data-id="${id}" data-idx="${VISUALS.indexOf(v)}" onclick="loadByPath('${path}');return false" title="${escapeHtml(decodeHtmlEntities(v.x))}">
-    <span class="vt">${highlight(v.t, filter)}</span>
+    <span class="vt">${highlight(v.t, filter)}${newBadge}</span>
     <span class="vd">${highlight(v.x, filter)}</span>
   </a>`;
 }
@@ -745,7 +805,7 @@ function showGrid(){
   iframe.classList.add('hidden');
   grid.classList.remove('hidden');
   // Clear breadcrumb
-  document.getElementById('crumb').innerHTML = '<span style="color:var(--fg-dim)">Browse all 162 visuals · click any card or pick from sidebar</span>';
+  document.getElementById('crumb').innerHTML = '<span style="color:var(--fg-dim)">Browse all 257 visuals · click any card or pick from sidebar</span>';
   // Clear URL hash
   history.replaceState(null, '', location.pathname + location.search);
   // Unmark active in sidebar
@@ -790,8 +850,9 @@ function renderGridCard(v){
   const path = pathFor(v);
   const title = escapeHtml(decodeHtmlEntities(v.t));
   const desc = escapeHtml(decodeHtmlEntities(v.x));
+  const newBadge = NEW_VISUALS.has(v.f) ? '<span class="new-badge">NEW</span>' : '';
   return `<a class="gv-card" href="${path}" onclick="loadByPath('${path}');return false" title="${desc}">
-    <span class="gct">${title}</span>
+    ${newBadge}<span class="gct">${title}</span>
     <span class="gcd">${desc}</span>
   </a>`;
 }
