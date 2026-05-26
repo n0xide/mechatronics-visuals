@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wire Bundle Derating &amp; Voltage Drop — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;
+     text-transform:uppercase;letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:14px 16px;margin:18px 0;display:grid;gap:10px;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input,.control select{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:5px 8px;
+    font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .big{font:600 22px/1 ui-monospace,Menlo,monospace;color:var(--accent3);margin:6px 0}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:16px;margin:18px 0}
+  .figure svg{display:block;max-width:100%;height:auto}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv b{color:var(--fg)}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>Wire Bundle Derating &amp; Voltage Drop</h1>
+  <p class="lede">A wire's ampacity datasheet number assumes a single conductor in open air. Bundle it with other current-carrying wires and the temperature in the bundle rises, dropping the safe current. Add a long run and even a wire that passes ampacity may cause an unacceptable voltage drop at the load. This visual ties both effects together — bundle derating + voltage drop — into one decision tool.</p>
+
+  <div class="anchors">
+    <span class="anchor"><b>Single wire AWG 14:</b> ~32 A chassis / ~5.9 A power</span>
+    <span class="anchor"><b>3 in bundle:</b> × 0.70 = ~22 A / ~4.1 A</span>
+    <span class="anchor"><b>20 in bundle:</b> × 0.35 = ~11 A / ~2.1 A</span>
+    <span class="anchor"><b>2 % drop rule</b> for DC supply rails</span>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>AWG: <span class="readout" id="awgRead">14</span></label>
+      <input id="awg" type="range" min="4" max="30" step="2" value="14">
+    </div>
+    <div class="control"><label>Conductors in bundle: <span class="readout" id="nRead">3</span></label>
+      <input id="n" type="range" min="1" max="40" step="1" value="3">
+    </div>
+    <div class="control"><label>Load current (A): <span class="readout" id="iRead">5.0</span></label>
+      <input id="i" type="range" min="0.1" max="50" step="0.1" value="5">
+    </div>
+    <div class="control"><label>Run length one-way (m): <span class="readout" id="lRead">3.0</span></label>
+      <input id="l" type="range" min="0.1" max="50" step="0.1" value="3">
+    </div>
+    <div class="control"><label>Supply voltage (V): <span class="readout" id="vRead">12</span></label>
+      <input id="v" type="range" min="1" max="48" step="1" value="12">
+    </div>
+    <div class="control"><label>Mode</label>
+      <select id="mode">
+        <option value="chassis">Chassis (short runs, open air)</option>
+        <option value="power" selected>Power (long runs, conservative)</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="diagram" viewBox="0 0 720 200" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Formula / source</th></tr>
+      <tr><td>Single-wire ampacity</td><td id="tAmp" class="num">5.9 A</td><td>handbook table for AWG @ mode</td></tr>
+      <tr><td>Bundle factor</td><td id="tFactor" class="num">× 0.70</td><td>see bundle table below</td></tr>
+      <tr><td>Derated ampacity</td><td id="tAmpDerated" class="num">4.13 A</td><td><code>I_max = I_single · factor</code></td></tr>
+      <tr><td>R per meter (Cu @ 20 °C)</td><td id="tR" class="num">8.28 mΩ/m</td><td><code>ρ/A</code> with ρ_Cu = 1.68×10⁻⁸ Ω·m</td></tr>
+      <tr><td>Round-trip drop</td><td id="tDrop" class="num">0.248 V</td><td><code>V_drop = 2 · I · R · L</code></td></tr>
+      <tr><td>Drop %</td><td id="tDropPct" class="num">2.07 %</td><td><code>V_drop / V_supply</code></td></tr>
+    </table>
+    <div class="vd" id="verdict">…</div>
+  </div>
+
+  <h2>How bundle derating works (physics, not magic)</h2>
+  <p>The handbook ampacity is set by the temperature rise a single wire can endure (typically 30 °C above ambient before insulation degrades). Each wire dissipates I²R as heat. When you bundle wires together, every wire's heat is trapped by its neighbors — heat can only escape from the surface of the <em>bundle</em>, not each wire. Halve the surface-area-to-current ratio and the bundle runs hotter at the same per-wire current; to stay at the same internal temperature, every wire must carry less.</p>
+
+  <p>The empirical derating factors below are from MIL-W-5088 / SAE AS50881 (aerospace bundling tables, widely used in robotics for conservative engineering):</p>
+
+  <table>
+    <tr><th>Conductors in bundle</th><th>Derating factor</th><th>Why</th></tr>
+    <tr><td>1</td><td class="num">1.00</td><td>handbook ampacity (open air)</td></tr>
+    <tr><td>2</td><td class="num">0.80</td><td>only one neighbor, modest heat trap</td></tr>
+    <tr><td>3</td><td class="num">0.70</td><td>core wire shielded on both sides</td></tr>
+    <tr><td>4–6</td><td class="num">0.60</td><td>significant fraction of bundle in middle</td></tr>
+    <tr><td>7–24</td><td class="num">0.50</td><td>most wires aren't on the outer surface</td></tr>
+    <tr><td>25+</td><td class="num">0.35</td><td>quasi-infinite bundle, near steady-state</td></tr>
+  </table>
+
+  <p>Note this is a <em>continuous-duty</em> derating. For intermittent loads (e.g., motor inrush) the per-wire current can briefly exceed derated ampacity as long as the bundle's thermal mass absorbs the heat. Robot wiring harnesses typically size for continuous duty plus a 1.25× margin for transients.</p>
+
+  <h2>The voltage-drop side</h2>
+  <p>Even when a wire passes ampacity, the I²R loss along the run can drop too much voltage at the load. The classic 2 % rule (drop ≤ 2 % of supply) keeps regulator headroom intact:</p>
+
+  <div class="deriv">
+    <span class="step">1. <b>Wire resistance per meter</b>: R/m = ρ_Cu / A &nbsp;·&nbsp; ρ_Cu = 1.68 × 10⁻⁸ Ω·m @ 20 °C</span>
+    <span class="step">2. <b>Round-trip resistance</b>: R_total = 2 · L · (R/m) &nbsp;·&nbsp; <span style="color:var(--accent2)">two wires carry the current — out and back</span></span>
+    <span class="step">3. <b>Voltage drop</b>: V_drop = I · R_total = <b>2 · I · R · L</b></span>
+    <span class="step">4. <b>Drop %</b>: V_drop / V_supply &nbsp;·&nbsp; aim ≤ 2 % for clean rails, ≤ 5 % for non-critical</span>
+  </div>
+
+  <p>Resistance rises with temperature. Copper's TCR is ~0.004/°C, so a 50 °C wire is ~12 % more resistive than a 20 °C wire. Hot environments + heavily-loaded wires can drive R up enough to matter; many automotive harnesses use the 85 °C rated values, not 20 °C.</p>
+
+  <h2>Worked example — robot arm joint motor</h2>
+  <div class="worked">
+    <h3>The problem</h3>
+    <p>A robot arm motor pulls 8 A continuous (peaks at 15 A). Battery + driver are 1.5 m away. The cable runs in a bundle with 9 other wires (encoder feedback, brake, temperature sensor, etc., 10 total). Supply is 24 V. Acceptable drop: 2 %.</p>
+
+    <h3>The arithmetic</h3>
+    <span class="eq">Max allowed drop: 24 V × 0.02 = 0.48 V at 8 A → max R_total = 0.48 / 8 = 60 mΩ</span>
+    <span class="eq">Round trip is 2 × 1.5 = 3 m → max R/m = 60 / 3 = 20 mΩ/m</span>
+    <span class="eq">From the AWG table: AWG 16 has R/m ≈ 13 mΩ → drop is 8 × 13 × 3 / 1000 = 0.31 V (1.3 %) ✓</span>
+    <span class="eq">Now derate: 10 conductors in bundle → factor 0.50. AWG 16 single-wire ampacity (power) = 3.7 A.</span>
+    <span class="eq">Derated: 3.7 × 0.50 = <b style="color:var(--warn)">1.85 A — far below 8 A continuous</b></span>
+
+    <h3>The fix</h3>
+    <p>Step up to AWG 12 (5.9 × 0.50 = wait, still only 2.95 A — no good) or AWG 10. Better: pull the motor power pair out of the bundle into a separate twisted-pair with no other wires nearby. Then single-wire ampacity applies and AWG 14 (5.9 A power) passes 8 A continuous (within 5 A overage but only briefly during peaks) — or AWG 12 (9.3 A) gives a clean margin. Voltage drop on AWG 12 over 3 m at 8 A: 2 × 8 × 5.21 × 1.5 / 1000 = 125 mV = 0.52 %. ✓</p>
+
+    <p><b>Takeaway:</b> in a robot's wire harness, current-carrying wires often need their own (small) sub-bundle separate from low-power signal wires. Otherwise the derating math forces wire gauges 2-3 steps fatter than necessary.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Bundle effect compounds steeply at first</b> — going from 1 to 3 conductors drops the factor 30 %; going from 3 to 24 drops it another 30 %. Big jump for the first few neighbors, then diminishing.</li>
+    <li><b>Voltage-drop and bundle-derating constrain different ends</b> — short runs are derating-limited (ampacity is what gets you); long runs are voltage-drop-limited (drop is what gets you). Look at the larger of the two required gauges.</li>
+    <li><b>Motor leads + sensor leads in the same bundle = both problems</b> — high current heats neighbors, and noise from the switching motor wires couples into sensor lines. Twisted-pair-shielded for sensors, separate harness for power.</li>
+    <li><b>Use the power column, not chassis</b> for any cable longer than ~0.5 m or any bundle. The chassis column assumes single wire in free air on a chassis, which is rarely the install case.</li>
+    <li><b>Hot environments derate further</b> — the standard tables assume 30 °C ambient. Subtract another 20 % factor for 60 °C operation (under-hood or near motor housings).</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <ul>
+        <li><b>V_drop = 2 · I · R · L</b> &nbsp; (round-trip drop)</li>
+        <li><b>R = ρ/A</b> &nbsp; (resistance per length)</li>
+        <li><b>I_derated = I_single · F_bundle</b></li>
+        <li><b>Drop % ≤ 2 %</b> for power rails</li>
+        <li><b>Drop % ≤ 5 %</b> for motors and non-critical loads</li>
+      </ul>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>RULES OF THUMB</h3>
+      <ul>
+        <li><b>2 wires</b> → factor 0.80</li>
+        <li><b>3 wires</b> → factor 0.70</li>
+        <li><b>4–6</b> → factor 0.60</li>
+        <li><b>7–24</b> → factor 0.50</li>
+        <li><b>25+</b> → factor 0.35</li>
+        <li><b>Hot environment</b> → subtract 20 % more</li>
+        <li><b>Every 3 AWG steps</b> doubles area, halves resistance</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Using chassis ampacity for a bundled wire</b> — instant overheating. Use power column.</li>
+        <li><b>Ignoring the round trip</b> — V_drop has a factor of 2 from out + back. Common arithmetic error.</li>
+        <li><b>Sizing only for steady-state</b> — motor inrush can be 5–10× steady current for 100 ms. Wire passes thermally but voltage may sag.</li>
+        <li><b>Bundling power and signal</b> — even if derating allows it, EMI coupling can corrupt sensor signals. Separate harnesses.</li>
+        <li><b>Forgetting temperature rise</b> — Cu resistance rises 12 % at 50 °C ambient. Ampacity drops in hot bays.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 7 — System Integration</a> ·
+    Cross-links: <a href="../../extras/component-picker.html">AWG ↔ ampacity decoder</a> ·
+    <a href="../phase-6-power-management-em/power-budget.html">Power budget calculator</a>
+  </footer>
+
+</main>
+
+<script>
+// AWG diameter (mm) and area (mm²) from the standard formula
+function awgDiameter(n){ return 0.127 * Math.pow(92, (36 - n) / 39); }
+function awgArea(n){ const d = awgDiameter(n); return Math.PI * (d/2) * (d/2); }
+function awgRPerMeter(n){ const a_m2 = awgArea(n) * 1e-6; return 1.68e-8 / a_m2; }
+
+// Ampacity lookup (chassis vs power), from interpolated table
+const AMP_CHASSIS = {4:140,6:101,8:73,10:55,12:41,14:32,16:22,18:16,20:11,22:7,24:3.5,26:2.2,28:1.4,30:0.86};
+const AMP_POWER   = {4:60, 6:37, 8:24, 10:15, 12:9.3, 14:5.9, 16:3.7, 18:2.3, 20:1.5, 22:0.92, 24:0.577, 26:0.361, 28:0.226, 30:0.142};
+
+function ampacity(n, mode){
+  const table = mode === 'chassis' ? AMP_CHASSIS : AMP_POWER;
+  if(table[n] !== undefined) return table[n];
+  const keys = Object.keys(table).map(Number).sort((a,b)=>a-b);
+  for(let i=0;i<keys.length-1;i++){
+    if(keys[i] <= n && keys[i+1] >= n){
+      const t = (n - keys[i]) / (keys[i+1] - keys[i]);
+      return table[keys[i]] * Math.pow(table[keys[i+1]]/table[keys[i]], t);
+    }
+  }
+  return NaN;
+}
+
+function bundleFactor(n){
+  if(n <= 1) return 1.00;
+  if(n === 2) return 0.80;
+  if(n === 3) return 0.70;
+  if(n <= 6) return 0.60;
+  if(n <= 24) return 0.50;
+  return 0.35;
+}
+
+const els = ['awg','n','i','l','v','mode'].reduce((m,k)=>{m[k]=document.getElementById(k);return m;},{});
+
+function fmtR(r){
+  if(r < 1)   return (r*1000).toFixed(2) + ' mΩ';
+  if(r < 1e3) return r.toFixed(2) + ' Ω';
+  return (r/1e3).toFixed(2) + ' kΩ';
+}
+
+function drawDiagram(awg, n, I, L){
+  const svg = document.getElementById('diagram');
+  let s = '';
+  // Source on left
+  s += '<rect x="20" y="70" width="80" height="60" fill="var(--bg-elev2)" stroke="var(--accent3)" stroke-width="1.5"/>';
+  s += '<text x="60" y="95" class="label" text-anchor="middle" fill="var(--fg)" font-family="ui-monospace,monospace" font-size="11">Battery</text>';
+  s += '<text x="60" y="113" class="label" text-anchor="middle" fill="var(--accent3)" font-family="ui-monospace,monospace" font-size="11">'+document.getElementById('v').value+' V</text>';
+  // Load on right
+  s += '<rect x="620" y="70" width="80" height="60" fill="var(--bg-elev2)" stroke="var(--accent2)" stroke-width="1.5"/>';
+  s += '<text x="660" y="95" class="label" text-anchor="middle" fill="var(--fg)" font-family="ui-monospace,monospace" font-size="11">Load</text>';
+  s += '<text x="660" y="113" class="label" text-anchor="middle" fill="var(--accent2)" font-family="ui-monospace,monospace" font-size="11">'+I.toFixed(1)+' A</text>';
+  // Bundle in middle — show as a tube with n wires
+  const tubeX = 110, tubeW = 500;
+  s += '<rect x="'+tubeX+'" y="60" width="'+tubeW+'" height="80" fill="none" stroke="var(--fg-dim)" stroke-width="1" stroke-dasharray="3,3" rx="8"/>';
+  // Show the wires inside (up to ~10 shown distinctly, more shown as a cluster)
+  const showCount = Math.min(n, 10);
+  const spacing = 70 / Math.max(showCount, 1);
+  for(let i = 0; i < showCount; i++){
+    const y = 70 + i * spacing;
+    const isOurs = (i === 0 || (showCount >= 2 && i === 1));
+    const color = isOurs ? 'var(--accent)' : 'var(--fg-dim)';
+    const width = isOurs ? 2 : 1;
+    s += '<line x1="'+tubeX+'" y1="'+y+'" x2="'+(tubeX+tubeW)+'" y2="'+y+'" stroke="'+color+'" stroke-width="'+width+'"/>';
+  }
+  if(n > 10){
+    s += '<text x="'+(tubeX + tubeW/2)+'" y="155" text-anchor="middle" fill="var(--fg-dim)" font-family="ui-monospace,monospace" font-size="10">+ '+(n-10)+' more wires in this bundle</text>';
+  }
+  s += '<text x="'+(tubeX + tubeW/2)+'" y="50" text-anchor="middle" fill="var(--fg)" font-family="ui-monospace,monospace" font-size="11">'+n+'-wire bundle · '+L.toFixed(2)+' m run · AWG '+awg+'</text>';
+  svg.innerHTML = s;
+}
+
+function update(){
+  const awg = parseInt(els.awg.value);
+  const n   = parseInt(els.n.value);
+  const I   = parseFloat(els.i.value);
+  const L   = parseFloat(els.l.value);
+  const V   = parseFloat(els.v.value);
+  const mode = els.mode.value;
+
+  document.getElementById('awgRead').textContent = awg;
+  document.getElementById('nRead').textContent   = n;
+  document.getElementById('iRead').textContent   = I.toFixed(1);
+  document.getElementById('lRead').textContent   = L.toFixed(1);
+  document.getElementById('vRead').textContent   = V;
+
+  const I_single = ampacity(awg, mode);
+  const factor   = bundleFactor(n);
+  const I_max    = I_single * factor;
+  const rPerM    = awgRPerMeter(awg);
+  const drop     = 2 * I * rPerM * L;
+  const dropPct  = (drop / V) * 100;
+
+  document.getElementById('tAmp').textContent        = I_single.toFixed(2) + ' A';
+  document.getElementById('tFactor').textContent     = '× ' + factor.toFixed(2);
+  document.getElementById('tAmpDerated').textContent = I_max.toFixed(2) + ' A';
+  document.getElementById('tR').textContent          = fmtR(rPerM) + '/m';
+  document.getElementById('tDrop').textContent       = drop.toFixed(3) + ' V';
+  document.getElementById('tDropPct').textContent    = dropPct.toFixed(2) + ' %';
+
+  const verdict = document.getElementById('verdict');
+  let v = '';
+  if(I > I_max){
+    v = '<b style="color:var(--warn)">⚠ OVERCURRENT</b> — '+I.toFixed(1)+' A exceeds derated ampacity '+I_max.toFixed(2)+' A. Insulation will overheat. Step up gauge or split the bundle.';
+    verdict.style.borderLeftColor = 'var(--warn)';
+  } else if(dropPct > 5){
+    v = '<b style="color:var(--warn)">⚠ EXCESSIVE DROP</b> — '+dropPct.toFixed(1)+' % at '+I.toFixed(1)+' A. Either step up gauge or move load closer.';
+    verdict.style.borderLeftColor = 'var(--warn)';
+  } else if(dropPct > 2){
+    v = '<b style="color:var(--accent2)">MARGINAL DROP</b> — '+dropPct.toFixed(1)+' % is above the 2 % rail rule. OK for motors and brake/lamp loads. Step up for sensitive analog or LDO inputs.';
+    verdict.style.borderLeftColor = 'var(--accent2)';
+  } else {
+    v = '<b style="color:var(--accent3)">PASS</b> — '+I.toFixed(1)+' A is '+((I_max-I)/I_max*100).toFixed(0)+' % below derated ampacity. Drop is '+dropPct.toFixed(2)+' %, within the 2 % rail rule.';
+    verdict.style.borderLeftColor = 'var(--accent3)';
+  }
+  verdict.innerHTML = v;
+
+  drawDiagram(awg, n, I, L);
+}
+
+['awg','n','i','l','v'].forEach(k => els[k].addEventListener('input', update));
+els.mode.addEventListener('change', update);
+update();
+</script>
+
+</body>
+</html>

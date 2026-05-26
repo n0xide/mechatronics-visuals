@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>USB Enumeration — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim);cursor:pointer}
+  .anchor:hover{border-color:var(--accent)}
+  .anchor.active{border-color:var(--accent);color:var(--accent)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control button{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:6px 12px;
+    font:13px ui-monospace,Menlo,monospace;cursor:pointer}
+  .control button.go{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .control button.reset{background:var(--accent2);color:var(--bg);border-color:var(--accent2)}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .step-block{padding:10px 14px;border-radius:6px;margin:6px 0;font-size:13px;
+    font-family:ui-monospace,monospace;border-left:3px solid var(--line);background:var(--bg-elev2);transition:background 0.2s, border-color 0.2s}
+  .step-block.active{background:rgba(94,200,255,0.1);border-left-color:var(--accent)}
+  .step-block.done{border-left-color:var(--accent3);color:var(--fg-dim)}
+  .step-block .step-name{color:var(--fg-bright);font-weight:600}
+  .step-block .step-detail{color:var(--fg-dim);font-size:12px;margin-top:3px}
+  .step-block.active .step-detail{color:var(--fg)}
+</style>
+</head>
+<body>
+<main>
+  <h1>USB Enumeration</h1>
+  <p class="lede">Plug in a USB device and 50–500 ms later, your OS shows "Device ready." Between those moments is a precisely-choreographed dance of voltage, current, RESET pulses, and descriptor exchange. The host detects the device's pull-up, allocates an address, asks "who are you?" via control transfers, loads a driver, and finally turns on the device's endpoint. Step through each phase below; see exactly which packets fly on D+/D-, when the device draws 100 mA vs 500 mA, and what causes the dreaded "USB device descriptor request failed" error in Device Manager.</p>
+
+  <div class="anchors">
+    <button class="anchor active" data-preset="full"><b>Full speed (12 Mbit)</b> · D+ pull-up</button>
+    <button class="anchor" data-preset="low"><b>Low speed (1.5 Mbit)</b> · D- pull-up · old HID</button>
+    <button class="anchor" data-preset="high"><b>High speed (480 Mbit)</b> · chirp negotiation</button>
+    <button class="anchor" data-preset="composite"><b>Composite</b> · multiple interfaces (HID + CDC)</button>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>Step delay (ms): <span class="readout" id="dRead">800</span></label>
+      <input id="delay" type="range" min="100" max="3000" step="100" value="800"></div>
+    <div class="control"><label>Animate</label>
+      <button class="go" id="goBtn">Start enumeration</button></div>
+    <div class="control"><label>Reset</label>
+      <button class="reset" id="resetBtn">↺ Reset</button></div>
+    <div class="control"><label>Device class</label>
+      <select id="cls">
+        <option value="hid">HID (mouse/keyboard)</option>
+        <option value="cdc" selected>CDC-ACM (virtual serial)</option>
+        <option value="msc">MSC (mass storage)</option>
+        <option value="vendor">Vendor-specific (libusb/WinUSB)</option>
+      </select></div>
+  </section>
+
+  <div class="figure">
+    <svg id="diag" viewBox="0 0 700 260" width="100%"></svg>
+
+    <h3 style="margin-top:24px">ENUMERATION SEQUENCE</h3>
+    <div id="steps">
+      <div class="step-block" data-step="0">
+        <div class="step-name">1. VBUS apply (plug in)</div>
+        <div class="step-detail">Host applies +5 V on VBUS to device's connector. Host capacitance: max 10 µF. Device starts up its internal regulators.</div>
+      </div>
+      <div class="step-block" data-step="1">
+        <div class="step-name">2. Initial 100 mA allowance</div>
+        <div class="step-detail">USB spec: 1 unit load = 100 mA (USB 2) or 150 mA (USB 3). Device must draw &lt; this until configured.</div>
+      </div>
+      <div class="step-block" data-step="2">
+        <div class="step-name">3. Connect: device asserts D+ pull-up</div>
+        <div class="step-detail">Full-speed device pulls D+ to 3.3V via 1.5 kΩ. Host sees D+=H, D-=L → "Full-speed device attached".</div>
+      </div>
+      <div class="step-block" data-step="3">
+        <div class="step-name">4. RESET (10-20 ms)</div>
+        <div class="step-detail">Host drives both D+ and D- low simultaneously (SE0 condition) for at least 10 ms. Device responds by initializing all internal state and adopting default address 0.</div>
+      </div>
+      <div class="step-block" data-step="4">
+        <div class="step-name">5. GET_DESCRIPTOR(Device, first 8 bytes)</div>
+        <div class="step-detail">Host sends SETUP packet on endpoint 0: bmRequestType=0x80, bRequest=0x06, wValue=0x0100, wIndex=0x0000, wLength=0x0040. Device returns first 8 bytes of device descriptor, including bMaxPacketSize0.</div>
+      </div>
+      <div class="step-block" data-step="5">
+        <div class="step-name">6. RESET (again)</div>
+        <div class="step-detail">After learning EP0 max packet size, host resets again to ensure clean state. ~10 ms more.</div>
+      </div>
+      <div class="step-block" data-step="6">
+        <div class="step-name">7. SET_ADDRESS(N)</div>
+        <div class="step-detail">Host: SETUP bmRT=0x00, bR=0x05, wValue=N (1-127). Device ACKs at addr 0; from now on, listens on address N.</div>
+      </div>
+      <div class="step-block" data-step="7">
+        <div class="step-name">8. GET_DESCRIPTOR(Device, all 18 bytes)</div>
+        <div class="step-detail">Now using new address. Returns full 18-byte device descriptor: VID, PID, USB version, device class, max EP0 packet, # configurations.</div>
+      </div>
+      <div class="step-block" data-step="8">
+        <div class="step-name">9. GET_DESCRIPTOR(Config, ...)</div>
+        <div class="step-detail">Host fetches configuration descriptor (9 bytes) → reads wTotalLength → fetches full descriptor (incl. all interface/endpoint descriptors). Class-specific (HID, CDC, MSC) follow.</div>
+      </div>
+      <div class="step-block" data-step="9">
+        <div class="step-name">10. Driver match &amp; load</div>
+        <div class="step-detail">Host OS matches VID/PID and bDeviceClass/bInterfaceClass to a driver. Linux: udev rules + kernel modules. Windows: INF + WHQL signed driver.</div>
+      </div>
+      <div class="step-block" data-step="10">
+        <div class="step-name">11. SET_CONFIGURATION(1)</div>
+        <div class="step-detail">Host: SETUP bmRT=0x00, bR=0x09, wValue=1. Device now activates its endpoints. May draw up to bMaxPower (×2 mA) of current from VBUS — up to 500 mA for USB 2.0.</div>
+      </div>
+      <div class="step-block" data-step="11">
+        <div class="step-name">12. Device ready</div>
+        <div class="step-detail">Endpoints active. Application I/O can begin. Total time: typically 100–500 ms.</div>
+      </div>
+    </div>
+
+    <table style="margin-top:24px">
+      <tr><th>Property</th><th>Value</th></tr>
+      <tr><td>Speed</td><td id="tSpeed" class="num">Full speed (12 Mbit)</td></tr>
+      <tr><td>Pull-up resistor on</td><td id="tPull" class="num">D+ (1.5 kΩ to 3.3 V)</td></tr>
+      <tr><td>Initial current limit</td><td id="tIinit" class="num">100 mA (1 unit load)</td></tr>
+      <tr><td>Max current after SET_CONFIGURATION</td><td id="tImax" class="num">500 mA (bMaxPower=250)</td></tr>
+      <tr><td>Endpoint 0 max packet size</td><td id="tEp0" class="num">64 bytes (full speed)</td></tr>
+      <tr><td>Enumeration time (typical)</td><td id="tTime" class="num">~200 ms total</td></tr>
+      <tr><td>Current step</td><td id="tStep" class="num" colspan="2">Not started — press Go.</td></tr>
+    </table>
+    <div class="vd"><b>Class-specific descriptor for current selection:</b> <span id="vdCalc">CDC-ACM: interface 0 = communication class; interface 1 = data class; total 67 bytes.</span></div>
+  </div>
+
+  <h2>D+/D- voltage states and what they mean</h2>
+  <table>
+    <tr><th>D+</th><th>D-</th><th>State</th><th>Meaning</th></tr>
+    <tr><td class="num">L</td><td class="num">L</td><td>SE0</td><td>RESET, end-of-packet</td></tr>
+    <tr><td class="num">H</td><td class="num">L</td><td>J (full/high)</td><td>idle (full speed) or "K" (low speed)</td></tr>
+    <tr><td class="num">L</td><td class="num">H</td><td>K (full/high)</td><td>"K state" — alternating during data</td></tr>
+    <tr><td class="num">H</td><td class="num">H</td><td>SE1</td><td>illegal — error condition</td></tr>
+  </table>
+  <p>Full speed and low speed use opposite conventions: full-speed J = D+ H, low-speed J = D- H. The host detects which by checking which line is pulled up before the first RESET.</p>
+
+  <h2>The 18-byte device descriptor</h2>
+  <table>
+    <tr><th>Offset</th><th>Field</th><th>Bytes</th><th>Meaning</th></tr>
+    <tr><td class="num">0</td><td>bLength</td><td class="num">1</td><td>18 (size of this descriptor)</td></tr>
+    <tr><td class="num">1</td><td>bDescriptorType</td><td class="num">1</td><td>0x01 (DEVICE)</td></tr>
+    <tr><td class="num">2</td><td>bcdUSB</td><td class="num">2</td><td>0x0200 (USB 2.0)</td></tr>
+    <tr><td class="num">4</td><td>bDeviceClass</td><td class="num">1</td><td>0x00 = per-interface; 0x02 = CDC; 0xFF = vendor</td></tr>
+    <tr><td class="num">5</td><td>bDeviceSubClass</td><td class="num">1</td><td>—</td></tr>
+    <tr><td class="num">6</td><td>bDeviceProtocol</td><td class="num">1</td><td>—</td></tr>
+    <tr><td class="num">7</td><td>bMaxPacketSize0</td><td class="num">1</td><td>8/16/32/64 — EP0 max packet</td></tr>
+    <tr><td class="num">8</td><td>idVendor</td><td class="num">2</td><td>VID (USB-IF assigned, e.g., 0x2E8A for Raspberry Pi)</td></tr>
+    <tr><td class="num">10</td><td>idProduct</td><td class="num">2</td><td>PID (vendor-defined)</td></tr>
+    <tr><td class="num">12</td><td>bcdDevice</td><td class="num">2</td><td>Device release (firmware version)</td></tr>
+    <tr><td class="num">14</td><td>iManufacturer</td><td class="num">1</td><td>String index for manufacturer</td></tr>
+    <tr><td class="num">15</td><td>iProduct</td><td class="num">1</td><td>String index for product</td></tr>
+    <tr><td class="num">16</td><td>iSerialNumber</td><td class="num">1</td><td>String index for serial</td></tr>
+    <tr><td class="num">17</td><td>bNumConfigurations</td><td class="num">1</td><td>1 typically</td></tr>
+  </table>
+
+  <h2>Why enumeration sometimes fails</h2>
+  <div class="deriv">
+    <span class="step"><b>"USB Device Descriptor Request Failed"</b> (Windows): device's EP0 didn't respond, or stalled. Causes: USB stack bug (bMaxPacketSize wrong), firmware not running (bootloader stuck), VBUS not detected, pull-up not attached.</span>
+    <span class="step"><b>"Unknown USB device"</b>: enumeration completed but no matching driver — wrong device class / vendor PID not recognized.</span>
+    <span class="step"><b>Slow enumeration (5+ s)</b>: too many retries. Host gives up after N attempts; common cause is EP0 returning malformed data.</span>
+    <span class="step"><b>"Cannot start (Code 10)"</b>: SET_CONFIGURATION succeeded but device's class driver failed to claim interfaces. Mismatched CDC-ACM descriptor is the classic.</span>
+    <span class="step"><b>VBUS droop</b>: device tried to draw &gt; 100 mA before SET_CONFIGURATION. Host detects undervoltage and resets — endless re-enumeration loop.</span>
+    <span class="step"><span class="arrow">→</span> Always use <b>Wireshark + usbmon</b> (Linux) or <b>USBlyzer</b> (Windows) to capture the actual control transfers.</span>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Two RESETs, not one.</b> The first RESET puts the device into a clean state at address 0; the second confirms the EP0 max packet size before the host commits to using it.</li>
+    <li><b>Enumeration is host-driven entirely.</b> The device is passive — it only responds. This makes USB extremely predictable but also brittle: any stuck device blocks the host.</li>
+    <li><b>VBUS = 5 V, but data lines are 3.3 V.</b> Don't drive D+/D- with 5 V logic — fries the host.</li>
+    <li><b>Speed detection happens before RESET.</b> Host checks the idle state of D+/D- (which line is high) immediately after VBUS settles, before any traffic.</li>
+    <li><b>High-speed devices look full-speed first.</b> They pull up D+ (full-speed indication), then during the first RESET, they "chirp" K-J-K-J on D-/D+ to indicate HS capability. Host responds in kind; device removes pull-up; both run at HS.</li>
+    <li><b>The host can refuse SET_CONFIGURATION</b> if total bus power would exceed available budget. USB 2 hubs are limited to 500 mA per port from upstream.</li>
+    <li><b>String descriptors are optional</b> — iManufacturer = 0 means "no string". Many embedded devices omit them to save flash.</li>
+    <li><b>VID/PID is the unique identifier</b> for driver matching. Don't pretend to be someone else's VID — license one from USB-IF ($5000) or use a free shared range like FTDI's reseller program.</li>
+  </ul>
+
+  <h2>Standard requests every device must respond to</h2>
+  <table>
+    <tr><th>bRequest</th><th>Name</th><th>Direction</th><th>Notes</th></tr>
+    <tr><td class="num">0x00</td><td>GET_STATUS</td><td>IN</td><td>device/interface/endpoint status</td></tr>
+    <tr><td class="num">0x01</td><td>CLEAR_FEATURE</td><td>OUT</td><td>e.g., clear endpoint HALT</td></tr>
+    <tr><td class="num">0x03</td><td>SET_FEATURE</td><td>OUT</td><td>set endpoint HALT</td></tr>
+    <tr><td class="num">0x05</td><td>SET_ADDRESS</td><td>OUT</td><td>assign 7-bit address</td></tr>
+    <tr><td class="num">0x06</td><td>GET_DESCRIPTOR</td><td>IN</td><td>device/config/string</td></tr>
+    <tr><td class="num">0x07</td><td>SET_DESCRIPTOR</td><td>OUT</td><td>rare — most devices stall this</td></tr>
+    <tr><td class="num">0x08</td><td>GET_CONFIGURATION</td><td>IN</td><td>which config is active (or 0)</td></tr>
+    <tr><td class="num">0x09</td><td>SET_CONFIGURATION</td><td>OUT</td><td>activate endpoints</td></tr>
+    <tr><td class="num">0x0A</td><td>GET_INTERFACE</td><td>IN</td><td>get alternate setting</td></tr>
+    <tr><td class="num">0x0B</td><td>SET_INTERFACE</td><td>OUT</td><td>set alt setting</td></tr>
+    <tr><td class="num">0x0C</td><td>SYNCH_FRAME</td><td>IN</td><td>isochronous sync</td></tr>
+  </table>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>KEY NUMBERS</h3>
+      <dl>
+        <dt>Low speed</dt><dd><span class="eq">1.5 Mbit/s, D- pull-up</span></dd>
+        <dt>Full speed</dt><dd><span class="eq">12 Mbit/s, D+ pull-up</span></dd>
+        <dt>High speed</dt><dd><span class="eq">480 Mbit/s, chirp negotiated</span></dd>
+        <dt>1 unit load</dt><dd><span class="eq">100 mA (USB 2), 150 mA (USB 3)</span></dd>
+        <dt>VBUS</dt><dd><span class="eq">5 V ± 5 %</span></dd>
+        <dt>RESET</dt><dd><span class="eq">SE0 for ≥10 ms</span></dd>
+        <dt>Max bus power</dt><dd><span class="eq">500 mA USB 2.0; 900 mA USB 3.0</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>STEP RECAP</h3>
+      <ul>
+        <li>VBUS apply → 100 mA limit</li>
+        <li>Device pull-up → speed detected</li>
+        <li>RESET (10 ms) → addr 0</li>
+        <li>Get device descriptor (8 B)</li>
+        <li>RESET → addr 0 again</li>
+        <li>Set address N → device responds</li>
+        <li>Get full device + config descriptors</li>
+        <li>Driver match by VID/PID/class</li>
+        <li>Set configuration → bMaxPower granted</li>
+        <li>App I/O begins</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Drawing > 100 mA before SET_CONFIG</b> — host yanks VBUS.</li>
+        <li><b>Wrong bMaxPacketSize0</b> — host's second transfer fails.</li>
+        <li><b>Stalled EP0 during enumeration</b> — "USB Device Descriptor Request Failed".</li>
+        <li><b>Malformed config descriptor</b> — class driver won't bind.</li>
+        <li><b>Same VID/PID across devices</b> — driver loads wrong device.</li>
+        <li><b>iSerial omitted but app needs it</b> — udev can't disambiguate devices.</li>
+        <li><b>HS chirp timing wrong</b> — falls back to FS unintentionally.</li>
+        <li><b>Hub re-enumeration loop</b> — caused by power-glitch + reset combo.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EE Phase 8 — Embedded Protocols</span> ·
+    Companion: <a href="../phase-5-digital-electronics/shift-registers.html">Shift Registers</a> ·
+    Forward: <a href="../phase-9-rf-wireless/ble-gatt.html">BLE GATT</a> for wireless service discovery.
+  </footer>
+</main>
+<script>
+  let state = {
+    step: -1,
+    preset: "full",
+    delay: 800,
+    cls: "cdc",
+    running: false,
+    timer: null,
+  };
+
+  const PRESETS = {
+    full:{speed:"Full speed (12 Mbit)", pull:"D+ (1.5 kΩ to 3.3 V)", ep0:64, time:"~200 ms"},
+    low:{speed:"Low speed (1.5 Mbit)", pull:"D− (1.5 kΩ to 3.3 V)", ep0:8, time:"~300 ms"},
+    high:{speed:"High speed (480 Mbit)", pull:"D+ (then removed after chirp)", ep0:64, time:"~150 ms"},
+    composite:{speed:"Full speed (12 Mbit)", pull:"D+ (1.5 kΩ to 3.3 V)", ep0:64, time:"~250 ms (multiple ifaces)"},
+  };
+
+  const CLASS_DESCS = {
+    hid: "HID: bInterfaceClass=0x03, bInterfaceSubClass=0x01 (boot), bInterfaceProtocol=0x02 (mouse) or 0x01 (kbd). Report descriptor follows.",
+    cdc: "CDC-ACM: interface 0 = communication class (0x02); interface 1 = data class (0x0A); total 67 bytes.",
+    msc: "MSC: bInterfaceClass=0x08, bInterfaceSubClass=0x06 (SCSI), bInterfaceProtocol=0x50 (BBB). 2 bulk endpoints.",
+    vendor: "Vendor-specific: bInterfaceClass=0xFF. Uses WinUSB/libusb generic driver. App-specific endpoints.",
+  };
+
+  function drawDiag(){
+    const svg = document.getElementById('diag');
+    let s = '';
+    s += `<rect x="0" y="0" width="700" height="260" fill="var(--bg-elev2)"/>`;
+    // Host (left), Device (right), with USB connector in middle
+    s += `<rect x="40" y="40" width="180" height="180" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1.5" rx="8"/>`;
+    s += `<text x="130" y="70" class="label" text-anchor="middle" font-weight="600">HOST</text>`;
+    s += `<text x="130" y="90" class="label-dim" text-anchor="middle">USB controller</text>`;
+    s += `<text x="130" y="120" class="label-dim" text-anchor="middle">drives VBUS</text>`;
+    s += `<text x="130" y="135" class="label-dim" text-anchor="middle">issues RESET</text>`;
+    s += `<text x="130" y="150" class="label-dim" text-anchor="middle">sends SETUP</text>`;
+    s += `<text x="130" y="165" class="label-dim" text-anchor="middle">assigns ADDR</text>`;
+
+    s += `<rect x="480" y="40" width="180" height="180" fill="var(--bg-elev)" stroke="var(--accent3)" stroke-width="1.5" rx="8"/>`;
+    s += `<text x="570" y="70" class="label" text-anchor="middle" font-weight="600">DEVICE</text>`;
+    s += `<text x="570" y="90" class="label-dim" text-anchor="middle">MCU + USB PHY</text>`;
+    s += `<text x="570" y="120" class="label-dim" text-anchor="middle">activates pull-up</text>`;
+    s += `<text x="570" y="135" class="label-dim" text-anchor="middle">echoes descriptors</text>`;
+    s += `<text x="570" y="150" class="label-dim" text-anchor="middle">ACKs SET_ADDRESS</text>`;
+    s += `<text x="570" y="165" class="label-dim" text-anchor="middle">enables endpoints</text>`;
+
+    // 4 lines: VBUS, D+, D-, GND
+    const lineYs = [85, 115, 145, 175];
+    const lineLabels = ["VBUS (+5V)", "D+ (data)", "D− (data)", "GND"];
+    const lineColors = ["var(--accent2)", "var(--accent)", "var(--accent)", "var(--fg-dim)"];
+    for (let i=0; i<4; i++){
+      s += `<line x1="220" y1="${lineYs[i]}" x2="480" y2="${lineYs[i]}" stroke="${lineColors[i]}" stroke-width="1.5"/>`;
+      s += `<text x="350" y="${lineYs[i]-4}" class="label-dim" text-anchor="middle">${lineLabels[i]}</text>`;
+    }
+
+    // Highlight active line based on step
+    if (state.step >= 0){
+      if (state.step === 0 || state.step === 1){
+        // VBUS active — highlight in orange
+        s += `<line x1="220" y1="85" x2="480" y2="85" stroke="var(--warn)" stroke-width="3" stroke-dasharray="4 4"/>`;
+        s += `<text x="350" y="78" class="label-warn" text-anchor="middle">VBUS = 5 V applied</text>`;
+      } else if (state.step === 2){
+        // D+ pull-up active
+        s += `<line x1="220" y1="115" x2="480" y2="115" stroke="var(--accent3)" stroke-width="3"/>`;
+        s += `<text x="350" y="108" class="label-ok" text-anchor="middle">D+ pulled HIGH → host sees attach</text>`;
+      } else if (state.step === 3 || state.step === 5){
+        // RESET — both lines LOW
+        s += `<line x1="220" y1="115" x2="480" y2="115" stroke="var(--warn)" stroke-width="3"/>`;
+        s += `<line x1="220" y1="145" x2="480" y2="145" stroke="var(--warn)" stroke-width="3"/>`;
+        s += `<text x="350" y="195" class="label-warn" text-anchor="middle">RESET — SE0 (both low) for &gt;10 ms</text>`;
+      } else if (state.step >= 4 && state.step <= 10){
+        // Data transfer: animate D+ and D-
+        const tStep = (Date.now()/50) % 30;
+        const d1 = tStep < 15 ? 115 : 145;
+        const d2 = tStep < 15 ? 145 : 115;
+        s += `<line x1="220" y1="${d1}" x2="480" y2="${d1}" stroke="var(--accent)" stroke-width="3"/>`;
+        s += `<line x1="220" y1="${d2}" x2="480" y2="${d2}" stroke="var(--accent)" stroke-width="3" opacity="0.4"/>`;
+        // arrow showing direction
+        const arrow_x = state.step % 2 === 0 ? "host→dev" : "dev→host";
+        const arrow_dir = state.step % 2 === 0 ? "→" : "←";
+        s += `<text x="350" y="195" class="label-ok" text-anchor="middle">SETUP/IN/OUT packets ${arrow_dir} on D+/D−</text>`;
+      } else if (state.step === 11){
+        s += `<line x1="220" y1="115" x2="480" y2="115" stroke="var(--accent3)" stroke-width="3"/>`;
+        s += `<line x1="220" y1="145" x2="480" y2="145" stroke="var(--accent3)" stroke-width="3" opacity="0.5"/>`;
+        s += `<text x="350" y="195" class="label-ok" text-anchor="middle">Ready — application I/O active</text>`;
+      }
+    }
+
+    svg.innerHTML = s;
+  }
+
+  function activateStep(idx){
+    document.querySelectorAll('.step-block').forEach(el => {
+      const i = parseInt(el.dataset.step);
+      el.classList.remove('active', 'done');
+      if (i < idx) el.classList.add('done');
+      if (i === idx) el.classList.add('active');
+    });
+    state.step = idx;
+    drawDiag();
+    const stepNames = ["VBUS apply", "100 mA allowance", "Pull-up asserted", "RESET (1st)", "GET_DESCRIPTOR(Dev,8)", "RESET (2nd)", "SET_ADDRESS", "GET_DESCRIPTOR(Dev,18)", "GET_DESCRIPTOR(Config)", "Driver load", "SET_CONFIGURATION", "Ready"];
+    document.getElementById('tStep').textContent = `Step ${idx+1}: ${stepNames[idx]}`;
+  }
+
+  function update(){
+    const p = PRESETS[state.preset];
+    document.getElementById('tSpeed').textContent = p.speed;
+    document.getElementById('tPull').textContent = p.pull;
+    document.getElementById('tEp0').textContent = p.ep0 + " bytes";
+    document.getElementById('tTime').textContent = p.time;
+    document.getElementById('dRead').textContent = state.delay;
+    const isUsb3 = state.preset === "high";
+    document.getElementById('tIinit').textContent = (isUsb3 ? "150 mA (1 UL USB3)" : "100 mA (1 UL USB2)");
+    document.getElementById('tImax').textContent = (isUsb3 ? "900 mA (6 UL USB3)" : "500 mA (5 UL USB2)");
+    document.getElementById('vdCalc').textContent = CLASS_DESCS[state.cls] || "—";
+    drawDiag();
+  }
+
+  function startSeq(){
+    if (state.running) return;
+    state.running = true;
+    state.step = -1;
+    let i = 0;
+    state.timer = setInterval(() => {
+      activateStep(i);
+      i++;
+      if (i > 11){
+        clearInterval(state.timer);
+        state.running = false;
+      }
+    }, state.delay);
+  }
+
+  function reset(){
+    if (state.timer) clearInterval(state.timer);
+    state.running = false;
+    state.step = -1;
+    document.querySelectorAll('.step-block').forEach(el => el.classList.remove('active', 'done'));
+    document.getElementById('tStep').textContent = "Not started — press Go.";
+    drawDiag();
+  }
+
+  // Hookup
+  document.getElementById('delay').addEventListener('input', e => {
+    state.delay = parseInt(e.target.value);
+    document.getElementById('dRead').textContent = state.delay;
+    if (state.running){
+      // restart with new delay
+      reset();
+      startSeq();
+    }
+  });
+  document.getElementById('goBtn').addEventListener('click', startSeq);
+  document.getElementById('resetBtn').addEventListener('click', reset);
+  document.getElementById('cls').addEventListener('change', e => { state.cls = e.target.value; update(); });
+
+  document.querySelectorAll('.anchor').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.anchor').forEach(a => a.classList.remove('active'));
+      b.classList.add('active');
+      state.preset = b.dataset.preset;
+      update();
+    });
+  });
+
+  update();
+</script>
+</body>
+</html>

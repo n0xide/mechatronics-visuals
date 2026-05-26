@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PCB Calculator Bundle — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:1040px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);
+     margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;
+     text-transform:uppercase;letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+
+  .tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:18px;
+    overflow-x:auto;white-space:nowrap}
+  .tab{background:transparent;color:var(--fg-dim);border:none;
+    padding:10px 16px;font:13px ui-monospace,Menlo,monospace;cursor:pointer;
+    border-bottom:2px solid transparent;white-space:nowrap}
+  .tab:hover{color:var(--fg)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .pane{display:none}
+  .pane.active{display:block}
+
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number],.control input[type=text]{
+    background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:5px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .big{font:600 22px/1 ui-monospace,Menlo,monospace;color:var(--accent3);margin:6px 0;
+    display:inline-block}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto;margin:0 auto}
+
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .vd.warn{border-left-color:var(--warn)}
+  .vd.warn b{color:var(--warn)}
+  .vd.ok{border-left-color:var(--accent3)}
+  .vd.ok b{color:var(--accent3)}
+
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .gridline{stroke:var(--grid);stroke-width:1;stroke-dasharray:2,3}
+
+  .footer-note{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .footer-note a{color:var(--accent);text-decoration:none}
+
+  .two-col{display:grid;gap:16px;grid-template-columns:1fr 1fr;margin:18px 0}
+  @media (max-width:720px){.two-col{grid-template-columns:1fr}}
+  .col-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:12px 14px}
+  .col-card h3{margin:0 0 8px}
+</style>
+</head>
+<body>
+<main>
+  <h1>PCB Calculator Bundle</h1>
+  <p class="lede">The seven recurring PCB sizing problems: trace width for current (IPC-2152/IPC-2221), microstrip and stripline impedance, differential-pair geometry for USB/Ethernet/PCIe/DDR, via ampacity, copper-weight conversion, and length-matching tolerance. Every tab shows the formula, the actual numbers, and where the assumptions break.</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="trace">Trace width</button>
+    <button class="tab" data-tab="microstrip">Microstrip Z₀</button>
+    <button class="tab" data-tab="stripline">Stripline Z₀</button>
+    <button class="tab" data-tab="diffpair">Differential pair</button>
+    <button class="tab" data-tab="via">Via ampacity</button>
+    <button class="tab" data-tab="copper">Copper weight</button>
+    <button class="tab" data-tab="length">Length matching</button>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- TRACE WIDTH -->
+  <!-- ===================================================================== -->
+  <section class="pane active" id="pane-trace">
+    <h2>Trace width for current (IPC-2221 / IPC-2152)</h2>
+    <div class="anchors">
+      <span class="anchor"><b>1 oz Cu</b> = 35 µm thick</span>
+      <span class="anchor"><b>1 A external</b> needs ~0.4 mm (16 mil) on 1 oz</span>
+      <span class="anchor"><b>3 A external</b> needs ~1.4 mm (55 mil) on 1 oz</span>
+      <span class="anchor">External traces handle <b>2×</b> the current of internal traces (better cooling)</span>
+    </div>
+
+    <section class="controls">
+      <div class="control">
+        <label>Current (A): <span class="readout" id="tw-iRead">2.0 A</span></label>
+        <input id="tw-i" type="range" min="0.1" max="20" step="0.1" value="2.0">
+      </div>
+      <div class="control">
+        <label>Max ΔT (°C): <span class="readout" id="tw-dtRead">10 °C</span></label>
+        <input id="tw-dt" type="range" min="5" max="100" step="1" value="10">
+      </div>
+      <div class="control">
+        <label>Copper weight</label>
+        <select id="tw-cu">
+          <option value="0.5">0.5 oz (17.5 µm)</option>
+          <option value="1" selected>1 oz (35 µm)</option>
+          <option value="2">2 oz (70 µm)</option>
+          <option value="3">3 oz (105 µm)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Layer</label>
+        <select id="tw-layer">
+          <option value="external" selected>External (top/bottom)</option>
+          <option value="internal">Internal (between planes)</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="figure">
+      <svg id="tw-svg" viewBox="0 0 600 180" width="100%"></svg>
+      <table>
+        <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+        <tr><td>Required cross-sectional area</td><td id="tw-area" class="num">—</td>
+          <td><code>A = (I / (k · ΔT^0.44))^(1/0.725)</code></td></tr>
+        <tr><td>Cu thickness</td><td id="tw-thick" class="num">35.0 µm</td>
+          <td><code>1 oz = 35 µm × weight</code></td></tr>
+        <tr><td>Minimum width</td><td id="tw-w-mm" class="num">—</td>
+          <td><code>W = A / thickness</code></td></tr>
+        <tr><td>Minimum width (mils)</td><td id="tw-w-mil" class="num">—</td>
+          <td>1 mm = 39.37 mil</td></tr>
+        <tr><td>Resistance per unit length</td><td id="tw-rohm" class="num">—</td>
+          <td><code>R/L = ρ_Cu / A</code></td></tr>
+        <tr><td>Power dissipated per 100 mm</td><td id="tw-pdis" class="num">—</td>
+          <td><code>P = I² · R</code></td></tr>
+      </table>
+      <div class="vd" id="tw-summary">—</div>
+    </div>
+
+    <h2>The IPC formula (with derivation)</h2>
+    <p>IPC-2221 (and its successor IPC-2152) gives an empirical fit from the 1956 Brooks current-rise charts. The form solves for the cross-sectional area needed to limit conductor temperature rise to ΔT:</p>
+    <div class="deriv">
+      <span class="step">Start:    <b>I = k · ΔT^0.44 · A^0.725</b>  &nbsp;(A in mil², I in A, ΔT in °C)</span>
+      <span class="step">k:        <b>0.024 external</b>, <b>0.048 internal</b>  &nbsp;(but the 2× ratio is reversed — external is the higher-current case)</span>
+      <span class="step">Wait — re-read IPC. The lower k for external + 2× ratio means:</span>
+      <span class="step"><b>I_external = 0.048 · ΔT^0.44 · A^0.725</b></span>
+      <span class="step"><b>I_internal = 0.024 · ΔT^0.44 · A^0.725</b></span>
+      <span class="step">Solve for A: <span class="arrow">→</span> <b>A = (I / (k · ΔT^0.44))^(1/0.725)</b></span>
+      <span class="step">Width:    <b>W = A / thickness</b>  &nbsp;(constant thickness, given Cu weight)</span>
+    </div>
+    <p class="lede">IPC-2152 (newer) adds variables for plane proximity, board thickness, and via density. The result is usually narrower traces than 2221 says — 2221 is conservative. Most CAD tools still ship the 2221 charts because the math is one line.</p>
+
+    <h2>Pre-computed table — 1 oz copper, 10 °C rise</h2>
+    <table>
+      <tr><th>Current (A)</th><th>External width (mm)</th><th>External width (mil)</th>
+        <th>Internal width (mm)</th><th>Internal width (mil)</th></tr>
+      <tr><td class="num">0.5</td><td class="num">0.15</td><td class="num">5.9</td><td class="num">0.40</td><td class="num">15.7</td></tr>
+      <tr><td class="num">1.0</td><td class="num">0.40</td><td class="num">15.7</td><td class="num">1.06</td><td class="num">41.7</td></tr>
+      <tr><td class="num">2.0</td><td class="num">1.06</td><td class="num">41.7</td><td class="num">2.80</td><td class="num">110</td></tr>
+      <tr><td class="num">3.0</td><td class="num">1.86</td><td class="num">73.2</td><td class="num">4.92</td><td class="num">194</td></tr>
+      <tr><td class="num">5.0</td><td class="num">3.81</td><td class="num">150</td><td class="num">10.1</td><td class="num">397</td></tr>
+      <tr><td class="num">10.0</td><td class="num">10.1</td><td class="num">397</td><td class="num">26.7</td><td class="num">1050</td></tr>
+    </table>
+
+    <h2>Where you'll see this</h2>
+    <ul class="notice">
+      <li><b>Power-supply input traces</b> — buck/boost input rail at 3–5 A on 1 oz Cu needs 1.5–2 mm. Most hobby boards are 1 oz; pour copper if you need more.</li>
+      <li><b>Motor driver outputs</b> — H-bridge phases at 1–2 A peak need 0.5–1 mm. Don't forget the return path — same trace width on GND.</li>
+      <li><b>USB-PD / charger inputs</b> — 3 A @ 20 V means 1.5 mm minimum, and most PD spec docs require thermal relief on connector pins.</li>
+      <li><b>Battery main lines</b> — for a 1S LiPo at 2 A peak (cyberdeck typical), use 0.8–1.0 mm wide; on a Pico Lipo board, this is the trace from the cell connector to the load switch.</li>
+    </ul>
+
+    <h2>What to watch for</h2>
+    <ul class="notice">
+      <li><b>IPC-2221 is conservative on long runs</b> — the formula assumes infinite trace; short traces (&lt; 5 × width) actually dissipate via the pads. For pin-to-pin runs of a few mm, you can go thinner.</li>
+      <li><b>Copper pour around the trace</b> reduces ΔT by 30–50 % via heat spreading. Most flood pours on 4-layer boards make the formula a lower bound.</li>
+      <li><b>Plating quality matters</b> — the IPC formula assumes nominal Cu thickness. Boards from cheap fab houses can be 80 % of nominal. Add a margin if you're at the boundary.</li>
+      <li><b>Don't forget vias</b> — a 0.3 mm drill / 0.5 mm pad via in 1 oz Cu only handles ~0.5 A by itself. See the Via tab.</li>
+      <li><b>Use IPC-2152 for designs &gt; 5 A</b> — the newer standard gives less-pessimistic widths and accounts for the plane stack-up.</li>
+    </ul>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- MICROSTRIP -->
+  <!-- ===================================================================== -->
+  <section class="pane" id="pane-microstrip">
+    <h2>Microstrip impedance (single-ended)</h2>
+    <div class="anchors">
+      <span class="anchor"><b>50 Ω</b> default for RF, single-ended digital</span>
+      <span class="anchor"><b>FR-4 εr</b> ≈ 4.2 – 4.6 (frequency-dependent)</span>
+      <span class="anchor"><b>4-layer board</b>: typical H = 0.2 mm to nearest plane</span>
+      <span class="anchor"><b>Eeff</b> ≈ 0.6 × εr for thin microstrip on FR-4</span>
+    </div>
+
+    <section class="controls">
+      <div class="control">
+        <label>Trace width W (mm): <span class="readout" id="ms-wRead">0.35 mm</span></label>
+        <input id="ms-w" type="range" min="0.05" max="3" step="0.01" value="0.35">
+      </div>
+      <div class="control">
+        <label>Dielectric height H (mm): <span class="readout" id="ms-hRead">0.20 mm</span></label>
+        <input id="ms-h" type="range" min="0.05" max="2" step="0.01" value="0.20">
+      </div>
+      <div class="control">
+        <label>Cu thickness T (µm): <span class="readout" id="ms-tRead">35 µm</span></label>
+        <input id="ms-t" type="range" min="10" max="105" step="1" value="35">
+      </div>
+      <div class="control">
+        <label>Dielectric εr: <span class="readout" id="ms-erRead">4.5</span></label>
+        <input id="ms-er" type="range" min="2.2" max="11" step="0.05" value="4.5">
+      </div>
+    </section>
+
+    <div class="figure">
+      <svg id="ms-svg" viewBox="0 0 600 200" width="100%"></svg>
+      <table>
+        <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+        <tr><td>W/H ratio</td><td id="ms-wh" class="num">—</td>
+          <td><code>W/H</code> selects the regime</td></tr>
+        <tr><td>Effective εr</td><td id="ms-eeff" class="num">—</td>
+          <td><code>Eeff = (εr+1)/2 + (εr-1)/2 · (1+12H/W)^-0.5</code></td></tr>
+        <tr><td>Characteristic impedance Z₀</td><td id="ms-z0" class="num">—</td>
+          <td>Hammerstad — see below</td></tr>
+        <tr><td>Phase velocity v_p</td><td id="ms-vp" class="num">—</td>
+          <td><code>v_p = c / √Eeff</code></td></tr>
+        <tr><td>Propagation delay</td><td id="ms-tpd" class="num">—</td>
+          <td><code>t_pd = 1 / v_p</code></td></tr>
+        <tr><td>Wavelength at 1 GHz</td><td id="ms-lambda" class="num">—</td>
+          <td><code>λ = v_p / f</code></td></tr>
+      </table>
+      <div class="vd" id="ms-summary">—</div>
+    </div>
+
+    <h2>Z₀ vs trace width (current H, εr, T)</h2>
+    <div class="figure">
+      <svg id="ms-plot" viewBox="0 0 600 280" width="100%"></svg>
+    </div>
+
+    <h2>Hammerstad — the formula CAD tools actually use</h2>
+    <p>The Hammerstad-Jensen approximation is ±2 % accurate for 0.05 ≤ W/H ≤ 20. Two regimes:</p>
+    <div class="deriv">
+      <span class="step"><b>Wide (W/H ≥ 1):</b></span>
+      <span class="step">  Z₀ = (120π / √Eeff) / (W/H + 1.393 + 0.667·ln(W/H + 1.444))</span>
+      <span class="step"><b>Narrow (W/H &lt; 1):</b></span>
+      <span class="step">  Z₀ = (60 / √Eeff) · ln(8H/W + W/(4H))</span>
+      <span class="step"><b>Effective ε (for both):</b></span>
+      <span class="step">  Eeff = (εr+1)/2 + (εr-1)/2 · (1 + 12·H/W)^(-0.5)</span>
+      <span class="step"><span class="arrow">→</span> For wide traces, ε approaches εr; for narrow traces, more field is in air so ε drops.</span>
+    </div>
+
+    <h2>Where you'll see this</h2>
+    <ul class="notice">
+      <li><b>USB 2.0 single-ended pull-ups</b> — D+/D− are 90 Ω differential, but the single-ended impedance of each line is ~45 Ω on most stack-ups. Pick W to land on 50 Ω if you're routing one-off signals through the same trace style as USB.</li>
+      <li><b>HDMI / DisplayPort source termination</b> — series 22 Ω resistors paired with 50 Ω microstrip set the launch impedance for the receiver.</li>
+      <li><b>RF — Wi-Fi 2.4/5 GHz, BLE, LoRa</b> — every chip antenna feed is 50 Ω microstrip from the IC to the matching network. Width is set by the layer stack — typically 0.3–0.5 mm on 0.2 mm prepreg.</li>
+      <li><b>SDIO / camera serial buses</b> — 50 Ω single-ended; on a 4-layer 1.6 mm stack with 0.2 mm dielectric, W ≈ 0.35 mm.</li>
+    </ul>
+
+    <h2>What to watch for</h2>
+    <ul class="notice">
+      <li><b>FR-4 εr is frequency-dependent</b> — 4.5 at 100 MHz, 4.2 at 1 GHz, 4.0 at 5 GHz, and the loss tangent rises with frequency too. Use Rogers / ceramic for &gt; 5 GHz.</li>
+      <li><b>Copper roughness adds 20–40 % loss at &gt; 5 GHz</b> — standard "FR-4 with 1 oz Cu" has 5 µm roughness. Low-loss boards use "VLP" (very-low-profile) copper at 1 µm.</li>
+      <li><b>Bends raise impedance locally</b> — 90° corner has ~30 % more inductance per unit length. Use 45° miters or curves above 1 Gbps.</li>
+      <li><b>Reference plane gaps</b> — if a trace crosses a slit in the reference plane, the return current detours and impedance jumps. Always check that the ref plane is continuous beneath every high-speed line.</li>
+    </ul>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- STRIPLINE -->
+  <!-- ===================================================================== -->
+  <section class="pane" id="pane-stripline">
+    <h2>Stripline impedance (embedded inner-layer)</h2>
+    <div class="anchors">
+      <span class="anchor"><b>Stripline ≈ 0.7 × microstrip Z₀</b> for same W/H</span>
+      <span class="anchor"><b>Symmetric stripline</b>: ref planes top + bottom, equal distance</span>
+      <span class="anchor">No fringing into air → <b>v_p slower than microstrip</b></span>
+      <span class="anchor"><b>Better EMI</b> — buried trace radiates less</span>
+    </div>
+
+    <section class="controls">
+      <div class="control">
+        <label>Trace width W (mm): <span class="readout" id="sl-wRead">0.15 mm</span></label>
+        <input id="sl-w" type="range" min="0.05" max="2" step="0.01" value="0.15">
+      </div>
+      <div class="control">
+        <label>Total dielectric H (mm): <span class="readout" id="sl-hRead">0.50 mm</span></label>
+        <input id="sl-h" type="range" min="0.1" max="2" step="0.01" value="0.50">
+      </div>
+      <div class="control">
+        <label>Cu thickness T (µm): <span class="readout" id="sl-tRead">17 µm</span></label>
+        <input id="sl-t" type="range" min="10" max="105" step="1" value="17">
+      </div>
+      <div class="control">
+        <label>Dielectric εr: <span class="readout" id="sl-erRead">4.5</span></label>
+        <input id="sl-er" type="range" min="2.2" max="11" step="0.05" value="4.5">
+      </div>
+    </section>
+
+    <div class="figure">
+      <svg id="sl-svg" viewBox="0 0 600 200" width="100%"></svg>
+      <table>
+        <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+        <tr><td>W / (H − T)</td><td id="sl-wh" class="num">—</td>
+          <td>geometry ratio</td></tr>
+        <tr><td>Z₀ (symmetric stripline)</td><td id="sl-z0" class="num">—</td>
+          <td>IPC-2141 — see below</td></tr>
+        <tr><td>v_p (no air, fully embedded)</td><td id="sl-vp" class="num">—</td>
+          <td><code>v_p = c / √εr</code></td></tr>
+        <tr><td>Propagation delay</td><td id="sl-tpd" class="num">—</td>
+          <td><code>1 / v_p</code></td></tr>
+        <tr><td>vs equivalent microstrip</td><td id="sl-compare" class="num">—</td>
+          <td>same W/H reference</td></tr>
+      </table>
+      <div class="vd" id="sl-summary">—</div>
+    </div>
+
+    <h2>The IPC stripline formula</h2>
+    <p>For a symmetric stripline (trace centered between two reference planes separated by total dielectric H, trace thickness T):</p>
+    <div class="deriv">
+      <span class="step"><b>Z₀ = (60 / √εr) · ln(4H / (0.67π · (0.8W + T)))</b></span>
+      <span class="step">Valid for W/(H−T) &lt; 0.35 and T/H &lt; 0.25 (most real designs).</span>
+      <span class="step">Because the field is fully in dielectric, <b>v_p = c/√εr</b> (slower than microstrip).</span>
+      <span class="step">For FR-4, that's <b>~14.8 cm/ns</b> vs microstrip's <b>~17 cm/ns</b>. Stripline routes are about 15 % "longer" electrically for the same physical length.</span>
+    </div>
+
+    <h2>Where you'll see this</h2>
+    <ul class="notice">
+      <li><b>DDR3/4 buried buses</b> — controller-to-memory address/data lines are routed on inner stripline layers for EMI containment and easier length-matching (no plane gaps to worry about).</li>
+      <li><b>Backplane / server boards</b> — 8–14 layer stacks bury all high-speed signals; only debug headers and connectors break the surface.</li>
+      <li><b>RF-shielded inner layers</b> — Wi-Fi / cellular radio modules use stripline on the inner layers to keep the RF section quiet.</li>
+      <li><b>PCIe Gen3/4/5</b> — on 4-layer boards Gen3 microstrip is fine; Gen4/5 usually requires 6+ layers with stripline for the high-density routing channels.</li>
+    </ul>
+
+    <h2>Microstrip vs stripline trade</h2>
+    <table>
+      <tr><th>Aspect</th><th>Microstrip</th><th>Stripline</th></tr>
+      <tr><td>Layer</td><td>Outer (top/bottom)</td><td>Inner (between planes)</td></tr>
+      <tr><td>Z₀ for same W/H</td><td>Higher (~50 Ω at W=H)</td><td>Lower (~35 Ω at W=H)</td></tr>
+      <tr><td>Propagation</td><td>Faster (mixed air/diel)</td><td>Slower (pure dielectric)</td></tr>
+      <tr><td>EMI</td><td>Radiates</td><td>Contained between planes</td></tr>
+      <tr><td>Probe access</td><td>Easy (top of board)</td><td>Hard (need test pad vias)</td></tr>
+      <tr><td>Density</td><td>Lower (one signal layer)</td><td>Higher (multiple inner layers)</td></tr>
+    </table>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- DIFFERENTIAL PAIR -->
+  <!-- ===================================================================== -->
+  <section class="pane" id="pane-diffpair">
+    <h2>Differential pair geometry</h2>
+    <div class="anchors">
+      <span class="anchor"><b>USB 2.0/3.0</b>: 90 Ω diff</span>
+      <span class="anchor"><b>Ethernet (10/100/1000)</b>: 100 Ω diff</span>
+      <span class="anchor"><b>PCIe Gen1–5</b>: 85 Ω diff</span>
+      <span class="anchor"><b>HDMI / DisplayPort</b>: 100 Ω diff</span>
+      <span class="anchor"><b>DDR3/4/5 differential clock</b>: 100 Ω diff</span>
+      <span class="anchor"><b>SATA</b>: 100 Ω diff</span>
+    </div>
+
+    <section class="controls">
+      <div class="control">
+        <label>Target Z_diff (Ω)</label>
+        <select id="dp-target">
+          <option value="85">85 Ω (PCIe)</option>
+          <option value="90" selected>90 Ω (USB)</option>
+          <option value="100">100 Ω (Ethernet/HDMI/DDR clk/SATA)</option>
+          <option value="120">120 Ω (CAN, RS-485)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Topology</label>
+        <select id="dp-topo">
+          <option value="microstrip" selected>Microstrip (outer layer)</option>
+          <option value="stripline">Stripline (inner layer)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Dielectric H (mm): <span class="readout" id="dp-hRead">0.20 mm</span></label>
+        <input id="dp-h" type="range" min="0.05" max="1.0" step="0.01" value="0.20">
+      </div>
+      <div class="control">
+        <label>Cu thickness T (µm): <span class="readout" id="dp-tRead">35 µm</span></label>
+        <input id="dp-t" type="range" min="10" max="70" step="1" value="35">
+      </div>
+      <div class="control">
+        <label>εr: <span class="readout" id="dp-erRead">4.5</span></label>
+        <input id="dp-er" type="range" min="2.2" max="6" step="0.05" value="4.5">
+      </div>
+      <div class="control">
+        <label>Trial W (mm): <span class="readout" id="dp-wRead">0.20 mm</span></label>
+        <input id="dp-w" type="range" min="0.05" max="1.0" step="0.005" value="0.20">
+      </div>
+    </section>
+
+    <div class="figure">
+      <svg id="dp-svg" viewBox="0 0 600 200" width="100%"></svg>
+      <table>
+        <tr><th>Quantity</th><th>Value</th><th>Notes</th></tr>
+        <tr><td>Z₀ (single-ended, this W)</td><td id="dp-z0" class="num">—</td>
+          <td>Hammerstad single-ended</td></tr>
+        <tr><td>Required spacing S (mm)</td><td id="dp-s-mm" class="num">—</td>
+          <td>solved for target Z_diff</td></tr>
+        <tr><td>Required spacing S (mil)</td><td id="dp-s-mil" class="num">—</td>
+          <td>1 mm = 39.37 mil</td></tr>
+        <tr><td>S/H ratio</td><td id="dp-sh" class="num">—</td>
+          <td>tight coupling = small S/H</td></tr>
+        <tr><td>Coupling factor</td><td id="dp-k" class="num">—</td>
+          <td><code>k = e^(-0.96·S/H)</code></td></tr>
+        <tr><td>Achieved Z_diff</td><td id="dp-zdiff" class="num">—</td>
+          <td><code>Z_diff = 2 Z₀ (1 − k)</code></td></tr>
+      </table>
+      <div class="vd" id="dp-summary">—</div>
+    </div>
+
+    <h2>Why the formula isn't just "two parallel lines"</h2>
+    <p>A differential pair is two coupled microstrips. The differential mode sees the lines as if grounded between them; the common mode sees them as one trace. The differential impedance is:</p>
+    <div class="deriv">
+      <span class="step"><b>Z_diff = 2 · Z₀ · (1 − k)</b></span>
+      <span class="step">Where <b>k</b> is the coupling factor between the two traces.</span>
+      <span class="step">For edge-coupled microstrip pairs (the common case), a practical fit is:</span>
+      <span class="step"><b>k ≈ exp(−0.96 · S/H)</b>  &nbsp;(S = edge-to-edge spacing, H = dielectric height)</span>
+      <span class="step"><span class="arrow">→</span> Tight pairs (S/H &lt; 1) have strong coupling; loose pairs (S/H &gt; 3) act nearly independent (k → 0, Z_diff → 2 Z₀).</span>
+    </div>
+
+    <h2>Common protocol targets — typical microstrip geometry on 4-layer FR-4 (0.2 mm prepreg)</h2>
+    <table>
+      <tr><th>Protocol</th><th>Z_diff</th><th>W (mm)</th><th>S (mm)</th><th>Notes</th></tr>
+      <tr><td>USB 2.0</td><td class="num">90 Ω</td><td class="num">0.30</td><td class="num">0.20</td><td>D+/D−; 15 mm max stub on high-speed</td></tr>
+      <tr><td>USB 3.0 / 3.1 Gen 1 (SuperSpeed)</td><td class="num">90 Ω</td><td class="num">0.25</td><td class="num">0.18</td><td>Tighter spec; loss budget tighter</td></tr>
+      <tr><td>USB 3.2 Gen 2 / USB4</td><td class="num">85 Ω</td><td class="num">0.20</td><td class="num">0.15</td><td>10–20 Gbps; needs careful AC coupling caps</td></tr>
+      <tr><td>Ethernet 1000BASE-T</td><td class="num">100 Ω</td><td class="num">0.25</td><td class="num">0.25</td><td>Transformer-coupled; tolerant of length mismatch</td></tr>
+      <tr><td>HDMI / DisplayPort</td><td class="num">100 Ω</td><td class="num">0.20</td><td class="num">0.20</td><td>4 lanes; tight inter-pair skew</td></tr>
+      <tr><td>PCIe Gen3 (8 GT/s)</td><td class="num">85 Ω</td><td class="num">0.20</td><td class="num">0.15</td><td>Stripline preferred above x4</td></tr>
+      <tr><td>PCIe Gen4 (16 GT/s)</td><td class="num">85 Ω</td><td class="num">0.15</td><td class="num">0.13</td><td>Low-loss material recommended</td></tr>
+      <tr><td>SATA III (6 Gbps)</td><td class="num">100 Ω</td><td class="num">0.20</td><td class="num">0.18</td><td>AC-coupled both ends</td></tr>
+      <tr><td>DDR3 differential clock</td><td class="num">100 Ω</td><td class="num">0.20</td><td class="num">0.20</td><td>Topology matters more than impedance</td></tr>
+      <tr><td>CAN / RS-485</td><td class="num">120 Ω</td><td class="num">0.30</td><td class="num">0.40</td><td>Termination at each end critical</td></tr>
+    </table>
+
+    <h2>What to watch for</h2>
+    <ul class="notice">
+      <li><b>Length-match the pair</b> — intra-pair skew must be &lt; 5 mil (~0.13 mm) for USB 3, &lt; 2 mil for PCIe Gen3+. See the Length-matching tab.</li>
+      <li><b>Don't separate the lines through the routing</b> — splitting around an obstacle breaks the coupling and turns the diff pair into two single-ended traces. Route them as a unit.</li>
+      <li><b>AC coupling caps go inline with both traces</b> — 0402 caps with the smallest pads possible. Pad parasitics turn into resonances.</li>
+      <li><b>Vias matter</b> — every via in a diff pair adds ~50–100 ps and ~5 % impedance discontinuity. For PCIe Gen3+ use back-drilled vias or stay on one layer.</li>
+      <li><b>P-N skew at vias</b> — going through a via stack-up adds intra-pair skew because each trace passes through the same vias at slightly different heights. Use pre-emphasis or AC coupling to mitigate.</li>
+    </ul>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- VIA AMPACITY -->
+  <!-- ===================================================================== -->
+  <section class="pane" id="pane-via">
+    <h2>Via current capacity</h2>
+    <div class="anchors">
+      <span class="anchor"><b>0.3 mm drill, 1 oz plating</b> ≈ 0.8 A per via</span>
+      <span class="anchor"><b>0.5 mm drill, 1 oz plating</b> ≈ 1.2 A per via</span>
+      <span class="anchor"><b>Plating thickness</b> typical = 25 µm (≈ 0.7 oz)</span>
+      <span class="anchor"><b>Rule of thumb</b>: stitch ≥ 1 via per amp on power rails</span>
+    </div>
+
+    <section class="controls">
+      <div class="control">
+        <label>Drill diameter (mm): <span class="readout" id="via-dRead">0.30 mm</span></label>
+        <input id="via-d" type="range" min="0.15" max="2.0" step="0.05" value="0.30">
+      </div>
+      <div class="control">
+        <label>Plating thickness (µm): <span class="readout" id="via-plRead">25 µm</span></label>
+        <input id="via-pl" type="range" min="10" max="70" step="1" value="25">
+      </div>
+      <div class="control">
+        <label>Max ΔT (°C): <span class="readout" id="via-dtRead">10 °C</span></label>
+        <input id="via-dt" type="range" min="5" max="50" step="1" value="10">
+      </div>
+      <div class="control">
+        <label>Target current (A): <span class="readout" id="via-itRead">3 A</span></label>
+        <input id="via-it" type="range" min="0.1" max="20" step="0.1" value="3.0">
+      </div>
+    </section>
+
+    <div class="figure">
+      <svg id="via-svg" viewBox="0 0 600 200" width="100%"></svg>
+      <table>
+        <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+        <tr><td>Plating cross-sectional area</td><td id="via-area" class="num">—</td>
+          <td><code>A = π · d · t_plate</code> (annulus, t &lt;&lt; d)</td></tr>
+        <tr><td>Single-via ampacity</td><td id="via-amp" class="num">—</td>
+          <td><code>I = k · ΔT^0.44 · A^0.725</code></td></tr>
+        <tr><td>Vias required for target</td><td id="via-need" class="num">—</td>
+          <td><code>n = ⌈I_target / I_per_via⌉</code></td></tr>
+        <tr><td>Recommendation (with 50 % derate)</td><td id="via-rec" class="num">—</td>
+          <td>conservative — typical practice</td></tr>
+        <tr><td>Via resistance (10-mil-thick board)</td><td id="via-r" class="num">—</td>
+          <td><code>R = ρ_Cu · h / A</code></td></tr>
+      </table>
+      <div class="vd" id="via-summary">—</div>
+    </div>
+
+    <h2>The via as a cylinder</h2>
+    <p>A plated through-hole via is a Cu cylinder. Cross-section is the <em>annulus</em> of copper plating, not the drill hole — the drill is the inside diameter, and Cu deposits on the wall:</p>
+    <div class="deriv">
+      <span class="step"><b>A_plating = π · d_drill · t_plating</b> (thin-wall approximation)</span>
+      <span class="step">Apply IPC-2221 with k = 0.048 (treated like external for thermal):</span>
+      <span class="step"><b>I_via = 0.048 · ΔT^0.44 · A^0.725</b></span>
+      <span class="step">For 0.3 mm drill × 25 µm plate × 10 °C rise:</span>
+      <span class="step">  A = π · 0.3 · 0.025 = 0.0236 mm² = 23.6 × 10³ µm² = 36.5 mil²</span>
+      <span class="step">  I = 0.048 · 10^0.44 · 36.5^0.725 ≈ <b>1.7 A theoretical</b>, <b>~0.8 A with 50 % derate</b></span>
+      <span class="step"><span class="arrow">→</span> Most designers use the derated value — plating quality and board variance make the theoretical answer optimistic.</span>
+    </div>
+
+    <h2>Where you'll see this</h2>
+    <ul class="notice">
+      <li><b>Power-rail stitching</b> — feeding a 5 V/2 A rail through a 4-layer board needs ≥ 3 vias from top to inner power plane.</li>
+      <li><b>GND return for buck/boost</b> — switching node return current needs ≥ 4 vias for any &gt; 1 A load. Spread them across the inductor footprint, not in one cluster.</li>
+      <li><b>BGA breakouts</b> — 0.4 mm pitch BGA fanout uses 0.2 mm laser-drilled vias (0.3–0.5 A each). Stitch power balls with multiple vias each.</li>
+      <li><b>Connector pads</b> — USB-PD VBUS (5 A) needs 6–8 stitched vias from the connector pad to the inner power layer.</li>
+    </ul>
+
+    <h2>What to watch for</h2>
+    <ul class="notice">
+      <li><b>The IPC-2221 via formula is a rough fit</b> — Brooks' original chart did not extend to via geometries. Use ≤ 50 % derate to be safe.</li>
+      <li><b>Plating thickness varies</b> — fab spec is typically 25 µm minimum but can be ~18 µm in tight spots, or 35–50 µm if you order "heavy plating" (extra cost).</li>
+      <li><b>Tented vs untented matters at the top</b> — tented (covered) vias dissipate slightly worse since the top of the cylinder can't lose heat to air.</li>
+      <li><b>Don't put all stitching vias in one row</b> — heat concentrates. Spread vias along the path of current to distribute the heat load.</li>
+      <li><b>Microvias (laser-drilled blind)</b> — typical 0.1 mm drill / 0.2 mm pad; ampacity ~0.3–0.5 A each. Used in HDI for &gt; 0.4 mm pitch BGA.</li>
+    </ul>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- COPPER WEIGHT -->
+  <!-- ===================================================================== -->
+  <section class="pane" id="pane-copper">
+    <h2>Copper weight ↔ thickness</h2>
+    <div class="anchors">
+      <span class="anchor"><b>1 oz/ft²</b> = 35 µm = 1.4 mil thick</span>
+      <span class="anchor">Defined as <b>1 oz of Cu spread over 1 ft²</b></span>
+      <span class="anchor"><b>0.5 oz</b> default for inner layers</span>
+      <span class="anchor"><b>2 oz</b> standard for high-current designs</span>
+    </div>
+
+    <section class="controls">
+      <div class="control">
+        <label>Copper weight (oz/ft²): <span class="readout" id="cw-ozRead">1.0 oz</span></label>
+        <input id="cw-oz" type="range" min="0.25" max="6.0" step="0.25" value="1.0">
+      </div>
+      <div class="control">
+        <label>Thickness (µm): <span class="readout" id="cw-um">35.0 µm</span></label>
+        <input id="cw-umIn" type="number" value="35" step="1">
+      </div>
+      <div class="control">
+        <label>Thickness (mil)</label>
+        <span class="readout big" id="cw-mil">1.378 mil</span>
+      </div>
+      <div class="control">
+        <label>Sheet resistance (mΩ/sq)</label>
+        <span class="readout big" id="cw-rsq">0.480 mΩ/□</span>
+      </div>
+    </section>
+
+    <h2>Copper weight table</h2>
+    <table>
+      <tr><th>Weight</th><th>Thickness (µm)</th><th>Thickness (mil)</th>
+        <th>R_sheet (mΩ/□)</th><th>Min trace (mm)</th><th>Cost vs 1 oz</th><th>Typical use</th></tr>
+      <tr><td>0.25 oz</td><td class="num">8.75</td><td class="num">0.344</td><td class="num">1.92</td>
+        <td class="num">0.10</td><td>0.8×</td><td>HDI inner layers, &lt; 0.5 A traces</td></tr>
+      <tr><td>0.5 oz</td><td class="num">17.5</td><td class="num">0.689</td><td class="num">0.960</td>
+        <td class="num">0.10</td><td>0.9×</td><td>Inner layers default; signal layers in dense BGA fanout</td></tr>
+      <tr><td>1 oz</td><td class="num">35.0</td><td class="num">1.378</td><td class="num">0.480</td>
+        <td class="num">0.13</td><td>1.0× (baseline)</td><td>Standard outer / signal layers; most hobby boards</td></tr>
+      <tr><td>2 oz</td><td class="num">70.0</td><td class="num">2.756</td><td class="num">0.240</td>
+        <td class="num">0.20</td><td>1.5×</td><td>Power layers, motor controllers, switching supplies &gt; 5 A</td></tr>
+      <tr><td>3 oz</td><td class="num">105</td><td class="num">4.134</td><td class="num">0.160</td>
+        <td class="num">0.30</td><td>2.0×</td><td>EV / industrial; needs special etch process</td></tr>
+      <tr><td>4 oz</td><td class="num">140</td><td class="num">5.512</td><td class="num">0.120</td>
+        <td class="num">0.40</td><td>2.7×</td><td>Heavy-copper, busbar-style PCB; limited fabs</td></tr>
+      <tr><td>6 oz</td><td class="num">210</td><td class="num">8.268</td><td class="num">0.080</td>
+        <td class="num">0.65</td><td>4×</td><td>Industrial inverters, EV traction electronics</td></tr>
+    </table>
+
+    <h2>What "weight" actually means + why R_sheet is the cleaner unit</h2>
+    <div class="deriv">
+      <span class="step">Definition: <b>1 oz Cu = 1 oz spread over 1 ft²</b></span>
+      <span class="step">Density of Cu: <b>ρ_m = 8.96 g/cm³</b></span>
+      <span class="step">1 oz = 28.35 g; 1 ft² = 929 cm²</span>
+      <span class="step">Thickness = mass / (density · area) = 28.35 / (8.96 · 929) = <b>34.0 µm</b>  &nbsp;(rounded to 35 µm by IPC)</span>
+      <span class="step">  </span>
+      <span class="step"><b>R_sheet = ρ_Cu / t</b> &nbsp;(electrical resistivity ρ_Cu = 1.68 × 10⁻⁸ Ω·m)</span>
+      <span class="step">For 1 oz: <b>R_sheet = 1.68e−8 / 35e−6 = 0.48 mΩ/square</b></span>
+      <span class="step"><span class="arrow">→</span> A square of 1 oz Cu is 0.48 mΩ regardless of size. 10 squares end-to-end = 4.8 mΩ. Easy mental math.</span>
+    </div>
+
+    <h2>Where you'll see this</h2>
+    <ul class="notice">
+      <li><b>JLCPCB / PCBWay default</b> = 1 oz outer + 0.5 oz inner on 4-layer. Most hobby boards. Adequate for &lt; 3 A traces.</li>
+      <li><b>Power-electronics boards</b> typically 2 oz; the higher current capacity + lower R_sheet pay back the extra cost in fewer parallel traces and less voltage drop.</li>
+      <li><b>BGA breakout</b> sometimes drops to 0.5 oz outer to get etchable 0.10 mm traces. Watch the ampacity tradeoff.</li>
+      <li><b>EV traction / industrial</b> uses 3–6 oz "heavy copper"; only a few fabs (e.g., Sierra) support &gt; 4 oz with normal lead times.</li>
+    </ul>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- LENGTH MATCHING -->
+  <!-- ===================================================================== -->
+  <section class="pane" id="pane-length">
+    <h2>Length matching + skew tolerance</h2>
+    <div class="anchors">
+      <span class="anchor"><b>Microstrip on FR-4</b>: ~170 ps/in (~6.7 ps/mm)</span>
+      <span class="anchor"><b>Stripline on FR-4</b>: ~180 ps/in (~7.1 ps/mm)</span>
+      <span class="anchor"><b>1 mil (25 µm)</b> ≈ 5 ps skew on microstrip</span>
+      <span class="anchor"><b>Match within</b> 10–20 % of bit period typical</span>
+    </div>
+
+    <section class="controls">
+      <div class="control">
+        <label>Bus / protocol</label>
+        <select id="lm-bus">
+          <option value="usb2">USB 2.0 (480 Mbps)</option>
+          <option value="usb3" selected>USB 3.0 (5 Gbps)</option>
+          <option value="usb31">USB 3.1 Gen 2 (10 Gbps)</option>
+          <option value="hdmi14">HDMI 1.4 (3.4 Gbps)</option>
+          <option value="hdmi20">HDMI 2.0 (6 Gbps)</option>
+          <option value="ddr3-1600">DDR3-1600</option>
+          <option value="ddr4-3200">DDR4-3200</option>
+          <option value="pcie3">PCIe Gen3 (8 GT/s)</option>
+          <option value="pcie4">PCIe Gen4 (16 GT/s)</option>
+          <option value="sata3">SATA III (6 Gbps)</option>
+          <option value="ethernet-1g">Ethernet 1000BASE-T</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Topology</label>
+        <select id="lm-topo">
+          <option value="ms" selected>Microstrip on FR-4</option>
+          <option value="sl">Stripline on FR-4</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Length mismatch (mm): <span class="readout" id="lm-mmRead">0.50 mm</span></label>
+        <input id="lm-mm" type="range" min="0.05" max="50" step="0.05" value="0.50">
+      </div>
+      <div class="control">
+        <label>Trace length (mm): <span class="readout" id="lm-lenRead">80 mm</span></label>
+        <input id="lm-len" type="range" min="10" max="500" step="5" value="80">
+      </div>
+    </section>
+
+    <div class="figure">
+      <table>
+        <tr><th>Quantity</th><th>Value</th><th>Notes</th></tr>
+        <tr><td>Selected protocol</td><td id="lm-protoName" class="num">—</td><td></td></tr>
+        <tr><td>Symbol / bit rate</td><td id="lm-rate" class="num">—</td><td></td></tr>
+        <tr><td>Unit interval (bit time)</td><td id="lm-ui" class="num">—</td><td><code>UI = 1 / rate</code></td></tr>
+        <tr><td>Allowed intra-pair skew</td><td id="lm-skewBudget" class="num">—</td><td>from spec / industry guideline</td></tr>
+        <tr><td>Skew per mm mismatch</td><td id="lm-skewMm" class="num">—</td><td><code>ps/mm</code> on chosen topology</td></tr>
+        <tr><td>Your mismatch → skew</td><td id="lm-skewVal" class="num">—</td><td>direct from mm × ps/mm</td></tr>
+        <tr><td>% of UI consumed</td><td id="lm-pctUi" class="num">—</td><td></td></tr>
+        <tr><td>Status</td><td id="lm-stat" class="num">—</td><td></td></tr>
+        <tr><td>Phase error at clock rate</td><td id="lm-phase" class="num">—</td><td>for DDR / clock pairs</td></tr>
+      </table>
+      <div class="vd" id="lm-summary">—</div>
+    </div>
+
+    <h2>Protocol reference table</h2>
+    <table>
+      <tr><th>Bus</th><th>Rate</th><th>UI</th><th>Intra-pair skew limit</th><th>Inter-pair / lane-to-lane</th></tr>
+      <tr><td>USB 2.0</td><td>480 Mbps</td><td>2080 ps</td><td>±100 ps</td><td>n/a (single pair)</td></tr>
+      <tr><td>USB 3.0 (5 Gbps)</td><td>5 Gbps</td><td>200 ps</td><td>±15 ps (~3 mil)</td><td>n/a</td></tr>
+      <tr><td>USB 3.2 Gen 2</td><td>10 Gbps</td><td>100 ps</td><td>±8 ps (~1.5 mil)</td><td>n/a</td></tr>
+      <tr><td>HDMI 1.4</td><td>3.4 Gbps</td><td>295 ps</td><td>±10 mil (~50 ps)</td><td>200 mil (~1 ns)</td></tr>
+      <tr><td>HDMI 2.0</td><td>6 Gbps</td><td>167 ps</td><td>±5 mil (~25 ps)</td><td>100 mil (~500 ps)</td></tr>
+      <tr><td>DDR3-1600</td><td>800 MT/s</td><td>1250 ps</td><td>±25 mil (~125 ps)</td><td>byte-lane: ±100 mil</td></tr>
+      <tr><td>DDR4-3200</td><td>1600 MT/s</td><td>625 ps</td><td>±10 mil (~50 ps)</td><td>byte-lane: ±50 mil</td></tr>
+      <tr><td>PCIe Gen3</td><td>8 GT/s</td><td>125 ps</td><td>±5 mil (~25 ps)</td><td>lane: ±20 mil</td></tr>
+      <tr><td>PCIe Gen4</td><td>16 GT/s</td><td>62.5 ps</td><td>±2 mil (~10 ps)</td><td>lane: ±10 mil</td></tr>
+      <tr><td>SATA III</td><td>6 Gbps</td><td>167 ps</td><td>±10 ps</td><td>n/a</td></tr>
+      <tr><td>1000BASE-T</td><td>1 Gbps</td><td>1 ns</td><td>±50 ps (after MDI xfmr)</td><td>±50 ns (between pairs!)</td></tr>
+    </table>
+
+    <h2>Where the skew shows up</h2>
+    <ul class="notice">
+      <li><b>Intra-pair</b> (within a differential pair): converts common-mode to differential-mode noise. Eye closes. Always tighter than inter-pair.</li>
+      <li><b>Inter-pair / lane-to-lane</b>: between two differential pairs (D+/D− pair to another D+/D− pair). DDR uses byte-lane groups; PCIe handles up to ±20 mil per lane.</li>
+      <li><b>Byte-lane</b> (DDR-specific): the 8 data lines of one byte must arrive within their strobe (DQS) window. ±25 mil at DDR3, ±10 mil at DDR4.</li>
+      <li><b>Clock-to-data</b>: source-synchronous interfaces (DDR, SDRAM) need data to arrive within the setup/hold window relative to clock. Often the tightest constraint.</li>
+    </ul>
+
+    <h2>Serpentine routing rules</h2>
+    <ul class="notice">
+      <li><b>Add length close to the source of mismatch</b> — not at the end of the line. Discontinuities have time to settle if they're upstream.</li>
+      <li><b>Serpentine amplitude ≥ 3× the trace width</b> — tight bunching couples the trace to itself, slowing the signal locally (paradoxically defeating the length adjustment).</li>
+      <li><b>Inside-corner vs outside-corner</b> — both legs of an unmatched diff pair should serpentine the <em>same way</em> to keep coupling balanced.</li>
+      <li><b>Don't serpentine inside a pair</b> for tight protocols (PCIe Gen3+) — use a "bump" pattern (smooth curve) instead.</li>
+    </ul>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- CHEAT SHEET -->
+  <!-- ===================================================================== -->
+  <h2>Cheat sheet</h2>
+  <div class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>Trace width (IPC-2221)</h3>
+      <div class="eq">I = k · ΔT^0.44 · A^0.725</div>
+      <div class="eq">k = 0.048 ext, 0.024 int</div>
+      <div class="eq">A in mil², I in A, ΔT in °C</div>
+      <div class="eq">W = A / thickness</div>
+    </div>
+    <div class="cheat-card formulas">
+      <h3>Microstrip (Hammerstad)</h3>
+      <div class="eq">W/H ≥ 1: Z₀ = 120π/√Eeff</div>
+      <div class="eq">       ÷ (W/H + 1.393 + ...)</div>
+      <div class="eq">W/H &lt; 1: Z₀ = 60/√Eeff · ln(8H/W + W/4H)</div>
+      <div class="eq">Eeff = (εr+1)/2 + (εr−1)/2 · (1+12H/W)^−0.5</div>
+    </div>
+    <div class="cheat-card formulas">
+      <h3>Stripline (IPC-2141)</h3>
+      <div class="eq">Z₀ = (60/√εr) · ln(4H/(0.67π·(0.8W+T)))</div>
+      <div class="eq">v_p = c / √εr (no air)</div>
+    </div>
+    <div class="cheat-card formulas">
+      <h3>Differential pair</h3>
+      <div class="eq">Z_diff = 2 Z₀ (1 − k)</div>
+      <div class="eq">k ≈ exp(−0.96 · S/H)</div>
+    </div>
+    <div class="cheat-card formulas">
+      <h3>Via ampacity (IPC-2221 adapt)</h3>
+      <div class="eq">A = π · d_drill · t_plate</div>
+      <div class="eq">I = 0.048 · ΔT^0.44 · A^0.725</div>
+      <div class="eq">Always 50 % derate in practice</div>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>Memorize</h3>
+      <ul>
+        <li><b>1 oz Cu = 35 µm = 1.4 mil = 0.48 mΩ/□</b></li>
+        <li><b>Microstrip on FR-4: ~170 ps/in</b></li>
+        <li><b>Stripline on FR-4: ~180 ps/in</b></li>
+        <li><b>50 Ω microstrip ≈ W/H ≈ 2</b> on FR-4</li>
+        <li><b>1 A external, 1 oz, 10 °C: 0.4 mm</b> wide</li>
+        <li><b>0.3 mm via @ 1 oz plate: 0.8 A</b> derated</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>Pitfalls</h3>
+      <ul>
+        <li>FR-4 εr drifts with frequency (4.5 → 4.0 over 100 MHz–5 GHz)</li>
+        <li>Plating thickness can be 80 % of spec — derate vias</li>
+        <li>Reference-plane gaps under signals = broken impedance</li>
+        <li>Tight serpentines couple to themselves (slow the signal locally)</li>
+        <li>Via barrel cracks under thermal cycling — use multiple</li>
+        <li>Hammerstad valid 0.05 ≤ W/H ≤ 20 (most designs)</li>
+      </ul>
+    </div>
+  </div>
+
+  <footer class="footer-note">
+    Cross-links — EE phase 7 signal-integrity visuals:
+    <a href="../ee/phase-7-signal-integrity-pcb/transmission-line.html">Transmission line</a> ·
+    <a href="../ee/phase-7-signal-integrity-pcb/impedance-matching.html">Impedance matching</a> ·
+    <a href="../ee/phase-7-signal-integrity-pcb/crosstalk-ground.html">Crosstalk &amp; ground</a> ·
+    Other extras:
+    <a href="unit-converter.html">Unit converter</a> ·
+    <a href="component-picker.html">Component picker</a>
+  </footer>
+
+</main>
+
+<script>
+/* ====================================================================
+   TAB SWITCHING
+==================================================================== */
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.pane').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('pane-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+/* ====================================================================
+   UTILITIES
+==================================================================== */
+const C0 = 299792458; // m/s
+const RHO_CU = 1.68e-8; // Ω·m
+
+function fmtMm(x){ return x < 0.01 ? (x*1000).toFixed(1)+' µm' : x.toFixed(3)+' mm'; }
+function fmtMil(x){ return x.toFixed(1)+' mil'; }
+function fmtOhm(x){ return x.toFixed(1)+' Ω'; }
+function fmtPs(x){
+  if(x < 1)    return (x*1000).toFixed(0)+' fs';
+  if(x < 1000) return x.toFixed(1)+' ps';
+  return (x/1000).toFixed(2)+' ns';
+}
+function mmToMil(mm){ return mm * 39.3701; }
+function milToMm(mil){ return mil / 39.3701; }
+
+/* ====================================================================
+   TRACE WIDTH (IPC-2221)
+==================================================================== */
+function traceWidthCalc(I, dT, oz, layer){
+  // I = k · ΔT^0.44 · A^0.725  (A in mil^2)
+  const k = (layer === 'external') ? 0.048 : 0.024;
+  const A_mil2 = Math.pow(I / (k * Math.pow(dT, 0.44)), 1 / 0.725);
+  // Cu thickness from oz: 1 oz = 35 µm = 1.378 mil
+  const thickness_mil = 1.378 * oz;
+  const thickness_um  = 35 * oz;
+  const W_mil = A_mil2 / thickness_mil;
+  const W_mm  = W_mil / 39.3701;
+  const A_mm2 = A_mil2 / (39.3701 * 39.3701);
+  // R per meter
+  const R_per_m = RHO_CU / (A_mm2 * 1e-6);
+  // power per 100 mm
+  const P_100mm = I*I * R_per_m * 0.1;
+  return { A_mil2, A_mm2, W_mm, W_mil, thickness_um, thickness_mil, R_per_m, P_100mm };
+}
+
+function tw_draw(I, dT, oz, layer, W_mm){
+  const svg = document.getElementById('tw-svg');
+  const baseY = 100;
+  // Show cross-section of trace on board
+  const pxPerMm = 60;
+  const w_px = Math.min(W_mm * pxPerMm, 400);
+  const t_px = Math.max(oz * 6, 3);
+  let s = '';
+  // board substrate
+  s += `<rect x="80" y="${baseY+t_px}" width="440" height="50" fill="#3a4500" stroke="#5a6a00"/>`;
+  s += `<text x="300" y="${baseY+t_px+30}" class="axis-label" text-anchor="middle">FR-4 substrate</text>`;
+  // copper trace
+  s += `<rect x="${300-w_px/2}" y="${baseY}" width="${w_px}" height="${t_px}" fill="#d4a574" stroke="#a37844"/>`;
+  // width annotation
+  s += `<line x1="${300-w_px/2}" y1="${baseY-15}" x2="${300+w_px/2}" y2="${baseY-15}" class="axis"/>`;
+  s += `<line x1="${300-w_px/2}" y1="${baseY-20}" x2="${300-w_px/2}" y2="${baseY-10}" class="axis"/>`;
+  s += `<line x1="${300+w_px/2}" y1="${baseY-20}" x2="${300+w_px/2}" y2="${baseY-10}" class="axis"/>`;
+  s += `<text x="300" y="${baseY-22}" class="axis-label" text-anchor="middle">W = ${W_mm.toFixed(3)} mm = ${(W_mm*39.37).toFixed(1)} mil</text>`;
+  // thickness annotation
+  s += `<line x1="${300+w_px/2+10}" y1="${baseY}" x2="${300+w_px/2+10}" y2="${baseY+t_px}" class="axis"/>`;
+  s += `<text x="${300+w_px/2+15}" y="${baseY+t_px/2+4}" class="axis-label">t = ${(35*oz).toFixed(1)} µm (${oz} oz)</text>`;
+  // current arrow
+  s += `<text x="${300}" y="${baseY-40}" fill="var(--accent3)" font-family="ui-monospace,monospace" font-size="13" text-anchor="middle">I = ${I.toFixed(1)} A, ΔT = ${dT} °C, ${layer}</text>`;
+  svg.innerHTML = s;
+}
+
+function tw_update(){
+  const I = parseFloat(document.getElementById('tw-i').value);
+  const dT = parseFloat(document.getElementById('tw-dt').value);
+  const oz = parseFloat(document.getElementById('tw-cu').value);
+  const layer = document.getElementById('tw-layer').value;
+  document.getElementById('tw-iRead').textContent = I.toFixed(1) + ' A';
+  document.getElementById('tw-dtRead').textContent = dT + ' °C';
+  const r = traceWidthCalc(I, dT, oz, layer);
+  document.getElementById('tw-area').textContent = r.A_mm2.toFixed(4) + ' mm² (' + r.A_mil2.toFixed(2) + ' mil²)';
+  document.getElementById('tw-thick').textContent = r.thickness_um.toFixed(1) + ' µm';
+  document.getElementById('tw-w-mm').textContent  = r.W_mm.toFixed(3) + ' mm';
+  document.getElementById('tw-w-mil').textContent = r.W_mil.toFixed(1) + ' mil';
+  document.getElementById('tw-rohm').textContent  = (r.R_per_m * 1000).toFixed(2) + ' mΩ/m';
+  document.getElementById('tw-pdis').textContent  = (r.P_100mm * 1000).toFixed(2) + ' mW';
+  const summary = document.getElementById('tw-summary');
+  summary.innerHTML = `<b>Result:</b> ${I.toFixed(1)} A on ${oz} oz ${layer} trace at ΔT = ${dT} °C → <b>W ≥ ${r.W_mm.toFixed(3)} mm (${r.W_mil.toFixed(1)} mil)</b>. Resistance ≈ ${(r.R_per_m * 1000).toFixed(1)} mΩ/m, dropping ${(I * r.R_per_m * 0.1 * 1000).toFixed(1)} mV per 100 mm.`;
+  tw_draw(I, dT, oz, layer, r.W_mm);
+}
+document.getElementById('tw-i').addEventListener('input', tw_update);
+document.getElementById('tw-dt').addEventListener('input', tw_update);
+document.getElementById('tw-cu').addEventListener('change', tw_update);
+document.getElementById('tw-layer').addEventListener('change', tw_update);
+tw_update();
+
+/* ====================================================================
+   MICROSTRIP (Hammerstad)
+==================================================================== */
+function microstripZ0(W, H, T, er){
+  // Effective W including thickness correction (very thin T ≈ ignore)
+  const We = W + (T * 1e-3 / Math.PI) * Math.log(1 + 4*Math.E / (T*1e-3 / H));
+  // Eeff
+  const Eeff = (er + 1)/2 + ((er - 1)/2) * Math.pow(1 + 12*H/W, -0.5);
+  // Z0
+  let Z0;
+  if(W/H >= 1){
+    Z0 = (120 * Math.PI / Math.sqrt(Eeff)) /
+         (W/H + 1.393 + 0.667 * Math.log(W/H + 1.444));
+  } else {
+    Z0 = (60 / Math.sqrt(Eeff)) * Math.log(8*H/W + W/(4*H));
+  }
+  const vp = C0 / Math.sqrt(Eeff);
+  return { Z0, Eeff, vp };
+}
+
+function ms_draw(W, H, T, er, Z0, Eeff){
+  const svg = document.getElementById('ms-svg');
+  const baseY = 110;
+  const pxPerMm = 200;
+  const w_px = Math.min(W * pxPerMm, 200);
+  const h_px = Math.min(H * pxPerMm, 80);
+  const t_px = Math.max(T/1000 * pxPerMm, 2);
+  let s = '';
+  // ground plane
+  s += `<rect x="80" y="${baseY+h_px}" width="440" height="12" fill="#888" stroke="#444"/>`;
+  s += `<text x="80" y="${baseY+h_px+8}" class="axis-label">GND plane</text>`;
+  // dielectric
+  s += `<rect x="80" y="${baseY}" width="440" height="${h_px}" fill="#3a4500" stroke="#5a6a00" opacity="0.6"/>`;
+  s += `<text x="100" y="${baseY+h_px/2+4}" class="axis-label">FR-4 εr=${er}, H=${H.toFixed(2)} mm</text>`;
+  // copper trace
+  s += `<rect x="${300-w_px/2}" y="${baseY-t_px}" width="${w_px}" height="${t_px}" fill="#d4a574" stroke="#a37844"/>`;
+  s += `<text x="300" y="${baseY-t_px-8}" class="axis-label" text-anchor="middle">W=${W.toFixed(2)} mm, T=${T} µm</text>`;
+  // E field lines (cosmetic)
+  for(let i=-2; i<=2; i++){
+    const x0 = 300 + i*15;
+    const x1 = 300 + i*30;
+    s += `<path d="M ${x0} ${baseY} Q ${(x0+x1)/2} ${baseY+h_px*0.5} ${x1} ${baseY+h_px}" stroke="var(--accent2)" stroke-width="0.8" fill="none" opacity="0.5" stroke-dasharray="2,2"/>`;
+  }
+  // result
+  s += `<text x="300" y="${baseY+h_px+30}" fill="var(--accent3)" font-family="ui-monospace,monospace" font-size="14" text-anchor="middle">Z₀ = ${Z0.toFixed(1)} Ω,  Eeff = ${Eeff.toFixed(2)}</text>`;
+  svg.innerHTML = s;
+}
+
+function ms_drawPlot(H, T, er){
+  const svg = document.getElementById('ms-plot');
+  const W = 600, Hh = 280, M = 50;
+  // X: W from 0.05 to 2.0 mm (log)
+  // Y: Z0 from 0 to 200 Ω (linear)
+  const xMin = 0.05, xMax = 2.0;
+  const yMin = 0, yMax = 200;
+  const xOf = w => M + (Math.log10(w) - Math.log10(xMin)) / (Math.log10(xMax) - Math.log10(xMin)) * (W - M - 20);
+  const yOf = z => Hh - M - (z - yMin)/(yMax - yMin) * (Hh - M - 20);
+  let s = '';
+  // axes
+  s += `<line x1="${M}" y1="${Hh-M}" x2="${W-20}" y2="${Hh-M}" class="axis"/>`;
+  s += `<line x1="${M}" y1="20" x2="${M}" y2="${Hh-M}" class="axis"/>`;
+  // x grid
+  for(const w of [0.05, 0.1, 0.2, 0.3, 0.5, 1.0, 2.0]){
+    const x = xOf(w);
+    s += `<line x1="${x}" y1="${Hh-M}" x2="${x}" y2="20" class="gridline"/>`;
+    s += `<text x="${x}" y="${Hh-M+14}" class="axis-label" text-anchor="middle">${w}</text>`;
+  }
+  s += `<text x="${W/2}" y="${Hh-10}" class="axis-label" text-anchor="middle">Trace width W (mm, log)</text>`;
+  // y grid
+  for(const z of [0,25,50,75,100,125,150,175,200]){
+    const y = yOf(z);
+    s += `<line x1="${M}" y1="${y}" x2="${W-20}" y2="${y}" class="gridline"/>`;
+    s += `<text x="${M-6}" y="${y+4}" class="axis-label" text-anchor="end">${z}</text>`;
+  }
+  s += `<text x="15" y="${Hh/2}" class="axis-label" text-anchor="middle" transform="rotate(-90 15 ${Hh/2})">Z₀ (Ω)</text>`;
+  // 50 Ω reference line
+  s += `<line x1="${M}" y1="${yOf(50)}" x2="${W-20}" y2="${yOf(50)}" stroke="var(--accent3)" stroke-dasharray="4,4" opacity="0.6"/>`;
+  s += `<text x="${W-22}" y="${yOf(50)-4}" fill="var(--accent3)" font-family="ui-monospace,monospace" font-size="11" text-anchor="end">50 Ω</text>`;
+  // curve
+  let pts = '';
+  for(let i=0; i<=100; i++){
+    const lw = Math.log10(xMin) + (Math.log10(xMax) - Math.log10(xMin)) * i/100;
+    const w = Math.pow(10, lw);
+    const z = microstripZ0(w, H, T, er).Z0;
+    pts += (pts ? ' L ' : 'M ') + xOf(w).toFixed(1) + ' ' + yOf(Math.min(z,yMax)).toFixed(1);
+  }
+  s += `<path d="${pts}" stroke="var(--accent)" stroke-width="2" fill="none"/>`;
+  // current W marker
+  const curW = parseFloat(document.getElementById('ms-w').value);
+  const curZ = microstripZ0(curW, H, T, er).Z0;
+  if(curW >= xMin && curW <= xMax){
+    s += `<circle cx="${xOf(curW)}" cy="${yOf(Math.min(curZ,yMax))}" r="5" fill="var(--accent2)" stroke="#000"/>`;
+    s += `<text x="${xOf(curW)+8}" y="${yOf(Math.min(curZ,yMax))-8}" fill="var(--accent2)" font-family="ui-monospace,monospace" font-size="11">W=${curW.toFixed(2)} → ${curZ.toFixed(1)} Ω</text>`;
+  }
+  svg.innerHTML = s;
+}
+
+function ms_update(){
+  const W = parseFloat(document.getElementById('ms-w').value);
+  const H = parseFloat(document.getElementById('ms-h').value);
+  const T = parseFloat(document.getElementById('ms-t').value);
+  const er = parseFloat(document.getElementById('ms-er').value);
+  document.getElementById('ms-wRead').textContent = W.toFixed(2) + ' mm';
+  document.getElementById('ms-hRead').textContent = H.toFixed(2) + ' mm';
+  document.getElementById('ms-tRead').textContent = T.toFixed(0) + ' µm';
+  document.getElementById('ms-erRead').textContent = er.toFixed(2);
+  const r = microstripZ0(W, H, T, er);
+  document.getElementById('ms-wh').textContent = (W/H).toFixed(3);
+  document.getElementById('ms-eeff').textContent = r.Eeff.toFixed(3);
+  document.getElementById('ms-z0').textContent = r.Z0.toFixed(2) + ' Ω';
+  document.getElementById('ms-vp').textContent = (r.vp / 1e8).toFixed(3) + ' × 10⁸ m/s';
+  const tpd = 1 / r.vp;
+  document.getElementById('ms-tpd').textContent = (tpd * 1e9 * 25.4).toFixed(1) + ' ps/inch (' + (tpd * 1e12 / 1000).toFixed(1) + ' ps/mm)';
+  document.getElementById('ms-lambda').textContent = (r.vp / 1e9 * 1000).toFixed(1) + ' mm @ 1 GHz';
+  const summary = document.getElementById('ms-summary');
+  let tone = 'vd';
+  if(Math.abs(r.Z0 - 50) < 5) tone = 'vd ok';
+  else if(Math.abs(r.Z0 - 50) > 15) tone = 'vd warn';
+  summary.className = tone;
+  summary.innerHTML = `<b>Z₀ = ${r.Z0.toFixed(2)} Ω.</b> ${r.Z0 < 45 ? 'Lower than 50 Ω — try narrower trace or thicker dielectric.' : r.Z0 > 55 ? 'Higher than 50 Ω — try wider trace or thinner dielectric.' : 'Close to 50 Ω target.'} Velocity ${(r.vp / 1e8).toFixed(2)} × 10⁸ m/s → ${(1/r.vp * 1e9 * 25.4).toFixed(0)} ps/inch on this stack.`;
+  ms_draw(W, H, T, er, r.Z0, r.Eeff);
+  ms_drawPlot(H, T, er);
+}
+document.getElementById('ms-w').addEventListener('input', ms_update);
+document.getElementById('ms-h').addEventListener('input', ms_update);
+document.getElementById('ms-t').addEventListener('input', ms_update);
+document.getElementById('ms-er').addEventListener('input', ms_update);
+ms_update();
+
+/* ====================================================================
+   STRIPLINE (IPC-2141)
+==================================================================== */
+function striplineZ0(W, H, T, er){
+  // H = total dielectric height (between top and bottom planes)
+  // Trace centered. T = trace thickness in µm.
+  const T_mm = T / 1000;
+  const denom = 0.67 * Math.PI * (0.8 * W + T_mm);
+  if(denom <= 0 || 4*H/denom <= 1) return { Z0: NaN, vp: C0/Math.sqrt(er) };
+  const Z0 = (60 / Math.sqrt(er)) * Math.log(4 * H / denom);
+  const vp = C0 / Math.sqrt(er);
+  return { Z0, vp };
+}
+
+function sl_draw(W, H, T, er, Z0){
+  const svg = document.getElementById('sl-svg');
+  const baseY = 30;
+  const pxPerMm = 250;
+  const w_px = Math.min(W * pxPerMm, 200);
+  const h_px = Math.min(H * pxPerMm, 120);
+  const t_px = Math.max(T/1000 * pxPerMm, 2);
+  let s = '';
+  // top ground plane
+  s += `<rect x="80" y="${baseY}" width="440" height="10" fill="#888" stroke="#444"/>`;
+  s += `<text x="80" y="${baseY+8}" class="axis-label">GND (top)</text>`;
+  // bottom ground plane
+  s += `<rect x="80" y="${baseY+10+h_px}" width="440" height="10" fill="#888" stroke="#444"/>`;
+  s += `<text x="80" y="${baseY+10+h_px+8}" class="axis-label">GND (bottom)</text>`;
+  // dielectric
+  s += `<rect x="80" y="${baseY+10}" width="440" height="${h_px}" fill="#3a4500" stroke="#5a6a00" opacity="0.5"/>`;
+  s += `<text x="100" y="${baseY+10+15}" class="axis-label">FR-4 εr=${er}, H=${H.toFixed(2)} mm total</text>`;
+  // trace centered
+  const traceY = baseY + 10 + h_px/2 - t_px/2;
+  s += `<rect x="${300-w_px/2}" y="${traceY}" width="${w_px}" height="${t_px}" fill="#d4a574" stroke="#a37844"/>`;
+  s += `<text x="300" y="${traceY-4}" class="axis-label" text-anchor="middle">W=${W.toFixed(2)} mm, T=${T} µm</text>`;
+  // result
+  const yResult = baseY + 10 + h_px + 35;
+  s += `<text x="300" y="${yResult}" fill="var(--accent3)" font-family="ui-monospace,monospace" font-size="14" text-anchor="middle">${isFinite(Z0) ? `Z₀ = ${Z0.toFixed(1)} Ω` : 'geometry outside valid range'}</text>`;
+  svg.innerHTML = s;
+}
+
+function sl_update(){
+  const W = parseFloat(document.getElementById('sl-w').value);
+  const H = parseFloat(document.getElementById('sl-h').value);
+  const T = parseFloat(document.getElementById('sl-t').value);
+  const er = parseFloat(document.getElementById('sl-er').value);
+  document.getElementById('sl-wRead').textContent = W.toFixed(2) + ' mm';
+  document.getElementById('sl-hRead').textContent = H.toFixed(2) + ' mm';
+  document.getElementById('sl-tRead').textContent = T.toFixed(0) + ' µm';
+  document.getElementById('sl-erRead').textContent = er.toFixed(2);
+  const r = striplineZ0(W, H, T, er);
+  document.getElementById('sl-wh').textContent = (W/(H - T/1000)).toFixed(3);
+  document.getElementById('sl-z0').textContent = isFinite(r.Z0) ? r.Z0.toFixed(2) + ' Ω' : '—';
+  document.getElementById('sl-vp').textContent = (r.vp / 1e8).toFixed(3) + ' × 10⁸ m/s';
+  document.getElementById('sl-tpd').textContent = (1/r.vp * 1e9 * 25.4).toFixed(1) + ' ps/inch';
+  // Equivalent microstrip Z0 for comparison (use H/2 since stripline H is total)
+  const ms = microstripZ0(W, H/2, T, er);
+  document.getElementById('sl-compare').textContent = isFinite(r.Z0) ?
+    `microstrip same W, H/2 = ${ms.Z0.toFixed(1)} Ω → ratio ${(r.Z0/ms.Z0).toFixed(2)}` : '—';
+  const summary = document.getElementById('sl-summary');
+  if(isFinite(r.Z0)){
+    let tone = 'vd';
+    if(Math.abs(r.Z0 - 50) < 5) tone = 'vd ok';
+    else if(Math.abs(r.Z0 - 50) > 15) tone = 'vd warn';
+    summary.className = tone;
+    summary.innerHTML = `<b>Z₀ = ${r.Z0.toFixed(2)} Ω (symmetric stripline).</b> v_p = c/√εr = ${(r.vp/1e8).toFixed(2)} × 10⁸ m/s — ${(1/r.vp * 1e9 * 25.4).toFixed(0)} ps/inch (slower than microstrip on same FR-4).`;
+  } else {
+    summary.className = 'vd warn';
+    summary.innerHTML = `<b>Geometry outside Hammerstad/IPC validity</b> — try smaller W or larger H.`;
+  }
+  sl_draw(W, H, T, er, r.Z0);
+}
+document.getElementById('sl-w').addEventListener('input', sl_update);
+document.getElementById('sl-h').addEventListener('input', sl_update);
+document.getElementById('sl-t').addEventListener('input', sl_update);
+document.getElementById('sl-er').addEventListener('input', sl_update);
+sl_update();
+
+/* ====================================================================
+   DIFFERENTIAL PAIR
+==================================================================== */
+function dp_draw(W, H, S, T, er, Zdiff, Z0){
+  const svg = document.getElementById('dp-svg');
+  const baseY = 110;
+  const pxPerMm = 220;
+  const w_px = Math.min(W * pxPerMm, 100);
+  const s_px = Math.min(S * pxPerMm, 100);
+  const h_px = Math.min(H * pxPerMm, 80);
+  const t_px = Math.max(T/1000 * pxPerMm, 2);
+  let s = '';
+  // ground plane
+  s += `<rect x="80" y="${baseY+h_px}" width="440" height="12" fill="#888" stroke="#444"/>`;
+  s += `<text x="80" y="${baseY+h_px+8}" class="axis-label">GND plane</text>`;
+  // dielectric
+  s += `<rect x="80" y="${baseY}" width="440" height="${h_px}" fill="#3a4500" stroke="#5a6a00" opacity="0.6"/>`;
+  s += `<text x="100" y="${baseY+h_px/2+4}" class="axis-label">FR-4 εr=${er}, H=${H.toFixed(2)} mm</text>`;
+  // two trace centers
+  const cx1 = 300 - s_px/2 - w_px/2;
+  const cx2 = 300 + s_px/2 + w_px/2;
+  s += `<rect x="${cx1 - w_px/2}" y="${baseY-t_px}" width="${w_px}" height="${t_px}" fill="#5ec8ff" stroke="#3a90b8"/>`;
+  s += `<text x="${cx1}" y="${baseY-t_px-6}" class="axis-label" text-anchor="middle">D+</text>`;
+  s += `<rect x="${cx2 - w_px/2}" y="${baseY-t_px}" width="${w_px}" height="${t_px}" fill="#ff7b72" stroke="#b8543a"/>`;
+  s += `<text x="${cx2}" y="${baseY-t_px-6}" class="axis-label" text-anchor="middle">D−</text>`;
+  // dimensions
+  s += `<text x="${cx1}" y="${baseY-t_px-22}" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="10" text-anchor="middle">W=${W.toFixed(2)}</text>`;
+  s += `<text x="${cx2}" y="${baseY-t_px-22}" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="10" text-anchor="middle">W=${W.toFixed(2)}</text>`;
+  // S annotation
+  const sy = baseY-t_px-40;
+  s += `<line x1="${cx1+w_px/2}" y1="${sy}" x2="${cx2-w_px/2}" y2="${sy}" class="axis"/>`;
+  s += `<line x1="${cx1+w_px/2}" y1="${sy-4}" x2="${cx1+w_px/2}" y2="${sy+4}" class="axis"/>`;
+  s += `<line x1="${cx2-w_px/2}" y1="${sy-4}" x2="${cx2-w_px/2}" y2="${sy+4}" class="axis"/>`;
+  s += `<text x="${(cx1+cx2)/2}" y="${sy-6}" class="axis-label" text-anchor="middle">S = ${S.toFixed(3)} mm</text>`;
+  // result
+  s += `<text x="300" y="${baseY+h_px+30}" fill="var(--accent3)" font-family="ui-monospace,monospace" font-size="14" text-anchor="middle">Z_diff = ${Zdiff.toFixed(1)} Ω  (Z₀ single = ${Z0.toFixed(1)} Ω)</text>`;
+  svg.innerHTML = s;
+}
+
+function dp_update(){
+  const Ztarget = parseFloat(document.getElementById('dp-target').value);
+  const topo = document.getElementById('dp-topo').value;
+  const H = parseFloat(document.getElementById('dp-h').value);
+  const T = parseFloat(document.getElementById('dp-t').value);
+  const er = parseFloat(document.getElementById('dp-er').value);
+  const W = parseFloat(document.getElementById('dp-w').value);
+  document.getElementById('dp-hRead').textContent = H.toFixed(2) + ' mm';
+  document.getElementById('dp-tRead').textContent = T.toFixed(0) + ' µm';
+  document.getElementById('dp-erRead').textContent = er.toFixed(2);
+  document.getElementById('dp-wRead').textContent = W.toFixed(3) + ' mm';
+
+  // Compute Z0 single-ended for this W
+  const z0r = (topo === 'microstrip') ?
+    microstripZ0(W, H, T, er) :
+    striplineZ0(W, H*2, T, er);  // for stripline, H input is half
+  const Z0 = z0r.Z0;
+  // Solve for S given target: Z_diff = 2 Z0 (1 - k); k = exp(-0.96 S/H)
+  // (1 - Ztarget/(2 Z0)) = k = exp(-0.96 S/H) → S = -H/0.96 · ln(1 - Ztarget/(2 Z0))
+  const ratio = Ztarget / (2 * Z0);
+  let S = NaN;
+  if(ratio > 0 && ratio < 1){
+    S = -H / 0.96 * Math.log(1 - ratio);
+  }
+  const k = isFinite(S) ? Math.exp(-0.96 * S / H) : 0;
+  const Zdiff = 2 * Z0 * (1 - k);
+
+  document.getElementById('dp-z0').textContent = isFinite(Z0) ? Z0.toFixed(2) + ' Ω' : '—';
+  document.getElementById('dp-s-mm').textContent = isFinite(S) && S > 0 ? S.toFixed(3) + ' mm' : '—';
+  document.getElementById('dp-s-mil').textContent = isFinite(S) && S > 0 ? (S * 39.37).toFixed(1) + ' mil' : '—';
+  document.getElementById('dp-sh').textContent = isFinite(S) ? (S/H).toFixed(2) : '—';
+  document.getElementById('dp-k').textContent  = isFinite(k) ? k.toFixed(3) : '—';
+  document.getElementById('dp-zdiff').textContent = isFinite(Zdiff) ? Zdiff.toFixed(2) + ' Ω' : '—';
+
+  const summary = document.getElementById('dp-summary');
+  if(isFinite(S) && S > 0){
+    let tone = 'vd';
+    if(Math.abs(Zdiff - Ztarget) < 3) tone = 'vd ok';
+    else if(Math.abs(Zdiff - Ztarget) > 10) tone = 'vd warn';
+    summary.className = tone;
+    summary.innerHTML = `<b>For Z_diff = ${Ztarget} Ω on ${topo}</b> with W = ${W.toFixed(3)} mm, you need S = <b>${S.toFixed(3)} mm (${(S*39.37).toFixed(1)} mil)</b>. Coupling factor k = ${k.toFixed(2)}; trace ratio S/H = ${(S/H).toFixed(2)}. ${S/H > 3 ? 'Weakly coupled — pair behaves nearly independent.' : S/H < 1 ? 'Tightly coupled — strong common-mode rejection.' : 'Moderately coupled — typical.'}`;
+  } else {
+    summary.className = 'vd warn';
+    summary.innerHTML = `<b>Target Z_diff = ${Ztarget} Ω unreachable</b> with W = ${W.toFixed(3)} mm — Z₀ (single-ended) is only ${Z0.toFixed(1)} Ω. Increase W or increase H, or reduce target Z_diff.`;
+  }
+  dp_draw(W, H, isFinite(S) ? Math.max(S, 0.05) : 0.2, T, er, isFinite(Zdiff) ? Zdiff : 2*Z0, Z0);
+}
+document.getElementById('dp-target').addEventListener('change', dp_update);
+document.getElementById('dp-topo').addEventListener('change', dp_update);
+document.getElementById('dp-h').addEventListener('input', dp_update);
+document.getElementById('dp-t').addEventListener('input', dp_update);
+document.getElementById('dp-er').addEventListener('input', dp_update);
+document.getElementById('dp-w').addEventListener('input', dp_update);
+dp_update();
+
+/* ====================================================================
+   VIA AMPACITY
+==================================================================== */
+function viaCalc(d_mm, t_um, dT){
+  // Plating cross-sectional area (annulus): A = π · d · t
+  const A_mm2 = Math.PI * d_mm * (t_um * 1e-3);
+  const A_mil2 = A_mm2 * (39.37 * 39.37);
+  // IPC-2221 fit for external (better cooling — vias have air at top/bottom)
+  const k = 0.048;
+  const I = k * Math.pow(dT, 0.44) * Math.pow(A_mil2, 0.725);
+  // Derate by 50 % for safety
+  const I_derated = I * 0.5;
+  // Resistance for typical 1.6 mm thick board
+  const h_mm = 1.6;
+  const R = RHO_CU * (h_mm * 1e-3) / (A_mm2 * 1e-6);
+  return { A_mm2, A_mil2, I, I_derated, R };
+}
+
+function via_draw(d_mm, t_um, I_per_via, n_needed){
+  const svg = document.getElementById('via-svg');
+  // Top-down view of a via
+  const cx = 300, cy = 100;
+  const pxPerMm = 100;
+  const r_outer = Math.min(d_mm * pxPerMm / 2 + t_um * pxPerMm / 1000, 60);
+  const r_inner = Math.min(d_mm * pxPerMm / 2, r_outer - 3);
+  const r_pad = r_outer + 12;
+  let s = '';
+  // pad
+  s += `<circle cx="${cx}" cy="${cy}" r="${r_pad}" fill="#d4a574" stroke="#a37844"/>`;
+  // copper barrel (annulus)
+  s += `<circle cx="${cx}" cy="${cy}" r="${r_outer}" fill="#c97c4d" stroke="#a37844"/>`;
+  // drill hole
+  s += `<circle cx="${cx}" cy="${cy}" r="${r_inner}" fill="#0e1116" stroke="#444"/>`;
+  // labels
+  s += `<line x1="${cx-r_inner}" y1="${cy}" x2="${cx+r_inner}" y2="${cy}" stroke="var(--accent)" stroke-dasharray="2,2"/>`;
+  s += `<text x="${cx}" y="${cy+r_pad+18}" class="axis-label" text-anchor="middle">drill Ø = ${d_mm.toFixed(2)} mm</text>`;
+  s += `<text x="${cx+r_pad+10}" y="${cy-r_outer-4}" class="axis-label">plating t = ${t_um} µm</text>`;
+  s += `<line x1="${cx+r_outer}" y1="${cy-r_outer/2}" x2="${cx+r_pad+8}" y2="${cy-r_outer/2}" class="axis"/>`;
+  s += `<text x="80" y="${cy+r_pad+40}" fill="var(--accent3)" font-family="ui-monospace,monospace" font-size="13">${I_per_via.toFixed(2)} A / via (derated)  ·  Need ${n_needed} via${n_needed===1?'':'s'} for target</text>`;
+  svg.innerHTML = s;
+}
+
+function via_update(){
+  const d = parseFloat(document.getElementById('via-d').value);
+  const t = parseFloat(document.getElementById('via-pl').value);
+  const dT = parseFloat(document.getElementById('via-dt').value);
+  const Itar = parseFloat(document.getElementById('via-it').value);
+  document.getElementById('via-dRead').textContent = d.toFixed(2) + ' mm';
+  document.getElementById('via-plRead').textContent = t.toFixed(0) + ' µm';
+  document.getElementById('via-dtRead').textContent = dT + ' °C';
+  document.getElementById('via-itRead').textContent = Itar.toFixed(1) + ' A';
+  const r = viaCalc(d, t, dT);
+  const n = Math.max(1, Math.ceil(Itar / r.I_derated));
+  const n_safe = Math.max(n, Math.ceil(Itar / (r.I_derated * 0.8))); // extra margin
+  document.getElementById('via-area').textContent = r.A_mm2.toFixed(4) + ' mm² (' + r.A_mil2.toFixed(2) + ' mil²)';
+  document.getElementById('via-amp').textContent = r.I.toFixed(2) + ' A (theoretical)';
+  document.getElementById('via-need').textContent = n + (n === 1 ? ' via' : ' vias');
+  document.getElementById('via-rec').textContent = n_safe + (n_safe === 1 ? ' via' : ' vias') + ' (recommended with margin)';
+  document.getElementById('via-r').textContent = (r.R * 1000).toFixed(3) + ' mΩ';
+  const summary = document.getElementById('via-summary');
+  summary.className = 'vd ok';
+  summary.innerHTML = `<b>${d.toFixed(2)} mm via, ${t} µm plating</b> → <b>${r.I_derated.toFixed(2)} A/via</b> (with 50 % derate). For ${Itar.toFixed(1)} A target, use <b>${n_safe} vias</b> spread across the path. Single-via resistance (1.6 mm board) = ${(r.R*1000).toFixed(2)} mΩ.`;
+  via_draw(d, t, r.I_derated, n_safe);
+}
+document.getElementById('via-d').addEventListener('input', via_update);
+document.getElementById('via-pl').addEventListener('input', via_update);
+document.getElementById('via-dt').addEventListener('input', via_update);
+document.getElementById('via-it').addEventListener('input', via_update);
+via_update();
+
+/* ====================================================================
+   COPPER WEIGHT
+==================================================================== */
+function cw_update_from_oz(){
+  const oz = parseFloat(document.getElementById('cw-oz').value);
+  const um = oz * 35;
+  const mil = um / 25.4;
+  document.getElementById('cw-ozRead').textContent = oz.toFixed(2) + ' oz';
+  document.getElementById('cw-um').textContent = um.toFixed(1) + ' µm';
+  document.getElementById('cw-umIn').value = um.toFixed(1);
+  document.getElementById('cw-mil').textContent = mil.toFixed(3) + ' mil';
+  const Rsq = (RHO_CU / (um * 1e-6)) * 1000; // mΩ per square
+  document.getElementById('cw-rsq').textContent = Rsq.toFixed(3) + ' mΩ/□';
+}
+function cw_update_from_um(){
+  const um = parseFloat(document.getElementById('cw-umIn').value);
+  if(!isFinite(um) || um <= 0) return;
+  const oz = um / 35;
+  const mil = um / 25.4;
+  document.getElementById('cw-oz').value = oz.toFixed(2);
+  document.getElementById('cw-ozRead').textContent = oz.toFixed(2) + ' oz';
+  document.getElementById('cw-um').textContent = um.toFixed(1) + ' µm';
+  document.getElementById('cw-mil').textContent = mil.toFixed(3) + ' mil';
+  const Rsq = (RHO_CU / (um * 1e-6)) * 1000;
+  document.getElementById('cw-rsq').textContent = Rsq.toFixed(3) + ' mΩ/□';
+}
+document.getElementById('cw-oz').addEventListener('input', cw_update_from_oz);
+document.getElementById('cw-umIn').addEventListener('input', cw_update_from_um);
+cw_update_from_oz();
+
+/* ====================================================================
+   LENGTH MATCHING
+==================================================================== */
+const LM_PROTOS = {
+  'usb2':     { name:'USB 2.0 (480 Mbps)',        rate:480e6,  skew_ps:100,  ui_ps:2080 },
+  'usb3':     { name:'USB 3.0 SuperSpeed',        rate:5e9,    skew_ps:15,   ui_ps:200  },
+  'usb31':    { name:'USB 3.1 Gen 2',             rate:10e9,   skew_ps:8,    ui_ps:100  },
+  'hdmi14':   { name:'HDMI 1.4',                  rate:3.4e9,  skew_ps:50,   ui_ps:295  },
+  'hdmi20':   { name:'HDMI 2.0',                  rate:6e9,    skew_ps:25,   ui_ps:167  },
+  'ddr3-1600':{ name:'DDR3-1600',                 rate:1.6e9,  skew_ps:125,  ui_ps:1250 },
+  'ddr4-3200':{ name:'DDR4-3200',                 rate:3.2e9,  skew_ps:50,   ui_ps:625  },
+  'pcie3':    { name:'PCIe Gen3 (8 GT/s)',        rate:8e9,    skew_ps:25,   ui_ps:125  },
+  'pcie4':    { name:'PCIe Gen4 (16 GT/s)',       rate:16e9,   skew_ps:10,   ui_ps:62.5 },
+  'sata3':    { name:'SATA III (6 Gbps)',         rate:6e9,    skew_ps:10,   ui_ps:167  },
+  'ethernet-1g': { name:'1000BASE-T',             rate:1e9,    skew_ps:50,   ui_ps:1000 },
+};
+
+function lm_update(){
+  const proto = LM_PROTOS[document.getElementById('lm-bus').value];
+  const topo  = document.getElementById('lm-topo').value;
+  const mm    = parseFloat(document.getElementById('lm-mm').value);
+  const len   = parseFloat(document.getElementById('lm-len').value);
+  document.getElementById('lm-mmRead').textContent = mm.toFixed(2) + ' mm';
+  document.getElementById('lm-lenRead').textContent = len.toFixed(0) + ' mm';
+
+  // ps/mm: microstrip ~6.7, stripline ~7.1 (FR-4)
+  const psPerMm = topo === 'ms' ? 6.7 : 7.1;
+  const skew = mm * psPerMm;
+  const pctUi = skew / proto.ui_ps * 100;
+
+  document.getElementById('lm-protoName').textContent = proto.name;
+  document.getElementById('lm-rate').textContent = proto.rate >= 1e9 ? (proto.rate/1e9).toFixed(2)+' Gbps' : (proto.rate/1e6).toFixed(0)+' Mbps';
+  document.getElementById('lm-ui').textContent = fmtPs(proto.ui_ps);
+  document.getElementById('lm-skewBudget').textContent = '±' + proto.skew_ps + ' ps';
+  document.getElementById('lm-skewMm').textContent = psPerMm.toFixed(1) + ' ps/mm';
+  document.getElementById('lm-skewVal').textContent = fmtPs(skew);
+  document.getElementById('lm-pctUi').textContent = pctUi.toFixed(2) + ' %';
+  // phase error: skew/ui_at_clock_rate. For DDR use half UI as half-clock.
+  const phaseDeg = (skew / proto.ui_ps) * 180; // approx degrees of bit/clock
+  document.getElementById('lm-phase').textContent = phaseDeg.toFixed(1) + '° of bit period';
+
+  const summary = document.getElementById('lm-summary');
+  const stat = document.getElementById('lm-stat');
+  if(skew <= proto.skew_ps){
+    stat.textContent = 'OK (within spec)';
+    stat.style.color = 'var(--accent3)';
+    summary.className = 'vd ok';
+    summary.innerHTML = `<b>${proto.name}:</b> ${mm.toFixed(2)} mm mismatch on ${topo === 'ms' ? 'microstrip' : 'stripline'} → ${fmtPs(skew)} skew. Budget is ±${proto.skew_ps} ps. <b>OK</b> — ${(pctUi).toFixed(1)} % of UI consumed.`;
+  } else if(skew < proto.skew_ps * 2){
+    stat.textContent = 'MARGINAL';
+    stat.style.color = 'var(--accent2)';
+    summary.className = 'vd';
+    summary.innerHTML = `<b>${proto.name}:</b> ${mm.toFixed(2)} mm = ${fmtPs(skew)} skew vs ±${proto.skew_ps} ps budget. <b>Marginal</b> — tighten serpentine by ${((skew - proto.skew_ps) / psPerMm).toFixed(2)} mm.`;
+  } else {
+    stat.textContent = 'FAIL';
+    stat.style.color = 'var(--warn)';
+    summary.className = 'vd warn';
+    summary.innerHTML = `<b>${proto.name}:</b> ${mm.toFixed(2)} mm = ${fmtPs(skew)} skew, ${(skew / proto.skew_ps).toFixed(1)}× over budget. <b>FAIL</b> — add ${((skew - proto.skew_ps) / psPerMm).toFixed(2)} mm of serpentine to the shorter line.`;
+  }
+}
+document.getElementById('lm-bus').addEventListener('change', lm_update);
+document.getElementById('lm-topo').addEventListener('change', lm_update);
+document.getElementById('lm-mm').addEventListener('input', lm_update);
+document.getElementById('lm-len').addEventListener('input', lm_update);
+lm_update();
+</script>
+</body>
+</html>

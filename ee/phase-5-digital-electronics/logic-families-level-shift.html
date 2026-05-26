@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logic-Family Level Shifting — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim);cursor:pointer}
+  .anchor:hover{border-color:var(--accent)}
+  .anchor.active{border-color:var(--accent);color:var(--accent)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:4px 8px;
+    font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  td.ok{color:var(--accent3)}
+  td.warn{color:var(--warn)}
+  td.mid{color:var(--accent2)}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid{stroke:var(--grid);stroke-width:0.5}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>Logic-Family Level Shifting</h1>
+  <p class="lede">5 V Arduino talks to a 3.3 V Pico. 3.3 V Pico talks to a 1.8 V sensor. 12 V industrial signal talks to a 3.3 V FPGA. Each transition needs a level shifter — and the wrong one costs you bandwidth, direction, or even a dead chip. Pick a signal type (push-pull GPIO, I2C with pull-up, SPI fast clock, UART), see which level shifter actually fits, and learn why a "simple" resistor divider works for some signals and ruins others.</p>
+
+  <div class="anchors">
+    <button class="anchor active" data-preset="i2c"><b>I2C 5↔3.3 V</b> · open-drain, slow</button>
+    <button class="anchor" data-preset="spi"><b>SPI 5↔3.3 V</b> · push-pull, fast</button>
+    <button class="anchor" data-preset="uart"><b>UART 3.3↔1.8 V</b> · push-pull, mid</button>
+    <button class="anchor" data-preset="gpio"><b>GPIO 12↔3.3 V</b> · large step, slow</button>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>V_high (source rail): <span class="readout" id="vhRead">5 V</span></label><input id="vh" type="range" min="1.8" max="24" step="0.1" value="5"></div>
+    <div class="control"><label>V_low (destination rail): <span class="readout" id="vlRead">3.3 V</span></label><input id="vl" type="range" min="1.0" max="12" step="0.1" value="3.3"></div>
+    <div class="control"><label>Signal frequency: <span class="readout" id="fRead">100 kHz</span></label><input id="f" type="range" min="1" max="50000" step="1" value="100"></div>
+    <div class="control"><label>Load capacitance: <span class="readout" id="clRead">100 pF</span></label><input id="cl" type="range" min="5" max="2000" step="5" value="100"></div>
+    <div class="control"><label>Signal type</label>
+      <select id="signal">
+        <option value="gpio">GPIO push-pull (1-direction)</option>
+        <option value="i2c" selected>I2C open-drain (bidirectional)</option>
+        <option value="spi">SPI push-pull (1-direction, fast)</option>
+        <option value="uart">UART (push-pull, 9k–921k baud)</option>
+      </select>
+    </div>
+    <div class="control"><label>Shifter topology</label>
+      <select id="shifter">
+        <option value="div">Resistor divider (down-only)</option>
+        <option value="bss" selected>BSS138 MOSFET (bidirectional)</option>
+        <option value="txb">TXB0104 / TXS01xx (auto-direction)</option>
+        <option value="74lvc">74LVC1T45 (latch-direction)</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="schem" viewBox="0 0 700 300" width="100%"></svg>
+    <table id="tbl">
+      <tr><th>Shifter</th><th>Direction</th><th>Max f</th><th>I2C OK?</th><th>Use case</th></tr>
+      <tr><td>Resistor divider</td><td>High → Low only</td><td>~1 MHz @ 100 pF</td><td class="warn">No (slow rise)</td><td>UART, GPIO down-shift</td></tr>
+      <tr><td>BSS138 N-MOSFET</td><td>Bidirectional</td><td>~400 kHz</td><td class="ok">Yes (was designed for it)</td><td>I2C, low-speed GPIO</td></tr>
+      <tr><td>TXB0104</td><td>Auto-direction</td><td>60 MHz (push-pull only)</td><td class="warn">No (fights pull-up)</td><td>SPI, UART push-pull</td></tr>
+      <tr><td>TXS0108</td><td>Auto-direction</td><td>200 kHz I2C / 24 MHz push-pull</td><td class="mid">Marginal (avoid &gt;100k)</td><td>I2C + push-pull mixed</td></tr>
+      <tr><td>74LVC1T45</td><td>Latched (DIR pin)</td><td>420 Mbps</td><td class="warn">No (single direction at a time)</td><td>fast SPI, MII, high-speed</td></tr>
+      <tr><td>PCA9306</td><td>Bidirectional (I2C only)</td><td>400 kHz I2C</td><td class="ok">Yes (purpose-built)</td><td>I2C-only at &lt; 100 kΩ pull-up</td></tr>
+    </table>
+    <table>
+      <tr><th>Result for current config</th><th>Value</th><th>Verdict</th></tr>
+      <tr><td>V_OH delivered to destination</td><td id="tVoh" class="num">3.30 V</td><td id="tVohOK">OK</td></tr>
+      <tr><td>V_OL delivered to destination</td><td id="tVol" class="num">0.05 V</td><td id="tVolOK">OK</td></tr>
+      <tr><td>Rise time (10–90 %)</td><td id="tTr" class="num">2.2 µs</td><td id="tTrOK">marginal</td></tr>
+      <tr><td>Max f permitted by t_r</td><td id="tFmax" class="num">227 kHz</td><td id="tFmaxOK">below f_signal</td></tr>
+      <tr><td>Overall verdict</td><td id="tVerdict" class="num" colspan="2">…</td></tr>
+    </table>
+  </div>
+
+  <h2>Why level shifting is a real problem</h2>
+  <p>The mistake "just connect 5 V to 3.3 V — it'll be fine" murders chips. The 3.3 V chip's GPIO has internal ESD diodes from pin → V_CC; any voltage above V_CC + 0.7 dumps current through them. Sustained 5 V applied = ~milliamps through tiny diodes = die ablation. Even if you survive, the input "sees" 5 V and may not interpret it as logic high if there's hysteresis or comparator mismatch.</p>
+  <div class="deriv">
+    <span class="step">Direction matters: <b>HIGH → LOW</b> (need to drop V_high to V_low — easy) vs <b>LOW → HIGH</b> (need to drive higher than your rail — needs a "switch" to V_high)</span>
+    <span class="step">Drive style: <b>push-pull</b> actively pulls both 0 and 1; <b>open-drain (or open-collector)</b> only pulls 0, requires external pull-up resistor for 1.</span>
+    <span class="step">Bidirectional: I2C and 1-Wire need a single wire that's both input and output for both chips — a true bidirectional level shifter (BSS138 / PCA9306) is required.</span>
+    <span class="step"><span class="arrow">→</span> The right shifter depends on direction, push-pull-vs-open-drain, and speed.</span>
+  </div>
+
+  <h2>The four common topologies in detail</h2>
+
+  <h3>1. Resistor divider</h3>
+  <p>Two resistors form a voltage divider that drops V_high to V_low. Cheap, but: only one direction (HIGH → LOW), and slow because the divider's output impedance plus the load capacitance gives an RC time constant.</p>
+  <div class="deriv">
+    <span class="step">For 5 V → 3.3 V: V_low = V_high × R2/(R1+R2) = 3.3 → R2/R1 = 1.94</span>
+    <span class="step">Pick R1 = 1 kΩ, R2 = 1.8 kΩ (E12). Standby current: 5/2800 = 1.78 mA.</span>
+    <span class="step">Output impedance to ground = R1‖R2 = 643 Ω.</span>
+    <span class="step">τ = R_out · C_load = 643 · 100p = 64.3 ns; t_r (10–90 %) ≈ 2.2τ = 141 ns → max f ≈ 2 MHz at 100 pF.</span>
+    <span class="step"><span class="arrow">→</span> Works for UART (115k baud), GPIO buttons, slow signals. Fails for fast SPI &gt; 1 MHz.</span>
+  </div>
+
+  <h3>2. BSS138 N-MOSFET (the SparkFun shifter)</h3>
+  <p>Single N-channel MOSFET with the gate tied to V_low (the lower supply). When V_low side is pulled low, V_gs = V_low > V_th, the MOSFET turns on, pulling V_high side low via its body diode and channel. When V_high side is pulled low, current flows through the body diode from V_low side, and then the MOSFET turns on too. Bidirectional, but slow because the rising edge relies on the pull-up resistor charging the cap (no active pull-up).</p>
+  <div class="deriv">
+    <span class="step">Low → low pulls both sides low (active).</span>
+    <span class="step">High → high relies on pull-ups (R_pu) to charge load cap up to V_high or V_low.</span>
+    <span class="step">τ_rise = R_pu × C_load on each side; max f ≈ 1/(5·τ_rise) typically.</span>
+    <span class="step">R_pu = 4.7 kΩ, C_load = 100 pF: τ = 470 ns → max f ≈ 425 kHz.</span>
+    <span class="step"><span class="arrow">→</span> I2C standard 100 kHz easy; I2C fast 400 kHz marginal; I2C+ 1 MHz fails.</span>
+  </div>
+
+  <h3>3. TXB0104 / TXS010x (auto-direction)</h3>
+  <p>Active shifter with a tiny one-shot detection circuit. When it sees a transition on either side, it active drives the other side to match. Push-pull capable up to 60 MHz on TXB0104. <b>Cannot</b> drive open-drain or contend with pull-ups — it will fight them.</p>
+  <div class="deriv">
+    <span class="step">Each side has a 4 kΩ "weak" output (TXB0104) or ~10 kΩ for TXS0108.</span>
+    <span class="step">When external pull-up is below ~40 kΩ, the active drive can't override it — the chip "loses" arbitration.</span>
+    <span class="step"><span class="arrow">→</span> For I2C: use PCA9306, not TXB. For SPI/UART/MII: TXB or TXS works great.</span>
+  </div>
+
+  <h3>4. 74LVC1T45 (latch-direction)</h3>
+  <p>Direction is set by an external DIR pin (one bit). Pure push-pull both sides, up to 420 Mbps. Fast, predictable, but you need a GPIO to set DIR — one shifter per direction-determined pair.</p>
+
+  <h2>Worked example — 5 V Arduino I2C to a 3.3 V sensor</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>Arduino Uno (5 V) running 100 kHz I2C to BME280 3.3 V barometer. Distance ~10 cm. Pull-ups 4.7 kΩ on each side.</p>
+    <h3>Pick the shifter</h3>
+    <span class="eq">Need: bidirectional, open-drain compatible, ≥100 kHz</span>
+    <span class="eq">BSS138 dual: τ_rise = 4.7k · 100p = 470 ns → t_r = 1030 ns → f_max ≈ 200 kHz ✓</span>
+    <span class="eq">PCA9306: tighter spec for I2C, ≤400 kHz; better choice for any fast-mode I2C ✓</span>
+    <span class="eq">TXB0104: NO — would fight the pull-ups ✗</span>
+    <h3>The wiring (BSS138)</h3>
+    <span class="eq">Drain of SDA-shifter MOSFET = 5 V SDA (+ pull-up); Source = 3.3 V SDA (+ pull-up); Gate = 3.3 V (the lower rail)</span>
+    <span class="eq">Same for SCL</span>
+    <p>SparkFun's "BOB-12009" is exactly this — two BSS138s and four pull-ups on a breakout.</p>
+  </div>
+
+  <h2>Worked example — 1.8 V Cortex SPI flash to 3.3 V Pico</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>Pico (3.3 V) reads a 1.8 V W25Q64 SPI flash at 25 MHz. Direction: Pico → flash (MOSI, CLK, CS push-pull); flash → Pico (MISO push-pull).</p>
+    <h3>Pick the shifter</h3>
+    <span class="eq">Need: push-pull, ≥25 MHz, 4 lines (3 down-shift + 1 up-shift)</span>
+    <span class="eq">Resistor divider: only goes 3.3 → 1.8. Need separate solution for MISO.</span>
+    <span class="eq">TXB0104 (4-bit auto-dir): handles all 4 lines, push-pull, 60 MHz ✓</span>
+    <span class="eq">74LVC4T245 (4-bit latched direction): also works, push-pull only ✓</span>
+    <span class="eq">BSS138: too slow (~400 kHz with realistic pull-ups) ✗</span>
+    <h3>Decision</h3>
+    <p>TXB0104 wins — auto-direction is convenient for MISO when no separate DIR is wired up. Cost: ~$1.50 SOIC.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>5 V tolerance ≠ 5 V drive.</b> A "5 V tolerant" 3.3 V pin can accept 5 V input (no ESD damage) but its output is still 3.3 V max. To <em>drive</em> a 5 V load needing a hard high, you still need to shift up.</li>
+    <li><b>Resistor dividers fail above ~1 MHz</b> because of RC time constant. Below that, they're cheap, no parts, and immune to direction confusion.</li>
+    <li><b>BSS138 is the bench staple for I2C, but slow.</b> 1 MHz I2C+ already strains it. For 1 MHz+ I2C use PCA9306; for 5 MHz+ I2C... rethink topology.</li>
+    <li><b>Auto-direction shifters (TXB) fight pull-ups.</b> If your protocol uses pull-ups (I2C, 1-Wire), use BSS138/PCA9306. If it doesn't (SPI/UART/standard GPIO), use TXB.</li>
+    <li><b>Common ground is required for all shifters.</b> The two sides must share GND. Galvanic isolation is a separate problem (use opto-couplers or digital isolators like ADuM1xx0).</li>
+    <li><b>Input impedance matters for high-speed signals.</b> A divider with 1 kΩ output impedance is fine for SPI at 1 MHz; at 50 MHz, it becomes a transmission-line mismatch and causes reflections.</li>
+    <li><b>Don't forget power sequencing.</b> Many shifters require V_low ≥ V_high power-on; some die if reversed. Tie OE to a power-good signal.</li>
+  </ul>
+
+  <h2>Decision matrix</h2>
+  <table>
+    <tr><th>Signal</th><th>Recommended shifter</th><th>Why</th></tr>
+    <tr><td>I2C 100/400 kHz</td><td>BSS138 dual / PCA9306</td><td>open-drain, bidirectional, slow OK</td></tr>
+    <tr><td>I2C+ 1 MHz</td><td>PCA9306 only</td><td>BSS138 too slow</td></tr>
+    <tr><td>SPI 1–10 MHz</td><td>TXB0104 or 74LVC1T45</td><td>push-pull, fast, direction known</td></tr>
+    <tr><td>SPI 50+ MHz</td><td>74LVC4T245 with DIR pin per line</td><td>fastest, predictable</td></tr>
+    <tr><td>UART 9k–115k baud</td><td>Resistor divider down; BSS138 up</td><td>slow, simple</td></tr>
+    <tr><td>UART 921 kbaud</td><td>BSS138 or TXB</td><td>marginal for divider</td></tr>
+    <tr><td>Single GPIO output (push button input)</td><td>Resistor divider</td><td>cheapest, works</td></tr>
+    <tr><td>RS-485 / industrial</td><td>MAX3485-class transceiver</td><td>differential, isolated GND</td></tr>
+    <tr><td>5 V → 3.3 V high-impedance (sensor)</td><td>Resistor divider</td><td>signal is slow, no current</td></tr>
+    <tr><td>12 V → 3.3 V</td><td>BSS138 or optocoupler</td><td>large step, industrial noise</td></tr>
+  </table>
+
+  <h2>Where you'll level-shift</h2>
+  <div class="crosslink">
+    <h4>Real situations</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Sensors at sensor voltage</b> — BME280 (3.3 V), AS5048A (3.3 V), HX711 (5 V) all talk to your 3.3 V MCU through level shifters.</li>
+      <li><b style="color:var(--fg)">Legacy 5 V boards</b> — Arduino Uno + 3.3 V breakout.</li>
+      <li><b style="color:var(--fg)">SD cards (3.3 V) on 5 V Arduinos</b> — typically MOSI/CLK divider down, MISO already 3.3 V (capable of 5 V interpretation).</li>
+      <li><b style="color:var(--fg)">FPGA Bank voltage</b> — some banks at 1.8 V, others at 3.3 V; need shifters between banks.</li>
+      <li><b style="color:var(--fg)">Multi-rail systems</b> — 12 V industrial input + 5 V relay logic + 3.3 V MCU + 1.8 V flash; up to 4 voltage domains.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>KEY FORMULAS</h3>
+      <dl>
+        <dt>Divider ratio</dt><dd><span class="eq">R2/(R1+R2) = V_low/V_high</span></dd>
+        <dt>τ (divider rise)</dt><dd><span class="eq">(R1‖R2)·C_load</span></dd>
+        <dt>τ (open-drain pull-up)</dt><dd><span class="eq">R_pu · C_load</span></dd>
+        <dt>t_r (10-90 %)</dt><dd><span class="eq">~2.2τ</span></dd>
+        <dt>f_max</dt><dd><span class="eq">≈ 1/(5·t_r) for clean square</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SHIFTER QUICK-PICK</h3>
+      <ul>
+        <li><b>I2C ≤ 400 kHz</b> → BSS138 / PCA9306</li>
+        <li><b>I2C 1 MHz+</b> → PCA9306</li>
+        <li><b>SPI / UART push-pull</b> → TXB0104</li>
+        <li><b>SPI 50 MHz+</b> → 74LVC1T45 / 4T245</li>
+        <li><b>Single direction, slow</b> → resistor divider</li>
+        <li><b>Industrial 12-24 V</b> → BSS138 or optocoupler</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>TXB0104 on I2C</b> — fights the pull-ups; SDA gets corrupted.</li>
+        <li><b>Resistor divider for fast SPI</b> — rise time kills the signal at &gt;1 MHz.</li>
+        <li><b>Missing pull-ups</b> on open-drain shifter — line floats, comms fail.</li>
+        <li><b>OE pin floating</b> on TXB/TXS — chip enters indeterminate state. Tie OE to V_low via 10kΩ pull-up + assert when ready.</li>
+        <li><b>Power-on sequence</b> — apply V_low BEFORE V_high (for most shifters); reverse order can latch up the chip.</li>
+        <li><b>Mixed-rail current path</b> — some shifters create a current path through ESD diodes if one rail is off. Use an OE-controlled shifter for hot-swap.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EE Phase 5 — Digital Electronics</span> ·
+    Companion: <a href="setup-hold-metastability.html">Setup &amp; Hold</a> ·
+    Forward: <a href="shift-registers.html">Shift Registers</a> for the next digital primitive.
+  </footer>
+</main>
+<script>
+  let state = {
+    Vh:5, Vl:3.3, f:100000, Cl:100e-12, signal:"i2c", shifter:"bss",
+  };
+  const PRESETS = {
+    i2c:{Vh:5, Vl:3.3, f:100000, Cl:100e-12, signal:"i2c", shifter:"bss"},
+    spi:{Vh:5, Vl:3.3, f:10000000, Cl:50e-12, signal:"spi", shifter:"txb"},
+    uart:{Vh:3.3, Vl:1.8, f:115200, Cl:50e-12, signal:"uart", shifter:"div"},
+    gpio:{Vh:12, Vl:3.3, f:1000, Cl:200e-12, signal:"gpio", shifter:"bss"},
+  };
+
+  function fmtV(v){ return v.toFixed(2) + " V"; }
+  function fmtF(f){
+    if (f >= 1e6) return (f/1e6).toFixed(2) + " MHz";
+    if (f >= 1e3) return (f/1e3).toFixed(1) + " kHz";
+    return f.toFixed(0) + " Hz";
+  }
+  function fmtC(c){
+    if (c >= 1e-9) return (c*1e9).toFixed(0) + " nF";
+    return (c*1e12).toFixed(0) + " pF";
+  }
+  function fmtT(t){
+    if (t >= 1e-3) return (t*1e3).toFixed(2) + " ms";
+    if (t >= 1e-6) return (t*1e6).toFixed(2) + " µs";
+    return (t*1e9).toFixed(0) + " ns";
+  }
+
+  function compute(){
+    let tr, fmax, voh, vol, verdict;
+    voh = state.Vl;
+    vol = 0.05;
+    if (state.shifter === "div"){
+      // resistor divider 5/3.3 with R1=1k, R2=1.8k
+      const R1 = 1000, R2 = state.Vl/(state.Vh - state.Vl) * R1;
+      const Rout = R1*R2/(R1+R2);
+      tr = 2.2 * Rout * state.Cl;
+      // Output high not driven actively — relies on Vh being max
+      voh = state.Vh * R2/(R1+R2);
+      verdict = "Down-shift only; speed limited by divider RC.";
+    } else if (state.shifter === "bss"){
+      const R_pu = 4700;
+      tr = 2.2 * R_pu * state.Cl;
+      voh = state.Vl - 0.05;
+      verdict = "Bidirectional; I2C-grade speed; rise limited by pull-up RC.";
+    } else if (state.shifter === "txb"){
+      // Active driver, output impedance ~50 Ω
+      const Rout = 50;
+      tr = 2.2 * Rout * state.Cl;
+      voh = state.Vl - 0.05;
+      verdict = "Push-pull both ways; fast; loses if pull-ups < 50 kΩ.";
+    } else { // 74LVC
+      const Rout = 10;
+      tr = 2.2 * Rout * state.Cl;
+      voh = state.Vl - 0.05;
+      verdict = "Push-pull, latched direction; very fast; single direction at a time.";
+    }
+    fmax = 1 / (5*tr);
+    return {tr, fmax, voh, vol, verdict};
+  }
+
+  function drawSchem(){
+    const svg = document.getElementById('schem');
+    const r = compute();
+    let s = '';
+    s += `<rect x="0" y="0" width="700" height="300" fill="var(--bg-elev2)"/>`;
+    // Left side: source
+    s += `<rect x="40" y="50" width="120" height="180" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1.5" rx="6"/>`;
+    s += `<text x="100" y="80" class="label" text-anchor="middle">Source MCU</text>`;
+    s += `<text x="100" y="100" class="label-dim" text-anchor="middle">V_h = ${fmtV(state.Vh)}</text>`;
+    s += `<text x="100" y="200" class="label-dim" text-anchor="middle">GPIO output</text>`;
+    s += `<circle cx="155" cy="140" r="4" fill="var(--accent)"/>`;
+
+    // Right side: dest
+    s += `<rect x="540" y="50" width="120" height="180" fill="var(--bg-elev)" stroke="var(--accent3)" stroke-width="1.5" rx="6"/>`;
+    s += `<text x="600" y="80" class="label" text-anchor="middle">Dest MCU</text>`;
+    s += `<text x="600" y="100" class="label-dim" text-anchor="middle">V_l = ${fmtV(state.Vl)}</text>`;
+    s += `<text x="600" y="200" class="label-dim" text-anchor="middle">GPIO input</text>`;
+    s += `<circle cx="545" cy="140" r="4" fill="var(--accent3)"/>`;
+
+    // Shifter in middle
+    let shifterName, shifterDesc;
+    if (state.shifter === "div") { shifterName = "Resistor divider"; shifterDesc = "down-only"; }
+    else if (state.shifter === "bss") { shifterName = "BSS138 dual"; shifterDesc = "bidirectional"; }
+    else if (state.shifter === "txb") { shifterName = "TXB0104"; shifterDesc = "auto-direction"; }
+    else { shifterName = "74LVC1T45"; shifterDesc = "DIR-pin latched"; }
+    s += `<rect x="250" y="100" width="200" height="100" fill="var(--bg-elev)" stroke="var(--accent2)" stroke-width="2" rx="6"/>`;
+    s += `<text x="350" y="135" class="label" text-anchor="middle" font-weight="600">${shifterName}</text>`;
+    s += `<text x="350" y="155" class="label-dim" text-anchor="middle">${shifterDesc}</text>`;
+
+    // Wires
+    s += `<line x1="160" y1="140" x2="250" y2="140" class="wire"/>`;
+    s += `<line x1="450" y1="140" x2="540" y2="140" class="wire"/>`;
+
+    // Pull-ups for relevant topologies
+    if (state.shifter === "bss" || state.signal === "i2c"){
+      s += `<line x1="210" y1="140" x2="210" y2="80" class="wire"/>`;
+      s += `<rect x="200" y="60" width="20" height="20" fill="var(--bg-elev)" stroke="var(--accent3)" stroke-width="1"/>`;
+      s += `<line x1="210" y1="60" x2="210" y2="40" class="wire"/>`;
+      s += `<text x="225" y="55" class="label-ok">R_pu V_h</text>`;
+      s += `<line x1="490" y1="140" x2="490" y2="80" class="wire"/>`;
+      s += `<rect x="480" y="60" width="20" height="20" fill="var(--bg-elev)" stroke="var(--accent3)" stroke-width="1"/>`;
+      s += `<line x1="490" y1="60" x2="490" y2="40" class="wire"/>`;
+      s += `<text x="505" y="55" class="label-ok">R_pu V_l</text>`;
+    }
+
+    // Load capacitor
+    s += `<line x1="520" y1="140" x2="520" y2="200" class="wire"/>`;
+    s += `<line x1="510" y1="200" x2="530" y2="200" stroke="var(--accent2)" stroke-width="2"/>`;
+    s += `<line x1="510" y1="205" x2="530" y2="205" stroke="var(--accent2)" stroke-width="2"/>`;
+    s += `<line x1="520" y1="205" x2="520" y2="220" class="wire"/>`;
+    s += `<line x1="510" y1="220" x2="530" y2="220" stroke="var(--fg)" stroke-width="1.5"/>`;
+    s += `<text x="545" y="225" class="label-dim">C_load = ${fmtC(state.Cl)}</text>`;
+
+    // Signals + result
+    s += `<text x="350" y="180" class="label-warn" text-anchor="middle">f = ${fmtF(state.f)}, t_r = ${fmtT(r.tr)}</text>`;
+    let okText, okColor;
+    if (r.fmax >= state.f * 5){ okText = "OK — comfortable headroom"; okColor = "var(--accent3)"; }
+    else if (r.fmax >= state.f){ okText = "Marginal — within 5× f_max"; okColor = "var(--accent2)"; }
+    else { okText = `FAIL — t_r too slow; max f = ${fmtF(r.fmax)} < ${fmtF(state.f)}`; okColor = "var(--warn)"; }
+    s += `<text x="350" y="270" font-family="ui-monospace" font-size="13" fill="${okColor}" text-anchor="middle">${okText}</text>`;
+
+    svg.innerHTML = s;
+  }
+
+  function update(){
+    document.getElementById('vhRead').textContent = fmtV(state.Vh);
+    document.getElementById('vlRead').textContent = fmtV(state.Vl);
+    document.getElementById('fRead').textContent = fmtF(state.f);
+    document.getElementById('clRead').textContent = fmtC(state.Cl);
+
+    const r = compute();
+    document.getElementById('tVoh').textContent = fmtV(r.voh);
+    document.getElementById('tVol').textContent = fmtV(r.vol);
+    document.getElementById('tTr').textContent = fmtT(r.tr);
+    document.getElementById('tFmax').textContent = fmtF(r.fmax);
+    document.getElementById('tVerdict').textContent = r.verdict;
+
+    // Quick warn
+    document.getElementById('tVohOK').textContent = r.voh > state.Vl * 0.8 ? "OK" : "low — borderline VOH";
+    document.getElementById('tVolOK').textContent = r.vol < 0.2 ? "OK" : "high — borderline VOL";
+    document.getElementById('tTrOK').textContent = r.tr < 1/state.f/5 ? "OK" : "slow";
+    document.getElementById('tFmaxOK').textContent = r.fmax >= state.f ? "OK" : "below f_signal";
+
+    drawSchem();
+  }
+
+  document.getElementById('vh').addEventListener('input', e => { state.Vh = parseFloat(e.target.value); update(); });
+  document.getElementById('vl').addEventListener('input', e => { state.Vl = parseFloat(e.target.value); update(); });
+  document.getElementById('f').addEventListener('input', e => { state.f = parseFloat(e.target.value)*1000; update(); });
+  document.getElementById('cl').addEventListener('input', e => { state.Cl = parseFloat(e.target.value)*1e-12; update(); });
+  document.getElementById('signal').addEventListener('change', e => { state.signal = e.target.value; update(); });
+  document.getElementById('shifter').addEventListener('change', e => { state.shifter = e.target.value; update(); });
+
+  document.querySelectorAll('.anchor').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.anchor').forEach(a => a.classList.remove('active'));
+      b.classList.add('active');
+      const p = PRESETS[b.dataset.preset];
+      Object.assign(state, p);
+      document.getElementById('vh').value = state.Vh;
+      document.getElementById('vl').value = state.Vl;
+      document.getElementById('f').value = state.f/1000;
+      document.getElementById('cl').value = state.Cl*1e12;
+      document.getElementById('signal').value = state.signal;
+      document.getElementById('shifter').value = state.shifter;
+      update();
+    });
+  });
+
+  update();
+</script>
+</body>
+</html>

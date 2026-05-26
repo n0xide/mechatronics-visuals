@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory Map — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  pre{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;padding:12px;overflow-x:auto;font:12px ui-monospace,Menlo,monospace;color:var(--fg)}
+  pre .kw{color:var(--accent)}
+  pre .co{color:var(--fg-dim)}
+  pre .nm{color:var(--accent2)}
+  pre .str{color:var(--accent3)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 20px}
+  .chip{background:var(--bg-elev2);border:1px solid var(--line);border-radius:14px;padding:3px 10px;font:11px ui-monospace,monospace;color:var(--accent);text-decoration:none}
+  .chip:hover{background:var(--bg-elev);border-color:var(--accent)}
+  .toggle-row{display:flex;gap:6px;margin:0 0 10px;flex-wrap:wrap}
+  .toggle-row button{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 10px;cursor:pointer;font:12px ui-monospace,monospace}
+  .toggle-row button.active{background:var(--accent);color:#000;border-color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <h1>MCU Memory Map</h1>
+  <p class="lede">When you compile a C program for an MCU, the linker partitions your binary into <em>sections</em>: code (.text) and constants (.rodata) live in Flash; initialized statics (.data), zero-initialized statics (.bss), the heap, and the stack live in RAM. The heap grows upward; the stack grows downward; if they meet, you've crashed. This visual shows where everything lives and how a stack overflow looks from the inside.</p>
+
+  <div class="chips">
+    <a class="chip" href="#sections">#sections</a>
+    <a class="chip" href="#layout">#typical-layout</a>
+    <a class="chip" href="#startup">#startup</a>
+    <a class="chip" href="#stackover">#stack-overflow</a>
+    <a class="chip" href="#worked">#worked-example</a>
+    <a class="chip" href="#cheats">#cheat-sheet</a>
+  </div>
+
+  <h2 id="sections">The sections</h2>
+  <table>
+    <tr><th>Section</th><th>Where</th><th>Contents</th><th>Writable?</th></tr>
+    <tr><td><code>.vectors</code></td><td>Flash, lowest</td><td>Reset vector, exception handlers (Cortex-M)</td><td>No</td></tr>
+    <tr><td><code>.text</code></td><td>Flash</td><td>Compiled function code</td><td>No</td></tr>
+    <tr><td><code>.rodata</code></td><td>Flash</td><td>String literals, const arrays</td><td>No</td></tr>
+    <tr><td><code>.data</code></td><td>RAM, but image in Flash</td><td>int x = 5; (initialized globals)</td><td>Yes</td></tr>
+    <tr><td><code>.bss</code></td><td>RAM (zeroed by startup)</td><td>int y; (uninitialized globals)</td><td>Yes</td></tr>
+    <tr><td><code>heap</code></td><td>RAM, grows up from .bss</td><td>malloc/free, FreeRTOS objects</td><td>Yes</td></tr>
+    <tr><td><code>stack</code></td><td>RAM, grows down from top</td><td>Locals, return addresses, IRQ frames</td><td>Yes</td></tr>
+  </table>
+
+  <section class="controls">
+    <div class="control"><label>Target MCU: <span class="readout" id="mcuRead">RP2350 (Pico 2)</span></label>
+      <select id="mcu">
+        <option value="rp2350" selected>RP2350 (Pico 2): 4 MB Flash, 520 KB RAM</option>
+        <option value="stm32f4">STM32F411: 512 KB Flash, 128 KB RAM</option>
+        <option value="stm32h7">STM32H7: 2 MB Flash, 1 MB RAM</option>
+        <option value="esp32s3">ESP32-S3: 8 MB Flash, 512 KB SRAM</option>
+        <option value="atmega328">ATmega328P: 32 KB Flash, 2 KB RAM</option>
+      </select>
+    </div>
+    <div class="control"><label>.text size: <span class="readout" id="txtRead">64 KB</span></label>
+      <input id="txt" type="range" min="4" max="2048" step="4" value="64"></div>
+    <div class="control"><label>.rodata size: <span class="readout" id="roRead">8 KB</span></label>
+      <input id="ro" type="range" min="0" max="256" step="1" value="8"></div>
+    <div class="control"><label>.bss + .data: <span class="readout" id="bssRead">12 KB</span></label>
+      <input id="bss" type="range" min="0" max="256" step="1" value="12"></div>
+    <div class="control"><label>Heap used: <span class="readout" id="heapRead">4 KB</span></label>
+      <input id="heap" type="range" min="0" max="256" step="1" value="4"></div>
+    <div class="control"><label>Stack used (high-water): <span class="readout" id="stkRead">3 KB</span></label>
+      <input id="stk" type="range" min="0" max="256" step="1" value="3"></div>
+  </section>
+
+  <div class="figure">
+    <svg id="map" viewBox="0 0 600 460" width="100%"></svg>
+    <table>
+      <tr><th>Region</th><th>Usage</th><th>Free</th></tr>
+      <tr><td>Flash</td><td id="flUsed">72 KB / 4 MB</td><td id="flFree" class="num">4024 KB</td></tr>
+      <tr><td>RAM</td><td id="rmUsed">19 KB / 520 KB</td><td id="rmFree" class="num">501 KB</td></tr>
+      <tr><td>Stack ↔ Heap gap</td><td id="gapVal">501 KB</td><td class="num">healthy</td></tr>
+    </table>
+  </div>
+
+  <h2 id="layout">Typical Cortex-M layout</h2>
+  <pre>0x0800 0000 ┌──────────────────┐  Flash start
+            │ .vectors         │  256 bytes — reset + IRQ handlers
+            ├──────────────────┤
+            │ .text            │  ← function code
+            │   (your code)    │
+            ├──────────────────┤
+            │ .rodata          │  ← const data, strings
+            ├──────────────────┤
+            │ .data (init)     │  ← copy source for .data section
+            └──────────────────┘
+0x2000 0000 ┌──────────────────┐  RAM start (SRAM1)
+            │ .data            │  ← runtime-writable initialized statics
+            ├──────────────────┤
+            │ .bss             │  ← zero-init statics
+            ├──────────────────┤
+            │ heap             │  ← grows up
+            │   ↓ ↓ ↓ ↓        │
+            │                  │
+            │   ↑ ↑ ↑ ↑        │
+            │ stack            │  ← grows down
+            └──────────────────┘  RAM end</pre>
+
+  <h2 id="startup">What startup code does</h2>
+  <p>Before <code>main()</code> runs, the C runtime (the "startup file" — <code>startup_stm32f4xx.s</code>, <code>boot_stage2.S</code> on RP2350) executes these steps:</p>
+  <div class="deriv">
+    <span class="step">1. CPU loads the initial stack pointer from <b>address 0x0000</b> in the vector table.</span>
+    <span class="step">2. CPU jumps to <b>reset handler</b> at address 0x0004.</span>
+    <span class="step">3. Reset handler copies <code>.data</code> from <b>Flash</b> to <b>RAM</b> (the linker recorded source and destination).</span>
+    <span class="step">4. Reset handler zeros out <code>.bss</code>.</span>
+    <span class="step">5. Reset handler calls C-library init (<code>__libc_init_array</code>) — runs static C++ constructors.</span>
+    <span class="step">6. <span class="arrow">→</span> Finally calls <code>main()</code>.</span>
+  </div>
+  <p>If you skip steps 3 and 4 (some bare-metal hobbyists do, by accident), globals have garbage values and statically initialized ints are zero. This is the #1 source of "it worked yesterday" bugs.</p>
+
+  <h2 id="stackover">Stack overflow</h2>
+  <p>A stack overflow on Cortex-M doesn't usually crash with a clean error. The stack pointer keeps decrementing into whatever's below it — heap, .bss, .data. The CPU happily writes the return address into your global variable. You return from a function and end up jumping to an address that used to be your IMU calibration data.</p>
+  <p>Symptoms:</p>
+  <ul class="notice">
+    <li><b>HardFault</b> after a function returns to a corrupted PC.</li>
+    <li><b>Globals change "by themselves"</b> as the stack scribbles over them.</li>
+    <li><b>Heap allocator corruption</b> — malloc bookkeeping bytes get overwritten; the next malloc returns garbage or crashes inside heap_4.c.</li>
+    <li><b>FreeRTOS task crashes randomly</b> with no clue why.</li>
+  </ul>
+
+  <p><b>Defenses:</b></p>
+  <ul class="notice">
+    <li><b>Stack canary</b>: write a known pattern (0xDEADBEEF) at the bottom of the stack at boot; check periodically. If it changed, you've overflowed.</li>
+    <li><b>MPU region</b>: configure the Cortex-M MPU to fault if the SP goes below its limit. Catches the overflow at the moment it happens.</li>
+    <li><b>FreeRTOS stack high-water mark</b>: call <code>uxTaskGetStackHighWaterMark()</code> periodically; budget for ≥ 32 words headroom per task.</li>
+    <li><b>-fstack-usage</b>: GCC flag that emits .su files reporting each function's max stack frame. Sum up the call graph.</li>
+    <li><b>Static analysis</b>: tools like <code>checkstack</code> compute call-graph depth and report the worst path.</li>
+  </ul>
+
+  <h2 id="worked">Worked example — diagnosing a HardFault</h2>
+  <div class="worked">
+    <h3>The symptom</h3>
+    <p>FreeRTOS robot-controller task crashes with HardFault after running for 47 minutes. PC = 0xCAFEDEAD (clearly invalid). LR shows a return into the task's main loop. Same task ran cleanly with smaller buffers.</p>
+
+    <h3>What to check</h3>
+    <span style="display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2)">
+UBaseType_t hwm = uxTaskGetStackHighWaterMark(NULL);
+printf("HWM = %u words remaining\n", hwm);
+    </span>
+    <p>Result: HWM = 4. Task was allocated 512 words; high-water = 508 used, leaving 4 free. One more interrupt nesting and it would overflow.</p>
+
+    <h3>The root cause</h3>
+    <p>A new feature added a 1024-byte JSON parser called from inside the task. That's 256 words on top of the existing usage. Adding 256 to 508 = 764, which is well over the 512-word allocation.</p>
+
+    <h3>The fix</h3>
+    <span style="display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2)">
+xTaskCreate(robot_task, "robot", 1024, NULL, 5, NULL);  // was 512
+    </span>
+    <p>Or: move the JSON parsing buffer to a static global (out of stack). Or: split the JSON work into a separate task with its own stack.</p>
+
+    <h3>Verification</h3>
+    <p>Re-run for 4 hours, HWM stays at 200+ words throughout. Done.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>The map file is the source of truth.</b> After every build, <code>arm-none-eabi-objdump -h app.elf</code> or look at the <code>.map</code> file to see exact section sizes. They never lie.</li>
+    <li><b>Globals are not "free" RAM.</b> Every <code>int my_buffer[1000];</code> at file scope adds 4 KB to .bss permanently.</li>
+    <li><b>Stack frames are small in optimized builds.</b> -O0 might use 50 % more stack than -O2 because the compiler doesn't reuse registers across calls.</li>
+    <li><b>Heap fragmentation</b> kills long-running embedded systems. The total free is fine, but no single block large enough. Prefer fixed-size pools (FreeRTOS heap_4 is mostly OK; heap_5 is better for multi-region).</li>
+    <li><b>Read the .map after every change.</b> Watching .bss grow by 4 KB tells you a new buffer was added; watching .text grow by 200 KB tells you you accidentally included libc's printf.</li>
+  </ul>
+
+  <h2>Where you'll see this</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Linker scripts</b> — <code>.ld</code> files describe the memory map. Every project has one (auto-generated by IDEs).</li>
+      <li><b style="color:var(--fg)">Stack-overflow detection</b> — FreeRTOS configCHECK_FOR_STACK_OVERFLOW.</li>
+      <li><b style="color:var(--fg)">OTA updates</b> — second app slot at known Flash address, bootloader switches between.</li>
+      <li><b style="color:var(--fg)">DMA buffer placement</b> — STM32H7 cache lines, ESP32-S3 PSRAM, RP2040 SRAM banks — placement decides bandwidth.</li>
+      <li><b style="color:var(--fg)">Crash dumps</b> — capture SP, PC, LR + a chunk of stack, log to flash for post-mortem.</li>
+    </ul>
+  </div>
+
+  <h2 id="cheats">Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>SECTION SUMMARY</h3>
+      <dl>
+        <dt>.text</dt><dd>Flash, code</dd>
+        <dt>.rodata</dt><dd>Flash, consts</dd>
+        <dt>.data</dt><dd>RAM, init from Flash</dd>
+        <dt>.bss</dt><dd>RAM, zeroed at boot</dd>
+        <dt>heap</dt><dd>RAM, grows up</dd>
+        <dt>stack</dt><dd>RAM, grows down</dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>RULES OF THUMB</h3>
+      <ul>
+        <li>Stack budget per task: <b>1–4 KB</b> typical; <b>+32 words</b> headroom.</li>
+        <li>Heap fragmentation: avoid malloc/free in tight loops; use pools.</li>
+        <li>printf pulls 20+ KB into .text — use <b>tinyprintf</b> or RTT.</li>
+        <li>DMA buffers must live in DMA-accessible RAM (check on H7/F7).</li>
+        <li>Check <b>uxTaskGetStackHighWaterMark()</b> in tests.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Skipping startup .bss zero</b> — uninitialized statics are garbage.</li>
+        <li><b>Heap collision</b> — stack grows into heap silently.</li>
+        <li><b>Recursive function with no base case</b> — instant blowout.</li>
+        <li><b>Large stack arrays</b> in ISR — chip-killer.</li>
+        <li><b>printf with float</b> on F0/F1 — pulls in soft-float, kilobytes.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EM Phase 5 — RTOS Firmware</span> ·
+    Topic: Memory layout, stack, heap, sections ·
+    Cross: <a href="task-scheduling.html">Task Scheduling</a> ·
+    Forward: <a href="watchdog-logging.html">Watchdog & Logging</a>
+  </footer>
+</main>
+<script>
+  const MCUs = {
+    rp2350:  {flash: 4*1024, ram: 520},
+    stm32f4: {flash: 512,    ram: 128},
+    stm32h7: {flash: 2*1024, ram: 1024},
+    esp32s3: {flash: 8*1024, ram: 512},
+    atmega328:{flash: 32,    ram: 2}
+  };
+
+  const els = {
+    mcu:document.getElementById('mcu'),
+    txt:document.getElementById('txt'),
+    ro:document.getElementById('ro'),
+    bss:document.getElementById('bss'),
+    heap:document.getElementById('heap'),
+    stk:document.getElementById('stk')
+  };
+
+  function fmtKB(n){
+    if(n >= 1024) return (n/1024).toFixed(2) + " MB";
+    return n.toFixed(0) + " KB";
+  }
+
+  function drawMap(){
+    const svg = document.getElementById('map');
+    const mcu = MCUs[els.mcu.value];
+    const txt = parseFloat(els.txt.value);
+    const ro = parseFloat(els.ro.value);
+    const bss = parseFloat(els.bss.value);
+    const heap = parseFloat(els.heap.value);
+    const stk = parseFloat(els.stk.value);
+
+    document.getElementById('mcuRead').textContent = els.mcu.options[els.mcu.selectedIndex].text.split(':')[0];
+    document.getElementById('txtRead').textContent = fmtKB(txt);
+    document.getElementById('roRead').textContent = fmtKB(ro);
+    document.getElementById('bssRead').textContent = fmtKB(bss);
+    document.getElementById('heapRead').textContent = fmtKB(heap);
+    document.getElementById('stkRead').textContent = fmtKB(stk);
+
+    const flashUsed = txt + ro;
+    const ramUsed = bss + heap + stk;
+    const flashOverflow = flashUsed > mcu.flash;
+    const ramOverflow = ramUsed > mcu.ram;
+    const stackHeapCollide = (bss + heap + stk) > mcu.ram;
+    const gap = mcu.ram - bss - heap - stk;
+
+    document.getElementById('flUsed').textContent = fmtKB(flashUsed) + " / " + fmtKB(mcu.flash);
+    document.getElementById('flFree').textContent = fmtKB(Math.max(0, mcu.flash - flashUsed));
+    document.getElementById('rmUsed').textContent = fmtKB(ramUsed) + " / " + fmtKB(mcu.ram);
+    document.getElementById('rmFree').textContent = fmtKB(Math.max(0, mcu.ram - ramUsed));
+    document.getElementById('gapVal').textContent = (gap < 0 ? 'OVERFLOW' : fmtKB(gap)) +
+      (gap < 1 ? ' (DANGER)' : gap < 4 ? ' (tight)' : ' (healthy)');
+
+    // SVG memory map: two columns side by side
+    const W = 600, H = 460;
+    const flashX = 20, flashW = 220;
+    const ramX = 320, ramW = 220;
+    const top = 60, bottom = 420;
+    const totalH = bottom - top;
+
+    // Flash sections
+    const fScale = totalH / mcu.flash;
+    const txtH = Math.min(totalH, txt * fScale);
+    const roH = Math.min(totalH - txtH, ro * fScale);
+    const flashFreeH = Math.max(0, totalH - txtH - roH);
+
+    // RAM
+    const rScale = totalH / mcu.ram;
+    const bssH = Math.min(totalH, bss * rScale);
+    const heapH = Math.min(totalH - bssH, heap * rScale);
+    const stkH = Math.min(totalH, stk * rScale);
+    const ramFreeH = Math.max(0, totalH - bssH - heapH - stkH);
+
+    let y = top;
+    let flashSvg = `
+      <rect x="${flashX-2}" y="${top-2}" width="${flashW+4}" height="${totalH+4}" fill="none" stroke="var(--line)" stroke-width="1"/>
+      <text x="${flashX + flashW/2}" y="${top-10}" class="label" text-anchor="middle" fill="var(--accent)">FLASH (${fmtKB(mcu.flash)})</text>
+    `;
+    flashSvg += `<rect x="${flashX}" y="${y}" width="${flashW}" height="${txtH}" fill="rgba(94,200,255,0.3)" stroke="var(--accent)"/>`;
+    flashSvg += `<text x="${flashX+10}" y="${y + txtH/2 + 4}" class="label" fill="var(--accent)">.text  (${fmtKB(txt)})</text>`;
+    y += txtH;
+    flashSvg += `<rect x="${flashX}" y="${y}" width="${flashW}" height="${roH}" fill="rgba(255,184,108,0.3)" stroke="var(--accent2)"/>`;
+    flashSvg += `<text x="${flashX+10}" y="${y + roH/2 + 4}" class="label" fill="var(--accent2)">.rodata (${fmtKB(ro)})</text>`;
+    y += roH;
+    if(flashFreeH > 0){
+      flashSvg += `<rect x="${flashX}" y="${y}" width="${flashW}" height="${flashFreeH}" fill="var(--bg-elev2)" stroke="var(--line)" stroke-dasharray="3 3"/>`;
+      flashSvg += `<text x="${flashX+10}" y="${y + flashFreeH/2 + 4}" class="label-dim">free (${fmtKB(mcu.flash - flashUsed)})</text>`;
+    }
+    if(flashOverflow){
+      flashSvg += `<text x="${flashX + flashW/2}" y="${top + totalH + 18}" class="label-warn" text-anchor="middle">⚠ FLASH OVERFLOW</text>`;
+    }
+    // address labels
+    flashSvg += `<text x="${flashX - 5}" y="${top + 4}" class="label-dim" text-anchor="end">0x0800_0000</text>`;
+    flashSvg += `<text x="${flashX - 5}" y="${top + totalH}" class="label-dim" text-anchor="end">↑ growing</text>`;
+
+    let y2 = top;
+    let ramSvg = `
+      <rect x="${ramX-2}" y="${top-2}" width="${ramW+4}" height="${totalH+4}" fill="none" stroke="var(--line)" stroke-width="1"/>
+      <text x="${ramX + ramW/2}" y="${top-10}" class="label" text-anchor="middle" fill="var(--accent3)">RAM (${fmtKB(mcu.ram)})</text>
+    `;
+    ramSvg += `<rect x="${ramX}" y="${y2}" width="${ramW}" height="${bssH}" fill="rgba(163,230,53,0.3)" stroke="var(--accent3)"/>`;
+    ramSvg += `<text x="${ramX+10}" y="${y2 + bssH/2 + 4}" class="label" fill="var(--accent3)">.bss + .data (${fmtKB(bss)})</text>`;
+    y2 += bssH;
+    ramSvg += `<rect x="${ramX}" y="${y2}" width="${ramW}" height="${heapH}" fill="rgba(94,200,255,0.2)" stroke="var(--accent)"/>`;
+    ramSvg += `<text x="${ramX+10}" y="${y2 + heapH/2 + 4}" class="label" fill="var(--accent)">heap ↓ (${fmtKB(heap)})</text>`;
+    y2 += heapH;
+    // free
+    const freeY = y2;
+    if(ramFreeH > 0){
+      ramSvg += `<rect x="${ramX}" y="${y2}" width="${ramW}" height="${ramFreeH}" fill="var(--bg-elev2)" stroke="var(--line)" stroke-dasharray="3 3"/>`;
+      ramSvg += `<text x="${ramX+10}" y="${y2 + ramFreeH/2 + 4}" class="label-dim">gap (${fmtKB(gap > 0 ? gap : 0)})</text>`;
+    }
+    y2 += ramFreeH;
+    ramSvg += `<rect x="${ramX}" y="${y2}" width="${ramW}" height="${stkH}" fill="rgba(255,123,114,0.3)" stroke="var(--warn)"/>`;
+    ramSvg += `<text x="${ramX+10}" y="${y2 + stkH/2 + 4}" class="label" fill="var(--warn)">stack ↑ (${fmtKB(stk)})</text>`;
+
+    if(gap < 2 && gap >= 0){
+      ramSvg += `<text x="${ramX + ramW/2}" y="${top + totalH + 18}" class="label-warn" text-anchor="middle">⚠ STACK/HEAP COLLISION RISK</text>`;
+    } else if(gap < 0){
+      ramSvg += `<text x="${ramX + ramW/2}" y="${top + totalH + 18}" class="label-warn" text-anchor="middle">⚠ OVERFLOW — stack overlaps heap</text>`;
+    }
+    ramSvg += `<text x="${ramX - 5}" y="${top + 4}" class="label-dim" text-anchor="end">0x2000_0000</text>`;
+
+    // arrows
+    ramSvg += `<line x1="${ramX + ramW + 10}" y1="${top}" x2="${ramX + ramW + 10}" y2="${top + bssH}" stroke="var(--accent3)" stroke-width="2"/>`;
+    ramSvg += `<line x1="${ramX + ramW + 10}" y1="${top + bssH}" x2="${ramX + ramW + 10}" y2="${top + bssH + heapH}" stroke="var(--accent)" stroke-width="2"/>`;
+    ramSvg += `<polygon points="${ramX+ramW+5},${top+bssH+heapH-5} ${ramX+ramW+15},${top+bssH+heapH-5} ${ramX+ramW+10},${top+bssH+heapH}" fill="var(--accent)"/>`;
+    ramSvg += `<text x="${ramX + ramW + 18}" y="${top + bssH + heapH/2}" class="label-dim">heap grows ↓</text>`;
+
+    ramSvg += `<polygon points="${ramX+ramW+5},${y2+5} ${ramX+ramW+15},${y2+5} ${ramX+ramW+10},${y2}" fill="var(--warn)"/>`;
+    ramSvg += `<text x="${ramX + ramW + 18}" y="${y2 + stkH/2 + 4}" class="label-warn">stack grows ↑</text>`;
+
+    svg.innerHTML = flashSvg + ramSvg;
+  }
+
+  Object.values(els).forEach(el => el.addEventListener('input', drawMap));
+  els.mcu.addEventListener('change', drawMap);
+  drawMap();
+</script>
+</body>
+</html>

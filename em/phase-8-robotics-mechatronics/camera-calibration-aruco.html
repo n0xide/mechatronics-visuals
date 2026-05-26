@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Camera Calibration & ArUco — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+  .figure svg{display:block;max-width:100%;height:auto;background:var(--bg-elev2)}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 20px}
+  .chip{background:var(--bg-elev2);border:1px solid var(--line);border-radius:14px;padding:3px 10px;font:11px ui-monospace,monospace;color:var(--accent);text-decoration:none}
+  .chip:hover{background:var(--bg-elev);border-color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Camera Calibration & ArUco Pose</h1>
+  <p class="lede">A pinhole camera turns 3D points into pixel coordinates via a 3×3 intrinsic matrix K and a 4-parameter distortion model. Once you've calibrated K, you can do the reverse: a known-size marker (like an ArUco fiducial) gives four 2D-to-3D correspondences, and solvePnP returns the marker's 6-DOF pose relative to the camera. This is the foundation of every webcam-based AR demo and every cheap vision-guided robot.</p>
+
+  <div class="chips">
+    <a class="chip" href="#pinhole">#pinhole</a>
+    <a class="chip" href="#K">#intrinsics-K</a>
+    <a class="chip" href="#dist">#distortion</a>
+    <a class="chip" href="#aruco">#aruco-markers</a>
+    <a class="chip" href="#pnp">#solvePnP</a>
+    <a class="chip" href="#cheats">#cheat-sheet</a>
+  </div>
+
+  <h2 id="pinhole">The pinhole camera model</h2>
+  <p>A point P = (X, Y, Z) in 3D camera-frame coordinates projects to a pixel (u, v) via two steps:</p>
+  <div class="deriv">
+    <span class="step">Step 1 — normalize by depth: x_n = X/Z, y_n = Y/Z (these are the "ideal" coordinates of where the ray hits a plane at Z = 1).</span>
+    <span class="step">Step 2 — apply the intrinsic matrix K:</span>
+    <span class="step">  u = f_x · x_n + c_x</span>
+    <span class="step">  v = f_y · y_n + c_y</span>
+    <span class="step">Compactly, in homogeneous coordinates: <b>[u·s, v·s, s]ᵀ = K · [X, Y, Z]ᵀ</b></span>
+  </div>
+
+  <h2 id="K">The intrinsic matrix K</h2>
+  <p>The K matrix is 3×3:</p>
+  <pre style="background:var(--bg-elev2);padding:10px;border-radius:4px;font:13px ui-monospace,monospace;color:var(--accent)">
+K =  ┌ f_x   0   c_x ┐
+     │  0   f_y  c_y │
+     └  0    0    1  ┘</pre>
+  <ul class="notice">
+    <li><b>f_x, f_y</b>: focal lengths in <em>pixels</em>. f_x = (sensor focal length in mm) × (pixels per mm in x-direction). Usually f_x ≈ f_y unless the sensor is non-square or the lens has anamorphic features.</li>
+    <li><b>c_x, c_y</b>: principal point — where the optical axis hits the sensor, in pixel coords. Usually within a few pixels of the image center; never assume exactly center without calibrating.</li>
+    <li><b>Skew (the 0 above f_y)</b>: usually 0 for digital sensors. For chip-on-prism beamsplitter cameras or analog systems it can be nonzero.</li>
+  </ul>
+
+  <h2 id="dist">Distortion — k1, k2, p1, p2</h2>
+  <p>Real lenses don't project ideal rays. Brown-Conrady model captures most of the deviation with four (or five) coefficients:</p>
+  <div class="deriv">
+    <span class="step">Radial: r² = x_n² + y_n²</span>
+    <span class="step"><b>x_n' = x_n · (1 + k1·r² + k2·r⁴) + 2·p1·x_n·y_n + p2·(r² + 2x_n²)</b></span>
+    <span class="step"><b>y_n' = y_n · (1 + k1·r² + k2·r⁴) + p1·(r² + 2y_n²) + 2·p2·x_n·y_n</b></span>
+    <span class="step">k1 alone captures the dominant "barrel" or "pincushion" distortion. k1 > 0 = pincushion; k1 < 0 = barrel (fisheye look).</span>
+    <span class="step">k2 cleans up residuals at the corners.</span>
+    <span class="step">p1, p2 capture tangential distortion (lens not perfectly aligned with sensor plane).</span>
+    <span class="step">Wide-angle lenses (GoPro, action cams) need a more complex model: equidistant, equisolid-angle, or polynomial-of-higher-order.</span>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>f_x (focal length px): <span class="readout" id="fxRead">600</span></label>
+      <input id="fx" type="range" min="200" max="2000" step="10" value="600"></div>
+    <div class="control"><label>k1 (radial dist): <span class="readout" id="k1Read">0.00</span></label>
+      <input id="k1" type="range" min="-0.4" max="0.4" step="0.01" value="0"></div>
+    <div class="control"><label>k2: <span class="readout" id="k2Read">0.00</span></label>
+      <input id="k2" type="range" min="-0.2" max="0.2" step="0.01" value="0"></div>
+    <div class="control"><label>Marker size: <span class="readout" id="szRead">50 mm</span></label>
+      <input id="sz" type="range" min="10" max="200" step="1" value="50"></div>
+    <div class="control"><label>Distance to marker: <span class="readout" id="dRead">500 mm</span></label>
+      <input id="d" type="range" min="100" max="3000" step="10" value="500"></div>
+    <div class="control"><label>Marker yaw (rotation): <span class="readout" id="yRead">15°</span></label>
+      <input id="y" type="range" min="-60" max="60" step="1" value="15"></div>
+  </section>
+
+  <div class="figure">
+    <svg id="cam" viewBox="0 0 600 380" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Notes</th></tr>
+      <tr><td>Marker apparent size (pixels)</td><td id="tSz" class="num">60 px</td><td><code>f_x · size / Z</code></td></tr>
+      <tr><td>Marker centroid (u,v)</td><td id="tUv" class="num">320, 240</td><td>pixel coords</td></tr>
+      <tr><td>Computed Z (depth)</td><td id="tZ" class="num">500 mm</td><td>from PnP solve</td></tr>
+      <tr><td>Computed yaw</td><td id="tYy" class="num">15.0°</td><td>from rvec</td></tr>
+      <tr><td>Pixel size on sensor</td><td id="tPx" class="num">3.0 µm</td><td>typical Pi camera</td></tr>
+      <tr><td>FOV (horizontal)</td><td id="tFov" class="num">53.1°</td><td><code>2·atan(W/(2f_x))</code></td></tr>
+    </table>
+  </div>
+
+  <h2 id="aruco">ArUco markers — what they are</h2>
+  <p>An ArUco marker is a black-and-white square with an inner pattern that encodes an integer ID. The OpenCV ArUco module includes pre-generated dictionaries: <code>DICT_4X4_50</code> (4×4 grid of bits, 50 unique IDs), <code>DICT_5X5_100</code>, <code>DICT_6X6_250</code>, etc.</p>
+  <p>The detection pipeline:</p>
+  <ol style="color:var(--fg-dim);padding-left:24px">
+    <li>Convert image to grayscale, adaptive threshold.</li>
+    <li>Find contours; filter for quad-shaped ones of plausible size.</li>
+    <li>Warp each quad to a fixed grid; sample bits.</li>
+    <li>Match against the dictionary; reject if &gt; N bits in error.</li>
+    <li>Refine corners with subpixel methods.</li>
+  </ol>
+  <p>The marker is a known size in the world (e.g., 50 mm × 50 mm printed on paper). Detecting its four corners in the image gives four 2D-to-3D correspondences:</p>
+  <table>
+    <tr><th>Object point (marker frame)</th><th>Image point (pixel)</th></tr>
+    <tr><td>(−s/2, −s/2, 0)</td><td>(u_TL, v_TL)</td></tr>
+    <tr><td>(+s/2, −s/2, 0)</td><td>(u_TR, v_TR)</td></tr>
+    <tr><td>(+s/2, +s/2, 0)</td><td>(u_BR, v_BR)</td></tr>
+    <tr><td>(−s/2, +s/2, 0)</td><td>(u_BL, v_BL)</td></tr>
+  </table>
+
+  <h2 id="pnp">solvePnP — pose from 4+ correspondences</h2>
+  <p>Given 4+ 2D-3D correspondences and known intrinsics K, the perspective-n-point (PnP) problem returns:</p>
+  <ul class="notice">
+    <li><b>rvec</b> — Rodrigues rotation vector (3-element axis-angle). Convert to 3×3 R matrix via Rodrigues formula.</li>
+    <li><b>tvec</b> — translation (3-element x, y, z in marker units, e.g., mm).</li>
+  </ul>
+  <p>Together, R and t form the 4×4 SE(3) transformation from marker frame to camera frame. To get the inverse (camera in marker frame, for fixed-marker robot localization): T_marker_to_cam → T_cam_to_marker = (T)⁻¹.</p>
+  <p>OpenCV's <code>cv2.solvePnP()</code> has several methods: SOLVEPNP_ITERATIVE (default, robust), SOLVEPNP_AP3P (closed-form, very fast), SOLVEPNP_EPNP (works with many points). For 4-corner ArUco at 30 fps, SOLVEPNP_IPPE_SQUARE is specifically designed for planar quads and is the fastest correct choice.</p>
+
+  <h2 id="worked">Worked example — pose-estimate a 50 mm marker</h2>
+  <div class="worked">
+    <h3>The camera</h3>
+    <p>Raspberry Pi Camera Module 3 (1080p mode): f_x ≈ f_y ≈ 1380 px, c_x ≈ 960, c_y ≈ 540 (image is 1920 × 1080). k1 ≈ -0.12, k2 ≈ 0.05 (slight barrel distortion). FOV ≈ 70° horizontal.</p>
+
+    <h3>The marker</h3>
+    <p>ArUco from DICT_4X4_100, ID 7, printed at 50 mm size on cardstock, glued to a robot arm tool tip.</p>
+
+    <h3>Detection result</h3>
+    <p>OpenCV detects the marker; corners refined; subpixel accuracy ~0.1 px. Object points: (±25, ±25, 0). Image points: detected.</p>
+
+    <h3>PnP solve</h3>
+    <p>solvePnP returns rvec = [0.052, -0.014, 1.523] rad, tvec = [12, -8, 487] mm. Converting rvec via Rodrigues gives a 3×3 R; combined with t, that's the full T_marker_in_cam.</p>
+
+    <h3>Accuracy</h3>
+    <p>Typical error for 50 mm marker at 500 mm distance with refined corners: ±2 mm translation, ±1° rotation. Closer or bigger marker → better. Lighting and motion blur are the biggest enemies. Use ChArUco boards (a chessboard with ArUco in the white squares) for more robust pose at the cost of larger size.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>f_x is in pixels, not mm.</b> Beginners confuse focal length in mm (lens spec) with f_x in pixels (calibration result). Conversion: f_x_px = f_mm / pixel_pitch_mm.</li>
+    <li><b>Calibration with a chessboard</b> is the standard workflow. Show the camera a printed chessboard from 15+ angles; OpenCV's <code>calibrateCamera()</code> fits K and distortion.</li>
+    <li><b>Distortion matters for pose accuracy</b>. Even k1 = 0.1 (mild barrel) skews a marker's corners by several pixels at the edges. PnP gets confused; pose has 5–10 mm errors. Always undistort or pass the distortion coefficients to PnP.</li>
+    <li><b>Smaller markers at far distances</b> are noisier because fewer pixels span the marker. Rule of thumb: marker should be at least <b>40 × 40 pixels</b> for reliable pose. At 50 mm marker, f=1000, that means Z ≤ 1.25 m.</li>
+    <li><b>Multiple markers reduce ambiguity</b>. A single planar marker has a "flip" ambiguity (Z-axis can flip 180°) when viewed near-perpendicular. ChArUco or AprilTag-3 (with embedded code) resolves this; or use 2+ markers in a known rigid arrangement.</li>
+  </ul>
+
+  <h2>Where you'll see this</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Vision-guided robot arms</b> — pick objects whose pose is read from an ArUco marker glued to them.</li>
+      <li><b style="color:var(--fg)">Drone delivery localization</b> — ArUco markers on landing pads or houses.</li>
+      <li><b style="color:var(--fg)">VR controller tracking</b> (early Oculus / WMR) — infrared LEDs in known constellation, same math.</li>
+      <li><b style="color:var(--fg)">Augmented reality apps</b> — Vuforia, ARCore, ARKit all use markers + SLAM under the hood.</li>
+      <li><b style="color:var(--fg)">3D-scanner ground truth</b> — fiducial markers placed on object define a consistent reference frame.</li>
+    </ul>
+  </div>
+
+  <h2 id="cheats">Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Project</dt><dd><span class="eq">u = f_x·X/Z + c_x</span></dd>
+        <dt></dt><dd><span class="eq">v = f_y·Y/Z + c_y</span></dd>
+        <dt>K</dt><dd>[f_x 0 c_x; 0 f_y c_y; 0 0 1]</dd>
+        <dt>Distortion</dt><dd><span class="eq">k1·r² + k2·r⁴ +…</span></dd>
+        <dt>FOV</dt><dd><span class="eq">2·atan(W/(2f_x))</span></dd>
+        <dt>PnP</dt><dd>rvec, tvec from 4+ 2D-3D pairs</dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>RULES OF THUMB</h3>
+      <ul>
+        <li><b>Calibrate with 15+ chessboard views</b> at varied angles.</li>
+        <li><b>f_x ≈ image_width / (2·tan(FOV/2))</b>.</li>
+        <li><b>ArUco corners</b> ≥ 40 px each for reliable PnP.</li>
+        <li><b>Use IPPE_SQUARE</b> for planar 4-corner PnP.</li>
+        <li><b>Two markers</b> resolve flip ambiguity.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Wrong focal length units</b> — px vs mm confusion.</li>
+        <li><b>Skipping distortion</b> — corners pulled outward, pose drifts.</li>
+        <li><b>Marker bend / paper warp</b> — assumed planar, actually curved.</li>
+        <li><b>Motion blur</b> — corners noisy; pose jitters.</li>
+        <li><b>Wrong dictionary</b> — detector returns nothing.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EM Phase 8 — Robotics</span> ·
+    Topic: Camera calibration, ArUco, solvePnP ·
+    Cross: <a href="forward-kinematics.html">Forward Kinematics</a> ·
+    Forward: <span style="opacity:0.55">Impedance Control (planned)</span>
+  </footer>
+</main>
+<script>
+  const els = {
+    fx:document.getElementById('fx'),
+    k1:document.getElementById('k1'),
+    k2:document.getElementById('k2'),
+    sz:document.getElementById('sz'),
+    d:document.getElementById('d'),
+    y:document.getElementById('y')
+  };
+
+  function update(){
+    const fx = parseFloat(els.fx.value);
+    const k1 = parseFloat(els.k1.value);
+    const k2 = parseFloat(els.k2.value);
+    const sz = parseFloat(els.sz.value); // marker side mm
+    const Z = parseFloat(els.d.value);   // depth mm
+    const yawDeg = parseFloat(els.y.value);
+    const yaw = yawDeg * Math.PI / 180;
+
+    document.getElementById('fxRead').textContent = fx;
+    document.getElementById('k1Read').textContent = k1.toFixed(2);
+    document.getElementById('k2Read').textContent = k2.toFixed(2);
+    document.getElementById('szRead').textContent = sz + " mm";
+    document.getElementById('dRead').textContent = Z + " mm";
+    document.getElementById('yRead').textContent = yawDeg + "°";
+
+    const Iw = 600, Ih = 400;
+    const cx = Iw/2, cy = Ih/2;
+
+    // Marker 4 corners in 3D (Y up, X right, Z forward)
+    const half = sz/2;
+    const corners = [
+      [-half, -half, 0],
+      [+half, -half, 0],
+      [+half, +half, 0],
+      [-half, +half, 0]
+    ];
+    // Rotate around Y axis (yaw)
+    const c = Math.cos(yaw), s = Math.sin(yaw);
+    const rotated = corners.map(([X,Y,Zm]) => [c*X + s*Zm, Y, -s*X + c*Zm + Z]);
+    // Project
+    const projected = rotated.map(([X, Y, Zw]) => {
+      let xn = X / Zw, yn = Y / Zw;
+      // distort
+      const r2 = xn*xn + yn*yn;
+      const radial = 1 + k1*r2 + k2*r2*r2;
+      xn *= radial; yn *= radial;
+      return [fx*xn + cx, fx*yn + cy, Zw];
+    });
+
+    // SVG image
+    const svg = document.getElementById('cam');
+    // sensor border
+    let parts = `
+      <rect x="20" y="20" width="${Iw-40}" height="${Ih-40}" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="30" y="40" class="label" fill="var(--accent)">camera image (${Iw}×${Ih} px)</text>
+      <circle cx="${cx}" cy="${cy}" r="2" fill="var(--fg-dim)"/>
+      <line x1="${cx-10}" y1="${cy}" x2="${cx+10}" y2="${cy}" stroke="var(--fg-dim)"/>
+      <line x1="${cx}" y1="${cy-10}" x2="${cx}" y2="${cy+10}" stroke="var(--fg-dim)"/>
+      <text x="${cx+12}" y="${cy-3}" class="label-dim">(c_x, c_y) = (${cx}, ${cy})</text>
+    `;
+    // distortion grid
+    for(let gx = -300; gx <= 300; gx += 60){
+      let pd = '';
+      for(let gy = -200; gy <= 200; gy += 5){
+        const xn = gx / fx, yn = gy / fx;
+        const r2 = xn*xn + yn*yn;
+        const radial = 1 + k1*r2 + k2*r2*r2;
+        const u = fx*xn*radial + cx, v = fx*yn*radial + cy;
+        pd += (pd===''?'M':' L') + ` ${u} ${v}`;
+      }
+      parts += `<path d="${pd}" fill="none" stroke="var(--line)" stroke-width="0.5" opacity="0.5"/>`;
+    }
+    for(let gy = -200; gy <= 200; gy += 50){
+      let pd = '';
+      for(let gx = -300; gx <= 300; gx += 5){
+        const xn = gx / fx, yn = gy / fx;
+        const r2 = xn*xn + yn*yn;
+        const radial = 1 + k1*r2 + k2*r2*r2;
+        const u = fx*xn*radial + cx, v = fx*yn*radial + cy;
+        pd += (pd===''?'M':' L') + ` ${u} ${v}`;
+      }
+      parts += `<path d="${pd}" fill="none" stroke="var(--line)" stroke-width="0.5" opacity="0.5"/>`;
+    }
+
+    // marker
+    let mPath = '';
+    projected.forEach((p, i) => {
+      mPath += (i===0?'M':' L') + ` ${p[0]} ${p[1]}`;
+    });
+    mPath += ' Z';
+    parts += `<path d="${mPath}" fill="var(--accent3)" opacity="0.3" stroke="var(--accent3)" stroke-width="2"/>`;
+    projected.forEach((p, i) => {
+      parts += `<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="var(--accent2)"/>`;
+      parts += `<text x="${p[0]+8}" y="${p[1]-6}" class="label-dim">${i}</text>`;
+    });
+
+    // axis from marker
+    const centroid = [
+      (projected[0][0] + projected[2][0])/2,
+      (projected[0][1] + projected[2][1])/2
+    ];
+    parts += `<line x1="${centroid[0]}" y1="${centroid[1]}" x2="${centroid[0] + Math.cos(yaw)*30}" y2="${centroid[1]}" stroke="var(--warn)" stroke-width="2"/>`;
+    parts += `<text x="${centroid[0]+35}" y="${centroid[1]+4}" class="label-warn">x</text>`;
+    parts += `<line x1="${centroid[0]}" y1="${centroid[1]}" x2="${centroid[0]}" y2="${centroid[1]+30}" stroke="var(--accent3)" stroke-width="2"/>`;
+    parts += `<text x="${centroid[0]+5}" y="${centroid[1]+40}" class="label-ok">y</text>`;
+    parts += `<line x1="${centroid[0]}" y1="${centroid[1]}" x2="${centroid[0] - Math.sin(yaw)*30}" y2="${centroid[1]}" stroke="var(--accent)" stroke-width="2" stroke-dasharray="2 2"/>`;
+    parts += `<text x="${centroid[0]-Math.sin(yaw)*30 - 12}" y="${centroid[1]+4}" class="label" fill="var(--accent)">z (out)</text>`;
+
+    svg.innerHTML = parts;
+
+    // Update table
+    const apparentSz = fx * sz / Z;
+    document.getElementById('tSz').textContent = apparentSz.toFixed(0) + " px";
+    document.getElementById('tUv').textContent = centroid[0].toFixed(0) + ", " + centroid[1].toFixed(0);
+    document.getElementById('tZ').textContent = Z + " mm";
+    document.getElementById('tYy').textContent = yawDeg.toFixed(1) + "°";
+    document.getElementById('tFov').textContent = (2 * Math.atan(Iw/(2*fx)) * 180/Math.PI).toFixed(1) + "°";
+    document.getElementById('tPx').textContent = (3.0).toFixed(1) + " µm";
+  }
+
+  Object.values(els).forEach(el=>el.addEventListener('input', update));
+  update();
+</script>
+</body>
+</html>

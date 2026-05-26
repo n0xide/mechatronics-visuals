@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Path Planning — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+  .figure svg{display:block;max-width:100%;height:auto;background:var(--bg-elev2)}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 20px}
+  .chip{background:var(--bg-elev2);border:1px solid var(--line);border-radius:14px;padding:3px 10px;font:11px ui-monospace,monospace;color:var(--accent);text-decoration:none}
+  .chip:hover{background:var(--bg-elev);border-color:var(--accent)}
+  .toggle-row{display:flex;gap:6px;margin:0 0 10px;flex-wrap:wrap}
+  .toggle-row button{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 10px;cursor:pointer;font:12px ui-monospace,monospace}
+  .toggle-row button.active{background:var(--accent);color:#000;border-color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Path Planning — A* vs RRT vs RRT*</h1>
+  <p class="lede">Three of the canonical motion-planning algorithms, each with a different sweet spot. <b>A*</b> is the king of grid search: optimal on discrete grids, fast with a good heuristic. <b>RRT</b> (Rapidly-exploring Random Tree) handles continuous spaces and high-DOF arms but isn't guaranteed optimal. <b>RRT*</b> rewires the tree to improve toward optimality as more samples accrue. Click "Run" to watch each one expand on a 2D obstacle field.</p>
+
+  <div class="chips">
+    <a class="chip" href="#astar">#A-star</a>
+    <a class="chip" href="#rrt">#RRT</a>
+    <a class="chip" href="#rrts">#RRT-star</a>
+    <a class="chip" href="#compare">#comparison</a>
+    <a class="chip" href="#cheats">#cheat-sheet</a>
+  </div>
+
+  <h2 id="astar">A* — informed graph search</h2>
+  <p>A* explores nodes in a grid (or graph), always expanding the node with the lowest <b>f(n) = g(n) + h(n)</b>, where g is cost-from-start and h is an estimate of cost-to-goal (the heuristic).</p>
+  <div class="deriv">
+    <span class="step">Manhattan heuristic (4-connected grid): <b>h = |Δx| + |Δy|</b></span>
+    <span class="step">Euclidean (any direction): <b>h = √(Δx² + Δy²)</b></span>
+    <span class="step">Chebyshev (8-connected with diagonals at cost √2): <b>h = max(|Δx|, |Δy|)</b></span>
+  </div>
+  <p>If the heuristic is <b>admissible</b> (never overestimates) and <b>consistent</b> (triangle inequality), A* finds the optimal path. Manhattan is admissible on 4-connected grids; Euclidean is admissible everywhere. Both are consistent.</p>
+  <p>Time complexity: O(b^d) worst-case, where b is branching factor and d is path length. In practice, the heuristic prunes most of the search.</p>
+
+  <h2 id="rrt">RRT — random expansion</h2>
+  <p>For high-DOF problems (robot arms with 6+ joints), grids explode in memory. RRT instead samples the continuous space randomly:</p>
+  <div class="deriv">
+    <span class="step">Initialize tree T with just the start node.</span>
+    <span class="step">Loop:</span>
+    <span class="step">  Sample a random point p_rand in the space.</span>
+    <span class="step">  Find the nearest node n_near in T.</span>
+    <span class="step">  Steer from n_near a short distance toward p_rand, getting p_new.</span>
+    <span class="step">  If p_new is collision-free, add it to T as a child of n_near.</span>
+    <span class="step">  If p_new is close to the goal, return the path.</span>
+    <span class="step">Until iteration limit reached.</span>
+  </div>
+  <p>RRT is <b>probabilistically complete</b> — given infinite samples, it will find a path if one exists. It is <em>not</em> optimal — the path it returns may zigzag inefficiently. But it works in dimensions where A* is intractable, like a 7-DOF arm's configuration space (a 7-dimensional hyper-volume).</p>
+
+  <h2 id="rrts">RRT* — rewiring for optimality</h2>
+  <p>RRT* adds two steps to RRT to converge toward the optimal path:</p>
+  <ul class="notice">
+    <li><b>Choose parent</b>: when adding p_new, look at all nodes within radius r; pick the one that minimizes total cost from start.</li>
+    <li><b>Rewire</b>: also check each nearby node; if connecting it through p_new would lower its cost, rewire it as a child of p_new.</li>
+  </ul>
+  <p>Over enough iterations, RRT* converges to the optimal path. Trade-off: each iteration is more expensive (O(log n) nearest-neighbor + radius search), and you need an admissible cost-to-go metric.</p>
+
+  <section class="controls">
+    <div class="control"><label>Algorithm: <span class="readout" id="algoRead">A*</span></label>
+      <div class="toggle-row">
+        <button data-a="astar" class="active">A*</button>
+        <button data-a="rrt">RRT</button>
+        <button data-a="rrts">RRT*</button>
+      </div>
+    </div>
+    <div class="control"><label>Obstacles: <span class="readout" id="obsRead">Maze</span></label>
+      <div class="toggle-row">
+        <button data-o="maze" class="active">Maze</button>
+        <button data-o="rooms">Rooms</button>
+        <button data-o="bug">Bug-trap</button>
+      </div>
+    </div>
+    <div class="control"><label>Step size (RRT): <span class="readout" id="stepRead">20 px</span></label>
+      <input id="step" type="range" min="5" max="60" step="1" value="20"></div>
+    <div class="control"><label>Goal bias (RRT): <span class="readout" id="biasRead">10 %</span></label>
+      <input id="bias" type="range" min="0" max="100" step="1" value="10"></div>
+    <div class="control"><label>Run: <span class="readout" id="iterRead">— iters</span></label>
+      <div class="toggle-row">
+        <button id="run">Run</button>
+        <button id="step1">Step ×100</button>
+        <button id="reset">Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="map" viewBox="0 0 600 400" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Value</th></tr>
+      <tr><td>Iterations</td><td id="tIt" class="num">0</td></tr>
+      <tr><td>Nodes expanded / sampled</td><td id="tN" class="num">0</td></tr>
+      <tr><td>Path found</td><td id="tF">No</td></tr>
+      <tr><td>Path length</td><td id="tL" class="num">—</td></tr>
+      <tr><td>Optimal?</td><td id="tO">—</td></tr>
+    </table>
+  </div>
+
+  <h2 id="compare">When to use which</h2>
+  <table>
+    <tr><th>Property</th><th>A*</th><th>RRT</th><th>RRT*</th></tr>
+    <tr><td>Optimal?</td><td>Yes (with admissible h)</td><td>No</td><td>Asymptotically</td></tr>
+    <tr><td>Complete?</td><td>Yes (graph exhausted)</td><td>Probabilistically</td><td>Probabilistically</td></tr>
+    <tr><td>Continuous space?</td><td>No (need to discretize)</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>Best for</td><td>2D/3D grids, GPS routes</td><td>High-DOF, irregular spaces</td><td>Same as RRT but better quality</td></tr>
+    <tr><td>Memory</td><td>O(b^d)</td><td>O(N samples)</td><td>O(N samples)</td></tr>
+    <tr><td>Real-time?</td><td>D*/D*-lite variants</td><td>Yes, anytime</td><td>Yes, anytime</td></tr>
+  </table>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>A* is fast on grids</b> when the heuristic is good. With a perfect heuristic, it expands only path nodes — linear time. With h=0 (Dijkstra), it expands everything.</li>
+    <li><b>RRT explores everywhere first</b> — the tree blossoms outward roughly uniformly, then funnels to the goal. Good for finding <em>any</em> path quickly in cluttered spaces.</li>
+    <li><b>RRT* makes lousy paths better with time</b> — early paths look like spaghetti; after a few thousand more samples, they straighten toward optimal. Use it as an <em>anytime</em> algorithm: stop whenever you've used the time budget.</li>
+    <li><b>Heuristic affects A* speed but not correctness</b>. Manhattan is fine for 4-connected; Euclidean is fine everywhere. Switch to <b>diagonal-distance</b> (Chebyshev) on 8-connected grids.</li>
+    <li><b>Real systems mix planners</b>: A* for the global plan on a downsampled grid, then RRT* (or DWA, MPC) for local replanning around dynamic obstacles.</li>
+  </ul>
+
+  <h2>Where you'll see this</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">ROS Nav2</b> — Dijkstra/A* for global planner; DWB/MPPI for local; RRT* available as plugin.</li>
+      <li><b style="color:var(--fg)">Robot arm motion planning</b> — MoveIt uses RRT/RRT-Connect from OMPL.</li>
+      <li><b style="color:var(--fg)">Self-driving car planning</b> — hybrid A* (lattice planner) with kinematic constraints.</li>
+      <li><b style="color:var(--fg)">Drone autonomy</b> — RRT* for 3D obstacle avoidance.</li>
+      <li><b style="color:var(--fg)">Video-game AI</b> — A* is the universal pathfinder in NPCs.</li>
+    </ul>
+  </div>
+
+  <h2 id="cheats">Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>HEURISTICS</h3>
+      <dl>
+        <dt>Manhattan</dt><dd><span class="eq">|Δx|+|Δy|</span></dd>
+        <dt>Euclidean</dt><dd><span class="eq">√(Δx²+Δy²)</span></dd>
+        <dt>Chebyshev</dt><dd><span class="eq">max(|Δx|,|Δy|)</span></dd>
+        <dt>Octile</dt><dd><span class="eq">D·(|Δx|+|Δy|) + (D₂−2D)·min</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>RULES OF THUMB</h3>
+      <ul>
+        <li><b>A* on 2D grid</b>: Manhattan or octile heuristic.</li>
+        <li><b>RRT step size</b>: 1–5 % of map diagonal.</li>
+        <li><b>RRT goal bias</b>: 5–10 % (sample directly at goal).</li>
+        <li><b>RRT* radius r</b>: γ·(log n / n)^(1/d) (Karaman-Frazzoli).</li>
+        <li><b>Smooth the output</b>: path-shortening + B-spline for robot motion.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Non-admissible heuristic</b> — A* returns suboptimal path silently.</li>
+        <li><b>RRT step too small</b> — slow expansion, lots of samples.</li>
+        <li><b>RRT step too big</b> — easily misses narrow passages.</li>
+        <li><b>Forgetting kinematic constraints</b> — A* path through a wall corner not drivable by Ackermann robot.</li>
+        <li><b>Closed-set bugs in A*</b> — re-visiting nodes that should be closed.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EM Phase 8 — Robotics</span> ·
+    Topic: A* / RRT / RRT* path planning ·
+    Cross: <a href="diff-drive.html">Differential Drive</a> ·
+    Forward: <a href="trajectory-planning.html">Trajectory Planning</a>
+  </footer>
+</main>
+<script>
+  const W = 60, H = 40;  // grid cells
+  const CELL = 10;       // pixel size
+  const startCell = {x:3, y:3};
+  const goalCell = {x:55, y:35};
+  let obstacles = new Set();
+  let algo = 'astar';
+  let obsMode = 'maze';
+
+  // RRT state
+  let tree = []; // {x, y, parent}
+  let pathFound = null;
+  let iterations = 0;
+  let nodesExpanded = 0;
+  let astarOpen = [];
+  let astarClosed = new Set();
+  let astarPath = [];
+  let runHandle = null;
+
+  function key(x, y){ return `${x},${y}`; }
+
+  function generateObstacles(mode){
+    obstacles = new Set();
+    if(mode === 'maze'){
+      // checkered hallways
+      for(let y=8; y<35; y+=8){
+        for(let x=0; x<W; x++){
+          if(x % 16 < 14) obstacles.add(key(x, y));
+        }
+      }
+    } else if(mode === 'rooms'){
+      // four rooms
+      for(let y=0; y<H; y++) {
+        if(Math.abs(y - 20) < 1) for(let x=0; x<W; x++) if(Math.abs(x-15)>2 && Math.abs(x-45)>2) obstacles.add(key(x,y));
+      }
+      for(let x=0; x<W; x++){
+        if(Math.abs(x - 30) < 1) for(let y=0; y<H; y++) if(Math.abs(y-10)>2 && Math.abs(y-30)>2) obstacles.add(key(x,y));
+      }
+    } else if(mode === 'bug'){
+      // bug-trap: U-shaped wall enclosing start
+      for(let x=10; x<25; x++){ obstacles.add(key(x, 15)); obstacles.add(key(x, 25));}
+      for(let y=15; y<26; y++){ obstacles.add(key(25, y)); }
+      // and a couple of random blocks
+      for(let x=35; x<45; x++){ for(let y=5; y<15; y++) obstacles.add(key(x,y)); }
+    }
+  }
+
+  function isFree(x, y){
+    if(x < 0 || y < 0 || x >= W || y >= H) return false;
+    return !obstacles.has(key(Math.floor(x), Math.floor(y)));
+  }
+
+  function lineIsFree(x1, y1, x2, y2){
+    const N = 20;
+    for(let i=0; i<=N; i++){
+      const t = i/N;
+      const x = x1 + (x2-x1)*t, y = y1 + (y2-y1)*t;
+      if(!isFree(x, y)) return false;
+    }
+    return true;
+  }
+
+  function reset(){
+    iterations = 0;
+    nodesExpanded = 0;
+    pathFound = null;
+    tree = [{x: startCell.x, y: startCell.y, parent: -1, cost: 0}];
+    astarOpen = [{x: startCell.x, y: startCell.y, g:0, h:heur(startCell), parent: null}];
+    astarOpen[0].f = astarOpen[0].g + astarOpen[0].h;
+    astarClosed = new Set();
+    astarPath = [];
+    draw();
+  }
+
+  function heur(c){
+    return Math.abs(c.x - goalCell.x) + Math.abs(c.y - goalCell.y);
+  }
+
+  function aStarStep(){
+    if(pathFound) return false;
+    if(astarOpen.length === 0){ pathFound = false; return false; }
+    astarOpen.sort((a,b) => a.f - b.f);
+    const cur = astarOpen.shift();
+    if(cur.x === goalCell.x && cur.y === goalCell.y){
+      // reconstruct
+      astarPath = [];
+      let n = cur;
+      while(n){ astarPath.push({x:n.x, y:n.y}); n = n.parent; }
+      pathFound = true;
+      return true;
+    }
+    const k = key(cur.x, cur.y);
+    if(astarClosed.has(k)) return false;
+    astarClosed.add(k);
+    nodesExpanded++;
+    // 4-connected
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nx = cur.x + dx, ny = cur.y + dy;
+      if(!isFree(nx, ny)) continue;
+      if(astarClosed.has(key(nx,ny))) continue;
+      const g = cur.g + 1;
+      const h = Math.abs(nx-goalCell.x) + Math.abs(ny-goalCell.y);
+      astarOpen.push({x:nx, y:ny, g, h, f: g+h, parent: cur});
+    }
+    return false;
+  }
+
+  function rrtStep(){
+    if(pathFound) return;
+    iterations++;
+    let target;
+    const bias = parseFloat(document.getElementById('bias').value)/100;
+    if(Math.random() < bias){
+      target = {x: goalCell.x, y: goalCell.y};
+    } else {
+      target = {x: Math.random()*W, y: Math.random()*H};
+    }
+    // nearest
+    let near = tree[0], nearIdx = 0, nearD = Infinity;
+    for(let i = 0; i < tree.length; i++){
+      const d = Math.hypot(tree[i].x - target.x, tree[i].y - target.y);
+      if(d < nearD){ nearD = d; near = tree[i]; nearIdx = i; }
+    }
+    const stepSize = parseFloat(document.getElementById('step').value) / CELL;
+    const dx = target.x - near.x, dy = target.y - near.y;
+    const d = Math.hypot(dx, dy);
+    if(d < 0.01) return;
+    const nx = near.x + dx/d * Math.min(stepSize, d);
+    const ny = near.y + dy/d * Math.min(stepSize, d);
+    if(!lineIsFree(near.x, near.y, nx, ny)) return;
+    const newCost = near.cost + Math.hypot(nx - near.x, ny - near.y);
+    let bestParent = nearIdx, bestCost = newCost;
+    // RRT* rewire-choose
+    if(algo === 'rrts'){
+      const radius = Math.min(20, 50 * Math.sqrt(Math.log(tree.length+1)/(tree.length+1)));
+      for(let i = 0; i < tree.length; i++){
+        const dd = Math.hypot(tree[i].x - nx, tree[i].y - ny);
+        if(dd < radius && lineIsFree(tree[i].x, tree[i].y, nx, ny)){
+          const c = tree[i].cost + dd;
+          if(c < bestCost){ bestCost = c; bestParent = i; }
+        }
+      }
+    }
+    tree.push({x:nx, y:ny, parent: bestParent, cost: bestCost});
+    nodesExpanded++;
+    const newIdx = tree.length - 1;
+    if(algo === 'rrts'){
+      const radius = Math.min(20, 50 * Math.sqrt(Math.log(tree.length+1)/(tree.length+1)));
+      for(let i = 0; i < tree.length-1; i++){
+        const dd = Math.hypot(tree[i].x - nx, tree[i].y - ny);
+        if(dd < radius && lineIsFree(nx, ny, tree[i].x, tree[i].y)){
+          const c = bestCost + dd;
+          if(c < tree[i].cost){
+            tree[i].parent = newIdx;
+            tree[i].cost = c;
+          }
+        }
+      }
+    }
+    // goal check
+    if(Math.hypot(nx - goalCell.x, ny - goalCell.y) < 2){
+      pathFound = true;
+      // reconstruct path through cheapest goal-adjacent
+      let bestEnd = newIdx, bestEndCost = bestCost;
+      for(let i = 0; i < tree.length; i++){
+        if(Math.hypot(tree[i].x - goalCell.x, tree[i].y - goalCell.y) < 2 && tree[i].cost < bestEndCost){
+          bestEnd = i; bestEndCost = tree[i].cost;
+        }
+      }
+      astarPath = [];
+      let idx = bestEnd;
+      while(idx !== -1){
+        astarPath.push({x: tree[idx].x, y: tree[idx].y});
+        idx = tree[idx].parent;
+      }
+    }
+  }
+
+  function stepN(N=1){
+    for(let i = 0; i < N; i++){
+      if(algo === 'astar') aStarStep();
+      else { rrtStep(); iterations++; }
+      iterations = algo === 'astar' ? nodesExpanded : iterations;
+      if(pathFound) break;
+    }
+    draw();
+  }
+
+  function draw(){
+    const svg = document.getElementById('map');
+    let parts = '';
+    // grid
+    parts += `<rect x="0" y="0" width="600" height="400" fill="var(--bg)"/>`;
+    // obstacles
+    for(const k of obstacles){
+      const [x, y] = k.split(',').map(Number);
+      parts += `<rect x="${x*CELL}" y="${y*CELL}" width="${CELL}" height="${CELL}" fill="var(--warn)" opacity="0.4"/>`;
+    }
+    // A* open/closed
+    if(algo === 'astar'){
+      for(const k of astarClosed){
+        const [x,y] = k.split(',').map(Number);
+        parts += `<rect x="${x*CELL}" y="${y*CELL}" width="${CELL}" height="${CELL}" fill="var(--accent)" opacity="0.2"/>`;
+      }
+      for(const n of astarOpen){
+        parts += `<rect x="${n.x*CELL}" y="${n.y*CELL}" width="${CELL}" height="${CELL}" fill="var(--accent3)" opacity="0.3"/>`;
+      }
+    } else {
+      // tree
+      for(const node of tree){
+        if(node.parent >= 0){
+          const p = tree[node.parent];
+          parts += `<line x1="${p.x*CELL}" y1="${p.y*CELL}" x2="${node.x*CELL}" y2="${node.y*CELL}" stroke="var(--accent)" stroke-width="0.5" opacity="0.6"/>`;
+        }
+        parts += `<circle cx="${node.x*CELL}" cy="${node.y*CELL}" r="1.5" fill="var(--accent3)"/>`;
+      }
+    }
+    // path
+    if(astarPath.length){
+      let pd = '';
+      astarPath.forEach((p, i) => {
+        pd += (i===0?'M':' L') + ` ${p.x*CELL+CELL/2} ${p.y*CELL+CELL/2}`;
+      });
+      parts += `<path d="${pd}" stroke="var(--accent2)" stroke-width="3" fill="none"/>`;
+    }
+    // start, goal
+    parts += `<circle cx="${startCell.x*CELL+CELL/2}" cy="${startCell.y*CELL+CELL/2}" r="6" fill="var(--accent3)"/>`;
+    parts += `<text x="${startCell.x*CELL}" y="${startCell.y*CELL-2}" class="label-ok" style="fill:var(--accent3)">S</text>`;
+    parts += `<circle cx="${goalCell.x*CELL+CELL/2}" cy="${goalCell.y*CELL+CELL/2}" r="6" fill="var(--accent2)"/>`;
+    parts += `<text x="${goalCell.x*CELL}" y="${goalCell.y*CELL-2}" style="fill:var(--accent2);font:12px ui-monospace,monospace">G</text>`;
+    svg.innerHTML = parts;
+
+    document.getElementById('tIt').textContent = iterations;
+    document.getElementById('tN').textContent = nodesExpanded;
+    document.getElementById('tF').textContent = pathFound ? "Yes" : "Searching...";
+    document.getElementById('tL').textContent = astarPath.length > 0 ? astarPath.length + " nodes" : "—";
+    document.getElementById('tO').textContent = algo === 'astar' ? "Yes (admissible h)" : algo === 'rrts' ? "Asymptotically" : "No";
+    document.getElementById('iterRead').textContent = iterations + " iters";
+  }
+
+  document.querySelectorAll('[data-a]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('[data-a]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      algo = btn.dataset.a;
+      document.getElementById('algoRead').textContent = btn.textContent;
+      reset();
+    });
+  });
+  document.querySelectorAll('[data-o]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('[data-o]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      obsMode = btn.dataset.o;
+      document.getElementById('obsRead').textContent = btn.textContent;
+      generateObstacles(obsMode);
+      reset();
+    });
+  });
+  document.getElementById('run').addEventListener('click', ()=>{
+    if(runHandle){ clearInterval(runHandle); runHandle = null; return; }
+    runHandle = setInterval(()=>{
+      stepN(algo === 'astar' ? 5 : 5);
+      if(pathFound){ clearInterval(runHandle); runHandle = null; }
+    }, 30);
+  });
+  document.getElementById('step1').addEventListener('click', ()=>stepN(100));
+  document.getElementById('reset').addEventListener('click', reset);
+  document.getElementById('step').addEventListener('input', ()=>{
+    document.getElementById('stepRead').textContent = document.getElementById('step').value + " px";
+  });
+  document.getElementById('bias').addEventListener('input', ()=>{
+    document.getElementById('biasRead').textContent = document.getElementById('bias').value + " %";
+  });
+
+  generateObstacles(obsMode);
+  reset();
+</script>
+</body>
+</html>

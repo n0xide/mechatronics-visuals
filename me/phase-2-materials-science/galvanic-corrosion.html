@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Galvanic Corrosion — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control select{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .bar-row{display:flex;align-items:center;gap:8px;font:12px ui-monospace,monospace;margin:2px 0}
+  .bar-row .nm{width:120px;color:var(--fg)}
+  .bar-row .bar{height:14px;border-radius:2px;flex-shrink:0}
+  .bar-row .num{margin-left:6px;color:var(--fg-dim);font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<main>
+  <h1>Galvanic Corrosion</h1>
+  <p class="lede">When two dissimilar metals touch in the presence of an electrolyte (humid air counts), the less-noble one corrodes preferentially — fast. The further apart they sit on the anodic-index chart, the worse. Pick a pair below; the index gap tells you whether you can bolt them together bare, need an insulator, or should just pick a different metal.</p>
+
+  <div class="anchors">
+    <span class="anchor"><b>0–0.15 V</b>: safe contact in any environment</span>
+    <span class="anchor"><b>0.15–0.30 V</b>: safe indoors / dry; insulate outside</span>
+    <span class="anchor"><b>0.30–0.50 V</b>: always insulate</span>
+    <span class="anchor"><b>&gt; 0.50 V</b>: avoid; pick different metals</span>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>Metal A (anode candidate)</label>
+      <select id="mA">
+        <option value="Au">Gold (Au)</option>
+        <option value="Pt">Platinum (Pt)</option>
+        <option value="Ag">Silver (Ag)</option>
+        <option value="Ti">Titanium (Ti)</option>
+        <option value="SS316">Stainless 316</option>
+        <option value="SS304" selected>Stainless 304</option>
+        <option value="Ni">Nickel (Ni)</option>
+        <option value="Cu">Copper (Cu)</option>
+        <option value="Brass">Brass</option>
+        <option value="Sn">Tin / SnPb solder</option>
+        <option value="Steel">Mild steel</option>
+        <option value="Pb">Lead (Pb)</option>
+        <option value="Al6061">Aluminum 6061</option>
+        <option value="Cd">Cadmium plating</option>
+        <option value="Zn">Zinc (galv. steel)</option>
+        <option value="Mg">Magnesium (Mg)</option>
+      </select>
+    </div>
+    <div class="control"><label>Metal B (cathode candidate)</label>
+      <select id="mB">
+        <option value="Au">Gold (Au)</option>
+        <option value="Pt">Platinum (Pt)</option>
+        <option value="Ag">Silver (Ag)</option>
+        <option value="Ti">Titanium (Ti)</option>
+        <option value="SS316">Stainless 316</option>
+        <option value="SS304">Stainless 304</option>
+        <option value="Ni">Nickel (Ni)</option>
+        <option value="Cu">Copper (Cu)</option>
+        <option value="Brass">Brass</option>
+        <option value="Sn">Tin / SnPb solder</option>
+        <option value="Steel">Mild steel</option>
+        <option value="Pb">Lead (Pb)</option>
+        <option value="Al6061" selected>Aluminum 6061</option>
+        <option value="Cd">Cadmium plating</option>
+        <option value="Zn">Zinc (galv. steel)</option>
+        <option value="Mg">Magnesium (Mg)</option>
+      </select>
+    </div>
+    <div class="control"><label>Environment</label>
+      <select id="env">
+        <option value="indoor" selected>Indoor / dry (RH &lt; 65%)</option>
+        <option value="outdoor">Outdoor / humid</option>
+        <option value="marine">Marine / salt air</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="chart" viewBox="0 0 920 580" width="100%"></svg>
+    <div class="vd" id="verdict">
+      <b>Verdict:</b> <span id="verdictText">Pick two metals to compare.</span>
+    </div>
+  </div>
+
+  <h2>Why dissimilar metals corrode (the battery you didn't want)</h2>
+  <p>A galvanic cell needs three things: an anode, a cathode, and an electrolyte path. Bolt aluminum to stainless and you've built one.</p>
+  <div class="deriv">
+    <span class="step">1.  Every metal has an <b>electrode potential</b> measured against a standard reference (the saturated calomel electrode, SCE). Tabulated as the <b>anodic index</b>.</span>
+    <span class="step">2.  In contact + electrolyte, the metal with the <em>more negative</em> potential becomes the anode and donates electrons (oxidizes, corrodes).</span>
+    <span class="step">3.  The driving voltage is the <b>index difference</b>: ΔV = |V_A − V_B|.</span>
+    <span class="step">4.  Larger ΔV = stronger cell = faster corrosion. Above ~0.5 V, the rate is destructive on any reasonable timescale.</span>
+    <span class="step">5.  <span class="arrow">→</span> Picking metals close on the chart minimizes the driving voltage.</span>
+    <span class="step">6.  Or you break the loop: <b>break the metal-to-metal path</b> (insulating washer/sleeve) or <b>break the electrolyte path</b> (sealant, paint, dry environment).</span>
+  </div>
+
+  <h2>Area effect (the cathode-area amplifier)</h2>
+  <p>Galvanic rate scales with the <em>ratio of cathode area to anode area</em>. A small anode in contact with a huge cathode rusts <em>fast</em>; a big anode in contact with a small cathode loses material slowly across its surface.</p>
+  <div class="deriv">
+    <span class="step">1.  Total galvanic current is set by the driving voltage and the system resistance. That current must leave through the anode surface.</span>
+    <span class="step">2.  Current density at the anode = I_total / A_anode. <span class="arrow">→</span> Small A_anode = high current density = fast pitting.</span>
+    <span class="step">3.  <b>Disaster case</b>: small zinc rivet through huge stainless plate (small anode, big cathode) — rivet eats away in months.</span>
+    <span class="step">4.  <b>Forgiving case</b>: large galvanized panel with stainless screws (big anode, small cathode) — galvanic loss is spread thin; panel is OK for decades.</span>
+    <span class="step">5.  Rule of thumb: <b>keep cathode-to-anode area ≤ 1 to ≤ 10:1 max</b>. Large galvanic ratios eat fasteners alive.</span>
+  </div>
+
+  <h2>Worked example — aluminum heat sink, stainless screws, garage workbench</h2>
+  <div class="worked">
+    <h3>The pair</h3>
+    <span class="eq">Aluminum 6061: anodic index ≈ 0.90 V (active)</span>
+    <span class="eq">Stainless 304: anodic index ≈ 0.50 V (passive)</span>
+    <span class="eq">ΔV = 0.40 V → "always insulate" band</span>
+    <span class="eq">Environment: indoor garage with occasional humidity → still acts like outdoor</span>
+    <span class="eq">Area ratio: M3 SS304 screw vs Al heatsink → Al much larger anode → favorable, but ΔV still bites at the screw hole over years</span>
+
+    <h3>Where it bites</h3>
+    <p>Around the screw threads, moisture wicks in, oxide layer breaks down on aluminum near the steel, white pitting appears in 1–3 years. Once the screw is loose, conduction (thermal) drops too — common failure on outdoor amplifier chassis and solar inverters.</p>
+
+    <h3>Fix #1 — insulator (cheap, retrofit)</h3>
+    <span class="eq">Nylon shoulder washer (M3) under screw head: $0.05 each</span>
+    <span class="eq">Nylon flat washer above aluminum: blocks electrolyte path</span>
+    <span class="eq">Result: contact is steel→nylon→aluminum, no direct steel-aluminum metal contact</span>
+
+    <h3>Fix #2 — coating (production)</h3>
+    <span class="eq">Anodize the aluminum (Type II or Type III). The oxide layer is dielectric.</span>
+    <span class="eq">Then it doesn't matter what touches it — the oxide is the insulator.</span>
+    <span class="eq">See: <a href="anodize-dimension.html">Anodize Dimensional Allowance</a> for the thickness budget.</span>
+
+    <h3>Fix #3 — pick a compatible fastener (best)</h3>
+    <span class="eq">Aluminum screw (6061 or 7075): ΔV = 0 → no galvanic cell at all</span>
+    <span class="eq">Or 316 stainless if marine context (still 0.4 V but more passive)</span>
+    <span class="eq">Or anodized aluminum + anodized screw → both surfaces dielectric</span>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Magnesium loses to everything</b> — Mg is at the bottom of every chart. Pair it with anything and the magnesium goes. Used deliberately as a <em>sacrificial anode</em> on boats and water heaters (replace the rod every few years; it saves the steel hull).</li>
+    <li><b>Gold and platinum win</b> — at the top, they almost never corrode in air. That's why high-reliability connector contacts are gold-flashed: even if humid, gold doesn't oxidize, and the gold layer doesn't form a galvanic cell with the underlying nickel (nickel undercoat is standard).</li>
+    <li><b>Stainless isn't immortal in salt air</b> — 304 will pit; 316 (with Mo) resists better but still suffers if mated with mild steel. Marine fasteners want 316, ideally with Tef-Gel or zinc-chromate sealant in the joint.</li>
+    <li><b>Solder is a hidden anode</b> — SnPb (0.7 V) and lead-free SAC (~0.65 V) are more active than copper (~0.35 V), so the solder joint is the anode against the copper pad. Conformal coating on PCBs partly solves this.</li>
+    <li><b>Galvanized steel is "intentionally" galvanic</b> — the zinc layer is sacrificial. Galvanic action eats the zinc, not the steel underneath, until the zinc is gone — then the steel goes.</li>
+    <li><b>Anodize before assembly</b> — anodizing inside a stack-up is impossible; do it on individual parts before they're pressed/bolted. Mask threads if needed.</li>
+  </ul>
+
+  <h2>Cross-links</h2>
+  <div class="crosslink">
+    <h4>Related</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Anodize dimensional allowance</b> — <a href="anodize-dimension.html">Type II vs Type III growth</a>. The fix for many galvanic-pair problems is anodizing the aluminum.</li>
+      <li><b style="color:var(--fg)">Material classes</b> — <a href="material-classes.html">metal families overview</a>. Anodic indices grouped by class.</li>
+      <li><b style="color:var(--fg)">Filaments &amp; polymers</b> — <a href="filaments-materials.html">FDM materials</a>. Plastic spacers and isolators are the simplest galvanic break.</li>
+      <li><b style="color:var(--fg)">Heat-set &amp; adhesives</b> — <a href="../phase-6-fasteners-joining/heat-set-adhesives.html">structural adhesives</a>. Epoxy or PU adhesive can substitute for a metal fastener and avoid the pair entirely.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Driving voltage</dt><dd><span class="eq">ΔV = |V_A − V_B|</span></dd>
+        <dt>Severity band</dt><dd><span class="eq">indoor: ΔV &lt; 0.15 safe</span></dd>
+        <dt></dt><dd><span class="eq">outdoor: ΔV &lt; 0.25 safe</span></dd>
+        <dt></dt><dd><span class="eq">marine: ΔV &lt; 0.15 safe</span></dd>
+        <dt>Anode rate</dt><dd><span class="eq">∝ I × A_cathode / A_anode</span></dd>
+        <dt>Break loop</dt><dd><span class="eq">insulator or seal electrolyte</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SAFE PAIRS</h3>
+      <ul>
+        <li><b>Al + Al</b> — ΔV = 0, always</li>
+        <li><b>SS + SS</b> — ΔV = 0, always</li>
+        <li><b>Al + SS</b> — 0.4 V, insulate</li>
+        <li><b>Cu + brass</b> — &lt; 0.1 V, safe</li>
+        <li><b>SS + Ti</b> — &lt; 0.1 V, safe</li>
+        <li><b>Steel + Zn-plate</b> — sacrificial, intentional</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Carbon-fiber composite + Al</b> — carbon is very noble (top of chart). CF panels with Al fasteners corrode fast in salt air. Use Ti fasteners or isolate.</li>
+        <li><b>Brass fittings on Al plumbing</b> — common in solar panels, blame for ~30% of leaks after 5 years. Use 316SS or Al fittings.</li>
+        <li><b>Small Zn rivet, big SS sheet</b> — rivet evaporates in months. Area ratio matters as much as ΔV.</li>
+        <li><b>Crevice corrosion in 316</b> — even "safe" stainless pits inside O-ring grooves where O2 can't replenish. Specify Cr-rich super-duplex if you have such joints in seawater.</li>
+        <li><b>Aluminum + concrete</b> — fresh concrete is alkaline; eats Al window frames if not painted/anodized.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">ME Phase 2 — Materials Science</span> ·
+    Related: <a href="anodize-dimension.html">Anodize Dimension</a> ·
+    <a href="material-classes.html">Material Classes</a> ·
+    <a href="../phase-6-fasteners-joining/heat-set-adhesives.html">Heat-Set &amp; Adhesives</a>
+  </footer>
+</main>
+<script>
+  // Anodic index in volts (typical literature values, US MIL-STD-889)
+  // Values represent half-cell potential vs saturated calomel; smaller = more noble
+  const METALS = {
+    'Au':    {name:'Gold',           v:0.00, color:'#ffd54f'},
+    'Pt':    {name:'Platinum',       v:0.00, color:'#cfd8dc'},
+    'Ag':    {name:'Silver',         v:0.15, color:'#e0e0e0'},
+    'Ti':    {name:'Titanium',       v:0.30, color:'#90a4ae'},
+    'SS316': {name:'Stainless 316',  v:0.50, color:'#b0bec5'},
+    'SS304': {name:'Stainless 304',  v:0.50, color:'#9eb1c0'},
+    'Ni':    {name:'Nickel',         v:0.30, color:'#bcaaa4'},
+    'Cu':    {name:'Copper',         v:0.35, color:'#d39a6f'},
+    'Brass': {name:'Brass',          v:0.40, color:'#caa472'},
+    'Sn':    {name:'Tin / SnPb',     v:0.65, color:'#a3a3a3'},
+    'Steel': {name:'Mild steel',     v:0.85, color:'#9c8771'},
+    'Pb':    {name:'Lead',           v:0.70, color:'#888'},
+    'Al6061':{name:'Aluminum 6061',  v:0.90, color:'#90caf9'},
+    'Cd':    {name:'Cadmium plate',  v:1.00, color:'#b0c4de'},
+    'Zn':    {name:'Zinc / galv',    v:1.25, color:'#ce93d8'},
+    'Mg':    {name:'Magnesium',      v:1.60, color:'#a3e635'}
+  };
+  // Note: published charts use varying sign conventions; we adopt
+  // increasing positive numbers = more active (anodic). Differences are what
+  // matters for galvanic prediction.
+
+  function draw(){
+    const svg = document.getElementById('chart');
+    const ks = Object.keys(METALS).sort((a,b)=>METALS[a].v - METALS[b].v);
+    const vmin = 0, vmax = 1.7;
+    const w = 880, x0 = 30, y0 = 30;
+    const rowH = 30;
+    const A = document.getElementById('mA').value;
+    const B = document.getElementById('mB').value;
+    const env = document.getElementById('env').value;
+    const threshIndoor = 0.15, threshOutdoor = 0.25, threshMarine = 0.15;
+    const thresh = env==='indoor'?threshIndoor:env==='marine'?threshMarine:threshOutdoor;
+
+    let svgContent = `
+      <text x="${x0}" y="20" class="label">Anodic index chart — less noble (active) →</text>
+      <line x1="${x0+100}" y1="${y0}" x2="${x0+100}" y2="${y0+ks.length*rowH+10}" stroke="var(--line)" stroke-width="1"/>
+    `;
+    ks.forEach((k,i)=>{
+      const m = METALS[k];
+      const barW = (m.v / vmax) * (w - 200);
+      const yi = y0 + i*rowH + 5;
+      const isSel = (k===A || k===B);
+      svgContent += `
+        <text x="${x0+95}" y="${yi+15}" class="label" text-anchor="end">${m.name}</text>
+        <rect x="${x0+100}" y="${yi+3}" width="${barW}" height="18"
+              fill="${m.color}" opacity="${isSel?0.95:0.5}"
+              stroke="${isSel?'var(--accent)':'transparent'}" stroke-width="${isSel?2:0}"/>
+        <text x="${x0+105+barW}" y="${yi+16}" class="label-dim">${m.v.toFixed(2)} V</text>
+      `;
+    });
+
+    // Highlight ΔV bracket
+    const vA = METALS[A].v, vB = METALS[B].v;
+    const dV = Math.abs(vA - vB);
+    const xA = x0+100 + (vA/vmax)*(w-200);
+    const xB = x0+100 + (vB/vmax)*(w-200);
+    const yBracket = y0 + ks.length*rowH + 30;
+    const xmin = Math.min(xA, xB), xmax = Math.max(xA, xB);
+    svgContent += `
+      <line x1="${xmin}" y1="${yBracket}" x2="${xmax}" y2="${yBracket}"
+            stroke="var(--accent)" stroke-width="2"/>
+      <line x1="${xmin}" y1="${yBracket-6}" x2="${xmin}" y2="${yBracket+6}"
+            stroke="var(--accent)" stroke-width="2"/>
+      <line x1="${xmax}" y1="${yBracket-6}" x2="${xmax}" y2="${yBracket+6}"
+            stroke="var(--accent)" stroke-width="2"/>
+      <text x="${(xmin+xmax)/2}" y="${yBracket+22}" class="label" text-anchor="middle">ΔV = ${dV.toFixed(2)} V</text>
+      <text x="${(xmin+xmax)/2}" y="${yBracket+38}" class="label-dim" text-anchor="middle">${METALS[A].name} ↔ ${METALS[B].name}</text>
+    `;
+
+    // Verdict line on figure
+    const status = dV < thresh ? 'SAFE' : dV < 0.30 ? 'CAUTION' : dV < 0.50 ? 'INSULATE' : 'AVOID';
+    const statusColor = status==='SAFE'?'var(--accent3)':status==='CAUTION'?'var(--accent2)':'var(--warn)';
+    svgContent += `
+      <rect x="${x0}" y="${yBracket+55}" width="${w-60}" height="40"
+            fill="var(--bg-elev2)" stroke="${statusColor}" stroke-width="1.5" rx="4"/>
+      <text x="${x0+15}" y="${yBracket+80}" class="label" style="fill:${statusColor};font-weight:600">${status}</text>
+      <text x="${x0+100}" y="${yBracket+80}" class="label">
+        ΔV ${dV.toFixed(2)} V vs ${env} threshold ${thresh.toFixed(2)} V
+      </text>
+    `;
+    svg.innerHTML = svgContent;
+
+    const v = document.getElementById('verdictText');
+    if(A === B){
+      v.innerHTML = '<b style="color:var(--accent3)">Same metal — no galvanic cell. Pick anything mechanically appropriate.</b>';
+    } else if(dV < thresh){
+      v.innerHTML = `<b style="color:var(--accent3)">SAFE</b> for ${env} contact. ΔV = ${dV.toFixed(2)} V is below the ${thresh.toFixed(2)} V threshold for this environment.`;
+    } else if(dV < 0.30){
+      v.innerHTML = `<b style="color:var(--accent2)">CAUTION</b> — ΔV = ${dV.toFixed(2)} V exceeds the ${thresh.toFixed(2)} V indoor threshold. Add insulating washer or sealant; OK if environment stays dry.`;
+    } else if(dV < 0.50){
+      v.innerHTML = `<b style="color:var(--warn)">INSULATE</b> — ΔV = ${dV.toFixed(2)} V puts this pair in the "always insulate" band. Use nylon shoulder washer or fully anodize the more-active metal.`;
+    } else {
+      v.innerHTML = `<b style="color:var(--warn)">AVOID</b> — ΔV = ${dV.toFixed(2)} V will corrode the more-active metal aggressively. Substitute the fastener material or use a barrier coating.`;
+    }
+  }
+  document.getElementById('mA').addEventListener('change', draw);
+  document.getElementById('mB').addEventListener('change', draw);
+  document.getElementById('env').addEventListener('change', draw);
+  draw();
+</script>
+</body>
+</html>

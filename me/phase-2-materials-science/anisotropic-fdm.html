@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anisotropic FDM &mdash; visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2)}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .bar{height:14px;background:#1d232c;border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;width:140px;margin-left:6px}
+  .bar > div{height:100%;background:#5ec8ff;border-radius:3px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Anisotropic FDM &mdash; print orientation determines strength</h1>
+  <p class="lede">A printed part is not the same material in every direction. Beads bond chemically along the print axis (within-layer) but only thermally between layers (Z). The result: tensile strength along Z can be 25&ndash;60 % of the in-plane value, and impact strength can drop by 80 %. This visual quantifies the gap, lets you rotate a load case relative to the print orientation, and shows three design rules that make the difference between a part that survives and one that delaminates at the first load.</p>
+
+  <div class="anchors">
+    <span class="anchor"><b>PLA</b> tensile XY &asymp; 60 MPa, Z &asymp; 30 MPa</span>
+    <span class="anchor"><b>PETG</b> XY &asymp; 50 MPa, Z &asymp; 30 MPa</span>
+    <span class="anchor"><b>ABS</b> XY &asymp; 40 MPa, Z &asymp; 17 MPa</span>
+    <span class="anchor"><b>PA12 (nylon)</b> XY &asymp; 50 MPa, Z &asymp; 28 MPa</span>
+    <span class="anchor"><b>PA-CF</b> XY &asymp; 90 MPa, Z &asymp; 35 MPa</span>
+    <span class="anchor"><b>Z impact strength</b> often &lt; 20% of XY</span>
+    <span class="anchor"><b>Bond temp</b>: PLA 60&deg;C, ABS 100&deg;C, PA 80&deg;C</span>
+  </div>
+
+  <h2>Why layer lines are weak &mdash; the bond physics</h2>
+  <p>Two adjacent beads within a layer extrude side-by-side at full melt temperature. Polymer chains diffuse across the interface; entanglement happens; the bond approaches bulk material strength. That's the X / Y direction.</p>
+  <p>The next layer drops on top of the previous one, but the previous layer has already cooled below the glass transition (T_g). The new layer reheats the interface only locally and briefly. Chain interdiffusion is partial; the bond is weaker. That's the Z direction.</p>
+
+  <div class="deriv">
+    <span class="step">1. <b>Bond strength scales with reptation time</b> &mdash; the time chains need to entangle across an interface above T_g. Longer hot dwell &rarr; better bond.</span>
+    <span class="step">2. <b>Reptation time</b> depends exponentially on T &minus; T_g. PLA at 60&deg;C glass transition: a chamber at 50&deg;C does almost nothing. ABS at 100&deg;C: chamber at 80&deg;C helps massively. <span class="arrow">&rarr;</span> heated enclosures matter most for high-T_g materials.</span>
+    <span class="step">3. <b>Layer height vs. line width</b> &mdash; the bonded area between layers scales with line width &times; layer length, not bead overlap. Lower layer height = more layers = more bond-line area per Z mm.</span>
+    <span class="step">4. <b>Annealing after print</b> &mdash; PLA-HT, PA, PEEK, PP all gain Z strength dramatically when annealed above T_g for hours; partial crystallization fuses across the bond.</span>
+  </div>
+
+  <h2>Strength by orientation &mdash; the three test cases</h2>
+  <p>FDM literature reports tensile coupons in three canonical orientations. The names refer to the long axis of the dog-bone coupon relative to the build plate:</p>
+
+  <div class="figure">
+    <svg id="orient" viewBox="0 0 720 280"></svg>
+    <p class="label-dim" style="font:12px ui-monospace,monospace;margin:6px 0 0;color:var(--fg-dim)">Three coupon orientations. Tensile load applied along the long axis (red arrows). XY is strongest; Z is weakest.</p>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>Material: <span class="readout" id="matRead">PLA</span></label>
+      <select id="mat">
+        <option value="pla" selected>PLA</option>
+        <option value="petg">PETG</option>
+        <option value="abs">ABS</option>
+        <option value="pa12">PA12 (nylon)</option>
+        <option value="pacf">PA-CF (carbon-fill)</option>
+        <option value="pcblend">PC blend</option>
+        <option value="tpu95a">TPU 95A</option>
+      </select>
+    </div>
+    <div class="control"><label>Load angle from print plane: <span class="readout" id="angRead">0&deg; (XY)</span></label>
+      <input id="ang" type="range" min="0" max="90" step="5" value="0"></div>
+    <div class="control"><label>Layer height: <span class="readout" id="lhRead">0.20 mm</span></label>
+      <input id="lh" type="range" min="0.05" max="0.4" step="0.01" value="0.2"></div>
+    <div class="control"><label>Chamber temp: <span class="readout" id="ctRead">25 &deg;C</span></label>
+      <input id="ct" type="range" min="20" max="120" step="5" value="25"></div>
+    <div class="control"><label>Annealed: <span class="readout" id="anRead">no</span></label>
+      <select id="an"><option value="no" selected>no</option><option value="yes">yes (1 h above T_g)</option></select>
+    </div>
+    <div class="control"><label>Wall count: <span class="readout" id="wcRead">4 walls</span></label>
+      <input id="wc" type="range" min="2" max="10" step="1" value="4"></div>
+  </section>
+
+  <div class="figure">
+    <h3 style="margin:6px 0">Predicted tensile strength at load angle</h3>
+    <table id="strengthTbl">
+      <thead><tr><th>Property</th><th>XY (0&deg;)</th><th>Z (90&deg;)</th><th>At load angle &theta;</th><th>Reduction vs. XY</th></tr></thead>
+      <tbody id="strengthBody"></tbody>
+    </table>
+  </div>
+
+  <h2>The Hankinson formula for angle interpolation</h2>
+  <p>For a unidirectionally-reinforced laminate or printed solid, strength at an angle between two principal directions follows the Hankinson formula:</p>
+  <div class="deriv">
+    <span class="step"><b>&sigma;(&theta;) = (&sigma;<sub>0</sub> &middot; &sigma;<sub>90</sub>) / (&sigma;<sub>0</sub> sin&sup2;&theta; + &sigma;<sub>90</sub> cos&sup2;&theta;)</b></span>
+    <span class="step">where &theta; = angle between load and the strong direction (the print plane).</span>
+    <span class="step">&theta; = 0&deg; &rarr; &sigma; = &sigma;<sub>0</sub> (XY full strength)</span>
+    <span class="step">&theta; = 90&deg; &rarr; &sigma; = &sigma;<sub>90</sub> (Z reduced)</span>
+    <span class="step"><span class="arrow">&rarr;</span> the falloff is steepest near the strong direction &mdash; a 15&deg; tilt off the plane gives most of the Z-direction weakening already.</span>
+  </div>
+
+  <h2>Material database (typical FDM, well-tuned profile)</h2>
+  <table>
+    <thead><tr><th>Material</th><th class="num">XY tensile (MPa)</th><th class="num">Z tensile (MPa)</th><th class="num">Z/XY ratio</th><th class="num">XY impact (kJ/m&sup2;)</th><th class="num">Z impact (kJ/m&sup2;)</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>PLA</td><td class="num">55&ndash;65</td><td class="num">25&ndash;35</td><td class="num">0.50</td><td class="num">5.5</td><td class="num">2.0</td><td>Highest Z/XY of common materials; lowest impact.</td></tr>
+      <tr><td>PETG</td><td class="num">45&ndash;55</td><td class="num">25&ndash;35</td><td class="num">0.60</td><td class="num">9</td><td class="num">3</td><td>Better Z ratio than PLA; tougher overall.</td></tr>
+      <tr><td>ABS (open chamber)</td><td class="num">38&ndash;45</td><td class="num">15&ndash;20</td><td class="num">0.42</td><td class="num">20</td><td class="num">5</td><td>Z weak unless chamber heated.</td></tr>
+      <tr><td>ABS (heated chamber 80&deg;C)</td><td class="num">40&ndash;45</td><td class="num">25&ndash;30</td><td class="num">0.60</td><td class="num">20</td><td class="num">10</td><td>Chamber makes a big difference.</td></tr>
+      <tr><td>ASA</td><td class="num">40&ndash;50</td><td class="num">22&ndash;28</td><td class="num">0.55</td><td class="num">18</td><td class="num">8</td><td>UV-stable ABS-equivalent.</td></tr>
+      <tr><td>PA12 (nylon)</td><td class="num">45&ndash;55</td><td class="num">25&ndash;32</td><td class="num">0.57</td><td class="num">25</td><td class="num">12</td><td>Hygroscopic; dry before printing.</td></tr>
+      <tr><td>PA-CF (10&ndash;20 % CF)</td><td class="num">80&ndash;110</td><td class="num">30&ndash;40</td><td class="num">0.35</td><td class="num">15</td><td class="num">5</td><td>Fibres align in print direction &rarr; very high in-plane, very low Z.</td></tr>
+      <tr><td>PC blend</td><td class="num">55&ndash;70</td><td class="num">28&ndash;35</td><td class="num">0.50</td><td class="num">25</td><td class="num">8</td><td>High HDT; needs heated chamber.</td></tr>
+      <tr><td>PEEK (industrial)</td><td class="num">85&ndash;100</td><td class="num">50&ndash;65</td><td class="num">0.60</td><td class="num">5</td><td class="num">3</td><td>Heated chamber 90&ndash;120&deg;C, annealing further closes the gap.</td></tr>
+      <tr><td>TPU 95A (flex)</td><td class="num">30&ndash;40</td><td class="num">20&ndash;28</td><td class="num">0.70</td><td class="num">no break</td><td class="num">no break</td><td>Elastomer &mdash; ductility hides anisotropy in service.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Design rules that survive FDM anisotropy</h2>
+  <div class="worked">
+    <h3>Rule 1 &mdash; Orient the part so primary tensile stress is in-plane</h3>
+    <p>The most important decision is print orientation. For a tab loaded in tension, lay the tab flat so its long axis is in the print plane. Standing it on edge with the load along Z means the tab will delaminate before yielding.</p>
+    <span class="eq">Standing bracket in tension under a 100 N load &rarr; build flat (Z perpendicular to load), not on edge (Z along load).</span>
+    <span class="eq">PLA tab, 5 mm &times; 10 mm cross-section: XY direction holds 60 &times; 50 = 3000 N. Same tab printed Z-up: 28 &times; 50 = 1400 N. <b>2.1&times; difference from orientation alone.</b></span>
+  </div>
+
+  <div class="worked">
+    <h3>Rule 2 &mdash; Avoid stress concentrations on layer lines</h3>
+    <p>Inside corners, holes, and notches concentrate stress. If the concentration coincides with a layer line, the crack initiates there. Two mitigations:</p>
+    <span class="eq">a) Add fillets &mdash; even 1 mm. A sharp inside corner can multiply local stress 3&times;.</span>
+    <span class="eq">b) Orient the part so the stress concentration is parallel to the print plane (eg. a bolt hole through the print plane is fine; a bolt hole drilled radially into a printed boss splits the bond lines).</span>
+  </div>
+
+  <div class="worked">
+    <h3>Rule 3 &mdash; Use walls, not infill, for load-bearing</h3>
+    <p>Infill is a sparse grid bonded only at intersections. Walls are continuous beads. For a part in bending or tension, more walls (4&ndash;6) deliver dramatically more strength than higher infill (50 % &rarr; 80 %).</p>
+    <span class="eq">5 mm thick PLA wall, 4 perimeters at 0.4 mm = 1.6 mm of solid material on each face. Bending stiffness ~ wall t&sup3; on the outer fiber; infill contributes &lt;10 %.</span>
+    <span class="eq">Cura / PrusaSlicer "Strength" preset: 5 walls, 25 % infill (cubic). Print time barely changes; strength roughly doubles vs. default 3 walls, 20 %.</span>
+  </div>
+
+  <h2>Worked example &mdash; printed bracket for a motor mount</h2>
+  <div class="worked">
+    <h3>The part</h3>
+    <p>L-bracket, 60 &times; 40 &times; 30 mm, holds a NEMA17 motor (about 4 N&middot;m torque, 4 kg combined assembly). Two M3 bolts on the vertical face fasten to the chassis; four M3 on the horizontal face hold the motor flange.</p>
+    <h3>The choice</h3>
+    <span class="eq">Material: PA-CF (Z/XY 0.35) &mdash; high in-plane but bad anisotropy</span>
+    <span class="eq">Option A: print "lying down" with the L cross-section in the print plane. Bolts on the vertical face go through XY material. Tensile load in the bolt = XY direction. <b>Strong.</b></span>
+    <span class="eq">Option B: print "standing up" with the L axis along Z. Bolt holes on the vertical face split layer lines; each tightened bolt cracks the bond. <b>Bad.</b></span>
+    <h3>The numbers</h3>
+    <span class="eq">Motor reaction force on bracket: 4 N&middot;m / 0.04 m = 100 N at top of bracket &mdash; pure tensile load on top bolt.</span>
+    <span class="eq">M3 thread root area: 5.0 mm&sup2;. Stress in bolt body: 100 / 5 = 20 MPa &mdash; trivial for steel bolt.</span>
+    <span class="eq">Stress in PA-CF around the bolt boss (in-plane): &asymp; 100 / (4 mm &times; 6 mm wall) &asymp; 4 MPa. Far below 100 MPa XY allowable. Margin 25&times;.</span>
+    <span class="eq">If printed standing up: the same 4 MPa is now Z-direction. PA-CF Z &asymp; 35 MPa &rarr; margin 9&times; on tensile, but Z impact toughness &lt; 5 kJ/m&sup2;. One thermal cycle + vibration &rarr; delamination.</span>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Orientation beats material</b> &mdash; a PETG part printed correctly outperforms a PA-CF part printed wrong. Always plan orientation before choosing material.</li>
+    <li><b>Z/XY ratio is a material property AND a process property</b> &mdash; the same PA12 prints with Z/XY 0.4 in an open chamber and 0.7 in a 90&deg;C heated chamber. Annealing closes the gap further.</li>
+    <li><b>CF and GF fillers worsen anisotropy</b> &mdash; the fibers align with the bead direction, boosting in-plane strength but doing nothing for Z. Reinforced materials have the worst Z/XY ratios.</li>
+    <li><b>Impact strength drops further than tensile</b> &mdash; tensile may halve in Z, but impact may drop to 20 % of in-plane. Anything seeing shock loads must avoid Z-axis loading.</li>
+    <li><b>Layer height trades surface finish for bond area</b> &mdash; thinner layers = more bonds per Z mm = better Z strength (slightly). The bigger lever is chamber temperature.</li>
+    <li><b>Walls do the work</b> &mdash; honeycomb infill is for buckling resistance and weight, not tensile strength. For a load-bearing part, increase walls before increasing infill.</li>
+  </ul>
+
+  <h2>Where this links into the curriculum</h2>
+  <div class="crosslink">
+    <h4>Related visuals &amp; references</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Stress &amp; strain</b> &mdash; <a href="stress-strain.html">stress-strain.html</a> &mdash; XY vs. Z curves diverge before yield; understand isotropic curves first.</li>
+      <li><b style="color:var(--fg)">Material classes</b> &mdash; <a href="material-classes.html">material-classes.html</a> &mdash; thermoplastics vs. thermosets; semicrystalline vs. amorphous controls Z bond physics.</li>
+      <li><b style="color:var(--fg)">Filaments</b> &mdash; <a href="filaments-materials.html">filaments-materials.html</a> &mdash; per-material print settings that affect Z bond.</li>
+      <li><b style="color:var(--fg)">Fatigue &amp; fracture</b> &mdash; <a href="fatigue-fracture.html">fatigue-fracture.html</a> &mdash; layer-line interface as a built-in flaw / crack starter.</li>
+      <li><b style="color:var(--fg)">FDM process</b> &mdash; <a href="../phase-5-manufacturing/fdm-process.html">fdm-process.html</a> &mdash; slicer settings that govern wall and infill.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Hankinson</dt><dd><span class="eq">&sigma;(&theta;)=&sigma;<sub>0</sub>&sigma;<sub>90</sub>/(&sigma;<sub>0</sub>sin&sup2;+&sigma;<sub>90</sub>cos&sup2;)</span></dd>
+        <dt>Z/XY ratio</dt><dd>0.3 (CF) to 0.7 (TPU)</dd>
+        <dt>Bond temp</dt><dd>T &gt; T_g for chain interdiffusion</dd>
+        <dt>Wall area</dt><dd><span class="eq">A = N_walls &times; w &times; L</span></dd>
+        <dt>Bending I</dt><dd><span class="eq">I &asymp; (b&middot;t&sup3;)/12 for wall t</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SHORTCUTS</h3>
+      <ul>
+        <li><b>Print flat</b>: lay the long axis in the build plane.</li>
+        <li><b>Bolt holes</b>: orient so the bolt axis is in the print plane.</li>
+        <li><b>Heated chamber</b>: most effective for high-T_g materials (ABS, PC, PEEK).</li>
+        <li><b>Anneal PLA-HT &amp; PA</b>: 1 h above T_g; expect 1.3&ndash;1.8&times; Z strength.</li>
+        <li><b>4&ndash;6 walls</b>: cheap strength multiplier. Infill matters less.</li>
+        <li><b>Avoid sharp corners</b>: fillets &gt; 1 mm.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Bolt hole drilled across layer lines</b> &mdash; tightening cracks the bond.</li>
+        <li><b>Thin tabs printed Z-up</b> &mdash; snap at first load.</li>
+        <li><b>CF/GF filled, badly oriented</b> &mdash; worst case: high in-plane wasted by Z loading.</li>
+        <li><b>Open chamber on ABS/PC</b> &mdash; Z strength 50 % of heated-chamber value.</li>
+        <li><b>Assuming isotropic in FEA</b> &mdash; if your FEA report says "OK" but the test fails, the model treated FDM as isotropic. Use orthotropic properties or 0.5&times; safety on Z.</li>
+        <li><b>Quoting only tensile</b> &mdash; impact and fatigue both drop further than tensile in Z.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">ME Phase 2 &mdash; Materials Science</span> &middot;
+    Topic: FDM anisotropy &amp; orientation design &middot;
+    Companion visuals: <a href="filaments-materials.html">Filaments &amp; Materials</a>, <a href="stress-strain.html">Stress / Strain</a>, <a href="../phase-5-manufacturing/fdm-process.html">FDM Process</a>
+  </footer>
+</main>
+
+<script>
+  const materials = {
+    pla:   {name:'PLA',         xy:60, z:30, xyImpact:5.5, zImpact:2.0, tg:60,  density:1.24, annealBoost:1.4, chamberSens:0.2},
+    petg:  {name:'PETG',        xy:50, z:30, xyImpact:9.0, zImpact:3.0, tg:80,  density:1.27, annealBoost:1.2, chamberSens:0.3},
+    abs:   {name:'ABS',         xy:42, z:17, xyImpact:20,  zImpact:5.0, tg:105, density:1.04, annealBoost:1.3, chamberSens:1.0},
+    pa12:  {name:'PA12',        xy:50, z:28, xyImpact:25,  zImpact:12,  tg:50,  density:1.01, annealBoost:1.5, chamberSens:0.6},
+    pacf:  {name:'PA-CF',       xy:95, z:35, xyImpact:15,  zImpact:5.0, tg:55,  density:1.14, annealBoost:1.4, chamberSens:0.6},
+    pcblend:{name:'PC blend',   xy:60, z:30, xyImpact:25,  zImpact:8.0, tg:140, density:1.20, annealBoost:1.3, chamberSens:1.1},
+    tpu95a:{name:'TPU 95A',     xy:35, z:25, xyImpact:99,  zImpact:99,  tg:-30, density:1.21, annealBoost:1.0, chamberSens:0.1}
+  };
+
+  const els = {};
+  ['mat','ang','lh','ct','an','wc'].forEach(id => els[id] = document.getElementById(id));
+  ['matRead','angRead','lhRead','ctRead','anRead','wcRead'].forEach(id => els[id] = document.getElementById(id));
+
+  function hankinson(s0, s90, thetaDeg){
+    const t = thetaDeg * Math.PI/180;
+    const s = Math.sin(t), c = Math.cos(t);
+    return (s0 * s90) / (s0 * s*s + s90 * c*c);
+  }
+
+  function adjustForProcess(matKey, baseXY, baseZ){
+    const m = materials[matKey];
+    const chamber = parseFloat(els.ct.value);
+    const anneal = els.an.value === 'yes';
+    const lh = parseFloat(els.lh.value);
+    // Chamber effect on Z bond, normalized so 25C -> 1.0, T_g -> ~1.4
+    const chamberDelta = Math.max(0, (chamber - 25) / Math.max(1, m.tg - 25));
+    const zMult = 1 + chamberDelta * m.chamberSens * 0.4;
+    // Layer height: thinner = slightly stronger Z
+    const lhMult = 1 + (0.2 - lh) * 0.5; // ~+0.075 at 0.05 mm, -0.1 at 0.4 mm
+    const xyMult = 1 + (0.2 - lh) * 0.1; // small effect on XY
+    const annealMult = anneal ? m.annealBoost : 1.0;
+    return {
+      xy: baseXY * xyMult,
+      z:  baseZ  * zMult * lhMult * annealMult
+    };
+  }
+
+  function drawOrient(){
+    const svg = document.getElementById('orient');
+    let s = '';
+    s += `<text x="120" y="34" class="label" text-anchor="middle" fill="#a3e635">XY (flat &mdash; strongest)</text>`;
+    s += `<text x="360" y="34" class="label" text-anchor="middle" fill="#ffb86c">Edge (45&deg;)</text>`;
+    s += `<text x="600" y="34" class="label" text-anchor="middle" fill="#ff7b72">Z (upright &mdash; weakest)</text>`;
+    // build plate baseline
+    [120, 360, 600].forEach(cx => {
+      s += `<line x1="${cx-90}" y1="220" x2="${cx+90}" y2="220" stroke="#8f99a8" stroke-width="2"/>`;
+      s += `<line x1="${cx-90}" y1="220" x2="${cx-100}" y2="232" stroke="#8f99a8" stroke-width="1"/>`;
+      s += `<line x1="${cx-50}" y1="220" x2="${cx-60}" y2="232" stroke="#8f99a8" stroke-width="1"/>`;
+      s += `<line x1="${cx+50}" y1="220" x2="${cx+40}" y2="232" stroke="#8f99a8" stroke-width="1"/>`;
+      s += `<line x1="${cx+90}" y1="220" x2="${cx+80}" y2="232" stroke="#8f99a8" stroke-width="1"/>`;
+      s += `<text x="${cx}" y="248" class="label-dim" text-anchor="middle">build plate</text>`;
+    });
+
+    // XY coupon: dog-bone laid flat. Layer lines parallel to coupon long axis.
+    const cx1 = 120, ly = 200;
+    s += `<rect x="${cx1-60}" y="${ly-15}" width="120" height="20" fill="#2a3340" stroke="#5ec8ff" stroke-width="1.5"/>`;
+    for(let y = ly-15; y <= ly+5; y += 4){
+      s += `<line x1="${cx1-60}" y1="${y}" x2="${cx1+60}" y2="${y}" stroke="#5ec8ff" stroke-width="0.6" opacity="0.6"/>`;
+    }
+    // pull arrows
+    s += `<line x1="${cx1-70}" y1="${ly-5}" x2="${cx1-95}" y2="${ly-5}" stroke="#ff7b72" stroke-width="2"/>`;
+    s += `<polygon points="${cx1-95},${ly-5} ${cx1-87},${ly-9} ${cx1-87},${ly-1}" fill="#ff7b72"/>`;
+    s += `<line x1="${cx1+70}" y1="${ly-5}" x2="${cx1+95}" y2="${ly-5}" stroke="#ff7b72" stroke-width="2"/>`;
+    s += `<polygon points="${cx1+95},${ly-5} ${cx1+87},${ly-9} ${cx1+87},${ly-1}" fill="#ff7b72"/>`;
+    s += `<text x="${cx1}" y="${ly+25}" class="label-dim" text-anchor="middle">load along XY bonds &rarr; bulk strength</text>`;
+
+    // 45 coupon: dog-bone at 45 angle
+    const cx2 = 360, ly2 = 180;
+    const ang = 45 * Math.PI/180;
+    const dx = Math.cos(ang)*60, dy = -Math.sin(ang)*60;
+    // approximation: draw rotated rect via polygon
+    function rotPoly(cx, cy, w, h, theta){
+      const c = Math.cos(theta), s2 = Math.sin(theta);
+      const corners = [[-w/2,-h/2],[w/2,-h/2],[w/2,h/2],[-w/2,h/2]];
+      return corners.map(([x,y]) => `${(cx + x*c - y*s2).toFixed(1)},${(cy + x*s2 + y*c).toFixed(1)}`).join(' ');
+    }
+    s += `<polygon points="${rotPoly(cx2, ly2, 120, 20, ang)}" fill="#2a3340" stroke="#ffb86c" stroke-width="1.5"/>`;
+    // layer lines horizontal across the rotated coupon
+    for(let y = ly2-30; y <= ly2+30; y += 4){
+      s += `<line x1="${cx2-50}" y1="${y}" x2="${cx2+50}" y2="${y}" stroke="#ffb86c" stroke-width="0.5" opacity="0.45"/>`;
+    }
+    s += `<line x1="${cx2-dx-10}" y1="${ly2-dy}" x2="${cx2-dx-30}" y2="${ly2-dy+15}" stroke="#ff7b72" stroke-width="2"/>`;
+    s += `<line x1="${cx2+dx+10}" y1="${ly2+dy}" x2="${cx2+dx+30}" y2="${ly2+dy-15}" stroke="#ff7b72" stroke-width="2"/>`;
+    s += `<text x="${cx2}" y="248" class="label-dim" text-anchor="middle">load crosses layers &rarr; Hankinson interpolation</text>`;
+
+    // Z coupon: dog-bone standing up. Layer lines horizontal.
+    const cx3 = 600, ly3 = 165;
+    s += `<rect x="${cx3-10}" y="${ly3-60}" width="20" height="120" fill="#2a3340" stroke="#ff7b72" stroke-width="1.5"/>`;
+    for(let y = ly3-60; y <= ly3+60; y += 4){
+      s += `<line x1="${cx3-10}" y1="${y}" x2="${cx3+10}" y2="${y}" stroke="#ff7b72" stroke-width="0.6" opacity="0.6"/>`;
+    }
+    s += `<line x1="${cx3}" y1="${ly3-70}" x2="${cx3}" y2="${ly3-95}" stroke="#ff7b72" stroke-width="2"/>`;
+    s += `<polygon points="${cx3},${ly3-95} ${cx3-4},${ly3-87} ${cx3+4},${ly3-87}" fill="#ff7b72"/>`;
+    s += `<line x1="${cx3}" y1="${ly3+70}" x2="${cx3}" y2="${ly3+95}" stroke="#ff7b72" stroke-width="2"/>`;
+    s += `<polygon points="${cx3},${ly3+95} ${cx3-4},${ly3+87} ${cx3+4},${ly3+87}" fill="#ff7b72"/>`;
+    s += `<text x="${cx3}" y="265" class="label-dim" text-anchor="middle">load pulls layers apart &rarr; weakest</text>`;
+
+    svg.innerHTML = s;
+  }
+
+  function update(){
+    const matKey = els.mat.value;
+    const m = materials[matKey];
+    const ang = parseFloat(els.ang.value);
+    const lh  = parseFloat(els.lh.value);
+    const ct  = parseFloat(els.ct.value);
+    const wc  = parseInt(els.wc.value);
+    const an  = els.an.value;
+
+    els.matRead.textContent = m.name;
+    els.angRead.textContent = ang === 0 ? '0° (XY)' : ang === 90 ? '90° (Z)' : ang + '°';
+    els.lhRead.textContent  = lh.toFixed(2) + ' mm';
+    els.ctRead.textContent  = ct + ' °C';
+    els.anRead.textContent  = an;
+    els.wcRead.textContent  = wc + ' walls';
+
+    const adj = adjustForProcess(matKey, m.xy, m.z);
+    const sigma = hankinson(adj.xy, adj.z, ang);
+    const reduction = ((adj.xy - sigma) / adj.xy * 100);
+    const impactSigma = hankinson(m.xyImpact, m.zImpact, ang);
+
+    const rows = [
+      `<tr><td>Tensile strength (MPa)</td><td class="num">${adj.xy.toFixed(1)}</td><td class="num">${adj.z.toFixed(1)}</td><td class="num">${sigma.toFixed(1)}</td><td class="num">${reduction.toFixed(0)} %</td></tr>`,
+      `<tr><td>Z/XY ratio</td><td class="num">1.00</td><td class="num">${(adj.z/adj.xy).toFixed(2)}</td><td class="num">${(sigma/adj.xy).toFixed(2)}</td><td class="num">&mdash;</td></tr>`,
+      `<tr><td>Impact (kJ/m²)</td><td class="num">${m.xyImpact.toFixed(1)}</td><td class="num">${m.zImpact.toFixed(1)}</td><td class="num">${impactSigma.toFixed(1)}</td><td class="num">${((m.xyImpact-impactSigma)/m.xyImpact*100).toFixed(0)} %</td></tr>`,
+      `<tr><td>Glass transition T_g (°C)</td><td colspan="4" class="num">${m.tg} °C (chamber at ${ct} → ${ct >= m.tg ? '<b style="color:#a3e635">above T_g, good for bonding</b>' : 'below T_g, limited bond improvement'})</td></tr>`,
+      `<tr><td>Density (g/cm³)</td><td colspan="4" class="num">${m.density}</td></tr>`,
+    ];
+    document.getElementById('strengthBody').innerHTML = rows.join('');
+    drawOrient();
+  }
+
+  ['mat','ang','lh','ct','an','wc'].forEach(id=>{
+    els[id].addEventListener('input', update);
+    els[id].addEventListener('change', update);
+  });
+  update();
+</script>
+</body>
+</html>

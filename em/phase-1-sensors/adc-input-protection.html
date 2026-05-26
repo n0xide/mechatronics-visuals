@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADC Input Protection — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 20px}
+  .chip{background:var(--bg-elev2);border:1px solid var(--line);border-radius:14px;padding:3px 10px;font:11px ui-monospace,monospace;color:var(--accent);text-decoration:none}
+  .chip:hover{background:var(--bg-elev);border-color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <h1>ADC Input Protection</h1>
+  <p class="lede">An ADC input is a tiny capacitor (a few pF) connected to a high-impedance node inside the chip — usually with internal ESD clamp diodes good for a milliamp or two. A real-world signal source can hit it with anything: 12 V transients, kV ESD, kHz noise. Three building blocks — Schottky clamp diodes, a series resistor, and an RC anti-alias filter — turn that raw input into something the MCU survives.</p>
+
+  <div class="chips">
+    <a class="chip" href="#clamps">#clamp-diodes</a>
+    <a class="chip" href="#series">#series-R</a>
+    <a class="chip" href="#aa">#anti-alias</a>
+    <a class="chip" href="#sourceZ">#source-Z</a>
+    <a class="chip" href="#worked">#worked-example</a>
+    <a class="chip" href="#cheats">#cheat-sheet</a>
+  </div>
+
+  <h2>The three threats and three answers</h2>
+  <ul class="notice">
+    <li><b>Over-voltage</b> — the signal goes above V_DD + 0.3 V or below GND − 0.3 V. Answer: clamp diodes (Schottky for fast, low V_F).</li>
+    <li><b>Surge current</b> — even with clamps in place, the spike has to be limited. Answer: a series resistor (typically 1–10 kΩ).</li>
+    <li><b>High-frequency noise above Nyquist</b> — aliasing folds the noise into your signal band. Answer: an RC low-pass filter at f_c ≤ f_sample/2.</li>
+  </ul>
+
+  <section class="controls">
+    <div class="control"><label>V_DD: <span class="readout" id="vddRead">3.30 V</span></label>
+      <input id="vdd" type="range" min="1.8" max="5.0" step="0.1" value="3.3"></div>
+    <div class="control"><label>V_signal: <span class="readout" id="vsRead">8.0 V</span></label>
+      <input id="vs" type="range" min="-12" max="24" step="0.1" value="8"></div>
+    <div class="control"><label>R_series: <span class="readout" id="rsRead">1.0 kΩ</span></label>
+      <input id="rs" type="range" min="0" max="50000" step="100" value="1000"></div>
+    <div class="control"><label>C_filter: <span class="readout" id="cRead">100 nF</span></label>
+      <input id="c" type="range" min="0" max="1000" step="10" value="100"></div>
+    <div class="control"><label>ADC sample rate: <span class="readout" id="fsRead">100 kSps</span></label>
+      <input id="fs" type="range" min="1" max="1000" step="1" value="100"></div>
+    <div class="control"><label>Source Z: <span class="readout" id="srcRead">500 Ω</span></label>
+      <input id="src" type="range" min="50" max="100000" step="50" value="500"></div>
+  </section>
+
+  <div class="figure">
+    <svg id="schematic" viewBox="0 0 600 280" width="100%"></svg>
+    <table id="tbl">
+      <tr><th>Quantity</th><th>Value</th><th>Notes</th></tr>
+      <tr><td>V_in at ADC pin (clamped)</td><td id="tVin" class="num">3.50 V</td><td>after clamp diode</td></tr>
+      <tr><td>Diode current</td><td id="tId" class="num">4.5 mA</td><td>fault current sunk by clamp</td></tr>
+      <tr><td>Power in R_series</td><td id="tPr" class="num">20.3 mW</td><td><code>I² · R</code></td></tr>
+      <tr><td>RC time constant τ</td><td id="tTau" class="num">100 µs</td><td><code>R_series · C</code></td></tr>
+      <tr><td>−3 dB cutoff f_c</td><td id="tFc" class="num">1.59 kHz</td><td><code>1 / (2π · R · C)</code></td></tr>
+      <tr><td>Settling at sample</td><td id="tSet" class="num">99.3 %</td><td>≥ 5τ before convert</td></tr>
+      <tr><td>Source-Z ratio</td><td id="tSz" class="num">0.50 / 1.0 kΩ OK</td><td>≤ 1 kΩ for fast ADC</td></tr>
+    </table>
+  </div>
+
+  <h2 id="clamps">Clamp diodes</h2>
+  <p>The MCU's input pin has internal ESD diodes from pin → V_DD and from GND → pin. Both are forward-biased only when the pin tries to leave the supply rails. Their I-V characteristic is the usual silicon diode: ~0.7 V drop, exponential below, hard above.</p>
+  <p>Internal clamps are <em>weak</em> — they're sized for ESD events (a few amps for nanoseconds), not sustained DC. The datasheet usually rates the absolute max input current at <b>±10 mA</b>. Even 10 mA into the V_DD rail of an unloaded board can lift V_DD until something else clamps it; "phantom powering" the chip through its own input pin is a real failure mode.</p>
+  <p>External Schottky diodes solve this by clamping before the internal diodes turn on. They have a lower V_F (typically 0.25–0.35 V at 1 mA vs. silicon's 0.65 V), so the input rail never reaches the internal diode's turn-on threshold. The external Schottkys can sink amps without complaint.</p>
+
+  <div class="deriv">
+    <span class="step">Without protection: V_signal = 12 V → internal clamp turns on at V_DD + 0.7 ≈ 4.0 V → fault current into V_DD pin = (12 − 4.0) / R_source</span>
+    <span class="step">If R_source is tiny (50 Ω), fault I = 8/50 = <b>160 mA</b> → chip destroyed.</span>
+    <span class="step">With R_series = 10 kΩ between signal and pin: fault I = 8/10k = <b>0.8 mA</b> → safe.</span>
+    <span class="step">With external BAT54 Schottky to V_DD: V_pin clamps at V_DD + 0.35 V; chip never sees a fault current at all.</span>
+  </div>
+
+  <h2 id="series">Series resistor — the current limit</h2>
+  <p>Pick R_series large enough that the worst-case fault current (signal at maximum possible voltage, clamped down to V_DD+0.35) is below the chip's input limit.</p>
+  <div class="deriv">
+    <span class="step"><b>R_series ≥ (V_signal_max − V_DD) / I_clamp_max</b></span>
+    <span class="step">Example: 24 V max signal, 3.3 V supply, 10 mA limit → R_series ≥ 20.7/10mA = <b>2.07 kΩ → round up to 4.7 kΩ</b>.</span>
+    <span class="step">For "transient only" (ESD, lightning-induced): use a TVS diode in front, R_series can be smaller (100–1000 Ω).</span>
+  </div>
+  <p>But there's a trade-off: bigger R_series means slower charge of the ADC's sample-and-hold capacitor. Which is the next constraint.</p>
+
+  <h2 id="sourceZ">Source impedance limit</h2>
+  <p>The ADC sample-and-hold takes a snapshot at the start of each conversion. During the acquisition window (typically 0.5–5 µs), the S/H cap (1–15 pF inside most MCUs, plus the external C_filter) must charge through your source impedance. If acquisition time is too short, you sample a partial charge — yielding low readings.</p>
+  <p>Most MCU vendors publish a <b>recommended source impedance</b>:</p>
+  <table>
+    <tr><th>MCU family</th><th>Acquisition time</th><th>Max source Z (typ.)</th></tr>
+    <tr><td>RP2040/RP2350 (Pico)</td><td>~1 µs @ 500 kSps</td><td class="num">≤ 1 kΩ</td></tr>
+    <tr><td>STM32F1/F4 12-bit SAR</td><td>0.5 µs (configurable)</td><td class="num">≤ 50 kΩ @ 144 cycles</td></tr>
+    <tr><td>ESP32-S3 12-bit SAR</td><td>~5 µs</td><td class="num">≤ 10 kΩ (poor linearity above)</td></tr>
+    <tr><td>ATmega328 10-bit</td><td>13 ADC clocks ≈ 104 µs</td><td class="num">≤ 10 kΩ</td></tr>
+    <tr><td>ADS1115 16-bit ΔΣ</td><td>full sample period</td><td class="num">10 MΩ (very high)</td></tr>
+  </table>
+  <p>If your divider's Thévenin resistance (R1‖R2) exceeds the limit, options:</p>
+  <ul class="notice">
+    <li><b>Add a buffer op-amp</b> in unity-gain (voltage follower) — input Z = ∞, output Z ≈ 0.</li>
+    <li><b>Add a sample-cap</b> (100–1000 pF) directly at the ADC pin — pre-charges before sampling, lower S/H ripple.</li>
+    <li><b>Increase acquisition time</b> — most STM32 ADCs have ADC_SMPR registers; pick a slower channel for high-Z sources.</li>
+    <li><b>Lower divider impedance</b> — drop from 100 kΩ pair to 10 kΩ pair if standby current allows.</li>
+  </ul>
+
+  <h2 id="aa">RC anti-alias filter</h2>
+  <p>If your signal has frequency content above f_sample/2 (Nyquist), it folds into the baseband — appearing as low-frequency noise in your reading. The cure is a low-pass filter at or below Nyquist:</p>
+  <div class="deriv">
+    <span class="step"><b>f_c = 1 / (2π · R · C)</b></span>
+    <span class="step">For f_sample = 100 kSps → f_Nyquist = 50 kHz → choose <b>f_c ≤ 25 kHz</b> for safe rolloff at the fold.</span>
+    <span class="step">R = 1 kΩ, C = 10 nF gives <b>f_c = 15.9 kHz</b> — fine.</span>
+    <span class="step">Going to higher orders (Sallen-Key 2nd-order, or anti-alias active filters) gets you a sharper cutoff, but for resistive sensors a single RC is enough.</span>
+  </div>
+  <p>Note that R here serves <b>double duty</b>: current limit AND filter pole. That's elegant — but it also means choosing R involves balancing both constraints. The settling-time check at the bottom of the table flags when you've made R too big for the configured acquisition window.</p>
+
+  <h2 id="worked">Worked example — battery monitor with protection</h2>
+  <div class="worked">
+    <h3>The scenario</h3>
+    <p>Pico 2 W (RP2350) monitoring a 4S Li-ion pack (16.8 V max). ADC has 3.3 V reference, ≤ 1 kΩ source impedance for 12-bit linearity. Worst-case fault: a slip with a probe shorts the input to the +14 V battery rail.</p>
+
+    <h3>Step 1 — divider</h3>
+    <span class="eq">Ratio needed: 16.8 / 3.3 ≈ 5.09 → divider 4.7 kΩ / 1.0 kΩ (5.7:1, slightly conservative) <span class="annot">(R_th = 825 Ω, OK for ≤ 1 kΩ)</span></span>
+
+    <h3>Step 2 — clamp + series</h3>
+    <span class="eq">Add a 1 kΩ in series after the divider tap, plus a BAT54S dual-Schottky (clamp to V_DD and GND).</span>
+    <span class="eq">Fault scenario: tap shoots to 14 V before divider does anything → 1 kΩ limits I_clamp = (14 − 3.65) / 1000 = 10.4 mA — at the limit, but with Schottky helping, the internal diode never turns on.</span>
+    <span class="eq">Safer: bump R_series to 4.7 kΩ → I_clamp = 2.2 mA, comfortably safe.</span>
+
+    <h3>Step 3 — anti-alias</h3>
+    <p>Battery voltage varies on the millisecond timescale (PWM-driven motor draws). Sample at 1 kSps in firmware. Choose f_c around 100 Hz for 10× margin.</p>
+    <span class="eq">R · C = 1 / (2π · 100) = 1.59 ms → with R = 4.7 kΩ, <b>C = 1.59 ms / 4.7 kΩ = 340 nF</b> → use 470 nF X7R.</span>
+    <span class="eq">Settling check: 5τ = 5 · 4.7 kΩ · 470 nF = 11 ms — but we're sampling at 1 ms intervals. Sampling rate must drop to 100 Hz, or this voltage isn't going to be a fast measurement.</span>
+    <span class="eq">For a battery voltage that doesn't change fast anyway, a slower sample rate is fine. <b>Adjust f_sample to match the RC, not the other way around.</b></span>
+
+    <h3>Step 4 — BOM</h3>
+    <span class="eq">R1 = 4.7 kΩ (1 %), R2 = 1.0 kΩ (1 %), R_series = 4.7 kΩ, C = 470 nF X7R, D1 = BAT54S.</span>
+    <span class="eq">Total per channel: ~$0.20. Adds 50 mil² of board area. Eliminates a class of "I plugged in the wrong thing" failures.</span>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>R_series does triple duty</b> — current limit on fault, source-Z for ADC, and anti-alias pole. Pick it as the larger of those three constraints.</li>
+    <li><b>Don't trust the internal clamps</b> for sustained over-voltage. They're for ESD only. External Schottky + R_series is cheap insurance.</li>
+    <li><b>Schottky V_F is the headline spec</b>. BAT54: 0.32 V at 1 mA. BAS40: 0.38 V. PMEG: 0.25 V. Lower is better — keeps the pin closer to V_DD during a fault, less stress on the internal diode.</li>
+    <li><b>Anti-alias before sample</b>. There's no software trick that recovers signal aliased into your band. The filter must be analog, ahead of the ADC.</li>
+    <li><b>The "source impedance" spec is real</b>. Some MCUs (RP2350 at full 500 kSps) are surprisingly picky — a 10 kΩ divider drops the LSB into noise. Either buffer or drop the rate.</li>
+  </ul>
+
+  <h2>Where you'll see this</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Battery monitor inputs</b> — always behind a divider plus clamp diode.</li>
+      <li><b style="color:var(--fg)">External sensor jacks</b> on dev boards — users plug in unknown voltages; must survive.</li>
+      <li><b style="color:var(--fg)">Motor current shunts</b> — high-side resistor measured across with a differential amp; protection on both inputs.</li>
+      <li><b style="color:var(--fg)">Industrial 0–24 V / 4–20 mA loops</b> — burden resistor converts to voltage, divider scales to ADC, clamp + R_series protects.</li>
+      <li><b style="color:var(--fg)">User-input audio</b> (line in, mic) — AC-coupled, bias to mid-rail, clamp + RC, into ADC.</li>
+    </ul>
+  </div>
+
+  <h2 id="cheats">Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>R_series</dt><dd><span class="eq">R_s ≥ (V_max − V_DD) / I_clamp</span></dd>
+        <dt>I_clamp limit</dt><dd><span class="eq">≤ 10 mA (typical MCU)</span></dd>
+        <dt>τ</dt><dd><span class="eq">τ = R · C</span></dd>
+        <dt>f_c (-3 dB)</dt><dd><span class="eq">f_c = 1 / (2π · R · C)</span></dd>
+        <dt>Settling N · τ</dt><dd><span class="eq">5τ → 99.3 %; 7τ → 99.9 %</span></dd>
+        <dt>Source-Z</dt><dd><span class="eq">R_th ≤ MCU spec</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>RULES OF THUMB</h3>
+      <ul>
+        <li><b>R_series = 1 kΩ</b> default for hobbyist 3.3 V/5 V projects.</li>
+        <li><b>Anti-alias C</b>: 100 nF–1 µF X7R for slow signals.</li>
+        <li><b>Schottky clamp</b>: BAT54S (dual, common cathode) is the default.</li>
+        <li><b>5τ rule</b>: leave 5 RC time-constants for settling.</li>
+        <li><b>1 kΩ ≤ R_source for fast SAR</b>; 10–50 kΩ for slow MCU ADCs; ∞ for ΔΣ.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>R_series too big</b> → slow settling, ADC reads low. Match to acquisition time.</li>
+        <li><b>Skipping the clamp diode</b> "because the signal is always 0–3 V" — until a probe slip puts 24 V on it.</li>
+        <li><b>Clamp into a powered-off rail</b> — if V_DD is at 0 V and you clamp to it, your signal gets dragged to ground through the diode. Worth checking before assuming the clamp is "free."</li>
+        <li><b>RC pole too high</b> — aliasing wrecks SNR with no error indication. Always verify.</li>
+        <li><b>Forgetting the divider's R_th counts as R_series</b> — a 10 kΩ:10 kΩ divider already has 5 kΩ source impedance.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EM Phase 1 — Sensors</span> ·
+    Topic: ADC input protection ·
+    Cross: <a href="../../ee/phase-1-dc-circuits/voltage-divider-explorer.html">Voltage Divider</a> ·
+    Forward: <a href="signal-conditioning.html">Signal Conditioning</a>
+  </footer>
+</main>
+<script>
+  const els = {
+    vdd:document.getElementById('vdd'),
+    vs:document.getElementById('vs'),
+    rs:document.getElementById('rs'),
+    c:document.getElementById('c'),
+    fs:document.getElementById('fs'),
+    src:document.getElementById('src')
+  };
+
+  function fmtR(r){
+    if(r >= 1e6) return (r/1e6).toFixed(2) + " MΩ";
+    if(r >= 1e3) return (r/1e3).toFixed(r>=10000?1:2) + " kΩ";
+    return r.toFixed(0) + " Ω";
+  }
+  function fmtT(t){
+    if(t >= 1e-3) return (t*1e3).toFixed(2) + " ms";
+    if(t >= 1e-6) return (t*1e6).toFixed(1) + " µs";
+    return (t*1e9).toFixed(0) + " ns";
+  }
+  function fmtF(f){
+    if(f >= 1e6) return (f/1e6).toFixed(2) + " MHz";
+    if(f >= 1e3) return (f/1e3).toFixed(2) + " kHz";
+    return f.toFixed(0) + " Hz";
+  }
+  function fmtP(p){
+    if(p >= 1) return p.toFixed(2) + " W";
+    if(p >= 1e-3) return (p*1e3).toFixed(2) + " mW";
+    return (p*1e6).toFixed(1) + " µW";
+  }
+  function fmtI(i){
+    if(Math.abs(i) >= 1) return i.toFixed(2) + " A";
+    if(Math.abs(i) >= 1e-3) return (i*1e3).toFixed(2) + " mA";
+    return (i*1e6).toFixed(1) + " µA";
+  }
+  function fmtC(c){
+    if(c >= 1e-3) return (c*1e3).toFixed(2) + " mF";
+    if(c >= 1e-6) return (c*1e6).toFixed(2) + " µF";
+    if(c >= 1e-9) return (c*1e9).toFixed(0) + " nF";
+    return (c*1e12).toFixed(0) + " pF";
+  }
+
+  function drawSchematic(Vsig, Vdd, Rs, C, fault){
+    const svg = document.getElementById('schematic');
+    const clampColor = fault ? "var(--warn)" : "var(--accent3)";
+    svg.innerHTML = `
+      <text x="40" y="30" class="label">V_signal = ${Vsig.toFixed(1)} V</text>
+      <line x1="40" y1="40" x2="40" y2="80" class="wire"/>
+      <circle cx="40" cy="40" r="3" fill="var(--accent2)"/>
+
+      <text x="100" y="76" class="label-dim">R_series</text>
+      <text x="100" y="92" class="label-dim">${fmtR(Rs)}</text>
+      <line x1="40" y1="80" x2="60" y2="80" class="wire"/>
+      <rect x="60" y="73" width="40" height="14" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="1.5"/>
+      <line x1="100" y1="80" x2="180" y2="80" class="wire"/>
+
+      <!-- Schottky to V_DD -->
+      <line x1="200" y1="80" x2="200" y2="40" class="wire"/>
+      <polygon points="200,55 195,65 205,65" fill="var(--bg-elev2)" stroke="${fault ? 'var(--warn)' : 'var(--accent3)'}" stroke-width="1.5"/>
+      <line x1="195" y1="55" x2="205" y2="55" stroke="${fault ? 'var(--warn)' : 'var(--accent3)'}" stroke-width="2"/>
+      <text x="225" y="50" class="label-dim">D1 to V_DD (${Vdd.toFixed(1)} V)</text>
+      <line x1="180" y1="40" x2="220" y2="40" class="wire"/>
+      <line x1="220" y1="40" x2="220" y2="30" stroke="var(--accent2)" stroke-width="2"/>
+      <text x="200" y="22" class="label-warn" text-anchor="middle">V_DD</text>
+
+      <!-- Schottky to GND -->
+      <line x1="200" y1="80" x2="200" y2="120" class="wire"/>
+      <polygon points="200,100 195,90 205,90" fill="var(--bg-elev2)" stroke="${fault ? 'var(--warn)' : 'var(--accent3)'}" stroke-width="1.5"/>
+      <line x1="195" y1="100" x2="205" y2="100" stroke="${fault ? 'var(--warn)' : 'var(--accent3)'}" stroke-width="2"/>
+      <text x="225" y="105" class="label-dim">D2 to GND</text>
+      <line x1="180" y1="120" x2="220" y2="120" class="wire"/>
+      <line x1="220" y1="115" x2="220" y2="135" stroke="var(--fg)" stroke-width="2"/>
+      <line x1="216" y1="135" x2="224" y2="135" class="wire"/>
+      <line x1="218" y1="139" x2="222" y2="139" class="wire"/>
+
+      <!-- continue to ADC pin -->
+      <line x1="200" y1="80" x2="320" y2="80" class="wire"/>
+
+      <!-- C_filter -->
+      <line x1="320" y1="80" x2="320" y2="120" class="wire"/>
+      <line x1="305" y1="120" x2="335" y2="120" stroke="var(--fg)" stroke-width="2"/>
+      <line x1="305" y1="125" x2="335" y2="125" stroke="var(--fg)" stroke-width="2"/>
+      <text x="345" y="120" class="label-dim">${fmtC(C)}</text>
+      <line x1="320" y1="130" x2="320" y2="150" class="wire"/>
+      <line x1="316" y1="150" x2="324" y2="150" stroke="var(--fg)" stroke-width="2"/>
+      <line x1="318" y1="154" x2="322" y2="154" class="wire"/>
+
+      <!-- ADC pin -->
+      <line x1="320" y1="80" x2="430" y2="80" class="wire"/>
+      <rect x="430" y="50" width="120" height="80" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="1.5" rx="6"/>
+      <text x="490" y="78" class="label" text-anchor="middle">MCU ADC</text>
+      <text x="490" y="98" class="label-dim" text-anchor="middle">12-bit SAR</text>
+      <text x="490" y="115" class="label-dim" text-anchor="middle">S/H 4 pF</text>
+
+      <text x="320" y="170" class="label">C_filter</text>
+
+      <!-- value indicators -->
+      <text x="40" y="200" class="label-warn">${fault ? "⚠ Fault: clamp active" : "Normal operation"}</text>
+    `;
+  }
+
+  function update(){
+    const Vdd = parseFloat(els.vdd.value);
+    const Vsig = parseFloat(els.vs.value);
+    const Rs = parseFloat(els.rs.value);
+    const C = parseFloat(els.c.value) * 1e-9;  // nF
+    const fs = parseFloat(els.fs.value) * 1000;  // kSps → Sps
+    const src = parseFloat(els.src.value);
+
+    document.getElementById('vddRead').textContent = Vdd.toFixed(2) + " V";
+    document.getElementById('vsRead').textContent = Vsig.toFixed(1) + " V";
+    document.getElementById('rsRead').textContent = fmtR(Rs);
+    document.getElementById('cRead').textContent = fmtC(C);
+    document.getElementById('fsRead').textContent = (fs/1000).toFixed(0) + " kSps";
+    document.getElementById('srcRead').textContent = fmtR(src);
+
+    // clamping: Vsig_eff = clamp(Vsig - Rs*Iclamp), with diode Vf = 0.35
+    const Vf = 0.35;
+    let Vpin = Vsig;
+    let Id = 0;
+    let fault = false;
+    if(Vsig > Vdd + Vf){
+      Vpin = Vdd + Vf;
+      Id = (Vsig - Vpin) / Math.max(Rs, 1);
+      fault = true;
+    } else if(Vsig < -Vf){
+      Vpin = -Vf;
+      Id = -(Vsig - Vpin) / Math.max(Rs, 1);
+      fault = true;
+    }
+    const Pr = Id*Id * Rs;
+    const tau = Rs * C;
+    const fc = (Rs > 0 && C > 0) ? 1 / (2 * Math.PI * Rs * C) : Infinity;
+    // assume acquisition window = 1 / (fs * 20) e.g. 5 % of sample period
+    const t_acq = 1 / (fs * 20);
+    const settle = 1 - Math.exp(-t_acq / Math.max(tau, 1e-12));
+
+    document.getElementById('tVin').textContent = Vpin.toFixed(3) + " V" + (fault ? " (clamped)" : "");
+    document.getElementById('tId').textContent = fmtI(Id);
+    document.getElementById('tPr').textContent = fmtP(Pr);
+    document.getElementById('tTau').textContent = fmtT(tau);
+    document.getElementById('tFc').textContent = isFinite(fc) ? fmtF(fc) : "—";
+    document.getElementById('tSet').textContent = (settle*100).toFixed(2) + " %";
+    document.getElementById('tSz').textContent = fmtR(src) + " (limit 1 kΩ → " + (src <= 1000 ? "OK" : "marginal") + ")";
+
+    drawSchematic(Vsig, Vdd, Rs, C, fault);
+  }
+
+  Object.values(els).forEach(el => el.addEventListener('input', update));
+  update();
+</script>
+</body>
+</html>

@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heatsink Sizer / Thermal Network Calculator — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:1040px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 6px;
+     text-transform:uppercase;letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+
+  .tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:18px;
+    overflow-x:auto;white-space:nowrap}
+  .tab{background:transparent;color:var(--fg-dim);border:none;
+    padding:10px 16px;font:13px ui-monospace,Menlo,monospace;cursor:pointer;
+    border-bottom:2px solid transparent;white-space:nowrap}
+  .tab:hover{color:var(--fg)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .pane{display:none}
+  .pane.active{display:block}
+
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number],.control input[type=text]{
+    background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:5px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .big{font:600 22px/1 ui-monospace,Menlo,monospace;color:var(--accent3);margin:6px 0;display:inline-block}
+
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto;margin:0 auto}
+
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+
+  .verdict{font:600 14px ui-monospace,Menlo,monospace;padding:8px 12px;
+    border-radius:4px;margin:10px 0;display:inline-block}
+  .verdict.ok{background:rgba(163,230,53,0.12);color:var(--accent3);
+    border:1px solid var(--accent3)}
+  .verdict.warn{background:rgba(255,184,108,0.12);color:var(--accent2);
+    border:1px solid var(--accent2)}
+  .verdict.bad{background:rgba(255,123,114,0.12);color:var(--warn);
+    border:1px solid var(--warn)}
+
+  .footer-note{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .footer-note a{color:var(--accent);text-decoration:none}
+
+  .two-col{display:grid;gap:16px;grid-template-columns:1fr 1fr;margin:18px 0}
+  @media (max-width:720px){.two-col{grid-template-columns:1fr}}
+  .col-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:12px 14px}
+  .col-card h3{margin:0 0 8px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Heatsink Sizer / Thermal Network Calculator</h1>
+  <p class="lede">A power semiconductor in air is a 5 W problem trying to fit through a 2 W hole. Cooling design is just Ohm's law on heat: Tj = Tamb + P · ΣΘ. Six tabs walk the whole chain — junction-to-ambient network, finned heatsink sizing, TIM picking, PCB copper spreading, fan-forced convection, and package derating curves — so a TO-220 at 5 W doesn't smoke at 25 °C ambient.</p>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="network">1. Thermal network</button>
+    <button class="tab" data-tab="sink">2. Heatsink sizer</button>
+    <button class="tab" data-tab="tim">3. TIM picker</button>
+    <button class="tab" data-tab="pcb">4. PCB + vias</button>
+    <button class="tab" data-tab="fan">5. Forced convection</button>
+    <button class="tab" data-tab="derate">6. Derating curves</button>
+  </div>
+
+  <!-- =================================================================== -->
+  <!-- TAB 1 — THERMAL NETWORK -->
+  <!-- =================================================================== -->
+  <section class="pane active" id="pane-network">
+    <h2>Thermal network: Tj = Tamb + P · ΣΘ</h2>
+    <p>Heat flows from junction to ambient through a chain of resistances: silicon-to-package (Θjc), package-to-sink interface (Θcs), sink-to-air (Θsa). Each Θ is in °C/W — degrees of rise per watt dissipated. Slide P and the Θ stages; the calculator backs out the required Θsa to stay under Tj_max with a safety derating.</p>
+
+    <div class="anchors">
+      <span class="anchor"><b>Si Tj_max</b> typical 150 °C</span>
+      <span class="anchor"><b>SiC Tj_max</b> 175–200 °C</span>
+      <span class="anchor"><b>GaN Tj_max</b> 150–175 °C</span>
+      <span class="anchor"><b>Safety derate</b> to 80 % of Tj_max</span>
+      <span class="anchor">TO-220 Θjc ≈ <b>1.5–3 °C/W</b></span>
+      <span class="anchor">TO-247 Θjc ≈ <b>0.5–1.5 °C/W</b></span>
+      <span class="anchor">DPAK Θjc ≈ <b>2–5 °C/W</b></span>
+    </div>
+
+    <section class="controls">
+      <div class="control">
+        <label>Power dissipated P: <span class="readout" id="p-read">5.0 W</span></label>
+        <input id="p" type="range" min="0.1" max="100" step="0.1" value="5">
+      </div>
+      <div class="control">
+        <label>Ambient T<sub>amb</sub>: <span class="readout" id="ta-read">25 °C</span></label>
+        <input id="ta" type="range" min="-20" max="85" step="1" value="25">
+      </div>
+      <div class="control">
+        <label>Tj_max (datasheet): <span class="readout" id="tjmax-read">150 °C</span></label>
+        <select id="tjmax">
+          <option value="125">125 °C (commercial Si)</option>
+          <option value="150" selected>150 °C (standard Si)</option>
+          <option value="175">175 °C (GaN HEMT)</option>
+          <option value="200">200 °C (SiC MOSFET)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Safety derating: <span class="readout" id="derate-read">80 %</span></label>
+        <select id="derate">
+          <option value="1.0">100 % (lab only)</option>
+          <option value="0.9">90 %</option>
+          <option value="0.8" selected>80 % (recommended)</option>
+          <option value="0.7">70 % (conservative)</option>
+          <option value="0.6">60 % (automotive / mil)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Θjc (junction → case): <span class="readout" id="rjc-read">1.5 °C/W</span></label>
+        <input id="rjc" type="range" min="0.1" max="10" step="0.1" value="1.5">
+      </div>
+      <div class="control">
+        <label>Θcs (case → sink via TIM): <span class="readout" id="rcs-read">0.5 °C/W</span></label>
+        <input id="rcs" type="range" min="0.05" max="5" step="0.05" value="0.5">
+      </div>
+      <div class="control">
+        <label>Θsa (sink → ambient): <span class="readout" id="rsa-read">10 °C/W</span></label>
+        <input id="rsa" type="range" min="0.1" max="80" step="0.1" value="10">
+      </div>
+    </section>
+
+    <div class="figure">
+      <svg id="netSvg" viewBox="0 0 760 280" width="100%"></svg>
+    </div>
+
+    <table id="netTbl">
+      <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+      <tr><td>ΣΘ junction → ambient</td><td id="t-sum" class="num">12.0 °C/W</td><td><code>Θjc + Θcs + Θsa</code></td></tr>
+      <tr><td>ΔT (junction rise above ambient)</td><td id="t-dt" class="num">60.0 °C</td><td><code>P · ΣΘ</code></td></tr>
+      <tr><td>Tj (junction temperature)</td><td id="t-tj" class="num">85.0 °C</td><td><code>Tamb + P · ΣΘ</code></td></tr>
+      <tr><td>Tcase (under package)</td><td id="t-tc" class="num">77.5 °C</td><td><code>Tamb + P · (Θsa + Θcs)</code></td></tr>
+      <tr><td>Tsink (heatsink base)</td><td id="t-ts" class="num">75.0 °C</td><td><code>Tamb + P · Θsa</code></td></tr>
+      <tr><td>Tj_target with derating</td><td id="t-tjt" class="num">120 °C</td><td><code>Tj_max · derate %</code></td></tr>
+      <tr><td>Required Θsa (max allowed)</td><td id="t-rsa-req" class="num">17.5 °C/W</td><td><code>(Tj_target − Tamb)/P − Θjc − Θcs</code></td></tr>
+    </table>
+
+    <div id="verdictBox" style="text-align:center;margin:10px 0"></div>
+
+    <h2>Where the formula falls out (Ohm's law on heat)</h2>
+    <p>Heat dissipation is exactly the electrical-circuit problem you already know — Fourier's heat conduction law has the same form as Ohm's law. Power is the current, temperature rise is the voltage drop, thermal resistance is the resistance.</p>
+    <div class="deriv">
+      <span class="step">1.  Electrical:  <b>V = I · R</b>  (volts across a resistor)</span>
+      <span class="step">2.  Thermal analog: <b>ΔT = P · Θ</b>  (°C of rise across a thermal resistance)</span>
+      <span class="step">3.  Series stack from junction to ambient: <b>ΔT_total = P · (Θjc + Θcs + Θsa)</b></span>
+      <span class="step">4.  Add ambient offset: <span class="arrow">→</span> <b>Tj = Tamb + P · ΣΘ</b></span>
+      <span class="step">5.  Solve for Θsa given Tj_target: <span class="arrow">→</span> <b>Θsa_max = (Tj_target − Tamb)/P − Θjc − Θcs</b></span>
+    </div>
+    <p class="lede">Same algebra you used for voltage dividers, but the "current" is watts of heat and the "voltage" is degrees. KCL still works — if you parallel two heatsinks, their Θ's combine like parallel resistors.</p>
+
+    <h2>Worked example — STP55NF06L MOSFET dissipating 5 W</h2>
+    <div class="worked">
+      <h3>The constraints</h3>
+      <p>STMicro STP55NF06L (TO-220) switching a 12 V / 2 A motor load with Rds(on) effective dissipation ≈ 5 W including switching loss. Datasheet: Tj_max = 175 °C, Θjc = 1.6 °C/W. Ambient = 25 °C still air. Thermal paste between case and sink: Θcs ≈ 0.5 °C/W. Safety derate to 80 %.</p>
+
+      <h3>The arithmetic</h3>
+      <span class="eq">Tj_target = 175 °C × 0.80 = 140 °C <span class="annot">(safety budget, leaves 35 °C headroom)</span></span>
+      <span class="eq">Allowed ΔT = Tj_target − Tamb = 140 − 25 = 115 °C</span>
+      <span class="eq">Required ΣΘ = ΔT / P = 115 / 5 = 23.0 °C/W</span>
+      <span class="eq">Required Θsa = 23.0 − 1.6 − 0.5 = <b>20.9 °C/W</b> <span class="annot">(easy — almost any small clip-on heatsink)</span></span>
+
+      <h3>Pick a heatsink</h3>
+      <p>A 25 × 25 × 12 mm anodized aluminum clip-on TO-220 sink quotes Θsa ≈ 14 °C/W in still air. With paste (Θcs = 0.5):</p>
+      <span class="eq">Tj = 25 + 5 × (1.6 + 0.5 + 14) = 25 + 80.5 = <b>105.5 °C</b> <span class="annot">(60 % of Tj_max — safe)</span></span>
+
+      <h3>What if no heatsink?</h3>
+      <span class="eq">Bare TO-220 Θsa ≈ 50 °C/W; ΣΘ = 1.6 + 0 + 50 = 51.6 °C/W</span>
+      <span class="eq">Tj = 25 + 5 × 51.6 = 283 °C <span class="annot">→ exceeds Tj_max by 108 °C → silicon dies in seconds</span></span>
+      <p style="color:var(--fg-dim);font-size:12px">This is why "rule of thumb: TO-220 alone is good for 2 W in 25 °C still air" exists. At 2 W, Tj = 25 + 2 × 51.6 = 128 °C — borderline. Anything above ~1.5 W and you need a heatsink, however small.</p>
+    </div>
+
+    <h2>What to notice</h2>
+    <ul class="notice">
+      <li><b>Θsa dominates the chain</b> — Θjc is 1–3 °C/W, Θcs is 0.1–1 °C/W, but Θsa swings from 0.3 (giant fanned sink) to 80 (bare DPAK). Whatever you do to reduce ΣΘ, it almost always means changing Θsa.</li>
+      <li><b>The 80 % derating is not a luxury</b> — silicon failure rate doubles roughly per 10 °C rise. Running at 100 % Tj_max gives the part-population a service life measured in hundreds of hours, not years. 80 % is the design-engineering norm; automotive and aerospace use 60–70 %.</li>
+      <li><b>Parallel devices = parallel Θ</b> — two MOSFETs on the same heatsink each contribute half the power but share the same Θsa. Net effect: each junction sees roughly the same ΔT as a single device of half the power on the same sink. Diminishing returns above 3–4 in parallel.</li>
+      <li><b>Steady-state vs transient</b> — these Θ values assume the chip has reached thermal equilibrium (seconds to minutes). For pulse loads, use the transient thermal impedance Z(t) from the datasheet — short pulses see far lower effective Θ.</li>
+    </ul>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- TAB 2 — HEATSINK SIZER -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-sink">
+    <h2>Extruded / pin-fin heatsink sizer</h2>
+    <p>Given a target Θsa, this picks heatsink geometry. The model is empirical (engineering Toolbox / Aavid app notes): natural convection from a vertical finned aluminum extrusion. For forced convection, see Tab 5.</p>
+
+    <div class="anchors">
+      <span class="anchor">Natural convection h ≈ <b>5–25 W/m²·K</b></span>
+      <span class="anchor">Forced (low) h ≈ <b>25–100 W/m²·K</b></span>
+      <span class="anchor">Forced (high) h ≈ <b>100–300 W/m²·K</b></span>
+      <span class="anchor">Black anodized: <b>+10 %</b> radiation help</span>
+      <span class="anchor">Vertical fins: <b>+20 %</b> vs horizontal</span>
+    </div>
+
+    <section class="controls">
+      <div class="control">
+        <label>Target Θsa: <span class="readout" id="hs-rsa-read">5.0 °C/W</span></label>
+        <input id="hs-rsa" type="range" min="0.2" max="30" step="0.1" value="5">
+      </div>
+      <div class="control">
+        <label>Fin height: <span class="readout" id="hs-fh-read">25 mm</span></label>
+        <input id="hs-fh" type="range" min="5" max="80" step="1" value="25">
+      </div>
+      <div class="control">
+        <label>Base length: <span class="readout" id="hs-bl-read">60 mm</span></label>
+        <input id="hs-bl" type="range" min="20" max="200" step="5" value="60">
+      </div>
+      <div class="control">
+        <label>Base width: <span class="readout" id="hs-bw-read">40 mm</span></label>
+        <input id="hs-bw" type="range" min="15" max="200" step="5" value="40">
+      </div>
+      <div class="control">
+        <label>Fin count: <span class="readout" id="hs-n-read">8</span></label>
+        <input id="hs-n" type="range" min="2" max="30" step="1" value="8">
+      </div>
+      <div class="control">
+        <label>Convection mode</label>
+        <select id="hs-mode">
+          <option value="nat-h" selected>Natural — vertical fins (default)</option>
+          <option value="nat-l">Natural — horizontal fins (−20 %)</option>
+          <option value="forced-l">Forced — low (1 m/s)</option>
+          <option value="forced-m">Forced — medium (3 m/s)</option>
+          <option value="forced-h">Forced — high (6 m/s)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Surface finish</label>
+        <select id="hs-finish">
+          <option value="1.0">Bare aluminum (no extra)</option>
+          <option value="1.10" selected>Black anodized (+10 %)</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="figure">
+      <svg id="hsSvg" viewBox="0 0 600 280" width="100%"></svg>
+    </div>
+
+    <table id="hsTbl">
+      <tr><th>Property</th><th>Value</th><th>Note</th></tr>
+      <tr><td>Convection coefficient h</td><td id="hs-h" class="num">8.0 W/m²·K</td><td>Mode-dependent</td></tr>
+      <tr><td>Base area</td><td id="hs-ab" class="num">2400 mm²</td><td>L × W</td></tr>
+      <tr><td>Single-fin area (both sides)</td><td id="hs-af" class="num">3000 mm²</td><td>2 × L × H_fin</td></tr>
+      <tr><td>Total surface area</td><td id="hs-at" class="num">26 400 mm²</td><td>Base + fins</td></tr>
+      <tr><td>Computed Θsa</td><td id="hs-rsa-calc" class="num">4.7 °C/W</td><td><code>1 / (h · A)</code></td></tr>
+      <tr><td>Target Θsa</td><td id="hs-rsa-target" class="num">5.0 °C/W</td><td>From slider</td></tr>
+      <tr><td>Verdict</td><td colspan="2" id="hs-verdict">—</td></tr>
+    </table>
+
+    <h2>The model (one-line empirical)</h2>
+    <div class="deriv">
+      <span class="step">Total heatsink Θsa ≈ <b>1 / (h · A_total)</b></span>
+      <span class="step">A_total = A_base + n_fins · A_fin <span class="arrow">→</span> for an extrusion, fins multiply A many-fold</span>
+      <span class="step">Natural conv h: <b>5 W/m²·K</b> (still air, small ΔT) up to <b>15 W/m²·K</b> (large vertical fin, big ΔT)</span>
+      <span class="step">Forced conv h: <b>25</b> @ 1 m/s, <b>80</b> @ 3 m/s, <b>200</b> @ 6 m/s (fan dependent)</span>
+      <span class="step">Anodized black: surface emissivity ε ≈ 0.9 vs bare Al ε ≈ 0.05 → adds radiation at high ΔT</span>
+    </div>
+    <p class="lede">The h·A model is rough — actual Θsa for a finned extrusion comes from the datasheet of the part (Aavid, Wakefield-Vette, Fischer Elektronik, Boyd Corp). Use this sizer for first-cut "how big does it need to be" and then verify against a published Θsa curve.</p>
+
+    <h2>Reference: common off-the-shelf extruded sinks</h2>
+    <table>
+      <tr><th>Form factor</th><th>Approx dims (mm)</th><th>Θsa natural</th><th>Θsa @ 2 m/s</th><th>Typical use</th></tr>
+      <tr><td>TO-220 clip-on</td><td>13 × 19 × 10</td><td>30 °C/W</td><td>15 °C/W</td><td>2–3 W small LDO</td></tr>
+      <tr><td>TO-220 clip-on, finned</td><td>25 × 25 × 12</td><td>14 °C/W</td><td>7 °C/W</td><td>5 W MOSFET</td></tr>
+      <tr><td>TO-247 bolt-down</td><td>40 × 40 × 25</td><td>5 °C/W</td><td>2.5 °C/W</td><td>15 W power stage</td></tr>
+      <tr><td>Mini extrusion</td><td>60 × 50 × 25</td><td>3 °C/W</td><td>1.5 °C/W</td><td>25 W amp / SMPS</td></tr>
+      <tr><td>Medium extrusion</td><td>100 × 80 × 40</td><td>1.2 °C/W</td><td>0.6 °C/W</td><td>50 W amp / module</td></tr>
+      <tr><td>Large extrusion + fan</td><td>150 × 100 × 50</td><td>0.6 °C/W</td><td>0.2 °C/W</td><td>200 W server CPU</td></tr>
+      <tr><td>Pin-fin CPU cooler</td><td>120 × 90 × 50 + 92 mm fan</td><td>0.4 °C/W</td><td>0.15 °C/W</td><td>65 W TDP desktop CPU</td></tr>
+      <tr><td>Tower cooler (heatpipes)</td><td>160 × 120 × 70 + 140 mm fan</td><td>—</td><td>0.10 °C/W</td><td>150 W high-end CPU</td></tr>
+    </table>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- TAB 3 — TIM PICKER -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-tim">
+    <h2>Thermal Interface Material decision matrix</h2>
+    <p>The package-to-sink interface is two rough metal surfaces clamped together. Air trapped in the surface roughness is a 0.024 W/m·K insulator. A TIM fills that air with something better (1–80 W/m·K). Pick by power density, longevity, conductivity, ease of assembly, and risk of electrical conduction.</p>
+
+    <div class="anchors">
+      <span class="anchor"><b>Air alone</b> Θcs ≈ 2–5 °C/W (per cm²)</span>
+      <span class="anchor"><b>Cheap paste</b> ≈ 0.5 °C/W</span>
+      <span class="anchor"><b>Premium paste</b> ≈ 0.1 °C/W</span>
+      <span class="anchor"><b>Liquid metal</b> ≈ 0.02 °C/W</span>
+      <span class="anchor">TIM thickness <b>50–100 µm</b> ideal</span>
+    </div>
+
+    <section class="controls">
+      <div class="control">
+        <label>Power density (W/cm²): <span class="readout" id="tim-p-read">5 W/cm²</span></label>
+        <input id="tim-p" type="range" min="0.5" max="100" step="0.5" value="5">
+      </div>
+      <div class="control">
+        <label>Electrical isolation required?</label>
+        <select id="tim-iso">
+          <option value="no" selected>No (case = same node as power)</option>
+          <option value="yes">Yes (case isolated from sink)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Reusability</label>
+        <select id="tim-reuse">
+          <option value="any" selected>Doesn't matter</option>
+          <option value="rework">Frequent rework / rep. swaps</option>
+          <option value="never">One-shot factory assembly</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Cost sensitivity</label>
+        <select id="tim-cost">
+          <option value="low" selected>Doesn't matter</option>
+          <option value="high">Volume / cost critical</option>
+        </select>
+      </div>
+    </section>
+
+    <div id="timRecBox" style="margin:10px 0"></div>
+
+    <h2>TIM types — Θ, max temp, longevity, assembly</h2>
+    <table>
+      <tr><th>Type</th><th>k (W/m·K)</th><th>Θcs (°C·in²/W typ)</th><th>T_max</th><th>Longevity</th><th>Assembly</th><th>Electrically</th></tr>
+      <tr><td>Bare metal-to-metal (no TIM)</td><td class="num">~ 0.05 air</td><td class="num">~ 2.0</td><td>any</td><td>indefinite</td><td>just bolt</td><td>connected</td></tr>
+      <tr><td>Generic silicone grease</td><td class="num">0.7–1.5</td><td class="num">0.5</td><td>200 °C</td><td>5–10 yr</td><td>squeeze + spread</td><td>insulating</td></tr>
+      <tr><td>High-perf paste (Arctic MX-6, NT-H2)</td><td class="num">8–9</td><td class="num">0.05–0.10</td><td>150 °C</td><td>5–8 yr</td><td>pea / line method</td><td>insulating</td></tr>
+      <tr><td>Liquid metal (Galinstan / Conductonaut)</td><td class="num">40–80</td><td class="num">0.005–0.02</td><td>200 °C</td><td>2–5 yr (corrosion)</td><td>thin brush; aluminum-safe? NO</td><td><b style="color:var(--warn)">CONDUCTIVE</b></td></tr>
+      <tr><td>Phase-change pad (Honeywell PTM)</td><td class="num">5–8</td><td class="num">0.1–0.2</td><td>125 °C</td><td>10+ yr</td><td>stamp + reflow once</td><td>insulating</td></tr>
+      <tr><td>Graphite sheet / pad</td><td class="num">15–20 (xy), 5 (z)</td><td class="num">0.2–0.3</td><td>400 °C</td><td>20+ yr</td><td>peel + stick</td><td><b style="color:var(--warn)">CONDUCTIVE in plane</b></td></tr>
+      <tr><td>Silicone gap pad (Bergquist GP3000)</td><td class="num">3.0</td><td class="num">0.4–1.0</td><td>200 °C</td><td>10+ yr</td><td>peel + place</td><td>insulating (high V)</td></tr>
+      <tr><td>Ceramic-filled silicone pad (sil-pad)</td><td class="num">0.9–1.6</td><td class="num">0.6–1.2</td><td>200 °C</td><td>20+ yr</td><td>peel + place; mounting</td><td>insulating (2 kV+)</td></tr>
+      <tr><td>Mica + grease combo (legacy)</td><td class="num">0.5 + grease</td><td class="num">0.8</td><td>500 °C</td><td>indefinite</td><td>fiddly, breaks</td><td>insulating</td></tr>
+      <tr><td>Graphene / carbon-nanotube (exotic)</td><td class="num">25–40</td><td class="num">0.03–0.05</td><td>400 °C</td><td>10+ yr (claimed)</td><td>spray / deposit</td><td>mildly conductive</td></tr>
+    </table>
+
+    <h2>Reading the Θ_TIM number</h2>
+    <p>TIM datasheets quote thermal impedance in <code>°C·in²/W</code> or <code>K·mm²/W</code> — per unit area. To get °C/W for your device, divide by contact area:</p>
+    <div class="deriv">
+      <span class="step">Θcs (°C/W) = Θ_TIM (°C·in²/W) <span class="arrow">÷</span> Contact area (in²)</span>
+      <span class="step">Example: TO-220 tab ≈ 0.16 in² (10.4 × 16 mm). With Θ_TIM = 0.5 °C·in²/W:</span>
+      <span class="step">  → Θcs = 0.5 / 0.16 = <b>3.1 °C/W</b>  (poor — needs better paste)</span>
+      <span class="step">Example: TO-247 tab ≈ 0.31 in². With premium paste Θ_TIM = 0.10:</span>
+      <span class="step">  → Θcs = 0.10 / 0.31 = <b>0.32 °C/W</b>  (excellent)</span>
+    </div>
+
+    <h2>Application tips</h2>
+    <ul class="notice">
+      <li><b>Less is more for paste</b> — TIM is worse than metal-to-metal. Goal: a thin uniform layer that fills surface roughness only. A grain-of-rice dab spread by the screw torque is correct.</li>
+      <li><b>Liquid metal kills aluminum</b> — gallium attacks Al heatsinks (forms Al-Ga alloy, embrittles the metal). Use only with nickel-plated copper sinks.</li>
+      <li><b>Don't reuse a pad</b> — phase-change and silicone pads compress on first heat cycle and form their final interface. Removing and re-applying gives 2–3× higher Θ.</li>
+      <li><b>Mounting pressure matters</b> — bolt-down TO-220/247 packages have a recommended torque (typically 0.5–1.0 N·m). Too little = TIM voids; too much = cracked die or stripped plastic.</li>
+    </ul>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- TAB 4 — PCB COPPER + VIAS -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-pcb">
+    <h2>PCB thermal pad + via array</h2>
+    <p>SMD power packages (DPAK, D²PAK, PowerPAK, QFN, SOIC-Exposed-Pad) bond their thermal tab to a copper pour on the PCB. Heat then spreads laterally through copper, drops down through plated vias into an inner or bottom plane, and finally escapes to air or to a chassis. Done well, you can drop Θ from 70 °C/W (bare DPAK) to 15 °C/W (large 2-oz copper pour + 25 vias).</p>
+
+    <div class="anchors">
+      <span class="anchor"><b>DPAK no copper</b> Θja ≈ 70 °C/W</span>
+      <span class="anchor"><b>DPAK 1 in² 1 oz</b> Θja ≈ 35 °C/W</span>
+      <span class="anchor"><b>DPAK 1 in² 2 oz</b> Θja ≈ 25 °C/W</span>
+      <span class="anchor"><b>+ 16 vias 0.3 mm</b> drops 5–8 °C/W</span>
+      <span class="anchor"><b>Inner plane bonding</b> drops another 5 °C/W</span>
+    </div>
+
+    <section class="controls">
+      <div class="control">
+        <label>Copper pour area: <span class="readout" id="pcb-a-read">1.0 in²</span></label>
+        <input id="pcb-a" type="range" min="0.05" max="6" step="0.05" value="1.0">
+      </div>
+      <div class="control">
+        <label>Copper weight</label>
+        <select id="pcb-w">
+          <option value="0.5">0.5 oz (17 µm) — signal layer</option>
+          <option value="1" selected>1 oz (35 µm) — standard</option>
+          <option value="2">2 oz (70 µm) — power</option>
+          <option value="3">3 oz (105 µm) — heavy power</option>
+          <option value="4">4 oz (140 µm) — bus bar territory</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Number of thermal vias: <span class="readout" id="pcb-n-read">16</span></label>
+        <input id="pcb-n" type="range" min="0" max="50" step="1" value="16">
+      </div>
+      <div class="control">
+        <label>Via drill diameter</label>
+        <select id="pcb-d">
+          <option value="0.2">0.20 mm (fine pitch)</option>
+          <option value="0.3" selected>0.30 mm (standard)</option>
+          <option value="0.4">0.40 mm (large)</option>
+          <option value="0.6">0.60 mm (heavy power)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Via plating thickness</label>
+        <select id="pcb-pt">
+          <option value="18">18 µm (typical)</option>
+          <option value="25" selected>25 µm (heavy class 2)</option>
+          <option value="50">50 µm (filled via)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Package starting Θja</label>
+        <select id="pcb-pkg">
+          <option value="70">DPAK no copper: 70 °C/W</option>
+          <option value="50">SOIC-EP no copper: 50 °C/W</option>
+          <option value="45" selected>DPAK on min-pad: 45 °C/W</option>
+          <option value="35">D²PAK on min-pad: 35 °C/W</option>
+          <option value="60">QFN (5×5 mm) no copper: 60 °C/W</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Backside cooling</label>
+        <select id="pcb-back">
+          <option value="0" selected>None (single-sided pour)</option>
+          <option value="1">Inner plane bonded via vias</option>
+          <option value="2">Backside plane + airflow</option>
+          <option value="3">Backside heatsink (bolted)</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="figure">
+      <svg id="pcbSvg" viewBox="0 0 600 280" width="100%"></svg>
+    </div>
+
+    <table id="pcbTbl">
+      <tr><th>Quantity</th><th>Value</th><th>Note</th></tr>
+      <tr><td>Pour spreading resistance</td><td id="pcb-rsp" class="num">15 °C/W</td><td>Lateral copper spreading, area + thickness</td></tr>
+      <tr><td>Via array resistance (parallel)</td><td id="pcb-rvia" class="num">8.0 °C/W</td><td>n vias in parallel, each ≈ k·d·t/L</td></tr>
+      <tr><td>Backside contribution</td><td id="pcb-rback" class="num">—</td><td>Inner / backside plane spreader</td></tr>
+      <tr><td>Total Θja</td><td id="pcb-rtotal" class="num">42 °C/W</td><td>Series-parallel composite</td></tr>
+      <tr><td>Improvement over bare</td><td id="pcb-imp" class="num">28 °C/W saved</td><td>vs starting Θja of package alone</td></tr>
+    </table>
+
+    <h2>How spreading works (the lateral copper resistance)</h2>
+    <p>A power tab is small (DPAK ≈ 6 × 6 mm); the cooling area you want is large (~25 × 25 mm pour). Heat has to spread laterally through the copper before it can radiate. That spreading shows up as a resistance in the chain:</p>
+    <div class="deriv">
+      <span class="step">Spreading resistance (circular, simplified): <b>R_sp ≈ 1 / (k · 2 · √(A))</b></span>
+      <span class="step">where k = Cu thermal conductivity × Cu thickness (W/K · m)</span>
+      <span class="step">1 oz Cu = 35 µm; k_Cu = 385 W/m·K → k·t = 385 × 35e-6 = 0.0135 W/K</span>
+      <span class="step">For 1 in² = 6.45 cm² = 6.45e-4 m²:</span>
+      <span class="step">  R_sp = 1 / (0.0135 × 2 × √(6.45e-4)) = 1 / (0.0135 × 0.0508) = <b>~ 1460 K/W</b> per (W/m·K · m)</span>
+      <span class="step">→ Effective spreading drops Θ to ~ 20–35 °C/W depending on aspect ratio; ditto with formula simplifications</span>
+    </div>
+    <p class="lede">The exact spreading number depends on tab geometry and pour aspect — this sizer uses a curve-fit to vendor measurements rather than the closed-form integral. For mission-critical designs, run a thermal sim (e.g., 6SigmaET, KiCad ngspice-thermal).</p>
+
+    <h2>Via design rules</h2>
+    <table>
+      <tr><th>Parameter</th><th>Recommendation</th><th>Why</th></tr>
+      <tr><td>Via diameter</td><td>0.3–0.4 mm drill</td><td>Smaller = more parallel paths in the same pad; bigger = lower individual R</td></tr>
+      <tr><td>Pitch</td><td>1.0–1.5 × via diameter</td><td>Closer = more heat, but solder wicking concern; farther = wasted pad area</td></tr>
+      <tr><td>Plating</td><td>1 oz (25 µm) min; 2 oz preferred</td><td>Thicker wall = lower R per via</td></tr>
+      <tr><td>Via fill</td><td>Cu-filled or epoxy + Cu-cap for SMD pads</td><td>Open vias under SMD → solder wicks down, weak joint</td></tr>
+      <tr><td>Tenting</td><td>Tent backside if exposed-pad-to-air, leave open if bonding to plane</td><td>Tented vias = better solder retention</td></tr>
+      <tr><td>Array layout</td><td>Inside the pad, NOT at pad edge</td><td>Edge vias don't pull heat from under the die</td></tr>
+    </table>
+
+    <h2>Real-world progression: DPAK at 3 W in 25 °C ambient</h2>
+    <div class="worked">
+      <h3>From terrible to good</h3>
+      <span class="eq">Bare DPAK pad only: Θja = 70 °C/W → Tj = 25 + 3 × 70 = <b>235 °C</b>  → cooked</span>
+      <span class="eq">+ 1 cm² 1 oz pour: Θja = 50 °C/W → Tj = 25 + 150 = <b>175 °C</b>  → marginal</span>
+      <span class="eq">+ 6.5 cm² (1 in²) 1 oz pour: Θja = 35 °C/W → Tj = 25 + 105 = <b>130 °C</b>  → OK</span>
+      <span class="eq">+ 16 vias 0.3 mm to bottom Cu: Θja = 25 °C/W → Tj = 25 + 75 = <b>100 °C</b>  → comfortable</span>
+      <span class="eq">+ 2 oz Cu pour (top + bottom): Θja = 18 °C/W → Tj = 25 + 54 = <b>79 °C</b>  → ideal</span>
+      <span class="eq">Same + bonded backside heatsink: Θja = 8 °C/W → Tj = 25 + 24 = <b>49 °C</b>  → exceeds need</span>
+    </div>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- TAB 5 — FORCED CONVECTION -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-fan">
+    <h2>Forced convection — how much fan do you actually need?</h2>
+    <p>Adding airflow drops Θsa by 2–10×. The curve is steep at first (small airflow gives huge gains) then flattens (above ~5 m/s, you're paying for noise more than cooling). Numbers below are empirical for typical aluminum extrusion sinks.</p>
+
+    <div class="anchors">
+      <span class="anchor">100 LFM ≈ <b>0.5 m/s</b></span>
+      <span class="anchor">300 LFM ≈ <b>1.5 m/s</b></span>
+      <span class="anchor">600 LFM ≈ <b>3 m/s</b></span>
+      <span class="anchor">1000 LFM ≈ <b>5 m/s</b></span>
+      <span class="anchor">Server CPU fan: 80 mm × <b>40 CFM</b> → 4 m/s</span>
+      <span class="anchor">Desktop case fan: 120 mm × <b>60 CFM</b> → 3 m/s</span>
+    </div>
+
+    <section class="controls">
+      <div class="control">
+        <label>Free-air Θsa (still): <span class="readout" id="fan-rsa0-read">5 °C/W</span></label>
+        <input id="fan-rsa0" type="range" min="0.5" max="30" step="0.1" value="5">
+      </div>
+      <div class="control">
+        <label>Airflow velocity: <span class="readout" id="fan-v-read">2.0 m/s</span></label>
+        <input id="fan-v" type="range" min="0" max="10" step="0.1" value="2">
+      </div>
+      <div class="control">
+        <label>Or pick from CFM</label>
+        <input id="fan-cfm" type="number" placeholder="50 CFM" step="any">
+      </div>
+      <div class="control">
+        <label>Duct / shroud cross-section (cm²)</label>
+        <input id="fan-area" type="number" value="80" step="1">
+      </div>
+      <div class="control">
+        <label>Computed velocity from CFM</label>
+        <span class="readout" id="fan-v-comp">— m/s</span>
+      </div>
+      <div class="control">
+        <label>Power dissipated</label>
+        <input id="fan-p" type="number" value="20" step="0.5">
+      </div>
+      <div class="control">
+        <label>Ambient T</label>
+        <input id="fan-ta" type="number" value="25" step="1">
+      </div>
+    </section>
+
+    <div class="figure">
+      <svg id="fanSvg" viewBox="0 0 600 280" width="100%"></svg>
+    </div>
+
+    <table id="fanTbl">
+      <tr><th>Quantity</th><th>Value</th><th>Note</th></tr>
+      <tr><td>Velocity at sink (from CFM / area)</td><td id="fan-v-out" class="num">2.08 m/s</td><td><code>CFM · 0.000472 / area_m²</code></td></tr>
+      <tr><td>Forced Θsa</td><td id="fan-rsa-out" class="num">1.4 °C/W</td><td>Empirical curve</td></tr>
+      <tr><td>Reduction factor</td><td id="fan-redux" class="num">3.6 ×</td><td>vs free-air</td></tr>
+      <tr><td>Sink temp at P watts</td><td id="fan-ts" class="num">53 °C</td><td><code>Tamb + P · Θsa</code></td></tr>
+      <tr><td>Free-air sink temp (for compare)</td><td id="fan-ts-free" class="num">125 °C</td><td>If fan failed</td></tr>
+    </table>
+
+    <h2>The empirical curve</h2>
+    <p>The shape of Θsa vs airflow is roughly a power-law decay. A good engineering fit:</p>
+    <div class="deriv">
+      <span class="step"><b>Θsa(v) ≈ Θsa_0 · (1 + k·v)^(-0.7)</b></span>
+      <span class="step">where v in m/s and k ≈ 2.5 for typical extrusion</span>
+      <span class="step">At v = 0:    Θsa = Θsa_0 (free air)</span>
+      <span class="step">At v = 1 m/s: Θsa ≈ 0.45 × Θsa_0</span>
+      <span class="step">At v = 3 m/s: Θsa ≈ 0.25 × Θsa_0</span>
+      <span class="step">At v = 6 m/s: Θsa ≈ 0.17 × Θsa_0  ← diminishing returns</span>
+    </div>
+
+    <h2>CFM / LFM / m/s — the units</h2>
+    <table>
+      <tr><th>Unit</th><th>Meaning</th><th>Conversion</th></tr>
+      <tr><td>CFM</td><td>Cubic feet per minute, volume flow (fan rating)</td><td>1 CFM = 1.699 m³/h</td></tr>
+      <tr><td>LFM</td><td>Linear feet per minute, velocity</td><td>1 LFM = 0.00508 m/s; 200 LFM ≈ 1 m/s</td></tr>
+      <tr><td>m/s</td><td>SI velocity</td><td>v = volume_flow / area</td></tr>
+      <tr><td>m³/h</td><td>SI volume flow</td><td>1 CFM ≈ 1.7 m³/h</td></tr>
+    </table>
+    <p>A 60 CFM fan blowing into an 80 mm × 25 mm duct (20 cm²) gives:</p>
+    <div class="deriv">
+      <span class="step">Volume = 60 CFM = 60 × 0.000472 m³/s = 0.0283 m³/s</span>
+      <span class="step">Area = 80 × 25 = 2000 mm² = 0.002 m²</span>
+      <span class="step">Velocity = 0.0283 / 0.002 = <b>14 m/s</b> (very fast — diminishing returns territory)</span>
+    </div>
+    <p class="lede">In practice, ducted velocities at the sink are 2–5 m/s. Anything higher and the fan is louder than it is useful. For CPU coolers, the trade is more fin area at moderate flow vs less fin area at higher flow.</p>
+
+    <h2>Fan failure design rule</h2>
+    <ul class="notice">
+      <li><b>Always check the free-air case</b> — if a fan stops (bearing seize, dust, controller fault), the device must survive in still air long enough to shut down safely. Compare the "fan failed" sink temp with Tj_max.</li>
+      <li><b>Two slow fans &gt; one fast fan</b> — redundancy + lower bearing wear + lower noise. Used in server design universally.</li>
+      <li><b>Fan curve vs system impedance</b> — a fan's CFM rating is at zero static pressure. When pushing through a densely finned sink, actual CFM is half or less. Get the fan PQ curve and the sink Δp curve to find the operating point.</li>
+    </ul>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- TAB 6 — POWER DERATING CURVES -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-derate">
+    <h2>Power derating curves — package vs case temperature</h2>
+    <p>Every power-device datasheet has a "P_D vs T_case" derating curve. The story is simple: at low T_case you can dissipate the rated power; at Tj_max the device can dissipate zero (all of the temperature budget is gone). The slope is exactly −1/Θjc.</p>
+
+    <div class="anchors">
+      <span class="anchor">Slope = <b>−1/Θjc</b> W/°C</span>
+      <span class="anchor">TO-220 (Θjc=2): P drops <b>0.5 W per °C</b></span>
+      <span class="anchor">TO-247 (Θjc=0.7): P drops <b>1.4 W per °C</b></span>
+      <span class="anchor">DPAK (Θjc=3.5): P drops <b>0.29 W per °C</b></span>
+    </div>
+
+    <section class="controls">
+      <div class="control">
+        <label>Package</label>
+        <select id="der-pkg">
+          <option value="TO-92">TO-92 (small-signal)</option>
+          <option value="DPAK">DPAK (SMD power)</option>
+          <option value="TO-220" selected>TO-220 (through-hole)</option>
+          <option value="TO-247">TO-247 (high-power)</option>
+          <option value="D2PAK">D²PAK (SMD high-power)</option>
+          <option value="TO-263">TO-263 (D²PAK alt)</option>
+          <option value="QFN">QFN exposed-pad</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Rated max power (W): <span class="readout" id="der-pmax-read">65 W</span></label>
+        <input id="der-pmax" type="number" value="65" step="1">
+      </div>
+      <div class="control">
+        <label>Tj_max: <span class="readout" id="der-tjmax-read">150 °C</span></label>
+        <input id="der-tjmax" type="number" value="150" step="5">
+      </div>
+      <div class="control">
+        <label>Θjc (derived): <span class="readout" id="der-rjc-read">1.92 °C/W</span></label>
+      </div>
+      <div class="control">
+        <label>Operating T_case: <span class="readout" id="der-tc-read">75 °C</span></label>
+        <input id="der-tc" type="range" min="-25" max="200" step="1" value="75">
+      </div>
+      <div class="control">
+        <label>Power at that T_case: <span class="readout big" id="der-p-out">39 W</span></label>
+      </div>
+    </section>
+
+    <div class="figure">
+      <svg id="derSvg" viewBox="0 0 600 280" width="100%"></svg>
+    </div>
+
+    <h2>Reading the curve</h2>
+    <p>The y-axis is the maximum allowed continuous power dissipation. The x-axis is the case temperature (T_case). Three regions:</p>
+    <table>
+      <tr><th>Region</th><th>T_case range</th><th>P_D allowed</th><th>Why</th></tr>
+      <tr><td>Flat plateau</td><td>−40 to 25 °C</td><td>P_rated</td><td>Junction-temp limited; rated by the package's bond-wire and die capability</td></tr>
+      <tr><td>Linear ramp-down</td><td>25 to Tj_max</td><td>P = (Tj_max − T_case) / Θjc</td><td>Junction at Tj_max — every °C of case rise costs (1/Θjc) W of budget</td></tr>
+      <tr><td>Zero</td><td>≥ Tj_max</td><td>0 W</td><td>Junction has no temperature budget left</td></tr>
+    </table>
+
+    <h2>Worked example — TO-220 STP55NF06L at 75 °C case</h2>
+    <div class="worked">
+      <h3>Read the derating</h3>
+      <span class="eq">Datasheet: P_D_max = 110 W @ Tc = 25 °C; Tj_max = 175 °C; Θjc = (175 − 25) / 110 = 1.36 °C/W</span>
+      <span class="eq">At Tc = 75 °C: P_D_max = (Tj_max − Tc) / Θjc = (175 − 75) / 1.36 = <b>73.5 W</b></span>
+      <span class="eq">At Tc = 125 °C: P_D_max = 50 / 1.36 = <b>36.8 W</b>  → only 33 % of rating left</span>
+      <span class="eq">At Tc = 175 °C: P_D_max = 0 W  → device thermally limited to zero</span>
+
+      <h3>Why "infinite heatsink" rating is misleading</h3>
+      <p>The "P_D = 110 W" headline assumes Tc = 25 °C — which requires an infinite heatsink (no thermal resistance from case to ambient). In a real design at 25 °C ambient with a 5 °C/W heatsink:</p>
+      <span class="eq">At P = 20 W:  Tc = 25 + 20 × (0.5 + 5.0) = 25 + 110 = 135 °C</span>
+      <span class="eq">At Tc = 135 °C: P_D allowed = (175 − 135) / 1.36 = 29 W  → just barely OK</span>
+      <span class="eq">At P = 25 W:  Tc = 25 + 25 × 5.5 = 162.5 °C  → only 9 W allowed → <b>thermal runaway</b></span>
+
+      <p style="color:var(--fg-dim);font-size:12px">Thermal runaway is the implicit-equation form: you assumed P_D but the resulting Tc lowers P_D_max, which limits P_D, which lowers Tc... only stable if P × ΣΘ &lt; ΔT_budget. Always cross-check by computing Tc from P + Θ and verifying the derated P_D_max at that Tc.</p>
+    </div>
+
+    <h2>The two graphs you need from a datasheet</h2>
+    <ul class="notice">
+      <li><b>Continuous power derating</b> — the one this tab plots; needed for steady-state.</li>
+      <li><b>Transient thermal impedance Z(t)</b> — a log-log plot of effective Θ vs pulse duration. For a 1 ms pulse, the silicon's heat capacity dominates and Z(t) is much lower than Θjc. Critical for PWM, motor inrush, capacitor charging.</li>
+      <li><b>Cross-reference</b>: a 100 W rated TO-220 can sink a 500 W pulse for 100 µs without exceeding Tj_max if duty cycle is low — the average is what derating governs, the peak is what Z(t) governs.</li>
+    </ul>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- COMMON: Cheat Sheet + Footer -->
+  <!-- =================================================================== -->
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Thermal network</dt><dd><span class="eq">Tj = Tamb + P · ΣΘ</span></dd>
+        <dt>Series stages</dt><dd><span class="eq">ΣΘ = Θjc + Θcs + Θsa</span></dd>
+        <dt>Required Θsa</dt><dd><span class="eq">Θsa ≤ (Tj_tgt − Tamb)/P − Θjc − Θcs</span></dd>
+        <dt>Derated Tj</dt><dd><span class="eq">Tj_tgt = 0.80 · Tj_max</span></dd>
+        <dt>Heatsink Θsa</dt><dd><span class="eq">Θsa ≈ 1 / (h · A_total)</span></dd>
+        <dt>Forced fit</dt><dd><span class="eq">Θsa(v) ≈ Θsa_0 · (1+2.5·v)^(-0.7)</span></dd>
+        <dt>Derating slope</dt><dd><span class="eq">dP/dT_case = −1/Θjc</span></dd>
+        <dt>Parallel devices</dt><dd><span class="eq">Θ_parallel = Θ_single / N</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SHORTCUTS</h3>
+      <ul>
+        <li><b>Bare TO-220</b> ≈ 50 °C/W to air — good for ~2 W max</li>
+        <li><b>Clip-on sink</b> 25 mm → ≈ 14 °C/W — good for ~5 W</li>
+        <li><b>Medium extrusion</b> 100 mm → ≈ 1.5 °C/W — good for ~50 W</li>
+        <li><b>Add airflow at 2 m/s</b> → halves Θsa</li>
+        <li><b>1 in² 1 oz copper</b> under DPAK → Θja ≈ 35 °C/W</li>
+        <li>+ <b>16 thermal vias</b> → drops another 8–10 °C/W</li>
+        <li><b>Tj derate to 80 %</b> for design margin</li>
+        <li><b>Per 10 °C Tj rise</b> doubles silicon failure rate</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>TIM degrades over years</b> — silicone grease pumps out under thermal cycling. Inspect 5-yr-old industrial gear; expect Θcs to have doubled.</li>
+        <li><b>Cheap thermal pads lose contact pressure</b> — pad sets a hard gap and screws back off as it cures. Use a torque-spec'd spring clip, not just bolts.</li>
+        <li><b>Vertical fin orientation matters</b> — natural-convection sinks must have fins vertical, not horizontal. Mounting a board flat with fins facing up reduces Θsa by 20–30 %.</li>
+        <li><b>"P_D = 110 W" headline misleads</b> — that's at Tc = 25 °C with an infinite sink. Realistic 5 °C/W sink at 25 °C ambient gives you ~30 W usable.</li>
+        <li><b>Liquid metal on aluminum</b> — gallium attacks Al sinks. Only use with Ni-plated Cu.</li>
+        <li><b>Forgetting Θcs</b> — TIM resistance is small but non-zero. A 5 mm² die on a 50 µm pad adds ~0.5 °C/W. Sneaks up in QFN designs.</li>
+        <li><b>Bonded backside vias under SMD pads</b> — open vias wick solder into the via barrel during reflow, voiding the pad joint. Use Cu-filled or epoxy-plug-Cu-cap vias.</li>
+      </ul>
+    </div>
+  </section>
+
+  <h2>Cross-references</h2>
+  <div class="crosslink">
+    <h4>Where these ideas connect</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">ME Phase 9</b> — heat-transfer fundamentals: conduction (Fourier), convection (Newton's law of cooling), radiation (Stefan-Boltzmann). See <code>heat-sinks.html</code>, <code>thermal-networks.html</code>, <code>tim-pcb.html</code> for the physics behind the empirical numbers used here.</li>
+      <li><b style="color:var(--fg)">EE Phase 6</b> — power electronics: MOSFET Rds(on) loss, switching loss, body-diode conduction — sets the P that drives this tool.</li>
+      <li><b style="color:var(--fg)">EM Phase 4</b> — motor drives: a 24 V / 5 A H-bridge with Rds(on) = 30 mΩ has 4 MOSFETs × I² · R = 4 × 25 × 0.03 = 3 W of conduction loss plus switching, so ~5 W per FET into the sink design above.</li>
+      <li><b style="color:var(--fg)">Constants &amp; Units</b> — see <a href="constants-units.html">constants-units.html</a> for k_Cu, k_Al, ε emissivity tables, σ Stefan-Boltzmann.</li>
+      <li><b style="color:var(--fg)">Unit Converter</b> — thermal-R and thermal-k tabs in <a href="unit-converter.html">unit-converter.html</a> for °C/W ↔ °C·in²/W and W/m·K ↔ BTU/(hr·ft·°F).</li>
+    </ul>
+  </div>
+
+  <footer class="footer-note">
+    Curriculum: ME Phase 9 — Thermal Networks (companion: <code>heat-sinks.html</code>, <code>thermal-networks.html</code>, <code>tim-pcb.html</code>) ·
+    Cross-cutting: power electronics, motor drives, LED drivers, MCU CPUs ·
+    Companion tools: <a href="unit-converter.html">unit-converter.html</a> (thermal R/k), <a href="component-picker.html">component-picker.html</a> (thermistor for sensing the sink)
+  </footer>
+</main>
+
+<script>
+/* ====================================================================
+   TAB SWITCHING
+==================================================================== */
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.pane').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('pane-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+/* ====================================================================
+   FORMATTERS
+==================================================================== */
+function fmtT(v, unit){
+  const u = unit || '°C';
+  if(!isFinite(v)) return '—';
+  return v.toFixed(1) + ' ' + u;
+}
+function fmtTh(v){
+  if(!isFinite(v)) return '—';
+  if(v < 0.1) return v.toFixed(3) + ' °C/W';
+  if(v < 10)  return v.toFixed(2) + ' °C/W';
+  return v.toFixed(1) + ' °C/W';
+}
+function fmtArea(mm2){
+  if(mm2 >= 1e4) return (mm2/100).toFixed(0) + ' cm²';
+  if(mm2 >= 1e2) return mm2.toFixed(0) + ' mm²';
+  return mm2.toFixed(1) + ' mm²';
+}
+
+/* ====================================================================
+   TAB 1 — THERMAL NETWORK
+==================================================================== */
+const NET_IDS = ['p','ta','tjmax','derate','rjc','rcs','rsa'];
+const netEls = {};
+NET_IDS.forEach(k => netEls[k] = document.getElementById(k));
+
+function drawNetwork(P, Tamb, Rjc, Rcs, Rsa, Tj, Tc, Ts, Tjt){
+  const svg = document.getElementById('netSvg');
+  // Layout: junction (silicon) → case → sink → ambient
+  // 4 nodes, 3 resistors
+  const x = [80, 230, 380, 530, 680];
+  const y = 130;
+  const nodeLabels = [
+    {x:x[0], y:y, lbl:'Junction', sub:`Tj = ${Tj.toFixed(1)} °C`, col:'var(--warn)'},
+    {x:x[1], y:y, lbl:'Case',     sub:`Tc = ${Tc.toFixed(1)} °C`, col:'var(--accent2)'},
+    {x:x[2], y:y, lbl:'Sink',     sub:`Ts = ${Ts.toFixed(1)} °C`, col:'var(--accent3)'},
+    {x:x[3], y:y, lbl:'Ambient',  sub:`Ta = ${Tamb.toFixed(1)} °C`, col:'var(--accent)'},
+  ];
+  const resistors = [
+    {x:(x[0]+x[1])/2, y:y, lbl:'Θjc', val:Rjc.toFixed(2)+' °C/W', col:'var(--accent2)'},
+    {x:(x[1]+x[2])/2, y:y, lbl:'Θcs', val:Rcs.toFixed(2)+' °C/W', col:'var(--accent2)'},
+    {x:(x[2]+x[3])/2, y:y, lbl:'Θsa', val:Rsa.toFixed(2)+' °C/W', col:'var(--accent2)'},
+  ];
+  let s = '';
+  // Power source at left
+  s += `<rect x="20" y="${y-30}" width="40" height="60" fill="var(--bg-elev2)" stroke="var(--warn)" stroke-width="2"/>`;
+  s += `<text x="40" y="${y-5}" class="label-warn" text-anchor="middle">P</text>`;
+  s += `<text x="40" y="${y+12}" class="label-warn" text-anchor="middle">${P.toFixed(1)} W</text>`;
+  s += `<text x="40" y="${y-40}" class="label-dim" text-anchor="middle">silicon</text>`;
+  // Arrow from power into junction
+  s += `<line x1="60" y1="${y}" x2="${x[0]-15}" y2="${y}" class="wire"/>`;
+  s += `<polygon points="${x[0]-15},${y-4} ${x[0]-5},${y} ${x[0]-15},${y+4}" fill="var(--warn)"/>`;
+
+  // Wires
+  for(let i=0;i<3;i++){
+    s += `<line x1="${x[i]+15}" y1="${y}" x2="${x[i+1]-15}" y2="${y}" stroke="var(--fg-dim)" stroke-width="1.5"/>`;
+  }
+
+  // Node circles
+  nodeLabels.forEach(n => {
+    s += `<circle cx="${n.x}" cy="${n.y}" r="15" fill="var(--bg-elev2)" stroke="${n.col}" stroke-width="2"/>`;
+    s += `<text x="${n.x}" y="${n.y-25}" class="label" text-anchor="middle" fill="${n.col}">${n.lbl}</text>`;
+    s += `<text x="${n.x}" y="${n.y+35}" class="label-dim" text-anchor="middle">${n.sub}</text>`;
+  });
+
+  // Resistor zig-zags
+  resistors.forEach(r => {
+    const cx = r.x, cy = y;
+    // zig-zag 30 px wide
+    const z = `M ${cx-25} ${cy} L ${cx-20} ${cy-8} L ${cx-12} ${cy+8} L ${cx-4} ${cy-8} L ${cx+4} ${cy+8} L ${cx+12} ${cy-8} L ${cx+20} ${cy+8} L ${cx+25} ${cy}`;
+    s += `<path d="${z}" stroke="${r.col}" stroke-width="2" fill="none"/>`;
+    s += `<text x="${cx}" y="${cy-22}" class="label" text-anchor="middle" fill="${r.col}">${r.lbl}</text>`;
+    s += `<text x="${cx}" y="${cy+32}" class="label-dim" text-anchor="middle">${r.val}</text>`;
+  });
+
+  // Ground at right (ambient symbol)
+  const gx = x[3]+30;
+  s += `<line x1="${x[3]+15}" y1="${y}" x2="${gx}" y2="${y}" stroke="var(--fg-dim)" stroke-width="1.5"/>`;
+  s += `<line x1="${gx-10}" y1="${y}" x2="${gx+10}" y2="${y}" stroke="var(--accent)" stroke-width="2"/>`;
+  s += `<line x1="${gx-7}" y1="${y+5}" x2="${gx+7}" y2="${y+5}" stroke="var(--accent)" stroke-width="2"/>`;
+  s += `<line x1="${gx-3}" y1="${y+10}" x2="${gx+3}" y2="${y+10}" stroke="var(--accent)" stroke-width="2"/>`;
+
+  // Tj_target line marker (dashed at top)
+  s += `<text x="${x[0]}" y="40" class="label-warn" text-anchor="middle">Tj_target = ${Tjt.toFixed(0)} °C</text>`;
+  s += `<text x="380" y="20" class="label" text-anchor="middle">Thermal series chain — heat flows left → right</text>`;
+  s += `<text x="380" y="220" class="label-dim" text-anchor="middle">ΔT_total = P · (Θjc + Θcs + Θsa) = ${P.toFixed(1)} · ${(Rjc+Rcs+Rsa).toFixed(2)} = ${(P*(Rjc+Rcs+Rsa)).toFixed(1)} °C</text>`;
+  s += `<text x="380" y="240" class="label-ok" text-anchor="middle">Tj = ${Tamb.toFixed(1)} + ${(P*(Rjc+Rcs+Rsa)).toFixed(1)} = ${Tj.toFixed(1)} °C</text>`;
+
+  svg.innerHTML = s;
+}
+
+function netUpdate(){
+  const P     = parseFloat(netEls.p.value);
+  const Tamb  = parseFloat(netEls.ta.value);
+  const Tjmax = parseFloat(netEls.tjmax.value);
+  const derate= parseFloat(netEls.derate.value);
+  const Rjc   = parseFloat(netEls.rjc.value);
+  const Rcs   = parseFloat(netEls.rcs.value);
+  const Rsa   = parseFloat(netEls.rsa.value);
+
+  document.getElementById('p-read').textContent     = P.toFixed(1) + ' W';
+  document.getElementById('ta-read').textContent    = Tamb.toFixed(0) + ' °C';
+  document.getElementById('tjmax-read').textContent = Tjmax.toFixed(0) + ' °C';
+  document.getElementById('derate-read').textContent= (derate*100).toFixed(0) + ' %';
+  document.getElementById('rjc-read').textContent   = Rjc.toFixed(2) + ' °C/W';
+  document.getElementById('rcs-read').textContent   = Rcs.toFixed(2) + ' °C/W';
+  document.getElementById('rsa-read').textContent   = Rsa.toFixed(1) + ' °C/W';
+
+  const sum = Rjc + Rcs + Rsa;
+  const dT  = P * sum;
+  const Tj  = Tamb + dT;
+  const Tc  = Tamb + P * (Rsa + Rcs);
+  const Ts  = Tamb + P * Rsa;
+  const Tjt = Tjmax * derate;
+  const RsaReq = (Tjt - Tamb)/P - Rjc - Rcs;
+
+  document.getElementById('t-sum').textContent  = sum.toFixed(2) + ' °C/W';
+  document.getElementById('t-dt').textContent   = dT.toFixed(1) + ' °C';
+  document.getElementById('t-tj').textContent   = Tj.toFixed(1) + ' °C';
+  document.getElementById('t-tc').textContent   = Tc.toFixed(1) + ' °C';
+  document.getElementById('t-ts').textContent   = Ts.toFixed(1) + ' °C';
+  document.getElementById('t-tjt').textContent  = Tjt.toFixed(0) + ' °C';
+  document.getElementById('t-rsa-req').textContent = RsaReq > 0 ? RsaReq.toFixed(2) + ' °C/W' : 'impossible';
+
+  // Verdict
+  const vBox = document.getElementById('verdictBox');
+  if(Tj > Tjmax){
+    vBox.innerHTML = `<span class="verdict bad">FAIL — Tj = ${Tj.toFixed(0)} °C exceeds Tj_max = ${Tjmax} °C</span>`;
+  } else if(Tj > Tjt){
+    vBox.innerHTML = `<span class="verdict warn">MARGINAL — Tj = ${Tj.toFixed(0)} °C exceeds derated target (${Tjt.toFixed(0)} °C) but below Tj_max. Reduce Θsa or P.</span>`;
+  } else {
+    vBox.innerHTML = `<span class="verdict ok">SAFE — Tj = ${Tj.toFixed(0)} °C; headroom = ${(Tjt - Tj).toFixed(0)} °C to derated target, ${(Tjmax - Tj).toFixed(0)} °C to Tj_max</span>`;
+  }
+
+  drawNetwork(P, Tamb, Rjc, Rcs, Rsa, Tj, Tc, Ts, Tjt);
+}
+NET_IDS.forEach(k => netEls[k].addEventListener('input', netUpdate));
+netEls.tjmax.addEventListener('change', netUpdate);
+netEls.derate.addEventListener('change', netUpdate);
+netUpdate();
+
+/* ====================================================================
+   TAB 2 — HEATSINK SIZER
+==================================================================== */
+const HS_IDS = ['hs-rsa','hs-fh','hs-bl','hs-bw','hs-n','hs-mode','hs-finish'];
+const hsEls = {};
+HS_IDS.forEach(k => hsEls[k] = document.getElementById(k));
+
+function hsHCoef(mode){
+  switch(mode){
+    case 'nat-h':  return 9;   // natural convection, vertical fins
+    case 'nat-l':  return 7;   // horizontal fins penalty
+    case 'forced-l': return 30; // 1 m/s
+    case 'forced-m': return 80; // 3 m/s
+    case 'forced-h': return 180; // 6 m/s
+    default: return 9;
+  }
+}
+
+function drawHeatsink(L, W, H, n){
+  const svg = document.getElementById('hsSvg');
+  // 3D-ish view of finned heatsink, scale to viewBox 600×280
+  // Use isometric-style projection
+  const cx = 300, cy = 200;
+  const scale = Math.min(2.5, 350 / Math.max(L, W*2, H*2));
+  const lScale = L * scale;
+  const wScale = W * scale;
+  const hScale = H * scale;
+  const px = cx - lScale/2;
+  const py = cy - wScale/3;
+  let s = '';
+  // base (top-down rectangle, slightly skewed)
+  const skew = wScale * 0.5;
+  s += `<polygon points="${px},${py} ${px+lScale},${py} ${px+lScale-skew},${py+wScale*0.6} ${px-skew},${py+wScale*0.6}" fill="#444" stroke="var(--accent)" stroke-width="1"/>`;
+  // base thickness (front face)
+  s += `<polygon points="${px-skew},${py+wScale*0.6} ${px+lScale-skew},${py+wScale*0.6} ${px+lScale-skew},${py+wScale*0.6+8} ${px-skew},${py+wScale*0.6+8}" fill="#2a2a2a" stroke="var(--accent)" stroke-width="1"/>`;
+
+  // Fins — vertical rectangles standing up from base
+  const finSp = lScale / (n + 1);
+  for(let i=1; i<=n; i++){
+    const fx = px + finSp * i;
+    const finTopX = fx - skew;
+    s += `<polygon points="${fx-1.5},${py} ${fx+1.5},${py} ${finTopX+1.5},${py - hScale + wScale*0.6} ${finTopX-1.5},${py - hScale + wScale*0.6}" fill="#555" stroke="var(--accent3)" stroke-width="0.6"/>`;
+    s += `<polygon points="${finTopX-1.5},${py - hScale + wScale*0.6} ${finTopX+1.5},${py - hScale + wScale*0.6} ${finTopX+1.5},${py - hScale + wScale*0.6 + wScale*0.6} ${finTopX-1.5},${py - hScale + wScale*0.6 + wScale*0.6}" fill="#3a3a3a" stroke="var(--accent3)" stroke-width="0.4"/>`;
+  }
+
+  // Labels
+  s += `<text x="${px + lScale/2}" y="${py - hScale + 20}" class="label" text-anchor="middle">Fin H = ${H.toFixed(0)} mm</text>`;
+  s += `<text x="${px + lScale + 15}" y="${py + wScale*0.3}" class="label">L = ${L.toFixed(0)} mm</text>`;
+  s += `<text x="${px - skew - 5}" y="${py + wScale*0.8}" class="label" text-anchor="end">W = ${W.toFixed(0)} mm</text>`;
+  s += `<text x="${px - 5}" y="${py + wScale*0.6 + 25}" class="label-dim" text-anchor="end">base</text>`;
+  s += `<text x="${cx}" y="20" class="label" text-anchor="middle">Heatsink geometry preview</text>`;
+  s += `<text x="${cx}" y="265" class="label-dim" text-anchor="middle">${n} fins · base ${L}×${W} mm · fin height ${H} mm</text>`;
+
+  // Heat arrows
+  s += `<line x1="${cx-100}" y1="${py + wScale*0.6 + 35}" x2="${cx-100}" y2="${py + wScale*0.6 + 60}" stroke="var(--warn)" stroke-width="2"/>`;
+  s += `<polygon points="${cx-104},${py + wScale*0.6 + 35} ${cx-96},${py + wScale*0.6 + 35} ${cx-100},${py + wScale*0.6 + 28}" fill="var(--warn)"/>`;
+  s += `<text x="${cx-100}" y="${py + wScale*0.6 + 75}" class="label-warn" text-anchor="middle">P (from device)</text>`;
+
+  svg.innerHTML = s;
+  svg.setAttribute('viewBox','0 0 600 290');
+}
+
+function hsUpdate(){
+  const tgt   = parseFloat(hsEls['hs-rsa'].value);
+  const H     = parseFloat(hsEls['hs-fh'].value);
+  const L     = parseFloat(hsEls['hs-bl'].value);
+  const W     = parseFloat(hsEls['hs-bw'].value);
+  const n     = parseInt(hsEls['hs-n'].value);
+  const mode  = hsEls['hs-mode'].value;
+  const finish= parseFloat(hsEls['hs-finish'].value);
+
+  document.getElementById('hs-rsa-read').textContent = tgt.toFixed(2) + ' °C/W';
+  document.getElementById('hs-fh-read').textContent  = H + ' mm';
+  document.getElementById('hs-bl-read').textContent  = L + ' mm';
+  document.getElementById('hs-bw-read').textContent  = W + ' mm';
+  document.getElementById('hs-n-read').textContent   = n;
+
+  const h = hsHCoef(mode) * finish;
+  const Ab = L * W; // base in mm²
+  const Af = 2 * L * H; // single fin area (both sides), mm²
+  const At_mm2 = Ab + n * Af;
+  const At_m2 = At_mm2 * 1e-6;
+  const Rsa = 1 / (h * At_m2);
+
+  document.getElementById('hs-h').textContent    = h.toFixed(1) + ' W/m²·K';
+  document.getElementById('hs-ab').textContent   = fmtArea(Ab);
+  document.getElementById('hs-af').textContent   = fmtArea(Af);
+  document.getElementById('hs-at').textContent   = fmtArea(At_mm2);
+  document.getElementById('hs-rsa-calc').textContent = Rsa.toFixed(2) + ' °C/W';
+  document.getElementById('hs-rsa-target').textContent = tgt.toFixed(2) + ' °C/W';
+
+  // Verdict
+  const v = document.getElementById('hs-verdict');
+  if(Rsa <= tgt){
+    v.innerHTML = `<span class="verdict ok">MEETS TARGET — sink ≤ target (margin ${((tgt-Rsa)/tgt*100).toFixed(0)} %)</span>`;
+  } else if(Rsa <= tgt * 1.3){
+    v.innerHTML = `<span class="verdict warn">CLOSE — sink ${((Rsa/tgt-1)*100).toFixed(0)} % above target. Add fins, height, or airflow.</span>`;
+  } else {
+    v.innerHTML = `<span class="verdict bad">UNDERSIZED — sink ${((Rsa/tgt-1)*100).toFixed(0)} % above target. Increase fin count or area, or add forced convection.</span>`;
+  }
+
+  drawHeatsink(L, W, H, n);
+}
+HS_IDS.forEach(k => {
+  hsEls[k].addEventListener('input', hsUpdate);
+  hsEls[k].addEventListener('change', hsUpdate);
+});
+hsUpdate();
+
+/* ====================================================================
+   TAB 3 — TIM PICKER
+==================================================================== */
+const TIM_DB = [
+  {name:'Generic silicone grease', k:1.2, theta:0.5, tmax:200, life:'5–10 yr', ease:'easy', iso:true, reuse:'rework', cost:'low'},
+  {name:'High-performance paste (Arctic MX-6 / NT-H2)', k:8.5, theta:0.08, tmax:150, life:'5–8 yr', ease:'medium', iso:true, reuse:'rework', cost:'medium'},
+  {name:'Liquid metal (Conductonaut)', k:60, theta:0.015, tmax:200, life:'2–5 yr', ease:'difficult, Ni-Cu only', iso:false, reuse:'never', cost:'high'},
+  {name:'Phase-change pad (Honeywell PTM)', k:6.5, theta:0.15, tmax:125, life:'10+ yr', ease:'easy stamp', iso:true, reuse:'never', cost:'medium'},
+  {name:'Graphite sheet (Panasonic PGS)', k:18, theta:0.25, tmax:400, life:'20+ yr', ease:'peel + stick', iso:false, reuse:'rework', cost:'medium'},
+  {name:'Silicone gap pad (Bergquist GP3000)', k:3.0, theta:0.6, tmax:200, life:'10+ yr', ease:'easy', iso:true, reuse:'rework', cost:'low'},
+  {name:'Ceramic sil-pad (Bergquist K6)', k:1.3, theta:0.9, tmax:200, life:'20+ yr', ease:'with hardware', iso:true, reuse:'rework', cost:'low'},
+  {name:'Graphene foil (Sigma Aldrich research-grade)', k:30, theta:0.04, tmax:400, life:'10+ yr', ease:'difficult', iso:false, reuse:'rework', cost:'high'},
+];
+
+function timUpdate(){
+  const pden = parseFloat(document.getElementById('tim-p').value);
+  const iso  = document.getElementById('tim-iso').value;
+  const reuse= document.getElementById('tim-reuse').value;
+  const cost = document.getElementById('tim-cost').value;
+  document.getElementById('tim-p-read').textContent = pden + ' W/cm²';
+
+  // Score each TIM
+  const scored = TIM_DB.map(t => {
+    let score = 0;
+    // Lower theta is better at high power density
+    score += pden > 50 ? (1/t.theta) * 3 : pden > 10 ? (1/t.theta) * 2 : (1/t.theta);
+    // Iso requirement is hard pass/fail
+    if(iso === 'yes' && !t.iso) score -= 100;
+    if(iso === 'yes' && t.iso) score += 5;
+    // Reuse
+    if(reuse === 'rework' && t.reuse === 'rework') score += 3;
+    if(reuse === 'rework' && t.reuse === 'never') score -= 5;
+    if(reuse === 'never' && t.reuse === 'never') score += 2;
+    // Cost
+    if(cost === 'high' && t.cost === 'high') score -= 8;
+    if(cost === 'high' && t.cost === 'low') score += 4;
+    return {...t, score};
+  }).sort((a,b) => b.score - a.score);
+
+  const box = document.getElementById('timRecBox');
+  const top3 = scored.slice(0, 3);
+  let html = '<h3>Recommended TIM (top 3)</h3><table><tr><th>#</th><th>TIM</th><th>k (W/m·K)</th><th>Θ_TIM</th><th>T_max</th><th>Life</th><th>Notes</th></tr>';
+  top3.forEach((t, i) => {
+    const cl = i === 0 ? 'style="background:rgba(163,230,53,0.10)"' : '';
+    html += `<tr ${cl}><td>${i+1}</td><td><b>${t.name}</b></td><td class="num">${t.k}</td>
+      <td class="num">${t.theta} °C·in²/W</td><td class="num">${t.tmax} °C</td>
+      <td>${t.life}</td><td style="font-size:11px;color:var(--fg-dim)">${t.ease}; ${t.iso ? 'insulating' : 'CONDUCTIVE'}; reuse: ${t.reuse}; cost: ${t.cost}</td></tr>`;
+  });
+  html += '</table>';
+  box.innerHTML = html;
+}
+['tim-p','tim-iso','tim-reuse','tim-cost'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', timUpdate);
+  el.addEventListener('change', timUpdate);
+});
+timUpdate();
+
+/* ====================================================================
+   TAB 4 — PCB COPPER + VIAS
+==================================================================== */
+const PCB_IDS = ['pcb-a','pcb-w','pcb-n','pcb-d','pcb-pt','pcb-pkg','pcb-back'];
+const pcbEls = {};
+PCB_IDS.forEach(k => pcbEls[k] = document.getElementById(k));
+
+function drawPCB(n, d){
+  const svg = document.getElementById('pcbSvg');
+  // Top-down view of PCB pad + via array
+  const cx = 300, cy = 140;
+  let s = '';
+  // PCB substrate
+  s += `<rect x="50" y="40" width="500" height="200" fill="#1a3a1a" stroke="var(--line)" stroke-width="1"/>`;
+  // Copper pour
+  s += `<rect x="100" y="60" width="400" height="160" fill="#c97b3b" stroke="#a37844" stroke-width="2"/>`;
+  s += `<text x="500" y="240" class="label-dim" text-anchor="end">copper pour (top layer)</text>`;
+  // Power tab (DPAK approximation)
+  s += `<rect x="${cx-30}" y="${cy-20}" width="60" height="40" fill="#888" stroke="#444" stroke-width="2"/>`;
+  s += `<text x="${cx}" y="${cy+5}" class="label" text-anchor="middle">TAB</text>`;
+  s += `<text x="${cx}" y="${cy-30}" class="label-dim" text-anchor="middle">power device thermal pad</text>`;
+
+  // Vias — grid layout
+  if(n > 0){
+    const cols = Math.min(n, Math.ceil(Math.sqrt(n*1.5)));
+    const rows = Math.ceil(n / cols);
+    const vSp = 7;
+    const startX = cx - (cols-1)*vSp/2;
+    const startY = cy - (rows-1)*vSp/2;
+    let drawn = 0;
+    const vR = Math.max(1.5, d * 5);
+    for(let r=0; r<rows; r++){
+      for(let c=0; c<cols; c++){
+        if(drawn >= n) break;
+        const vx = startX + c*vSp;
+        const vy = startY + r*vSp;
+        s += `<circle cx="${vx}" cy="${vy}" r="${vR}" fill="#222" stroke="#cd7f32" stroke-width="0.8"/>`;
+        drawn++;
+      }
+    }
+    s += `<text x="${cx}" y="${cy+35}" class="label-ok" text-anchor="middle">${n} thermal vias (${d}mm)</text>`;
+  }
+
+  // Backside indicator
+  s += `<rect x="100" y="220" width="400" height="14" fill="#7e5630" stroke="#5a3a1a"/>`;
+  s += `<text x="500" y="232" class="label-dim" text-anchor="end" style="font-size:10px">bottom copper</text>`;
+
+  // Heat flow arrows
+  s += `<text x="80" y="100" class="label-warn">heat path:</text>`;
+  s += `<text x="80" y="115" class="label-dim">tab → top Cu → vias → bottom Cu</text>`;
+  s += `<text x="80" y="130" class="label-dim">→ ambient (or backside sink)</text>`;
+
+  s += `<text x="${cx}" y="20" class="label" text-anchor="middle">PCB thermal pad layout (top view)</text>`;
+
+  svg.innerHTML = s;
+}
+
+function pcbUpdate(){
+  const A_in2 = parseFloat(pcbEls['pcb-a'].value);
+  const wOz   = parseFloat(pcbEls['pcb-w'].value);
+  const n     = parseInt(pcbEls['pcb-n'].value);
+  const d_mm  = parseFloat(pcbEls['pcb-d'].value);
+  const plate_um = parseFloat(pcbEls['pcb-pt'].value);
+  const pkg   = parseFloat(pcbEls['pcb-pkg'].value);
+  const back  = parseInt(pcbEls['pcb-back'].value);
+
+  document.getElementById('pcb-a-read').textContent = A_in2.toFixed(2) + ' in²';
+  document.getElementById('pcb-n-read').textContent = n;
+
+  // Empirical spreading resistance model (curve-fit to Aavid / Stackpole data)
+  // Baseline: 1 in² of 1 oz Cu under DPAK lowers Θja from 70 to ~35 °C/W
+  // Use formula: R_spread = base / (sqrt(A) * (wOz)^0.5)
+  // Tuned so that A=1, wOz=1 → R_spread = 30 °C/W (which gives ~ pkg - R_spread = 40)
+  const R_spread = 30 / (Math.sqrt(A_in2) * Math.pow(wOz, 0.55));
+
+  // Via array — per-via R, parallelized
+  // Approximate: R_via_single ≈ 200 / (d_mm × plate_um × 0.01) for a 1.6 mm thick board
+  // Tuned so 16 vias × 0.3 mm × 25 µm → ~8 °C/W
+  const board_mm = 1.6;
+  const A_via_mm2 = Math.PI * d_mm * (plate_um * 1e-3); // plated cylinder side area, mm² per mm length
+  const R_via_single = board_mm / (380 * A_via_mm2 * 1e-6); // 380 W/m·K for Cu plating, length 1.6 mm
+  let R_via;
+  if(n > 0){
+    R_via = R_via_single / n;
+  } else {
+    R_via = Infinity;
+  }
+
+  // Combine: R_top = pkg_min + spreading; vias add a parallel path to backside (if backside cooling > 0)
+  // Without backside cooling, only spreading helps
+  let R_total;
+  let R_back_show = '—';
+  let backDesc = '';
+
+  if(back === 0){
+    // single-sided pour, no via path → vias have nowhere to go
+    R_total = R_spread + 5; // base offset for FR-4 dielectric loss
+    if(R_total < 18) R_total = 18; // floor
+    R_back_show = 'n/a';
+    backDesc = 'no backside path';
+  } else if(back === 1){
+    // inner plane via vias
+    const R_inner_plane = 8; // typical inner plane spreading
+    const R_via_to_plane = (n > 0) ? R_via : 50;
+    // parallel: vias path vs no-cooling
+    R_total = 1 / (1/(R_spread + 5) + 1/(R_via_to_plane + R_inner_plane));
+    R_back_show = (R_via_to_plane + R_inner_plane).toFixed(1) + ' °C/W';
+    backDesc = 'inner plane';
+  } else if(back === 2){
+    // backside plane + airflow
+    const R_back_air = 20; // backside to ambient
+    const R_via_to_back = (n > 0) ? R_via : 50;
+    R_total = 1 / (1/(R_spread + 5) + 1/(R_via_to_back + R_back_air));
+    R_back_show = (R_via_to_back + R_back_air).toFixed(1) + ' °C/W';
+    backDesc = 'backside + air';
+  } else {
+    // bonded backside heatsink
+    const R_back_sink = 5; // backside heatsink Θsa
+    const R_via_to_back = (n > 0) ? R_via : 50;
+    R_total = 1 / (1/(R_spread + 5) + 1/(R_via_to_back + R_back_sink));
+    R_back_show = (R_via_to_back + R_back_sink).toFixed(1) + ' °C/W';
+    backDesc = 'backside heatsink';
+  }
+
+  // Clip total to pkg starting Θja (can't be worse than bare)
+  if(R_total > pkg) R_total = pkg;
+
+  const improvement = pkg - R_total;
+
+  document.getElementById('pcb-rsp').textContent   = R_spread.toFixed(1) + ' °C/W';
+  document.getElementById('pcb-rvia').textContent  = isFinite(R_via) ? R_via.toFixed(2) + ' °C/W' : 'no vias';
+  document.getElementById('pcb-rback').textContent = R_back_show + (backDesc ? ' (' + backDesc + ')' : '');
+  document.getElementById('pcb-rtotal').textContent = R_total.toFixed(1) + ' °C/W';
+  document.getElementById('pcb-imp').textContent   = improvement.toFixed(1) + ' °C/W saved';
+
+  drawPCB(n, d_mm);
+}
+PCB_IDS.forEach(k => {
+  pcbEls[k].addEventListener('input', pcbUpdate);
+  pcbEls[k].addEventListener('change', pcbUpdate);
+});
+pcbUpdate();
+
+/* ====================================================================
+   TAB 5 — FORCED CONVECTION
+==================================================================== */
+function forcedRsa(Rsa0, v){
+  return Rsa0 * Math.pow(1 + 2.5 * v, -0.7);
+}
+
+function drawFanCurve(Rsa0){
+  const svg = document.getElementById('fanSvg');
+  const W = 600, H = 280;
+  const M = {l:60, r:30, t:30, b:50};
+  let s = '';
+  // axes
+  s += `<line x1="${M.l}" y1="${H-M.b}" x2="${W-M.r}" y2="${H-M.b}" class="axis"/>`;
+  s += `<line x1="${M.l}" y1="${M.t}" x2="${M.l}" y2="${H-M.b}" class="axis"/>`;
+  s += `<text x="${W/2}" y="${H-15}" class="axis-label" text-anchor="middle">Airflow velocity (m/s)</text>`;
+  s += `<text x="15" y="${H/2}" class="axis-label" transform="rotate(-90 15 ${H/2})" text-anchor="middle">Θsa (°C/W)</text>`;
+
+  // X: 0 to 10 m/s
+  const xOf = v => M.l + (v / 10) * (W - M.l - M.r);
+  // Y: 0 to Rsa0
+  const yMax = Rsa0;
+  const yOf = r => H - M.b - (r / yMax) * (H - M.t - M.b);
+
+  // grid
+  for(let v=0; v<=10; v+=2){
+    const x = xOf(v);
+    s += `<line x1="${x}" y1="${H-M.b}" x2="${x}" y2="${H-M.b+5}" class="axis"/>`;
+    s += `<text x="${x}" y="${H-M.b+18}" class="axis-label" text-anchor="middle">${v}</text>`;
+  }
+  for(let r=0; r<=Rsa0; r += Math.max(0.5, Rsa0/5)){
+    const y = yOf(r);
+    if(y < M.t || y > H-M.b) continue;
+    s += `<line x1="${M.l-5}" y1="${y}" x2="${W-M.r}" y2="${y}" stroke="var(--grid)" stroke-dasharray="2,3"/>`;
+    s += `<text x="${M.l-8}" y="${y+4}" class="axis-label" text-anchor="end">${r.toFixed(1)}</text>`;
+  }
+
+  // curve
+  let pts = '';
+  for(let v=0; v<=10; v += 0.1){
+    const r = forcedRsa(Rsa0, v);
+    pts += (pts ? ' L ' : 'M ') + xOf(v).toFixed(1) + ' ' + yOf(r).toFixed(1);
+  }
+  s += `<path d="${pts}" stroke="var(--accent2)" stroke-width="2" fill="none"/>`;
+
+  // marker at current v
+  const v = parseFloat(document.getElementById('fan-v').value);
+  const rNow = forcedRsa(Rsa0, v);
+  s += `<circle cx="${xOf(v)}" cy="${yOf(rNow)}" r="5" fill="var(--accent3)" stroke="#000"/>`;
+  s += `<line x1="${xOf(v)}" y1="${yOf(rNow)}" x2="${xOf(v)}" y2="${H-M.b}" stroke="var(--accent3)" stroke-dasharray="2,2"/>`;
+  s += `<line x1="${xOf(v)}" y1="${yOf(rNow)}" x2="${M.l}" y2="${yOf(rNow)}" stroke="var(--accent3)" stroke-dasharray="2,2"/>`;
+  s += `<text x="${xOf(v)+8}" y="${yOf(rNow)-8}" class="label-ok">${v.toFixed(1)} m/s, ${rNow.toFixed(2)} °C/W</text>`;
+
+  // labels for common operating points
+  for(const op of [{v:0.5, lbl:'fanless'},{v:2, lbl:'small case fan'},{v:5, lbl:'server'}]){
+    const x = xOf(op.v);
+    const y = yOf(forcedRsa(Rsa0, op.v));
+    s += `<line x1="${x}" y1="${y}" x2="${x}" y2="${y-15}" stroke="var(--fg-dim)" stroke-width="0.5" stroke-dasharray="1,2"/>`;
+    s += `<text x="${x}" y="${y-18}" class="label-dim" text-anchor="middle" style="font-size:10px">${op.lbl}</text>`;
+  }
+  s += `<text x="${W/2}" y="20" class="label" text-anchor="middle">Θsa vs airflow — empirical (1+2.5v)^(-0.7) fit</text>`;
+  svg.innerHTML = s;
+}
+
+function fanUpdate(){
+  const Rsa0 = parseFloat(document.getElementById('fan-rsa0').value);
+  let v = parseFloat(document.getElementById('fan-v').value);
+  const cfm = parseFloat(document.getElementById('fan-cfm').value);
+  const area_cm2 = parseFloat(document.getElementById('fan-area').value);
+  const P = parseFloat(document.getElementById('fan-p').value);
+  const Ta = parseFloat(document.getElementById('fan-ta').value);
+
+  document.getElementById('fan-rsa0-read').textContent = Rsa0.toFixed(1) + ' °C/W';
+  document.getElementById('fan-v-read').textContent   = v.toFixed(1) + ' m/s';
+
+  let vComp = NaN;
+  if(isFinite(cfm) && isFinite(area_cm2) && area_cm2 > 0){
+    // CFM → m³/s = CFM × 0.000471947
+    const vol_m3s = cfm * 0.000471947;
+    const area_m2 = area_cm2 * 1e-4;
+    vComp = vol_m3s / area_m2;
+    document.getElementById('fan-v-comp').textContent = vComp.toFixed(2) + ' m/s';
+  } else {
+    document.getElementById('fan-v-comp').textContent = '— m/s';
+  }
+
+  const Rsa = forcedRsa(Rsa0, v);
+  const redux = Rsa0 / Rsa;
+  const Ts = Ta + P * Rsa;
+  const TsFree = Ta + P * Rsa0;
+
+  document.getElementById('fan-v-out').textContent    = v.toFixed(2) + ' m/s';
+  document.getElementById('fan-rsa-out').textContent  = Rsa.toFixed(2) + ' °C/W';
+  document.getElementById('fan-redux').textContent    = redux.toFixed(2) + ' ×';
+  document.getElementById('fan-ts').textContent       = Ts.toFixed(1) + ' °C';
+  document.getElementById('fan-ts-free').textContent  = TsFree.toFixed(1) + ' °C';
+
+  drawFanCurve(Rsa0);
+}
+['fan-rsa0','fan-v','fan-cfm','fan-area','fan-p','fan-ta'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', fanUpdate);
+});
+fanUpdate();
+
+/* ====================================================================
+   TAB 6 — DERATING CURVES
+==================================================================== */
+const PKG_DATA = {
+  'TO-92':   {pmax:0.6,  tjmax:150, rjc:200},
+  'DPAK':    {pmax:3,    tjmax:150, rjc:3.5},
+  'TO-220':  {pmax:65,   tjmax:150, rjc:1.92},
+  'TO-247':  {pmax:230,  tjmax:175, rjc:0.65},
+  'D2PAK':   {pmax:90,   tjmax:175, rjc:1.5},
+  'TO-263':  {pmax:90,   tjmax:175, rjc:1.5},
+  'QFN':     {pmax:6,    tjmax:150, rjc:15},
+};
+
+function derUpdate(){
+  const pkg = document.getElementById('der-pkg').value;
+  const data = PKG_DATA[pkg];
+  if(data){
+    document.getElementById('der-pmax').value  = data.pmax;
+    document.getElementById('der-tjmax').value = data.tjmax;
+  }
+  const Pmax  = parseFloat(document.getElementById('der-pmax').value);
+  const Tjmax = parseFloat(document.getElementById('der-tjmax').value);
+  // derive Θjc from Tjmax, Pmax, assuming P_rated at 25°C
+  const Rjc = (Tjmax - 25) / Pmax;
+  const Tc = parseInt(document.getElementById('der-tc').value);
+  // Power at given Tc
+  let P;
+  if(Tc <= 25)        P = Pmax;
+  else if(Tc >= Tjmax) P = 0;
+  else                 P = (Tjmax - Tc) / Rjc;
+
+  document.getElementById('der-pmax-read').textContent  = Pmax + ' W';
+  document.getElementById('der-tjmax-read').textContent = Tjmax + ' °C';
+  document.getElementById('der-rjc-read').textContent   = Rjc.toFixed(2) + ' °C/W';
+  document.getElementById('der-tc-read').textContent    = Tc + ' °C';
+  document.getElementById('der-p-out').textContent      = P.toFixed(1) + ' W';
+
+  drawDerating(Pmax, Tjmax, Rjc, Tc);
+}
+
+function drawDerating(Pmax, Tjmax, Rjc, Tc){
+  const svg = document.getElementById('derSvg');
+  const W = 600, H = 280;
+  const M = {l:60, r:30, t:30, b:50};
+  let s = '';
+  s += `<line x1="${M.l}" y1="${H-M.b}" x2="${W-M.r}" y2="${H-M.b}" class="axis"/>`;
+  s += `<line x1="${M.l}" y1="${M.t}" x2="${M.l}" y2="${H-M.b}" class="axis"/>`;
+  s += `<text x="${W/2}" y="${H-15}" class="axis-label" text-anchor="middle">T_case (°C)</text>`;
+  s += `<text x="15" y="${H/2}" class="axis-label" transform="rotate(-90 15 ${H/2})" text-anchor="middle">P_D allowed (W)</text>`;
+
+  // X: -25 to 200 °C
+  const xMin = -25, xMax = 200;
+  const xOf = T => M.l + ((T - xMin) / (xMax - xMin)) * (W - M.l - M.r);
+  const yOf = P => H - M.b - (P / (Pmax * 1.05)) * (H - M.t - M.b);
+
+  // gridlines
+  for(let T = -25; T <= 200; T += 25){
+    const x = xOf(T);
+    s += `<line x1="${x}" y1="${H-M.b}" x2="${x}" y2="${H-M.b+5}" class="axis"/>`;
+    s += `<text x="${x}" y="${H-M.b+18}" class="axis-label" text-anchor="middle">${T}</text>`;
+  }
+  const pStep = Pmax > 50 ? 20 : Pmax > 10 ? 5 : 1;
+  for(let p = 0; p <= Pmax; p += pStep){
+    const y = yOf(p);
+    s += `<line x1="${M.l-5}" y1="${y}" x2="${W-M.r}" y2="${y}" stroke="var(--grid)" stroke-dasharray="2,3"/>`;
+    s += `<text x="${M.l-8}" y="${y+4}" class="axis-label" text-anchor="end">${p}</text>`;
+  }
+
+  // Curve: flat from xMin to 25, then linear ramp down to 0 at Tjmax
+  const pts =
+    `M ${xOf(xMin)} ${yOf(Pmax)}` +
+    ` L ${xOf(25)} ${yOf(Pmax)}` +
+    ` L ${xOf(Tjmax)} ${yOf(0)}` +
+    ` L ${xOf(xMax)} ${yOf(0)}`;
+  s += `<path d="${pts}" stroke="var(--accent2)" stroke-width="2.5" fill="none"/>`;
+
+  // Fill under curve
+  const fill =
+    `M ${xOf(xMin)} ${yOf(Pmax)}` +
+    ` L ${xOf(25)} ${yOf(Pmax)}` +
+    ` L ${xOf(Tjmax)} ${yOf(0)}` +
+    ` L ${xOf(Tjmax)} ${yOf(0)}` +
+    ` L ${xOf(xMin)} ${yOf(0)}` +
+    ` Z`;
+  s += `<path d="${fill}" fill="rgba(255,184,108,0.08)"/>`;
+
+  // Marker at current Tc
+  let pAtTc;
+  if(Tc <= 25) pAtTc = Pmax;
+  else if(Tc >= Tjmax) pAtTc = 0;
+  else pAtTc = (Tjmax - Tc) / Rjc;
+  s += `<circle cx="${xOf(Tc)}" cy="${yOf(pAtTc)}" r="5" fill="var(--accent3)" stroke="#000"/>`;
+  s += `<line x1="${xOf(Tc)}" y1="${yOf(pAtTc)}" x2="${xOf(Tc)}" y2="${H-M.b}" stroke="var(--accent3)" stroke-dasharray="2,2"/>`;
+  s += `<line x1="${xOf(Tc)}" y1="${yOf(pAtTc)}" x2="${M.l}" y2="${yOf(pAtTc)}" stroke="var(--accent3)" stroke-dasharray="2,2"/>`;
+  s += `<text x="${xOf(Tc)+8}" y="${yOf(pAtTc)-8}" class="label-ok">Tc=${Tc} °C, P=${pAtTc.toFixed(1)} W</text>`;
+
+  // Slope annotation
+  const midX = xOf((25 + Tjmax)/2);
+  const midY = yOf((Pmax)/2);
+  s += `<text x="${midX+15}" y="${midY}" class="label-dim">slope = −1/Θjc = −${(1/Rjc).toFixed(2)} W/°C</text>`;
+  s += `<text x="${xOf(25)+5}" y="${yOf(Pmax)-8}" class="label">P_rated = ${Pmax} W</text>`;
+  s += `<text x="${xOf(Tjmax)+3}" y="${yOf(0)-8}" class="label-warn">Tj_max = ${Tjmax} °C</text>`;
+  s += `<text x="${W/2}" y="20" class="label" text-anchor="middle">Power dissipation derating</text>`;
+
+  svg.innerHTML = s;
+}
+['der-pkg','der-pmax','der-tjmax','der-tc'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', derUpdate);
+  el.addEventListener('change', derUpdate);
+});
+derUpdate();
+</script>
+</body>
+</html>

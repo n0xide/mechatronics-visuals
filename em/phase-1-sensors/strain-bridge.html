@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Strain Gauge Bridge — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:4px 8px;
+    font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;
+    font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 20px}
+  .chip{background:var(--bg-elev2);border:1px solid var(--line);border-radius:14px;
+    padding:3px 10px;font:11px ui-monospace,monospace;color:var(--accent);
+    cursor:pointer;text-decoration:none}
+  .chip:hover{background:var(--bg-elev);border-color:var(--accent)}
+  .toggle-row{display:flex;gap:6px;margin:0 0 10px}
+  .toggle-row button{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:5px 10px;cursor:pointer;
+    font:12px ui-monospace,monospace}
+  .toggle-row button.active{background:var(--accent);color:#000;border-color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Strain Gauge Bridge</h1>
+  <p class="lede">A strain gauge is a thin foil resistor whose resistance changes about 0.1 % per millistrain — too small to see directly with an ADC. The Wheatstone bridge solves that: balance two voltage dividers, then watch the tiny imbalance produced by the gauge. Quarter, half, and full bridges trade off cost, sensitivity (1×, 2×, 4×), and thermal rejection.</p>
+
+  <div class="chips">
+    <a class="chip" href="#config">#config</a>
+    <a class="chip" href="#explorer">#explorer</a>
+    <a class="chip" href="#math">#math</a>
+    <a class="chip" href="#temp">#thermal</a>
+    <a class="chip" href="#worked">#worked-example</a>
+    <a class="chip" href="#notice">#what-to-notice</a>
+    <a class="chip" href="#cheats">#cheat-sheet</a>
+  </div>
+
+  <h2 id="config">Bridge configurations</h2>
+  <p>All three bridges have four arms. The difference is how many are <em>active gauges</em> (responding to strain) versus fixed precision resistors. The number of active arms multiplies sensitivity directly: 1, 2, or 4.</p>
+  <ul class="notice">
+    <li><b>Quarter bridge (1 gauge):</b> cheapest, simplest. ΔV ∝ ε/4. No temperature compensation — the gauge resistance also drifts with ambient, indistinguishable from real strain.</li>
+    <li><b>Half bridge (2 gauges):</b> two gauges on opposite arms of the bridge, mounted so one stretches while the other compresses (e.g., top + bottom of a beam, or one axial + one transverse). 2× the output, plus differential thermal effects cancel.</li>
+    <li><b>Full bridge (4 gauges):</b> all four arms active, two stretching and two compressing. 4× output and the best temperature rejection. Found in load cells, torque transducers, and pressure sensors.</li>
+  </ul>
+
+  <section class="controls" id="explorer">
+    <div class="control"><label>Configuration: <span class="readout" id="cfgRead">Quarter</span></label>
+      <div class="toggle-row">
+        <button data-cfg="1" class="active">Quarter</button>
+        <button data-cfg="2">Half</button>
+        <button data-cfg="4">Full</button>
+      </div>
+    </div>
+    <div class="control"><label>V_exc (excitation): <span class="readout" id="vRead">5.00 V</span></label>
+      <input id="v" type="range" min="1" max="15" step="0.1" value="5"></div>
+    <div class="control"><label>R_nominal (gauge): <span class="readout" id="rRead">350 Ω</span></label>
+      <input id="r" type="range" min="120" max="1000" step="10" value="350"></div>
+    <div class="control"><label>Gauge factor (GF): <span class="readout" id="gfRead">2.00</span></label>
+      <input id="gf" type="range" min="1.5" max="4.5" step="0.05" value="2"></div>
+    <div class="control"><label>Strain ε (microstrain): <span class="readout" id="eRead">+1000 µε</span></label>
+      <input id="e" type="range" min="-2000" max="2000" step="10" value="1000"></div>
+    <div class="control"><label>ΔT (temperature drift): <span class="readout" id="tRead">0 °C</span></label>
+      <input id="t" type="range" min="-50" max="100" step="1" value="0"></div>
+  </section>
+
+  <div class="figure">
+    <svg id="bridge" viewBox="0 0 600 360" width="100%"></svg>
+    <table id="tbl">
+      <tr><th>Quantity</th><th>Value</th><th>Notes</th></tr>
+      <tr><td>ΔR / R</td><td id="tDR" class="num">0.20 %</td><td><code>GF · ε</code></td></tr>
+      <tr><td>V_out (signal)</td><td id="tVo" class="num">2.500 mV</td><td><code>n · V_exc · (GF · ε) / 4</code></td></tr>
+      <tr><td>Sensitivity</td><td id="tSn" class="num">2.500 mV/V·mε</td><td>per unit excitation, per mε</td></tr>
+      <tr><td>Thermal error</td><td id="tTe" class="num">0.000 mV</td><td>after compensation</td></tr>
+      <tr><td>Equivalent strain</td><td id="tEs" class="num">+1000 µε</td><td>reverse-solved from V_out</td></tr>
+      <tr><td>Excitation current</td><td id="tIe" class="num">14.3 mA</td><td><code>V_exc / R</code> per arm</td></tr>
+    </table>
+
+    <div class="vd" id="vdbox">
+      <b>Bridge output (small-signal):</b> V_out = (n / 4) · V_exc · GF · ε = <span id="vdCalc">(1/4) · 5.00 · 2.00 · 0.001000 = 2.500 mV</span>
+    </div>
+  </div>
+
+  <h2 id="math">How the bridge math works</h2>
+  <p>Imagine the bridge as two stacked dividers, both tapped at half-rail. With all four arms equal (R), the tap on the left is V_exc/2, the tap on the right is V_exc/2, and the differential V_out = 0. That's the <em>balance</em> condition. Now nudge one arm by ΔR.</p>
+
+  <div class="deriv">
+    <span class="step">1. Left tap voltage (R + ΔR on top, R on bottom):  <b>V_L = V_exc · R / (2R + ΔR)</b></span>
+    <span class="step">2. Right tap voltage (R on top, R on bottom):       <b>V_R = V_exc · R / 2R = V_exc / 2</b></span>
+    <span class="step">3. Difference:  V_out = V_R − V_L = V_exc · (1/2 − R/(2R+ΔR))</span>
+    <span class="step">4. Simplify:    <b>V_out = V_exc · ΔR / (2·(2R + ΔR))</b></span>
+    <span class="step">5. For small ΔR ≪ R, the denominator ≈ 4R:  <span class="arrow">→</span>  <b>V_out ≈ V_exc · ΔR / (4R) = V_exc · (ΔR/R) / 4</b></span>
+    <span class="step">6. Substitute the gauge factor relation:    <b>ΔR/R = GF · ε</b></span>
+    <span class="step">7. Result (quarter bridge):                  <span class="arrow">→</span>  <b>V_out ≈ V_exc · GF · ε / 4</b></span>
+  </div>
+
+  <p>The "small signal" approximation (step 5) is the entire reason the bridge is the dominant strain-readout topology: <em>linear</em> in ε right up to ~5 mε, where strain gauges fail anyway. For half-bridge double the numerator (two equal-and-opposite ΔR terms add); for full-bridge, double it again (four ΔR terms cancel the denominator's bias).</p>
+
+  <h2>Gauge factor — what's actually changing</h2>
+  <p>A strain gauge is a long, thin, zigzagged foil. Stretching it does two things at once: makes it longer (raises R), and makes it thinner (also raises R). Compressing reverses both. The combined effect:</p>
+
+  <div class="deriv">
+    <span class="step">Resistance:  <b>R = ρ · L / A</b></span>
+    <span class="step">Differentiate: <b>dR/R = dρ/ρ + dL/L − dA/A = (1 + 2ν) · ε + π_L · σ</b></span>
+    <span class="step">The two effects are bundled into a single empirical constant:  <b>GF = (ΔR/R) / ε</b></span>
+    <span class="step">Common foil gauges: <b>GF ≈ 2.0</b>; semiconductor gauges (piezoresistive): <b>GF ≈ 100–200</b></span>
+  </div>
+
+  <h2 id="temp">Temperature compensation</h2>
+  <p>The single biggest measurement error in a quarter bridge is <em>not</em> mechanical strain — it's the gauge's own resistance drifting with ambient temperature. Foil gauges drift on the order of 30 ppm/°C. A 20 °C swing looks like 600 µε of apparent strain.</p>
+  <p>Half and full bridges fix this by putting the second active gauge on the <em>same piece of material</em> at the same temperature. Both arms drift identically, so their difference cancels. The same logic applies to lead-wire resistance: a half-bridge in three-wire configuration (or full bridge in four-wire) puts lead resistance in both arms of the same divider, where it subtracts out.</p>
+
+  <table id="errtbl">
+    <thead><tr><th>Configuration</th><th>Sensitivity (× quarter)</th><th>Thermal rejection</th><th>Lead-wire rejection</th><th>Cost</th></tr></thead>
+    <tbody>
+      <tr><td>Quarter (1-arm)</td><td class="num">1×</td><td>None — apparent strain ≈ 30 µε/°C</td><td>None — adds to ΔR</td><td>$</td></tr>
+      <tr><td>Half (2-arm, opposite)</td><td class="num">2×</td><td>Excellent — common-mode cancels</td><td>Excellent (3-wire)</td><td>$$</td></tr>
+      <tr><td>Full (4-arm)</td><td class="num">4×</td><td>Best — all four arms tracked</td><td>Best (4-wire Kelvin)</td><td>$$$</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="worked">Worked example — 50 kg load cell on a HX711</h2>
+  <div class="worked">
+    <h3>The cell</h3>
+    <p>A 50 kg straight-bar load cell (the kind used in kitchen scales and Sesame quadruped foot sensors). Four foil gauges in full-bridge, rated 1.0 mV/V at full scale, GF ≈ 2.0. Excited from a 5 V source with the HX711 24-bit ADC on a 128× gain channel.</p>
+
+    <h3>The bridge output at full scale</h3>
+    <span class="eq">V_out (full scale) = 1.0 mV/V · 5 V = 5.0 mV <span class="annot">(50 kg load → 5 mV differential)</span></span>
+    <span class="eq">Reverse-solve strain: ε = V_out / (V_exc · GF) · 4 = 5.0 mV / (5 V · 2.0) · 4 = 2.0 mε <span class="annot">(2000 µε at 50 kg — typical beam strain)</span></span>
+
+    <h3>Reading on the HX711</h3>
+    <span class="eq">HX711 input range @ 128×: ±20 mV <span class="annot">(plenty of headroom for ±5 mV)</span></span>
+    <span class="eq">LSB at 128× = 5 V / (128 · 2^24) ≈ 2.33 nV <span class="annot">(theoretical; noise floor ~80 nV RMS)</span></span>
+    <span class="eq">Effective resolution ≈ 5 mV / 80 nV = 62,500 counts ≈ 16 bits noise-free <span class="annot">(at 10 Hz output rate)</span></span>
+    <span class="eq">Grams per count: 50 kg / 62,500 ≈ 0.8 g <span class="annot">(matches typical bench-scale spec)</span></span>
+
+    <h3>The 3 calibration values you actually program</h3>
+    <span class="eq">offset = adc.read(no_load)  <span class="annot">// taring</span></span>
+    <span class="eq">scale  = (adc.read(known_mass) − offset) / known_mass_grams  <span class="annot">// counts per gram</span></span>
+    <span class="eq">grams  = (adc.read(now) − offset) / scale</span>
+  </div>
+
+  <h2 id="notice">What to notice</h2>
+  <ul class="notice">
+    <li><b>The bridge multiplies, not just adds.</b> Half-bridge gives 2× quarter, but it also rejects common-mode thermal drift — both wins for the price of one extra gauge. That's usually the right starting place for any precision measurement.</li>
+    <li><b>The signal is tiny but linear.</b> 5 V excitation × 2.0 GF × 1 mε = 2.5 mV at the bridge output. That's about 0.05 % of the supply. Without amplification, this would be dwarfed by noise; with a low-offset instrumentation amp or a dedicated ΔΣ ADC (HX711, ADS1232, AD7124), it resolves cleanly.</li>
+    <li><b>Excitation voltage and gauge resistance trade self-heating against signal.</b> Higher V_exc raises the output linearly but also dissipates more power (V²/R) in each gauge. 350 Ω gauges at 5 V dissipate 18 mW each — fine for steel, marginal for plastic. Switch to 1 kΩ gauges or lower the excitation to 2.5 V if the substrate is heat-sensitive.</li>
+    <li><b>Beam strain at yield is ~3 mε.</b> Engineering steel yields around 0.2 % strain (2000 µε); aluminum, 4 mε. So load-cell gauges typically see 0.5–2 mε at full-rated load, which keeps them well inside their linear range (5 mε max) and well below yield (so they survive overload).</li>
+    <li><b>Lead-wire matters at 350 Ω.</b> 1 m of 24 AWG copper is about 84 mΩ. In a quarter-bridge 350 Ω arm, that's already 240 µε of apparent strain. Three-wire half-bridge or four-wire full-bridge moves the leads to a place where they cancel out.</li>
+  </ul>
+
+  <h2>Where you'll see this</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Load cells</b> — every digital scale, kitchen to truck. Full bridge, mounted on a precision-machined aluminum spring element.</li>
+      <li><b style="color:var(--fg)">Foot force sensors</b> on the Sesame quadruped feet — used to detect ground contact and step force.</li>
+      <li><b style="color:var(--fg)">Torque transducers</b> — full-bridge gauges on a shaft, measuring shear strain. The basis of every torque wrench above $200.</li>
+      <li><b style="color:var(--fg)">Pressure sensors</b> — gauges on a diaphragm. Pressure deflects the diaphragm, stretching gauges on top and compressing those on bottom: a perfect natural full-bridge configuration.</li>
+      <li><b style="color:var(--fg)">Modal analysis</b> — rosette gauges (three at 0°/45°/90°) measuring principal strain on aircraft wings, bridge girders, race-car chassis.</li>
+    </ul>
+  </div>
+
+  <h2 id="cheats">Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Gauge factor</dt><dd><span class="eq">ΔR/R = GF · ε</span></dd>
+        <dt>Quarter</dt><dd><span class="eq">V_out = V_exc · GF · ε / 4</span></dd>
+        <dt>Half</dt><dd><span class="eq">V_out = V_exc · GF · ε / 2</span></dd>
+        <dt>Full</dt><dd><span class="eq">V_out = V_exc · GF · ε</span></dd>
+        <dt>Reverse</dt><dd><span class="eq">ε = (4/n) · V_out / (V_exc · GF)</span></dd>
+        <dt>Self-heat</dt><dd><span class="eq">P_gauge = V_exc² / (4 · R)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>RULES OF THUMB</h3>
+      <ul>
+        <li><b>GF foil</b> ≈ 2.0; <b>GF semiconductor</b> ≈ 100–200 (50× more sensitive, but brittle).</li>
+        <li><b>R_nom</b> standard values: 120 Ω, 350 Ω, 1000 Ω.</li>
+        <li>Working strain range: <b>±2 mε</b> (foil); ±0.5 mε (semi).</li>
+        <li>Bridge sensitivity at full load: <b>1–3 mV/V</b>.</li>
+        <li>For temperature stability, <b>always</b> use half or full bridge.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Forgetting self-heating</b> on small substrates — gauge dissipates I²·R and heats itself, drifting its own resistance. Solution: lower V_exc, or pulse-excite.</li>
+        <li><b>Two-wire quarter bridge</b> over long leads — the lead resistance is in series with the gauge, indistinguishable from strain. Three-wire fixes the temperature drift but not the offset; four-wire fixes both.</li>
+        <li><b>Ground loops</b> with separately grounded V_exc — float the bridge or use a differential ADC.</li>
+        <li><b>EMI pickup</b> — bridge output is millivolts; long unshielded leads near a motor will read noise. Twist + shield + low-pass.</li>
+        <li><b>Initial offset</b> — even a brand-new bridge has 1–5 % offset from gauge tolerance. Always tare after mounting.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EM Phase 1 — Sensors</span> ·
+    Topic: Strain gauges & Wheatstone bridges ·
+    Cross: <a href="wheatstone-bridge.html">Wheatstone Bridge</a> (general theory) ·
+    Forward: <a href="../../ee/phase-4-semiconductors/instrumentation-amp.html">Instrumentation amp</a> (how the mV signal is amplified)
+  </footer>
+</main>
+<script>
+  let cfg = 1; // 1 = quarter, 2 = half, 4 = full
+  const els = {
+    v:  document.getElementById('v'),
+    r:  document.getElementById('r'),
+    gf: document.getElementById('gf'),
+    e:  document.getElementById('e'),
+    t:  document.getElementById('t')
+  };
+
+  function fmtR(r){
+    if(r >= 1000) return (r/1000).toFixed(2) + " kΩ";
+    return r.toFixed(0) + " Ω";
+  }
+  function fmtV(v){
+    if(Math.abs(v) < 1e-3) return (v*1e6).toFixed(2) + " µV";
+    if(Math.abs(v) < 1)    return (v*1000).toFixed(3) + " mV";
+    return v.toFixed(3) + " V";
+  }
+  function fmtI(i){
+    if(Math.abs(i) < 1e-3) return (i*1e6).toFixed(1) + " µA";
+    if(Math.abs(i) < 1)    return (i*1000).toFixed(2) + " mA";
+    return i.toFixed(3) + " A";
+  }
+
+  document.querySelectorAll('.toggle-row button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.toggle-row button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      cfg = parseInt(btn.dataset.cfg);
+      update();
+    });
+  });
+
+  function drawBridge(active){
+    const svg = document.getElementById('bridge');
+    // diamond bridge layout
+    // top vertex (V+) at (300, 40); bottom (V-) at (300, 320); left (V_out-) at (140, 180); right (V_out+) at (460, 180)
+    const arms = [
+      {x1:300,y1:40, x2:140,y2:180, label:"R1", quad:"TL"},  // top-left
+      {x1:300,y1:40, x2:460,y2:180, label:"R2", quad:"TR"},  // top-right
+      {x1:140,y1:180,x2:300,y2:320, label:"R4", quad:"BL"},  // bottom-left
+      {x1:460,y1:180,x2:300,y2:320, label:"R3", quad:"BR"}   // bottom-right
+    ];
+    // In bridge convention: V_out + when R1·R3 ≠ R2·R4
+    // For quarter: only R1 active (+ΔR)
+    // For half:    R1 and R3 active (+ΔR); R2,R4 fixed  (opposite arms increase together)
+    // For full:    R1+ΔR, R3+ΔR, R2−ΔR, R4−ΔR  (alternating)
+    let activeMask = [false,false,false,false];
+    if(active===1) activeMask = [true,false,false,false];
+    if(active===2) activeMask = [true,false,true,false];
+    if(active===4) activeMask = [true,true,true,true];
+
+    let parts = `
+      <!-- excitation source -->
+      <circle cx="300" cy="20" r="3" fill="var(--accent2)"/>
+      <text x="305" y="18" class="label">V_exc+</text>
+      <line x1="300" y1="20" x2="300" y2="40" class="wire"/>
+      <circle cx="300" cy="340" r="3" fill="var(--accent2)"/>
+      <text x="305" y="345" class="label">V_exc−</text>
+      <line x1="300" y1="320" x2="300" y2="340" class="wire"/>
+
+      <!-- output taps -->
+      <circle cx="140" cy="180" r="3" fill="var(--accent3)"/>
+      <text x="105" y="184" class="label" text-anchor="end">V_out−</text>
+      <circle cx="460" cy="180" r="3" fill="var(--accent3)"/>
+      <text x="495" y="184" class="label">V_out+</text>
+      <line x1="460" y1="180" x2="490" y2="180" class="wire"/>
+      <line x1="140" y1="180" x2="110" y2="180" class="wire"/>
+    `;
+
+    arms.forEach((a, i) => {
+      const isActive = activeMask[i];
+      const color = isActive ? "var(--accent3)" : "var(--fg-dim)";
+      const dx = (a.x2 - a.x1);
+      const dy = (a.y2 - a.y1);
+      const len = Math.sqrt(dx*dx + dy*dy);
+      const ux = dx/len, uy = dy/len;
+      const cx = (a.x1+a.x2)/2;
+      const cy = (a.y1+a.y2)/2;
+      // resistor zigzag (simplified rectangle perpendicular to arm)
+      const px = -uy * 8, py = ux * 8;
+      parts += `
+        <line x1="${a.x1}" y1="${a.y1}" x2="${cx - ux*22}" y2="${cy - uy*22}" stroke="var(--fg)" stroke-width="1.5"/>
+        <rect x="${cx - 16}" y="${cy - 10}" width="32" height="20" fill="var(--bg-elev2)" stroke="${color}" stroke-width="${isActive?2:1.5}" transform="rotate(${Math.atan2(dy,dx)*180/Math.PI} ${cx} ${cy})"/>
+        <line x1="${cx + ux*22}" y1="${cy + uy*22}" x2="${a.x2}" y2="${a.y2}" stroke="var(--fg)" stroke-width="1.5"/>
+        <text x="${cx + px}" y="${cy + py + 4}" class="label" text-anchor="middle" fill="${isActive?'var(--accent3)':'var(--fg)'}">${a.label}${isActive?'★':''}</text>
+      `;
+    });
+
+    // legend
+    parts += `
+      <rect x="20" y="20" width="80" height="16" fill="var(--bg-elev2)" stroke="var(--accent3)" stroke-width="2"/>
+      <text x="60" y="32" class="label-ok" text-anchor="middle">active</text>
+      <rect x="20" y="42" width="80" height="16" fill="var(--bg-elev2)" stroke="var(--fg-dim)" stroke-width="1.5"/>
+      <text x="60" y="54" class="label-dim" text-anchor="middle">fixed</text>
+    `;
+    svg.innerHTML = parts;
+  }
+
+  function update(){
+    const V  = parseFloat(els.v.value);
+    const R  = parseFloat(els.r.value);
+    const GF = parseFloat(els.gf.value);
+    const e  = parseFloat(els.e.value) * 1e-6;  // microstrain → strain
+    const dT = parseFloat(els.t.value);
+
+    document.getElementById('vRead').textContent  = V.toFixed(2) + " V";
+    document.getElementById('rRead').textContent  = fmtR(R);
+    document.getElementById('gfRead').textContent = GF.toFixed(2);
+    document.getElementById('eRead').textContent  = (e*1e6>=0?"+":"") + (e*1e6).toFixed(0) + " µε";
+    document.getElementById('tRead').textContent  = (dT>=0?"+":"") + dT.toFixed(0) + " °C";
+    document.getElementById('cfgRead').textContent = cfg===1?"Quarter":cfg===2?"Half":"Full";
+
+    const dRoverR = GF * e;             // signal
+    const dRtherm = 30e-6 * dT;         // 30 ppm/°C — typical foil
+    // Thermal rejection: quarter=full effect, half/full=cancels
+    const thermalFactor = (cfg === 1) ? 1 : 0;
+    const Vout = (cfg / 4) * V * dRoverR + (cfg / 4) * V * dRtherm * thermalFactor;
+    const sensitivity = (cfg/4) * GF; // mV/V per unit strain
+    const thermErr = (cfg / 4) * V * dRtherm * thermalFactor;
+    const epsEquiv = (Vout - thermErr) / (V * GF) * (4/cfg);
+    const Iexc = V / R;
+
+    document.getElementById('tDR').textContent = (dRoverR*100).toFixed(3) + " %";
+    document.getElementById('tVo').textContent = fmtV(Vout);
+    document.getElementById('tSn').textContent = (sensitivity*1000).toFixed(3) + " mV/V/mε";
+    document.getElementById('tTe').textContent = fmtV(thermErr);
+    document.getElementById('tEs').textContent = (epsEquiv*1e6>=0?"+":"") + (epsEquiv*1e6).toFixed(0) + " µε";
+    document.getElementById('tIe').textContent = fmtI(Iexc);
+
+    document.getElementById('vdCalc').textContent =
+      `(${cfg}/4) · ${V.toFixed(2)} · ${GF.toFixed(2)} · ${(e>=0?'+':'')}${e.toFixed(6)} = ${(Vout*1000).toFixed(3)} mV`;
+
+    drawBridge(cfg);
+  }
+
+  Object.values(els).forEach(el => el.addEventListener('input', update));
+  update();
+</script>
+</body>
+</html>

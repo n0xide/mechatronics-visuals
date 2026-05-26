@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Skin Effect — visual</title>
+<style>:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 system-ui,sans-serif}
+main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright)}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+.control input,.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 8px;font:13px ui-monospace,monospace}
+.readout{color:var(--accent);font-family:ui-monospace,monospace;font-size:13px}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+.deriv b{color:var(--fg)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>Skin Effect — current crowds to the surface at high frequency</h1>
+<p class="lede">At DC, current spreads uniformly through a conductor. At MHz and above, it crowds to the outer "skin" — a layer of thickness δ = √(2ρ/(ωμ)). The effective cross-section shrinks, so AC resistance R_AC rises as √f. This is why high-frequency power inductors use Litz wire (many tiny strands) and why thick PCB power traces don't help above ~10 MHz.</p>
+
+<div class="anchors">
+<span class="anchor"><b>δ_Cu @ 60 Hz</b>: 8.5 mm</span>
+<span class="anchor"><b>δ_Cu @ 1 MHz</b>: 65 µm</span>
+<span class="anchor"><b>δ_Cu @ 1 GHz</b>: 2 µm</span>
+<span class="anchor"><b>ρ_Cu</b>: 1.68 × 10⁻⁸ Ω·m</span>
+<span class="anchor"><b>µ_Cu</b>: 1.257 × 10⁻⁶ H/m</span>
+</div>
+
+<section class="controls">
+<div class="control"><label>Frequency: <span class="readout" id="fRead">1 MHz</span></label><input id="f" type="range" min="0" max="9" step="0.1" value="6"></div>
+<div class="control"><label>Material</label>
+<select id="mat">
+<option value="cu" selected>Copper</option>
+<option value="al">Aluminum</option>
+<option value="ag">Silver</option>
+<option value="au">Gold</option>
+<option value="fe">Iron (ferromagnetic — small δ)</option>
+</select>
+</div>
+<div class="control"><label>Conductor radius (mm): <span class="readout" id="rRead">1.0</span></label><input id="r" type="range" min="0.05" max="10" step="0.05" value="1"></div>
+</section>
+
+<div class="figure">
+<svg id="conductor" viewBox="0 0 720 200" width="100%"></svg>
+<table>
+<tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+<tr><td>Skin depth δ</td><td id="delta">65 µm</td><td>√(2ρ/(ω·µ))</td></tr>
+<tr><td>Effective area (annulus)</td><td id="aEff">0.41 mm²</td><td>2π·r·δ for r ≫ δ</td></tr>
+<tr><td>R_AC / R_DC</td><td id="rRatio">7.7×</td><td>≈ r/(2·δ) for solid wire, large r</td></tr>
+<tr><td>Litz wire breakeven (strands needed)</td><td id="litz">240</td><td>~(r/δ)² strands needed to recover R_DC behavior</td></tr>
+</table>
+</div>
+
+<h2>Where it matters</h2>
+<ul class="notice">
+<li><b>High-frequency power inductors (SMPS)</b> — at 100 kHz – 1 MHz switching, even thin wire's R_AC dominates. Use Litz wire (many insulated strands) so each strand stays smaller than δ.</li>
+<li><b>RF coils and antennas</b> — Q of an inductor at GHz = ω·L / R. R_AC kills Q. Silver-plate the wire for the last 2–5 µm and you skin-effect into the lower-resistivity silver.</li>
+<li><b>PCB power planes</b> — for 50 MHz return currents, only the top few µm of copper conducts. A 2 oz copper plane isn't 4× better than 1 oz for HF return; it's marginally better.</li>
+<li><b>Bus bars in motor drives</b> — 50–100 Hz at high amperes still has noticeable skin effect. Bus bars are typically flat (high surface-to-volume ratio) to mitigate.</li>
+<li><b>Transmission-line conductors</b> — Z₀ at HF depends only on geometry, not the wire's R. But R_AC adds attenuation.</li>
+</ul>
+
+<h2>The formula derivation</h2>
+<div class="deriv">
+<span class="step">Maxwell's equations in a good conductor: ∇²E = jωµσE</span>
+<span class="step">Wave solution: E(z) = E₀ · exp(−z/δ) · exp(−jz/δ)</span>
+<span class="step">Skin depth: <b>δ = √(2 / (ωµσ)) = √(2ρ / (ωµ))</b></span>
+<span class="step">Where ρ = 1/σ is resistivity, ω = 2πf.</span>
+<span class="step">For copper: ρ = 1.68e-8, µ = µ₀ = 1.257e-6 → δ = 0.0660/√f meters</span>
+<span class="step">δ = 8.5 mm @ 60 Hz, 65 µm @ 1 MHz, 2 µm @ 1 GHz</span>
+</div>
+
+<h2>Effective resistance</h2>
+<p>For a solid round wire of radius r, when r ≫ δ, the current flows in an annulus of thickness δ along the outer circumference. Effective area A_eff = 2π·r·δ (instead of π·r²).</p>
+
+<div class="deriv">
+<span class="step">R_AC / R_DC ≈ r / (2·δ) for solid wire, large r</span>
+<span class="step">Example: 1 mm radius copper at 1 MHz (δ = 65 µm): R_AC/R_DC = 1000/(2·65) = 7.7×</span>
+<span class="step">Solution: use stranded Litz wire with strand radius &lt; δ. N strands needed ≈ (r/δ)² to fully utilize copper.</span>
+<span class="step">Each strand must be individually insulated and interleaved (the entire bundle gets twisted so no single strand stays on the surface).</span>
+</div>
+
+<h2>Cheat sheet</h2>
+<table>
+<tr><th>Frequency</th><th>δ_Cu</th><th>Common application</th></tr>
+<tr><td>60 Hz</td><td>8.5 mm</td><td>Mains-frequency power transmission</td></tr>
+<tr><td>10 kHz</td><td>660 µm</td><td>Audio amplifier</td></tr>
+<tr><td>100 kHz</td><td>208 µm</td><td>SMPS — Litz starts to help</td></tr>
+<tr><td>1 MHz</td><td>65 µm</td><td>High-frequency SMPS, RFID</td></tr>
+<tr><td>10 MHz</td><td>21 µm</td><td>Class-E amp, RF chokes</td></tr>
+<tr><td>100 MHz</td><td>6.5 µm</td><td>VHF, antenna conductors</td></tr>
+<tr><td>1 GHz</td><td>2 µm</td><td>Microstrip RF, antennas (silver-plate matters)</td></tr>
+<tr><td>10 GHz</td><td>660 nm</td><td>5G mmWave</td></tr>
+</table>
+
+<footer>Curriculum: <a target="_top" href="../../index.html">EE Phase 7 — Signal Integrity &amp; PCB</a> · Cross-links: <a href="transmission-line.html">Transmission Line</a>, <a href="decoupling-caps.html">Decoupling Caps</a>.</footer>
+
+</main><script>
+const MATS = {
+  cu: {rho: 1.68e-8, mu_r: 1, label: 'Copper'},
+  al: {rho: 2.65e-8, mu_r: 1, label: 'Aluminum'},
+  ag: {rho: 1.59e-8, mu_r: 1, label: 'Silver'},
+  au: {rho: 2.44e-8, mu_r: 1, label: 'Gold'},
+  fe: {rho: 9.7e-8, mu_r: 5000, label: 'Iron (ferro)'},
+};
+
+const els = ['f','mat','r'].reduce((m,k)=>{m[k]=document.getElementById(k);return m;},{});
+
+function update(){
+  const log_f = parseFloat(els.f.value);
+  const f = Math.pow(10, log_f);
+  const matKey = els.mat.value;
+  const mat = MATS[matKey];
+  const r_mm = parseFloat(els.r.value);
+  const r = r_mm / 1000; // meters
+
+  const mu0 = 1.257e-6;
+  const omega = 2 * Math.PI * f;
+  const delta = Math.sqrt(2 * mat.rho / (omega * mu0 * mat.mu_r)); // meters
+
+  const fStr = f >= 1e9 ? (f/1e9).toFixed(1) + ' GHz' : f >= 1e6 ? (f/1e6).toFixed(1) + ' MHz' : f >= 1e3 ? (f/1e3).toFixed(1) + ' kHz' : f.toFixed(0) + ' Hz';
+  document.getElementById('fRead').textContent = fStr;
+  document.getElementById('rRead').textContent = r_mm.toFixed(2);
+
+  const dStr = delta >= 1e-3 ? (delta*1000).toFixed(2) + ' mm' : delta >= 1e-6 ? (delta*1e6).toFixed(1) + ' µm' : (delta*1e9).toFixed(0) + ' nm';
+  document.getElementById('delta').textContent = dStr;
+
+  // Effective area
+  let aEff_mm2;
+  if(r > 2*delta){
+    aEff_mm2 = 2 * Math.PI * r * delta * 1e6;
+  } else {
+    aEff_mm2 = Math.PI * r * r * 1e6;
+  }
+  document.getElementById('aEff').textContent = aEff_mm2.toFixed(3) + ' mm²';
+
+  // R_AC/R_DC ratio
+  const ratio = r > 2*delta ? r / (2 * delta) : 1;
+  document.getElementById('rRatio').textContent = ratio.toFixed(1) + '×';
+
+  // Litz strands needed
+  const litz = Math.max(1, Math.round((r/delta)*(r/delta)));
+  document.getElementById('litz').textContent = litz;
+
+  // Draw conductor cross-section
+  const svg = document.getElementById('conductor');
+  const cx = 360, cy = 100, R = 70;
+  let s = '';
+  s += `<text x="20" y="30" fill="#fff" font-family="ui-monospace,monospace" font-size="12">Cross-section at ${fStr}, ${mat.label}, radius ${r_mm} mm</text>`;
+  s += `<text x="20" y="50" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">(red = high current density, blue = low; the "skin" carries it all)</text>`;
+
+  // Draw concentric rings showing current density
+  for(let i = 0; i < 25; i++){
+    const radiusFrac = 1 - i / 25;
+    const radius = R * radiusFrac;
+    // Current density: J(r) ∝ exp(-(r0-r)/δ) where r0 is wire radius
+    const depth_m = (1 - radiusFrac) * (r_mm/1000); // depth from surface, m
+    const density = Math.exp(-depth_m / delta);
+    // Color: red at high density, blue at low
+    const red = Math.round(150 + 100 * density);
+    const blue = Math.round(150 - 100 * density);
+    const green = 50;
+    s += `<circle cx="${cx}" cy="${cy}" r="${radius}" fill="rgb(${red},${green},${blue})" opacity="0.8"/>`;
+  }
+  // Outer ring
+  s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#fff" stroke-width="1.5"/>`;
+  // Annotations
+  s += `<text x="${cx + R + 10}" y="${cy}" fill="#fff" font-family="ui-monospace,monospace" font-size="11">surface ← all current here at HF</text>`;
+  if(2*delta*1000 / r_mm < 2){
+    const innerR = R * (1 - 2*delta/(r_mm/1000));
+    s += `<circle cx="${cx}" cy="${cy}" r="${innerR}" fill="none" stroke="#5ec8ff" stroke-width="1" stroke-dasharray="3,3"/>`;
+    s += `<text x="${cx + innerR + 10}" y="${cy + 60}" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="10">inner boundary (2δ deep)</text>`;
+  }
+
+  svg.innerHTML = s;
+}
+
+['f','r'].forEach(k => els[k].addEventListener('input', update));
+els.mat.addEventListener('change', update);
+update();
+</script></body></html>

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connector Matrix — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr.hit td{background:rgba(163,230,53,0.1)}
+  tr.miss td{opacity:0.4}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 20px}
+  .chip{background:var(--bg-elev2);border:1px solid var(--line);border-radius:14px;padding:3px 10px;font:11px ui-monospace,monospace;color:var(--accent);text-decoration:none}
+  .chip:hover{background:var(--bg-elev);border-color:var(--accent)}
+  .toggle-row{display:flex;gap:6px;margin:0 0 10px;flex-wrap:wrap}
+  .toggle-row button{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 10px;cursor:pointer;font:12px ui-monospace,monospace}
+  .toggle-row button.active{background:var(--accent);color:#000;border-color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Connector Matrix</h1>
+  <p class="lede">Choosing the wrong connector kills more robot prototypes than firmware bugs. Too-small connectors melt under inrush, too-big ones don't fit. Unkeyed connectors plug in backwards. Non-locking connectors vibrate loose. This visual rolls up the dozen most-used hobby and industrial families — XT-30/60/90, JST PH/XH/VH/SH, Molex Micro-Fit, GX12/16 — into one current-rating-vs-pitch table with a use-case picker.</p>
+
+  <div class="chips">
+    <a class="chip" href="#picker">#picker</a>
+    <a class="chip" href="#families">#families</a>
+    <a class="chip" href="#xt">#XT-series</a>
+    <a class="chip" href="#jst">#JST</a>
+    <a class="chip" href="#molex">#Molex</a>
+    <a class="chip" href="#round">#GX-round</a>
+    <a class="chip" href="#cheats">#cheat-sheet</a>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>Target current: <span class="readout" id="iRead">5 A</span></label>
+      <input id="i" type="range" min="0.1" max="60" step="0.1" value="5"></div>
+    <div class="control"><label>Pin count: <span class="readout" id="pRead">2 pins</span></label>
+      <input id="p" type="range" min="2" max="20" step="1" value="2"></div>
+    <div class="control"><label>Use case: <span class="readout" id="uRead">internal-power</span></label>
+      <select id="u">
+        <option value="hi-power" >High-power battery (LiPo)</option>
+        <option value="internal-power" selected>Internal DC power (3.3 V/5 V/12 V)</option>
+        <option value="signal">Signal / I²C / SPI</option>
+        <option value="motor">Motor leads</option>
+        <option value="display">Display ribbon</option>
+        <option value="external">External / panel-mount</option>
+      </select>
+    </div>
+    <div class="control"><label>Constraints: <span class="readout" id="cRead">None</span></label>
+      <div class="toggle-row">
+        <button data-c="lock" >Locking</button>
+        <button data-c="keyed" >Keyed</button>
+        <button data-c="ip65" >IP65+</button>
+        <button data-c="cheap" class="active">Cheap</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="diagram" viewBox="0 0 600 240" width="100%"></svg>
+    <table id="conntbl">
+      <thead><tr><th>Family</th><th>Pitch</th><th>Pins</th><th>Current rating</th><th>Locking</th><th>Keyed</th><th>Use case</th></tr></thead>
+      <tbody>
+        <tr data-fam="xt30"><td>XT30</td><td class="num">—</td><td class="num">2</td><td class="num">15 A</td><td>Friction fit</td><td>Y (polarized)</td><td>LiPo packs, small ESCs</td></tr>
+        <tr data-fam="xt60"><td>XT60</td><td class="num">—</td><td class="num">2</td><td class="num">30 A</td><td>Friction fit</td><td>Y (polarized)</td><td>RC battery, 3S–4S LiPo</td></tr>
+        <tr data-fam="xt90"><td>XT90 (anti-spark)</td><td class="num">—</td><td class="num">2</td><td class="num">60 A</td><td>Friction fit</td><td>Y (polarized)</td><td>e-bike, large LiPo</td></tr>
+        <tr data-fam="jst-sh"><td>JST SH</td><td class="num">1.00 mm</td><td class="num">2–14</td><td class="num">1 A</td><td>None</td><td>Polarized</td><td>I²C STEMMA-QT, fine pitch</td></tr>
+        <tr data-fam="jst-ph"><td>JST PH</td><td class="num">2.00 mm</td><td class="num">2–16</td><td class="num">2 A</td><td>Friction</td><td>Polarized</td><td>1S LiPo, IMU, small sensors</td></tr>
+        <tr data-fam="jst-xh"><td>JST XH</td><td class="num">2.50 mm</td><td class="num">2–13</td><td class="num">3 A</td><td>Friction</td><td>Polarized</td><td>Balance leads (2S+), small motors</td></tr>
+        <tr data-fam="jst-vh"><td>JST VH</td><td class="num">3.96 mm</td><td class="num">2–10</td><td class="num">10 A</td><td>Friction</td><td>Polarized</td><td>Heavier DC, PSU connections</td></tr>
+        <tr data-fam="microfit"><td>Molex Micro-Fit 3.0</td><td class="num">3.00 mm</td><td class="num">2–24</td><td class="num">8.5 A</td><td>Latch</td><td>Keyed body</td><td>Industrial, locking signal</td></tr>
+        <tr data-fam="minifit"><td>Molex Mini-Fit Jr.</td><td class="num">4.20 mm</td><td class="num">2–24</td><td class="num">13 A</td><td>Latch</td><td>Keyed body</td><td>PC power, server PSU</td></tr>
+        <tr data-fam="gx12"><td>GX12 round</td><td class="num">—</td><td class="num">2–8</td><td class="num">5 A/pin</td><td>Screw</td><td>Y (slot+key)</td><td>External panel, IP65 with seal</td></tr>
+        <tr data-fam="gx16"><td>GX16 round</td><td class="num">—</td><td class="num">2–10</td><td class="num">10 A/pin</td><td>Screw</td><td>Y</td><td>External panel, motor leads</td></tr>
+      </tbody>
+    </table>
+    <div class="vd" id="recBox">
+      <b>Recommended:</b> <span id="recText">JST PH 2.0 mm — 2-pin polarized friction fit; 2 A rating with margin.</span>
+    </div>
+  </div>
+
+  <h2 id="families">Families overview</h2>
+  <table>
+    <tr><th>Family</th><th>Power/Signal</th><th>Strengths</th><th>Weaknesses</th></tr>
+    <tr><td><b>XT-series</b> (XT30, XT60, XT90)</td><td>Power</td><td>Massive current, cheap, polarized housing</td><td>No locking; some can come unplugged under vibration</td></tr>
+    <tr><td><b>JST PH/XH/VH/SH</b></td><td>Signal & light power</td><td>Tiny footprint, polarized, cheap. Half the hobby world uses these.</td><td>Friction-only; vibration loosens; pin push-out from improper crimp.</td></tr>
+    <tr><td><b>Molex Micro-Fit / Mini-Fit Jr</b></td><td>Power & signal</td><td>Real positive lock, robust, industrial.</td><td>Bigger footprint; need real crimp tool.</td></tr>
+    <tr><td><b>Dupont (2.54 mm)</b></td><td>Signal / breadboard</td><td>Universal, cheap, 0.1" pitch matches PCB headers.</td><td>No lock, no polarization. Easy to plug wrong.</td></tr>
+    <tr><td><b>GX-series</b> (GX12, GX16, GX20)</td><td>Panel mount</td><td>Threaded screw lock, IP65/67 versions, multi-pin.</td><td>Bulky; need panel cutout.</td></tr>
+    <tr><td><b>Phoenix-style screw terminals</b></td><td>Power & signal</td><td>Rewireable in field; high current per pin.</td><td>Loose under vibration; bulky.</td></tr>
+  </table>
+
+  <h2 id="xt">XT-series detail</h2>
+  <p>XT-30/60/90 are 2-pin LiPo battery connectors molded in nylon. The plug is a deeply chamfered bullet contact; the socket grips it. The housing is keyed: positive contact slightly larger than negative.</p>
+  <ul class="notice">
+    <li><b>XT30</b>: 15 A continuous, 30 A burst. 1S–3S LiPo packs to ~1500 mAh.</li>
+    <li><b>XT60</b>: 30 A continuous, 60 A burst. The de-facto RC standard for 3S–4S LiPo (RC cars, drones, e-skateboards).</li>
+    <li><b>XT90</b>: 60 A continuous. For big EV and e-bike packs. <b>Anti-spark version</b> has a 5 Ω resistor on the positive that pre-charges caps before metal-to-metal contact — saves the connector from arc erosion.</li>
+    <li><b>EC3 / EC5</b> are similar 2-pin power connectors from the same era; less common now.</li>
+  </ul>
+
+  <h2 id="jst">JST detail (the family of families)</h2>
+  <p>JST is a company; they make hundreds of connector series. The four most-used in hobbies:</p>
+  <ul class="notice">
+    <li><b>JST SH (1.00 mm pitch)</b>: tiny, for STEMMA-QT, Qwiic, small flex cables. 1 A/contact. Hand-crimping is hard; use pre-made jumpers.</li>
+    <li><b>JST PH (2.00 mm)</b>: the workhorse. Found on Pico W battery jacks, IMU breakouts, sensor modules. 2 A/contact.</li>
+    <li><b>JST XH (2.50 mm)</b>: a step up. Used for balance leads on LiPo batteries (e.g., 4S balance plug = 5-pin XH). 3 A/contact.</li>
+    <li><b>JST VH (3.96 mm)</b>: largest of the four. Power-supply pigtails, larger DC lines. 10 A/contact.</li>
+  </ul>
+
+  <h2 id="molex">Molex detail</h2>
+  <p>Molex Micro-Fit 3.0 (3.0 mm pitch) is the modern industrial standard for medium-current locked connectors. Positive latch with an audible click; mating force ~10 N; vibration-rated. 2–24 pin configurations; 8.5 A per contact.</p>
+  <p>Mini-Fit Jr (4.20 mm pitch) is the big sibling — what every PC ATX power connector uses (Molex 39-01-2200 etc.). 13 A per contact.</p>
+
+  <h2 id="round">Round panel-mount (GX, M12)</h2>
+  <p>GX12/16/20 are aviation-style metal-body screw-lock connectors. The pin count is the last digit's intended meaning (e.g., GX16-4 is 4-pin). Inexpensive ($1–3); ubiquitous on cheap CNC and 3D-printer enclosures; available with IP67 seal grommets.</p>
+  <p>M12 connectors are the industrial sensor standard. 5-pin M12 for Profinet/EtherCAT/CANopen with screw or push-pull lock. Way more expensive ($10–50) but very robust.</p>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Current rating is per contact</b>, with a derating factor for adjacent pins all carrying current. A 16-pin Micro-Fit at 8.5 A nominal really means ~5 A per pin when fully loaded.</li>
+    <li><b>Cycle life</b> matters for plugged-in-and-out interfaces (battery, USB-equivalent). XT-60: 200+ cycles. JST PH: 50 cycles (designed for assembly, not service).</li>
+    <li><b>Locking saves robots from accidental death</b>. A JST PH on a low-vibration bench fixture is fine. The same connector on a flying drone won't survive a vibration test.</li>
+    <li><b>Polarization is not the same as keying</b>. Polarization means you <em>can</em> figure out which way; keying means the connector <em>won't go</em> the wrong way (asymmetric body). XT-60 has both; Dupont has neither.</li>
+    <li><b>Don't mix connector families across a system</b> — your future-self will plug XH balance leads into PH battery leads and wonder why your 11 V LiPo cooks the 3.3 V regulator.</li>
+  </ul>
+
+  <h2>Where you'll see this</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Quadrotor</b> — XT60 for battery, JST XH for balance, JST PH for telemetry, M12 for camera gimbal.</li>
+      <li><b style="color:var(--fg)">3D-printer</b> — Mini-Fit Jr for PSU, GX16 for hotend, JST PH/XH for fans.</li>
+      <li><b style="color:var(--fg)">Robot arm</b> — Micro-Fit for joint motors, M12 for sensors, GX12 for tool-changer.</li>
+      <li><b style="color:var(--fg)">Cyberdeck</b> — JST PH for batteries, JST SH for I²C breakouts, USB-C/JST for charging.</li>
+      <li><b style="color:var(--fg)">Pi/breadboard prototype</b> — Dupont 2.54 mm everywhere; replace with proper connectors in production.</li>
+    </ul>
+  </div>
+
+  <h2 id="cheats">Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>QUICK PICK</h3>
+      <dl>
+        <dt>2 A signal</dt><dd>JST PH 2.0 mm</dd>
+        <dt>3 A balance</dt><dd>JST XH 2.5 mm</dd>
+        <dt>10 A DC</dt><dd>JST VH or Micro-Fit</dd>
+        <dt>15 A LiPo</dt><dd>XT30</dd>
+        <dt>30 A LiPo</dt><dd>XT60</dd>
+        <dt>60 A pack</dt><dd>XT90 (anti-spark)</dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>RULES OF THUMB</h3>
+      <ul>
+        <li><b>Derate 30 %</b> from rated current for safety.</li>
+        <li><b>Locking</b> for any robot that moves or vibrates.</li>
+        <li><b>Anti-spark</b> for any pack &gt; 6S (24 V).</li>
+        <li><b>Color code your wires</b> — red=+, black=−, signal colors per JIS.</li>
+        <li><b>Crimp, don't solder</b> connector pins. Soldered crimps fail under flex.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Reverse polarity</b> — Dupont jumpers, twin-cable XT plugs.</li>
+        <li><b>Connector melt</b> — undersized for inrush.</li>
+        <li><b>Vibration loosening</b> — JST PH in a quadcopter is a bad idea.</li>
+        <li><b>Bad crimps</b> — pins push out under load.</li>
+        <li><b>Mixing pitches</b> — 2.0 vs 2.5 mm visually similar; won't actually mate.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EM Phase 7 — System Integration</span> ·
+    Topic: Connector selection ·
+    Cross: <a href="bus-selection.html">Bus Selection</a> ·
+    Forward: <a href="bringup-procedure.html">Bringup Procedure</a>
+  </footer>
+</main>
+<script>
+  const conns = {
+    xt30:     {amps:15, pins:[2], use:['hi-power','motor'], lock:false, keyed:true, ip65:false, cheap:true, pretty:"XT30"},
+    xt60:     {amps:30, pins:[2], use:['hi-power','motor'], lock:false, keyed:true, ip65:false, cheap:true, pretty:"XT60"},
+    xt90:     {amps:60, pins:[2], use:['hi-power'], lock:false, keyed:true, ip65:false, cheap:true, pretty:"XT90"},
+    "jst-sh": {amps:1, pins:[2,3,4,5,6,7,8,10,14], use:['signal','display'], lock:false, keyed:true, ip65:false, cheap:true, pretty:"JST SH"},
+    "jst-ph": {amps:2, pins:[2,3,4,5,6,7,8,10,12,14,16], use:['signal','internal-power'], lock:false, keyed:true, ip65:false, cheap:true, pretty:"JST PH"},
+    "jst-xh": {amps:3, pins:[2,3,4,5,6,7,8,9,10,11,12,13], use:['signal','internal-power','motor'], lock:false, keyed:true, ip65:false, cheap:true, pretty:"JST XH"},
+    "jst-vh": {amps:10, pins:[2,3,4,5,6,7,8,9,10], use:['internal-power','motor'], lock:false, keyed:true, ip65:false, cheap:true, pretty:"JST VH"},
+    microfit: {amps:8.5, pins:[2,3,4,5,6,8,10,12,14,16,20,24], use:['internal-power','signal','motor'], lock:true, keyed:true, ip65:false, cheap:false, pretty:"Molex Micro-Fit 3.0"},
+    minifit:  {amps:13, pins:[2,3,4,5,6,8,10,12,14,16,18,20,22,24], use:['internal-power','motor'], lock:true, keyed:true, ip65:false, cheap:false, pretty:"Molex Mini-Fit Jr"},
+    gx12:     {amps:5, pins:[2,3,4,5,6,7,8], use:['external','signal','motor'], lock:true, keyed:true, ip65:true, cheap:true, pretty:"GX12"},
+    gx16:     {amps:10, pins:[2,3,4,5,6,7,8,10], use:['external','motor'], lock:true, keyed:true, ip65:true, cheap:true, pretty:"GX16"}
+  };
+  let constraints = {cheap:true};
+
+  const els = {
+    i:document.getElementById('i'),
+    p:document.getElementById('p'),
+    u:document.getElementById('u')
+  };
+
+  document.querySelectorAll('[data-c]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const c = btn.dataset.c;
+      constraints[c] = !constraints[c];
+      btn.classList.toggle('active');
+      const enabled = Object.keys(constraints).filter(k=>constraints[k]);
+      document.getElementById('cRead').textContent = enabled.length ? enabled.join(', ') : 'None';
+      update();
+    });
+  });
+
+  function update(){
+    const I = parseFloat(els.i.value);
+    const P = parseFloat(els.p.value);
+    const use = els.u.value;
+    document.getElementById('iRead').textContent = I + " A";
+    document.getElementById('pRead').textContent = P + " pin" + (P>1?'s':'');
+    document.getElementById('uRead').textContent = use;
+
+    const rows = document.querySelectorAll('#conntbl tbody tr');
+    let best = null, bestScore = -1e9;
+    rows.forEach(tr=>{
+      tr.classList.remove('hit');
+      tr.classList.remove('miss');
+      const fam = tr.dataset.fam;
+      const c = conns[fam];
+      let ok = true;
+      if(c.amps < I * 1.3) ok = false; // 30% derate
+      if(!c.pins.includes(P) && !(P > 2 && c.pins[c.pins.length-1] >= P)) ok = false;
+      if(constraints.lock && !c.lock) ok = false;
+      if(constraints.keyed && !c.keyed) ok = false;
+      if(constraints.ip65 && !c.ip65) ok = false;
+      if(!c.use.includes(use)) {
+        // light penalty
+      }
+      if(!ok){
+        tr.classList.add('miss');
+        return;
+      }
+      let score = 0;
+      score -= (c.amps - I) * 1; // closer current = better fit
+      if(c.use.includes(use)) score += 30;
+      if(constraints.cheap){
+        if(c.cheap) score += 15; else score -= 10;
+      }
+      if(score > bestScore){ bestScore = score; best = fam; }
+    });
+    if(best){
+      const tr = document.querySelector(`#conntbl tbody tr[data-fam="${best}"]`);
+      if(tr){ tr.classList.add('hit'); }
+      document.getElementById('recText').textContent = `${conns[best].pretty} — ${conns[best].amps} A rating, ${conns[best].lock?'locking':'friction'}, ${conns[best].cheap?'cheap':'industrial'}.`;
+    } else {
+      document.getElementById('recText').textContent = "No connector meets the constraints — consider relaxing pin count, locking, or IP rating.";
+    }
+
+    // diagram of selected connector
+    const svg = document.getElementById('diagram');
+    if(best){
+      const c = conns[best];
+      svg.innerHTML = `
+        <text x="300" y="30" class="label" text-anchor="middle" fill="var(--accent)">${c.pretty}</text>
+        <rect x="150" y="60" width="300" height="120" fill="var(--bg-elev2)" stroke="var(--accent3)" stroke-width="2" rx="8"/>
+        ${Array.from({length: Math.min(P, 10)}).map((_,j)=>{
+          const x = 180 + j*(240/Math.max(1, Math.min(P,10)-1));
+          return `<circle cx="${x}" cy="120" r="6" fill="var(--accent2)" stroke="var(--fg)"/>`;
+        }).join('')}
+        <text x="300" y="210" class="label-dim" text-anchor="middle">${P}-pin · ${c.amps} A/contact · ${c.lock?'locking':'friction'} · ${c.keyed?'keyed':'unkeyed'}</text>
+      `;
+    }
+  }
+
+  Object.values(els).forEach(el=>el.addEventListener('input', update));
+  els.u.addEventListener('change', update);
+  update();
+</script>
+</body>
+</html>

@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hydrostatics &mdash; visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2)}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>Hydrostatics &mdash; pressure, buoyancy, submerged surfaces</h1>
+  <p class="lede">A fluid at rest exerts pressure equally in every direction, and that pressure grows linearly with depth. Three formulas (P = &rho; g h, F_b = &rho; g V, F = &rho; g h_c A) cover most engineering questions: how deep before a thin-wall tank bursts, how much buoyancy a hull provides, what force the gate of a dam sees, and what to write on a manometer reading. This visual makes them concrete.</p>
+
+  <div class="anchors">
+    <span class="anchor"><b>Water &rho; = 1000 kg/m&sup3;</b></span>
+    <span class="anchor"><b>Mercury &rho; = 13546 kg/m&sup3;</b></span>
+    <span class="anchor"><b>Air &rho; = 1.225 kg/m&sup3; (sea level)</b></span>
+    <span class="anchor"><b>1 atm = 101.325 kPa</b> = 14.696 psi</span>
+    <span class="anchor"><b>1 m of water</b> = 9.81 kPa = 1.42 psi</span>
+    <span class="anchor"><b>1 mmHg</b> = 133.3 Pa (torr)</span>
+    <span class="anchor"><b>g = 9.81 m/s&sup2;</b></span>
+  </div>
+
+  <h2>The fundamental equation &mdash; P = &rho; g h</h2>
+  <p>Consider a column of static fluid, area A, height h. The weight of the column equals the pressure-times-area at its base:</p>
+  <div class="deriv">
+    <span class="step">Weight = (&rho; V) g = (&rho; A h) g</span>
+    <span class="step">Pressure at base = weight / A = <b>&rho; g h</b></span>
+    <span class="step">Independent of cross-section shape, independent of total fluid volume, only depends on the vertical distance from the free surface.</span>
+    <span class="step"><span class="arrow">&rarr;</span> A 1-cm-wide straw and an Olympic pool both produce the same pressure at the same depth.</span>
+  </div>
+  <p>The total (absolute) pressure at depth h includes the pressure above the free surface (usually atmospheric):</p>
+  <div class="deriv">
+    <span class="step"><b>P_abs(h) = P_atm + &rho; g h</b></span>
+    <span class="step"><b>Gauge pressure</b> P_g = P_abs &minus; P_atm = &rho; g h</span>
+    <span class="step">Engineering numbers are almost always gauge unless they say "absolute". Vacuum is below atmospheric, gauge negative.</span>
+  </div>
+
+  <h2>Pressure with depth &mdash; live experiment</h2>
+  <section class="controls">
+    <div class="control"><label>Fluid: <span class="readout" id="flRead">water</span></label>
+      <select id="fl">
+        <option value="water" selected>Water (1000 kg/m³)</option>
+        <option value="sea">Seawater (1025 kg/m³)</option>
+        <option value="oil">Engine oil (880 kg/m³)</option>
+        <option value="hg">Mercury (13546 kg/m³)</option>
+        <option value="gas">Gasoline (740 kg/m³)</option>
+        <option value="air">Air (1.225 kg/m³)</option>
+      </select>
+    </div>
+    <div class="control"><label>Depth h: <span class="readout" id="hRead">5 m</span></label>
+      <input id="h" type="range" min="0.1" max="50" step="0.1" value="5"></div>
+    <div class="control"><label>Surface pressure: <span class="readout" id="psRead">1 atm</span></label>
+      <select id="ps">
+        <option value="1" selected>1 atm (open tank)</option>
+        <option value="0">0 (vacuum above surface)</option>
+        <option value="2">2 atm (pressurized tank)</option>
+        <option value="5">5 atm (pressurized industrial tank)</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="col" viewBox="0 0 720 360"></svg>
+    <table id="colTbl"><tbody></tbody></table>
+  </div>
+
+  <h2>Buoyancy &mdash; Archimedes' principle</h2>
+  <p>A submerged or floating body displaces fluid. The buoyancy force equals the weight of the displaced fluid:</p>
+  <div class="deriv">
+    <span class="step"><b>F_b = &rho;_fluid &middot; g &middot; V_displaced</b></span>
+    <span class="step">Direction: straight up (opposing gravity).</span>
+    <span class="step"><span class="arrow">&rarr;</span> Floating: body floats with the fraction submerged equal to &rho;_body / &rho;_fluid (the "draft" ratio).</span>
+    <span class="step"><span class="arrow">&rarr;</span> Submerged: net force = weight &minus; buoyancy = (&rho;_body &minus; &rho;_fluid) V g.</span>
+  </div>
+
+  <div class="figure">
+    <svg id="buoy" viewBox="0 0 720 280"></svg>
+    <section class="controls" style="margin:8px 0 0">
+      <div class="control"><label>Body density: <span class="readout" id="bdRead">600 kg/m³</span></label>
+        <input id="bd" type="range" min="100" max="13000" step="50" value="600"></div>
+      <div class="control"><label>Body volume V: <span class="readout" id="bvRead">1 m³</span></label>
+        <input id="bv" type="range" min="0.001" max="10" step="0.001" value="1"></div>
+      <div class="control"><label>Fluid density (buoy): <span class="readout" id="bfdRead">1000 kg/m³</span></label>
+        <input id="bfd" type="range" min="100" max="14000" step="50" value="1000"></div>
+    </section>
+    <p class="label-dim" id="buoyCaption" style="font:12px ui-monospace,monospace;margin:6px 0 0;color:var(--fg-dim)"></p>
+  </div>
+
+  <h2>Force on a submerged vertical surface</h2>
+  <p>A flat surface (a tank wall, a dam, a lock gate) submerged vertically. Pressure varies linearly with depth, so the total force and its point of application both follow from the centroid math:</p>
+  <div class="deriv">
+    <span class="step"><b>Total force: F = &rho; g h_c A</b> &mdash; where h_c is the depth of the area's centroid and A is its area.</span>
+    <span class="step"><b>Point of application (center of pressure): h_p = h_c + I_xx / (h_c A)</b> &mdash; below the centroid, because pressure is heavier at the bottom.</span>
+    <span class="step">For a rectangle of width b and height d, fully submerged with its top at depth h_top:</span>
+    <span class="step"><span class="arrow">&rarr;</span> h_c = h_top + d/2, A = b d, F = &rho; g (h_top + d/2) (b d)</span>
+    <span class="step"><span class="arrow">&rarr;</span> If top is at the free surface (h_top = 0): F = &rho; g (d/2) (b d) = &rho; g b d&sup2; / 2</span>
+    <span class="step"><span class="arrow">&rarr;</span> Point of application: h_p = d/2 + (b d&sup3; / 12) / (d/2 &middot; b d) = d/2 + d/6 = 2d/3 from top (= d/3 from bottom)</span>
+  </div>
+
+  <div class="figure">
+    <svg id="gate" viewBox="0 0 720 280"></svg>
+    <section class="controls" style="margin:8px 0 0">
+      <div class="control"><label>Gate width b: <span class="readout" id="bRead">3 m</span></label>
+        <input id="b" type="range" min="0.1" max="10" step="0.1" value="3"></div>
+      <div class="control"><label>Gate height d: <span class="readout" id="dRead">2 m</span></label>
+        <input id="d" type="range" min="0.1" max="8" step="0.1" value="2"></div>
+      <div class="control"><label>Depth to top h_top: <span class="readout" id="htRead">0 m</span></label>
+        <input id="ht" type="range" min="0" max="20" step="0.1" value="0"></div>
+    </section>
+    <table id="gateTbl"><tbody></tbody></table>
+  </div>
+
+  <h2>Manometers &mdash; reading pressure with a U-tube</h2>
+  <p>A U-tube partially filled with a known-density manometer fluid (often mercury or water). Pressure at the two free surfaces sets the height difference:</p>
+  <div class="deriv">
+    <span class="step">Connect one side to the system (P_sys); leave the other open to atmosphere.</span>
+    <span class="step">If P_sys &gt; P_atm, the manometer fluid drops on the system side and rises on the open side. Height difference &Delta;h.</span>
+    <span class="step"><b>P_sys &minus; P_atm = &rho;_manometer &middot; g &middot; &Delta;h</b> (gauge pressure of the system).</span>
+    <span class="step">Mercury (13.6 g/cc) is preferred for high pressures: 1 atm reads as only 760 mmHg, compact column.</span>
+    <span class="step">Water for low gauges (HVAC, gas burners): same 1 atm = 10.33 m of water, impractical column.</span>
+  </div>
+
+  <table>
+    <thead><tr><th>Reading</th><th>= mmHg</th><th>= kPa</th><th>= mWater</th></tr></thead>
+    <tbody>
+      <tr><td>1 atm (sea level)</td><td class="num">760</td><td class="num">101.325</td><td class="num">10.33</td></tr>
+      <tr><td>1 bar</td><td class="num">750</td><td class="num">100.000</td><td class="num">10.20</td></tr>
+      <tr><td>1 psi</td><td class="num">51.7</td><td class="num">6.895</td><td class="num">0.703</td></tr>
+      <tr><td>1 mWater</td><td class="num">73.6</td><td class="num">9.81</td><td class="num">1.000</td></tr>
+      <tr><td>1 inHg</td><td class="num">25.4</td><td class="num">3.386</td><td class="num">0.345</td></tr>
+      <tr><td>1 Torr (mmHg)</td><td class="num">1.000</td><td class="num">0.1333</td><td class="num">0.01359</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Worked example &mdash; bottom of an aquarium</h2>
+  <div class="worked">
+    <h3>The aquarium</h3>
+    <p>Hobby reef tank: 1.2 m long, 0.6 m wide, 0.6 m deep. Filled with seawater (&rho; = 1025 kg/m&sup3;). How much force does the bottom support? How much force is on each end wall?</p>
+    <h3>Pressure at the bottom</h3>
+    <span class="eq">P_bottom = &rho; g h = 1025 &middot; 9.81 &middot; 0.6 = 6033 Pa = 6.03 kPa (gauge)</span>
+    <span class="eq">Force on bottom = P &middot; A = 6033 &middot; (1.2 &middot; 0.6) = 4344 N = 443 kg-force</span>
+    <span class="eq">Sanity check: weight of water = 1025 &middot; (1.2 &middot; 0.6 &middot; 0.6) &middot; 9.81 = 4343 N &check;</span>
+    <h3>Force on each end wall (0.6 m wide &times; 0.6 m tall, submerged from the top)</h3>
+    <span class="eq">h_c (centroid depth) = 0.3 m</span>
+    <span class="eq">F = &rho; g h_c A = 1025 &middot; 9.81 &middot; 0.3 &middot; (0.6 &middot; 0.6) = 1086 N</span>
+    <span class="eq">Point of application: h_p = 0.3 + (0.6 &middot; 0.6&sup3;/12) / (0.3 &middot; 0.36) = 0.3 + 0.1 = 0.4 m (= 2/3 of height from top)</span>
+    <span class="eq">Sanity: standard answer for a wall extending from free surface to depth d is the resultant at d/3 from the bottom &check;</span>
+  </div>
+
+  <h2>Worked example &mdash; cyberdeck enclosure under hydrostatic pressure (waterproofing)</h2>
+  <div class="worked">
+    <h3>The scenario</h3>
+    <p>You drop a fold-p4-pico cyberdeck (PETG enclosure) into 2 m of fresh water. Wall thickness 3 mm, internal volume 1 L. Three questions: how much net buoyancy? what pressure on the seal? does the case implode?</p>
+    <h3>Buoyancy</h3>
+    <span class="eq">Mass of cyberdeck: 400 g. Weight: 0.4 &middot; 9.81 = 3.92 N (downward)</span>
+    <span class="eq">Volume displaced (assume case mostly air): 1.2 L = 1.2e-3 m&sup3;</span>
+    <span class="eq">Buoyancy: 1000 &middot; 9.81 &middot; 1.2e-3 = 11.77 N (upward) &rarr; <b>net 7.85 N up; the cyberdeck floats</b></span>
+    <h3>Pressure on the seal at 2 m depth</h3>
+    <span class="eq">P = 1000 &middot; 9.81 &middot; 2 = 19.62 kPa (gauge)</span>
+    <span class="eq">Force on a 100 mm &times; 60 mm seal face: 19620 &middot; 0.006 = 117.7 N pushing on the seal</span>
+    <span class="eq">If using a 2 mm-wide O-ring rated for ~3 bar = 300 kPa: well within limits. Sealing is governed by seal design, not pressure magnitude.</span>
+    <h3>Wall stress</h3>
+    <span class="eq">Thin flat plate of 100 mm &times; 80 mm under 20 kPa: max stress &asymp; &beta;Pa&sup2;/t&sup2; &asymp; 0.3 &middot; 20000 &middot; 0.08&sup2; / 0.003&sup2; &asymp; 4.3 MPa. PETG yield ~50 MPa &mdash; 12&times; margin.</span>
+    <span class="eq">Conclusion: case survives easily, floats, seal is the failure point if any.</span>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Shape doesn't matter for pressure</b> &mdash; only the vertical depth. A skinny straw and a vast lake both give &rho;gh at depth h.</li>
+    <li><b>1 m of water &asymp; 10 kPa &asymp; 1.45 psi</b> &mdash; useful shortcut. Every 10 m of water adds another atm.</li>
+    <li><b>Buoyancy = displaced fluid weight</b>, NOT body weight. A 1 kg steel ball in water gets 0.13 kg of buoyancy (the displaced water); a 1 kg balsa block gets 1 kg+ (the whole block is denser than 0; mostly air inside).</li>
+    <li><b>Float fraction = &rho;_body / &rho;_fluid</b> &mdash; an iceberg (&rho; 917) in seawater (&rho; 1025) shows 11 % above water. A wood log (&rho; 700) in fresh water shows 30 % above.</li>
+    <li><b>Submerged-surface force resultant acts BELOW the centroid</b> &mdash; because pressure is heavier at the bottom. For a wall from surface to depth d, it acts at d/3 above the bottom.</li>
+    <li><b>Atmospheric pressure cancels</b> in many problems &mdash; both sides of a tank wall see 1 atm pushing equally. Only the gauge contribution matters for net force.</li>
+    <li><b>Hydrostatic paradox</b> &mdash; the force on the bottom of a flared vessel can exceed the weight of the water inside it (the slanted walls add downward components). Force-on-bottom = &rho;gh &middot; A_bottom regardless.</li>
+  </ul>
+
+  <h2>Where this links into the curriculum</h2>
+  <div class="crosslink">
+    <h4>Related visuals &amp; references</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Equilibrium 2D / 3D</b> &mdash; <a href="equilibrium-2d-3d.html">equilibrium-2d-3d.html</a> &mdash; submerged-surface forces are the distributed-load case for tanks.</li>
+      <li><b style="color:var(--fg)">Distributed loads</b> &mdash; <a href="distributed-loads.html">distributed-loads.html</a> &mdash; same calc shape, gravity replaces hydrostatic load.</li>
+      <li><b style="color:var(--fg)">Centroids &amp; inertia</b> &mdash; <a href="centroids-inertia.html">centroids-inertia.html</a> &mdash; h_c and I_xx are the inputs to the center-of-pressure formula.</li>
+      <li><b style="color:var(--fg)">Heat-transfer modes</b> &mdash; <a href="../phase-9-thermal-engineering/heat-transfer-modes.html">heat-transfer-modes.html</a> &mdash; buoyancy drives natural convection.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Pressure</dt><dd><span class="eq">P = &rho; g h (gauge)</span></dd>
+        <dt>Absolute</dt><dd><span class="eq">P_abs = P_atm + &rho; g h</span></dd>
+        <dt>Buoyancy</dt><dd><span class="eq">F_b = &rho; g V</span></dd>
+        <dt>Float frac</dt><dd><span class="eq">f = &rho;_body/&rho;_fluid</span></dd>
+        <dt>Wall force</dt><dd><span class="eq">F = &rho;g h_c A</span></dd>
+        <dt>Center of pressure</dt><dd><span class="eq">h_p = h_c + I/(h_c A)</span></dd>
+        <dt>Manometer</dt><dd><span class="eq">&Delta;P = &rho; g &Delta;h</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SHORTCUTS</h3>
+      <ul>
+        <li><b>10 m water</b> = 1 atm = 100 kPa.</li>
+        <li><b>1 atm</b> = 760 mmHg = 14.7 psi.</li>
+        <li><b>Iceberg</b> 89 % submerged.</li>
+        <li><b>Surface to depth d wall</b>: F=&rho;gbd&sup2;/2, line of action 2d/3 down.</li>
+        <li><b>Submarine</b> at 100 m: 11 atm absolute (10 atm gauge).</li>
+        <li><b>Plumbing</b>: each story (3 m) = ~30 kPa = 4.4 psi.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Mixing gauge / absolute</b> &mdash; pump curves use gauge; gas-law calcs need absolute.</li>
+        <li><b>Treating buoyancy as body weight</b> &mdash; it's the displaced fluid's weight.</li>
+        <li><b>Forgetting trapped air</b> &mdash; a sealed container holds more buoyancy than a solid block of the same outer shape.</li>
+        <li><b>Wrong centroid depth h_c</b> &mdash; for tilted plates, measure from free surface to the centroid of the plate's projection.</li>
+        <li><b>Mixing column units</b> &mdash; "9 inches of vacuum" on a gauge means 9 inHg below atm = 30.5 kPa below 1 atm.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">ME Phase 3 &mdash; Statics</span> &middot;
+    Topic: Hydrostatics &mdash; pressure, buoyancy, submerged surfaces &middot;
+    Companion visuals: <a href="distributed-loads.html">Distributed Loads</a>, <a href="centroids-inertia.html">Centroids &amp; Inertia</a>
+  </footer>
+</main>
+
+<script>
+  const fluids = {
+    water:{name:'water', rho:1000, color:'#5ec8ff'},
+    sea:  {name:'seawater', rho:1025, color:'#5ec8ff'},
+    oil:  {name:'engine oil', rho:880, color:'#ffb86c'},
+    hg:   {name:'mercury', rho:13546, color:'#dde3ec'},
+    gas:  {name:'gasoline', rho:740, color:'#a3e635'},
+    air:  {name:'air', rho:1.225, color:'#8f99a8'}
+  };
+
+  const els = {};
+  ['fl','h','ps','bd','bv','bfd','b','d','ht'].forEach(id => els[id] = document.getElementById(id));
+  ['flRead','hRead','psRead','bdRead','bvRead','bfdRead','bRead','dRead','htRead','buoyCaption'].forEach(id => els[id] = document.getElementById(id));
+
+  function drawColumn(){
+    const svg = document.getElementById('col');
+    const fl = fluids[els.fl.value];
+    const h = parseFloat(els.h.value);
+    const ps = parseFloat(els.ps.value); // atm above surface
+    const g = 9.81;
+    const psPa = ps * 101325;
+    const dPgauge = fl.rho * g * h;
+    const Pabs = psPa + dPgauge;
+    const Patm = 101325;
+
+    els.flRead.textContent = fl.name;
+    els.hRead.textContent  = h.toFixed(1) + ' m';
+    els.psRead.textContent = ps + ' atm';
+
+    // Draw a tall vessel; fluid fills it; pressure-bar visualization on right.
+    let s = '';
+    const x0=80, y0=320, vw=180, vh=260;
+    // vessel
+    s += `<rect x="${x0}" y="${y0-vh}" width="${vw}" height="${vh}" fill="none" stroke="#5ec8ff" stroke-width="2"/>`;
+    // fluid
+    s += `<rect x="${x0+2}" y="${y0-vh}" width="${vw-4}" height="${vh-2}" fill="${fl.color}" opacity="0.25"/>`;
+    // depth markers
+    for(let i=0; i<=5; i++){
+      const y = y0 - vh + i*vh/5;
+      s += `<line x1="${x0-6}" y1="${y}" x2="${x0}" y2="${y}" class="axis"/>`;
+      s += `<text x="${x0-10}" y="${y+4}" class="label-dim" text-anchor="end">${(i*h/5).toFixed(1)} m</text>`;
+    }
+    s += `<text x="${x0+vw/2}" y="${y0-vh-10}" class="label" text-anchor="middle">surface @ P_atm + ${ps} atm</text>`;
+    // pressure bar to right
+    const xb=320, bw=120;
+    s += `<rect x="${xb}" y="${y0-vh}" width="${bw}" height="${vh}" fill="none" stroke="#2a313c"/>`;
+    // gradient triangle (pressure goes from psPa at top to psPa + rho g h at bottom)
+    const maxP = Pabs;
+    const minP = psPa;
+    for(let i=0; i<60; i++){
+      const t = i/60;
+      const P = psPa + (Pabs - psPa)*t;
+      const op = 0.05 + 0.6 * (P - minP) / Math.max(1, maxP - minP);
+      const y = y0 - vh + i*vh/60;
+      s += `<rect x="${xb}" y="${y}" width="${bw}" height="${vh/60 + 0.5}" fill="${fl.color}" opacity="${op.toFixed(2)}"/>`;
+    }
+    s += `<text x="${xb+bw/2}" y="${y0-vh-10}" class="label" text-anchor="middle">P_abs (depth)</text>`;
+    s += `<text x="${xb+bw+12}" y="${y0-vh+12}" class="label-dim">${(psPa/1000).toFixed(2)} kPa</text>`;
+    s += `<text x="${xb+bw+12}" y="${y0-2}" class="label-dim">${(Pabs/1000).toFixed(2)} kPa</text>`;
+
+    // Right info: total at depth h
+    s += `<text x="${xb+bw+90}" y="${y0-vh+12}" class="label" fill="#a3e635">@ surface</text>`;
+    s += `<text x="${xb+bw+90}" y="${y0-vh+30}" class="label-dim">P_g = 0  (gauge)</text>`;
+    s += `<text x="${xb+bw+90}" y="${y0-vh+48}" class="label-dim">P_abs = ${(psPa/1000).toFixed(2)} kPa</text>`;
+    s += `<text x="${xb+bw+90}" y="${y0-2}" class="label" fill="#a3e635">@ depth ${h} m</text>`;
+    s += `<text x="${xb+bw+90}" y="${y0+16}" class="label-dim">P_g = ${(dPgauge/1000).toFixed(2)} kPa</text>`;
+    s += `<text x="${xb+bw+90}" y="${y0+34}" class="label-dim">P_abs = ${(Pabs/1000).toFixed(2)} kPa</text>`;
+    s += `<text x="${xb+bw+90}" y="${y0+52}" class="label-dim">= ${(Pabs/Patm).toFixed(2)} atm</text>`;
+
+    svg.innerHTML = s;
+    // table
+    const rows = [
+      `<tr><td>Fluid density &rho;</td><td class="num">${fl.rho} kg/m³</td><td>${fl.name}</td></tr>`,
+      `<tr><td>Depth h</td><td class="num">${h.toFixed(2)} m</td><td>from free surface</td></tr>`,
+      `<tr><td>Hydrostatic gain &rho;gh</td><td class="num">${(dPgauge/1000).toFixed(3)} kPa</td><td>= ${(dPgauge/Patm).toFixed(3)} atm</td></tr>`,
+      `<tr><td>Surface pressure</td><td class="num">${(psPa/1000).toFixed(2)} kPa</td><td>= ${ps} atm</td></tr>`,
+      `<tr><td>Absolute at h</td><td class="num">${(Pabs/1000).toFixed(2)} kPa</td><td>= ${(Pabs*0.000145038).toFixed(2)} psi = ${(Pabs/Patm).toFixed(3)} atm</td></tr>`,
+      `<tr><td>Pressure on 100 cm² plate</td><td class="num">${(dPgauge*0.01).toFixed(2)} N</td><td>just from the hydrostatic load</td></tr>`
+    ];
+    document.getElementById('colTbl').getElementsByTagName('tbody')[0].innerHTML = rows.join('');
+  }
+
+  function drawBuoy(){
+    const svg = document.getElementById('buoy');
+    const bd = parseFloat(els.bd.value);
+    const bv = parseFloat(els.bv.value);
+    const bfd = parseFloat(els.bfd.value);
+    const g = 9.81;
+    const W = bd * bv * g;
+    const Fmax = bfd * bv * g; // fully submerged buoyancy
+    let frac, state;
+    if(bd >= bfd){
+      frac = 1.0; state = 'sinks (fully submerged)';
+    } else {
+      frac = bd / bfd; state = `floats with ${(frac*100).toFixed(1)}% submerged`;
+    }
+    els.bdRead.textContent = bd + ' kg/m³';
+    els.bvRead.textContent = bv.toFixed(3) + ' m³';
+    els.bfdRead.textContent = bfd + ' kg/m³';
+
+    let s = '';
+    // tank
+    s += `<rect x="60" y="40" width="600" height="200" fill="none" stroke="#5ec8ff" stroke-width="2"/>`;
+    // fluid
+    s += `<rect x="62" y="90" width="596" height="148" fill="#5ec8ff" opacity="0.2"/>`;
+    s += `<text x="60" y="80" class="label-dim">free surface</text>`;
+    // body
+    const bx = 320, by = 90;
+    const bw = 80;
+    // box height proportional to volume (sqrt(V) for visual)
+    const bhFull = Math.min(150, 80 + bv*10);
+    const submH = bhFull * frac;
+    const aboveH = bhFull - submH;
+    // box top
+    const topY = by - aboveH;
+    s += `<rect x="${bx-bw/2}" y="${topY}" width="${bw}" height="${bhFull}" fill="#2a3340" stroke="#ffb86c" stroke-width="2"/>`;
+    // shade submerged portion
+    s += `<rect x="${bx-bw/2+2}" y="${by}" width="${bw-4}" height="${submH-2}" fill="#5ec8ff" opacity="0.25"/>`;
+    // arrows: weight down, buoyancy up
+    s += `<line x1="${bx-40}" y1="${(topY+by+bhFull)/2}" x2="${bx-40}" y2="${(topY+by+bhFull)/2 + 60}" stroke="#ffb86c" stroke-width="2"/>`;
+    s += `<polygon points="${bx-40},${(topY+by+bhFull)/2+68} ${bx-46},${(topY+by+bhFull)/2+60} ${bx-34},${(topY+by+bhFull)/2+60}" fill="#ffb86c"/>`;
+    s += `<text x="${bx-92}" y="${(topY+by+bhFull)/2 + 70}" class="label" fill="#ffb86c">W = ${W.toFixed(1)} N</text>`;
+    s += `<line x1="${bx+40}" y1="${(topY+by+bhFull)/2}" x2="${bx+40}" y2="${(topY+by+bhFull)/2 - 60}" stroke="#a3e635" stroke-width="2"/>`;
+    s += `<polygon points="${bx+40},${(topY+by+bhFull)/2-68} ${bx+46},${(topY+by+bhFull)/2-60} ${bx+34},${(topY+by+bhFull)/2-60}" fill="#a3e635"/>`;
+    s += `<text x="${bx+50}" y="${(topY+by+bhFull)/2 - 70}" class="label" fill="#a3e635">F_b = ${(frac*Fmax).toFixed(1)} N</text>`;
+    s += `<text x="${bx-bw/2}" y="${topY-14}" class="label" fill="#5ec8ff">${state}</text>`;
+
+    svg.innerHTML = s;
+    els.buoyCaption.textContent = `Float fraction = ${bd}/${bfd} = ${(bd/bfd).toFixed(3)}. Net force = ${(W - frac*Fmax).toFixed(2)} N ${W > frac*Fmax ? 'down (sinking)' : 'up or zero (floating)'}.`;
+  }
+
+  function drawGate(){
+    const svg = document.getElementById('gate');
+    const b = parseFloat(els.b.value);
+    const d = parseFloat(els.d.value);
+    const ht = parseFloat(els.ht.value);
+    const rho = 1000, g = 9.81;
+    const hc = ht + d/2;
+    const A = b * d;
+    const F = rho * g * hc * A;
+    const Ixx = (b * d*d*d) / 12;
+    const hp = hc + Ixx / (hc * A);
+    els.bRead.textContent = b.toFixed(1) + ' m';
+    els.dRead.textContent = d.toFixed(1) + ' m';
+    els.htRead.textContent = ht.toFixed(1) + ' m';
+
+    // Sketch: a tank cross-section with the gate on the right wall
+    let s = '';
+    // tank
+    s += `<rect x="60" y="40" width="500" height="200" fill="none" stroke="#5ec8ff" stroke-width="2"/>`;
+    // water (full)
+    s += `<rect x="62" y="60" width="496" height="178" fill="#5ec8ff" opacity="0.2"/>`;
+    s += `<text x="60" y="55" class="label-dim">free surface @ y=0</text>`;
+    // depth scale on left
+    for(let i=0; i<=5; i++){
+      const y = 60 + i*36;
+      s += `<line x1="55" y1="${y}" x2="60" y2="${y}" class="axis"/>`;
+      const depth = i * (ht + d + 2)/5;
+      s += `<text x="50" y="${y+4}" class="label-dim" text-anchor="end">${depth.toFixed(1)} m</text>`;
+    }
+    // gate (on the right wall)
+    const totalDepthShown = Math.max(d + ht + 2, 5);
+    const topY = 60 + (ht / totalDepthShown) * 178;
+    const botY = topY + (d / totalDepthShown) * 178;
+    s += `<line x1="556" y1="${topY}" x2="556" y2="${botY}" stroke="#ffb86c" stroke-width="6"/>`;
+    s += `<text x="566" y="${(topY+botY)/2}" class="label" fill="#ffb86c">gate b&times;d = ${b.toFixed(1)} m &times; ${d.toFixed(1)} m</text>`;
+    // pressure triangle on the gate
+    const pTop = rho*g*ht;
+    const pBot = rho*g*(ht+d);
+    s += `<polygon points="556,${topY} ${556 - (pTop/pBot)*80},${topY} ${556-80},${botY} 556,${botY}" fill="#5ec8ff" opacity="0.4" stroke="#5ec8ff"/>`;
+    s += `<text x="480" y="${topY-4}" class="label-dim">P_top = ${(pTop/1000).toFixed(1)} kPa</text>`;
+    s += `<text x="480" y="${botY+14}" class="label-dim">P_bot = ${(pBot/1000).toFixed(1)} kPa</text>`;
+    // resultant arrow
+    const hpY = 60 + (hp / totalDepthShown) * 178;
+    s += `<line x1="556" y1="${hpY}" x2="${556-90}" y2="${hpY}" stroke="#ff7b72" stroke-width="2.5"/>`;
+    s += `<polygon points="${556-95},${hpY-5} ${556-90},${hpY} ${556-95},${hpY+5}" fill="#ff7b72"/>`;
+    s += `<text x="${556-90-12}" y="${hpY-6}" class="label" fill="#ff7b72" text-anchor="end">F = ${F.toFixed(0)} N at h_p = ${hp.toFixed(2)} m</text>`;
+
+    svg.innerHTML = s;
+    const rows = [
+      `<tr><td>Centroid depth h_c</td><td class="num">${hc.toFixed(2)} m</td><td>top + d/2</td></tr>`,
+      `<tr><td>Area A</td><td class="num">${A.toFixed(3)} m²</td><td>b &middot; d</td></tr>`,
+      `<tr><td>Hydrostatic force F</td><td class="num">${F.toFixed(0)} N (${(F/9.81).toFixed(0)} kg-force)</td><td>&rho;g h_c A</td></tr>`,
+      `<tr><td>I_xx (rectangle about centroid)</td><td class="num">${Ixx.toFixed(4)} m⁴</td><td>b d³/12</td></tr>`,
+      `<tr><td>Center of pressure h_p</td><td class="num">${hp.toFixed(3)} m</td><td>below h_c by ${(hp-hc).toFixed(3)} m</td></tr>`,
+      `<tr><td>Distance from bottom edge</td><td class="num">${(ht + d - hp).toFixed(3)} m</td><td>= d/3 from bottom when top is at the free surface</td></tr>`
+    ];
+    document.getElementById('gateTbl').getElementsByTagName('tbody')[0].innerHTML = rows.join('');
+  }
+
+  function update(){
+    drawColumn();
+    drawBuoy();
+    drawGate();
+  }
+  ['fl','h','ps','bd','bv','bfd','b','d','ht'].forEach(id=>{
+    els[id].addEventListener('input', update);
+    els[id].addEventListener('change', update);
+  });
+  update();
+</script>
+</body>
+</html>

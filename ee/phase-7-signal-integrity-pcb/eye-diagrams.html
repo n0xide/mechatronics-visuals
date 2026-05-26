@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Eye Diagrams — visual</title>
+<style>:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 system-ui,sans-serif}
+main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright)}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+.control input{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 8px;font:13px ui-monospace,monospace}
+.readout{color:var(--accent);font-family:ui-monospace,monospace;font-size:13px}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>Eye Diagrams — overlaying bit periods to see what your signal looks like</h1>
+<p class="lede">Take a long bit sequence on a high-speed serial bus, overlay all bit periods on top of each other on a scope (or with software), and you get an "eye" — a shape that reveals everything wrong with the channel: ISI (inter-symbol interference) closing it horizontally, jitter shaking the edges, amplitude noise closing it vertically. The eye height and width tell you how much margin you have before bit errors. This visual builds the eye step by step and lets you sweep parameters to see what closes it.</p>
+
+<div class="anchors">
+<span class="anchor"><b>Eye height</b> ≥ 200 mV typical for safe receiver</span>
+<span class="anchor"><b>Eye width</b> ≥ 0.5 UI for clock recovery</span>
+<span class="anchor"><b>Crossover</b> centered at receiver threshold</span>
+<span class="anchor"><b>BER mask</b>: standard contour (USB, PCIe, etc.)</span>
+</div>
+
+<section class="controls">
+<div class="control"><label>Data rate (Mbps): <span class="readout" id="brRead">100</span></label><input id="br" type="range" min="1" max="10000" step="1" value="100"></div>
+<div class="control"><label>Trace length (cm): <span class="readout" id="lenRead">10</span></label><input id="len" type="range" min="0.5" max="100" step="0.5" value="10"></div>
+<div class="control"><label>Loss tangent: <span class="readout" id="losRead">0.02</span></label><input id="los" type="range" min="0.001" max="0.05" step="0.001" value="0.02"></div>
+<div class="control"><label>Jitter (% UI): <span class="readout" id="jitRead">5</span></label><input id="jit" type="range" min="0" max="40" step="1" value="5"></div>
+<div class="control"><label>Voltage noise (% Vpp): <span class="readout" id="noiseRead">3</span></label><input id="noise" type="range" min="0" max="30" step="1" value="3"></div>
+</section>
+
+<div class="figure">
+<svg id="eye" viewBox="0 0 720 320" width="100%"></svg>
+<table>
+<tr><th>Quantity</th><th>Value</th></tr>
+<tr><td>UI (unit interval)</td><td id="ui">10.0 ns</td></tr>
+<tr><td>Eye height</td><td id="height">700 mV</td></tr>
+<tr><td>Eye width</td><td id="width">0.85 UI</td></tr>
+<tr><td>Verdict</td><td id="verdict">PASS</td></tr>
+</table>
+</div>
+
+<h2>What closes the eye</h2>
+<ul class="notice">
+<li><b>ISI (inter-symbol interference)</b> — high-frequency components attenuated by lossy traces, so a 1 doesn't fully transition before the next bit. The trailing edge of one bit blurs into the next, reducing eye height.</li>
+<li><b>Reflections</b> — impedance mismatches send energy back which overlaps later bits. Visible as ringing on the edges.</li>
+<li><b>Jitter</b> — clock-recovery imperfections move the bit sample point around. Widens edge crossings, reduces eye width.</li>
+<li><b>Crosstalk</b> — adjacent signals couple in. Random-looking noise floor in the eye.</li>
+<li><b>Voltage noise</b> — switching power, ground bounce, EMI. Closes eye vertically.</li>
+</ul>
+
+<h2>How to fix a closed eye</h2>
+<table>
+<tr><th>Closure source</th><th>Fix</th></tr>
+<tr><td>ISI from lossy traces</td><td>Pre-emphasis at transmitter; CTLE / DFE at receiver</td></tr>
+<tr><td>Reflections</td><td>Series-terminate at source or parallel-terminate at sink; check stack-up Z₀</td></tr>
+<tr><td>Jitter</td><td>Cleaner clock source; PLL with better phase noise; spread-spectrum if it's RF interference</td></tr>
+<tr><td>Crosstalk</td><td>Wider trace spacing (3W rule); ground guard traces; differential pair routing</td></tr>
+<tr><td>Voltage noise</td><td>Better decoupling; ferrite beads on supply; separate plane for analog</td></tr>
+</table>
+
+<h2>Standard masks</h2>
+<table>
+<tr><th>Standard</th><th>Mask voltage</th><th>Mask time</th><th>BER target</th></tr>
+<tr><td>USB 2.0 high-speed</td><td>±400 mV</td><td>0.65 UI</td><td>10⁻⁹</td></tr>
+<tr><td>USB 3.0/3.1</td><td>±200 mV</td><td>0.6 UI</td><td>10⁻¹²</td></tr>
+<tr><td>PCIe Gen3</td><td>±125 mV</td><td>0.6 UI</td><td>10⁻¹²</td></tr>
+<tr><td>DDR4 1600</td><td>±250 mV</td><td>0.65 UI</td><td>10⁻¹⁵</td></tr>
+<tr><td>10Gbase-KR</td><td>±150 mV</td><td>0.6 UI</td><td>10⁻¹²</td></tr>
+</table>
+
+<footer>Curriculum: <a target="_top" href="../../index.html">EE Phase 7 — Signal Integrity &amp; PCB</a> · Cross-links: <a href="transmission-line.html">Transmission Line</a>, <a href="impedance-matching.html">Impedance Matching</a>, <a href="crosstalk-ground.html">Crosstalk &amp; Ground</a>.</footer>
+
+</main><script>
+const els = ['br','len','los','jit','noise'].reduce((m,k)=>{m[k]=document.getElementById(k);return m;},{});
+
+function drawEye(){
+  const svg = document.getElementById('eye');
+  const br = parseFloat(els.br.value);
+  const ui_ns = 1000 / br;
+  const los = parseFloat(els.los.value);
+  const len = parseFloat(els.len.value);
+  const jit = parseFloat(els.jit.value) / 100;
+  const noise = parseFloat(els.noise.value) / 100;
+
+  // Compute ISI factor: loss∝len×br×lossTangent
+  const isi = Math.min(1, los * len * Math.sqrt(br) / 4);
+  const eyeH = (1 - isi - noise) * 700; // mV, starting from 700 mV nominal
+  const eyeW = (1 - 2*jit) * ui_ns;
+
+  document.getElementById('ui').textContent = ui_ns.toFixed(2) + ' ns';
+  document.getElementById('height').textContent = eyeH.toFixed(0) + ' mV';
+  document.getElementById('width').textContent = (eyeW/ui_ns).toFixed(2) + ' UI';
+
+  const v = eyeH > 200 && eyeW > 0.5 * ui_ns
+    ? '<span style="color:var(--accent3)">PASS — comfortable margin</span>'
+    : eyeH > 100 && eyeW > 0.4 * ui_ns
+      ? '<span style="color:var(--accent2)">MARGINAL</span>'
+      : '<span style="color:var(--warn)">FAIL — bits will error</span>';
+  document.getElementById('verdict').innerHTML = v;
+
+  const W = 720, H = 320, M = 40;
+  let s = '';
+  // Axes
+  s += `<line x1="${M}" y1="${H-M}" x2="${W-M}" y2="${H-M}" stroke="#8f99a8" stroke-width="1"/>`;
+  s += `<line x1="${M}" y1="${20}" x2="${M}" y2="${H-M}" stroke="#8f99a8" stroke-width="1"/>`;
+  s += `<text x="${W/2}" y="${H-10}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10" text-anchor="middle">Time (one UI overlay)</text>`;
+  s += `<text x="15" y="${H/2}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10" transform="rotate(-90 15 ${H/2})" text-anchor="middle">Voltage</text>`;
+
+  // Draw many overlaid bit transitions
+  const cx = W/2, cy = H/2;
+  const drawW = (W - 2*M);
+  const drawH = (H - 2*M);
+  const traces = 80;
+  for(let i = 0; i < traces; i++){
+    // Each trace: random sequence pattern of high/low
+    const a = (Math.random() > 0.5 ? 1 : -1);
+    const b = (Math.random() > 0.5 ? 1 : -1);
+    const c = (Math.random() > 0.5 ? 1 : -1);
+    // From 0..1 (left), through transition, to 1..2 (right)
+    // Jitter shifts edge
+    const edge1 = 0 + (Math.random() - 0.5) * 2 * jit; // -jit to +jit around 0
+    const edge2 = 1 + (Math.random() - 0.5) * 2 * jit;
+    // Add ISI: bit value drifts toward 0 if previous was opposite (asymmetric)
+    const va = a * (1 - isi - noise * (Math.random() - 0.5) * 2);
+    const vb = b * (1 - noise * (Math.random() - 0.5) * 2);
+    const vc = c * (1 - isi - noise * (Math.random() - 0.5) * 2);
+
+    const xOf = u => M + (u + 0.5) * drawW / 2;
+    const yOf = v => cy - v * drawH / 2.5;
+
+    const pts = [
+      [xOf(-0.5), yOf(va)],
+      [xOf(edge1 - 0.05), yOf(va)],
+      [xOf(edge1 + 0.05), yOf(vb)],
+      [xOf(edge2 - 0.05), yOf(vb)],
+      [xOf(edge2 + 0.05), yOf(vc)],
+      [xOf(1.5), yOf(vc)],
+    ];
+    let d = 'M ';
+    pts.forEach((p, i) => d += (i?'L ':'') + p[0].toFixed(1) + ',' + p[1].toFixed(1) + ' ');
+    s += `<path d="${d}" fill="none" stroke="#5ec8ff" stroke-width="0.6" opacity="0.4"/>`;
+  }
+
+  // Threshold line (receiver decision)
+  s += `<line x1="${M}" y1="${cy}" x2="${W-M}" y2="${cy}" stroke="#ffb86c" stroke-width="1" stroke-dasharray="3,3"/>`;
+  s += `<text x="${W-M+5}" y="${cy+4}" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="10">RX threshold</text>`;
+
+  svg.innerHTML = s;
+}
+
+['br','len','los','jit','noise'].forEach(k => els[k].addEventListener('input', () => { document.getElementById(k+'Read').textContent = els[k].value; drawEye(); }));
+['br','len','los','jit','noise'].forEach(k => document.getElementById(k+'Read').textContent = els[k].value);
+drawEye();
+</script></body></html>

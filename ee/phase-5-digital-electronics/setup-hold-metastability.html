@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup, Hold &amp; Metastability — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim);cursor:pointer}
+  .anchor:hover{border-color:var(--accent)}
+  .anchor.active{border-color:var(--accent);color:var(--accent)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:4px 8px;
+    font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid{stroke:var(--grid);stroke-width:0.5}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>Setup, Hold &amp; Metastability</h1>
+  <p class="lede">A D flip-flop captures whatever's on D at the clock edge — but only if D was stable for t_setup before the edge and t_hold after. Violate either window and you get metastability: the internal node hovers between 0 and 1 for an unpredictable time before resolving. Slide the input edge across the clock edge to see the violation, the indeterminate Q output, and the mean-time-between-failure that drives the synchronizer chain in every asynchronous interface.</p>
+
+  <div class="anchors">
+    <button class="anchor active" data-preset="tt"><b>74HC74 (5 V)</b> · ts=20ns, th=3ns</button>
+    <button class="anchor" data-preset="iverilog"><b>FPGA register</b> · ts=0.3ns, th=0.1ns</button>
+    <button class="anchor" data-preset="mcu"><b>ARM Cortex-M GPIO</b> · ts=1.5ns, th=0.5ns</button>
+    <button class="anchor" data-preset="async"><b>Async input</b> · violation likely</button>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>Clock period: <span class="readout" id="tclkRead">100 ns</span></label><input id="tclk" type="range" min="5" max="1000" step="1" value="100"></div>
+    <div class="control"><label>Setup time t_su: <span class="readout" id="tsRead">20 ns</span></label><input id="ts" type="range" min="0.1" max="50" step="0.1" value="20"></div>
+    <div class="control"><label>Hold time t_h: <span class="readout" id="thRead">3 ns</span></label><input id="th" type="range" min="0" max="20" step="0.1" value="3"></div>
+    <div class="control"><label>Data transition time (ns before clk edge): <span class="readout" id="tdRead">+15 ns</span></label><input id="td" type="range" min="-30" max="60" step="0.5" value="15"></div>
+    <div class="control"><label>Data rate (MHz): <span class="readout" id="frate">10 MHz</span></label><input id="rate" type="range" min="0.1" max="500" step="0.1" value="10"></div>
+    <div class="control"><label>Synchronizer chain</label>
+      <select id="chain">
+        <option value="0">None — direct (worst)</option>
+        <option value="1" selected>1-stage FF (single sync)</option>
+        <option value="2">2-stage FF (industry standard)</option>
+        <option value="3">3-stage FF (paranoid)</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="timing" viewBox="0 0 700 360" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+      <tr><td>Time D arrives before clk edge</td><td id="tArrive" class="num">+15 ns</td><td><code>direct from slider</code></td></tr>
+      <tr><td>Setup margin (slack)</td><td id="tSlack" class="num">−5 ns (FAIL)</td><td><code>t_arrive − t_su</code></td></tr>
+      <tr><td>Setup window</td><td id="tSetup" class="num">20 ns before clk edge</td><td><code>spec: ts</code></td></tr>
+      <tr><td>Hold window</td><td id="tHold" class="num">3 ns after clk edge</td><td><code>spec: th</code></td></tr>
+      <tr><td>MTBF (1-stage sync)</td><td id="tMtbf" class="num">— ns</td><td><code>exp(t_res/τ)/(f_data·f_clk·T0)</code></td></tr>
+      <tr><td>MTBF (selected chain)</td><td id="tMtbfChain" class="num">— ns</td><td><code>compounded over chain</code></td></tr>
+      <tr><td>Status</td><td id="tStatus" class="num" colspan="2">…</td></tr>
+    </table>
+    <div class="vd"><b>Live verdict:</b> <span id="vdCalc">…</span></div>
+  </div>
+
+  <h2>What "setup" and "hold" actually mean</h2>
+  <p>A D flip-flop has a clock pin and a data pin. On the rising clock edge, the internal master latch closes — and what is sampled depends on whether D was steady. The chip has a tiny aperture, t_su before + t_h after, in which D must not change. Inside this window, the master and slave latches are both transparent for an instant; any glitch passes straight through.</p>
+  <div class="deriv">
+    <span class="step"><b>t_setup (t_su)</b>: minimum time D must be valid BEFORE the clock edge. Typical: 1–20 ns.</span>
+    <span class="step"><b>t_hold (t_h)</b>: minimum time D must remain valid AFTER the clock edge. Typical: 0–5 ns.</span>
+    <span class="step"><b>t_co (clock-to-output)</b>: time from clk edge until Q reflects D. Typical: 5–15 ns.</span>
+    <span class="step">If t_su is met: Q updates cleanly to D at t_co.</span>
+    <span class="step">If t_su is violated by a margin (D changed too close to edge): internal node may not be at a "safe" voltage when latch closes.</span>
+    <span class="step"><span class="arrow">→</span> Result: <b>metastability</b> — Q oscillates or hangs at the threshold until thermal noise breaks the tie.</span>
+  </div>
+
+  <h2>Metastability: the indeterminate state</h2>
+  <p>Inside a D-FF, a bistable element (two cross-coupled inverters) wants to settle into either VOH or VOL. If the input snapshot is exactly at the metastable voltage (mid-rail), the two inverters provide equal gain and the loop has no preference. The voltage drifts toward one rail or the other due to thermal noise — exponentially fast once it starts, but the <em>start time</em> is unpredictable.</p>
+  <div class="deriv">
+    <span class="step">Resolution time follows: <b>P(t_res &gt; t) = exp(−t/τ)</b>, where τ is the inverter time constant (~50 ps in modern CMOS, ~1 ns in 74HC).</span>
+    <span class="step">Mean time between failures: <b>MTBF = exp(t_res/τ) / (T_0·f_data·f_clk)</b></span>
+    <span class="step">T_0 is a process constant (~10⁻¹³ s); higher is worse.</span>
+    <span class="step">For t_res = 10 ns, τ = 200 ps: MTBF = e^50 ≈ 5·10²¹ — never happens.</span>
+    <span class="step">For t_res = 2 ns, τ = 200 ps: MTBF = e^10 ≈ 22 000 (clock cycles). At 100 MHz, fails every 0.22 ms.</span>
+    <span class="step"><span class="arrow">→</span> The fix is to provide MORE t_res by adding flip-flops in the chain — each stage gives another e^(Tclk/τ) margin.</span>
+  </div>
+
+  <h2>The synchronizer chain</h2>
+  <p>When an asynchronous signal (UART RX, button press, sensor edge) enters a synchronous system, you MUST clock it through 2 or 3 flip-flops in sequence — the "synchronizer." The first FF may go metastable, but it has a full clock period to resolve before the second FF samples it. After 2 stages, MTBF is astronomical for typical systems.</p>
+  <table>
+    <tr><th>Chain</th><th>Margin per stage</th><th>Resulting MTBF (typical CMOS, 100 MHz, 1 MHz data)</th></tr>
+    <tr><td>None (direct)</td><td>0 (uses clk-to-output time only)</td><td>seconds to minutes — bad</td></tr>
+    <tr><td>1 FF</td><td>T_clk − t_co − t_su = full period</td><td>years</td></tr>
+    <tr><td>2 FF (default)</td><td>2× period</td><td>universe age × 10⁹</td></tr>
+    <tr><td>3 FF (paranoid)</td><td>3× period</td><td>even worse never</td></tr>
+  </table>
+
+  <h2>Worked example — UART RX into a 100 MHz FPGA</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>UART at 115,200 baud feeds a 100 MHz FPGA clock domain. RX is asynchronous; we need a 2-FF synchronizer. FPGA register: t_su = 0.3 ns, τ = 50 ps, T_0 = 10⁻¹³.</p>
+    <h3>The math</h3>
+    <span class="eq">T_clk = 10 ns; allowed resolution time per stage = 10 − 0.3 − 0.5 (clk-to-out) ≈ 9.2 ns</span>
+    <span class="eq">MTBF per stage = exp(9.2 ns / 50 ps) / (1e-13 · 115,200 · 100e6) = e^184 / 1.15·10⁶ = ~∞ </span>
+    <span class="eq">For 1 stage alone: already astronomical MTBF.</span>
+    <span class="eq">2-stage chain: probability of double-stage failure = 10⁻⁸⁰ — universe heat death first.</span>
+    <h3>The catch</h3>
+    <p>You still need to handle the case where the synchronized RX edge lands between bit periods (sampling phase). That's a separate problem (handled by oversampling at 16× baud rate), not a synchronizer issue.</p>
+  </div>
+
+  <h2>Worked example — slow MCU sampling a fast async signal</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>STM32L0 at 16 MHz CPU clock samples a 100 kHz pulse train from an external sensor. GPIO has t_su = 1.5 ns, t_h = 0.5 ns, τ = 200 ps.</p>
+    <h3>The math (1 stage)</h3>
+    <span class="eq">T_clk = 62.5 ns; per-stage margin = 62.5 − 1.5 − 0.5 = 60.5 ns</span>
+    <span class="eq">MTBF = exp(60.5 / 0.2) / (1e-13 · 100k · 16M) = e^302 / 0.16 — universe-grade safe with 1 stage.</span>
+    <span class="eq">But the MCU itself has internal pipelining — multiple registers samples it. You still need a 2-stage explicit sync if you read the pin in software-polled mode (no auto-resync between SAMPLEs of the IDR register).</span>
+    <span class="eq">In practice: read twice with a 1-instruction delay; only accept the read if both match.</span>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Setup is the most violated</b> — most digital signals arrive close to the clock edge, often "just in time." Hold is rarely violated except when D arrives <em>after</em> the edge.</li>
+    <li><b>Hold can fail if your clock is too fast OR D arrives too late</b> — common when D has minimum delay through fast paths.</li>
+    <li><b>Q during metastability is NOT 0 or 1.</b> It's an undefined voltage, often midway between rails. Downstream logic sampling it sees random behavior.</li>
+    <li><b>Two-stage synchronizers are non-negotiable for crossing clock domains</b>. Even with 0.001 % probability of metastability propagating, it'll bite once a year.</li>
+    <li><b>Don't fan out an async signal to multiple destinations</b> until after the synchronizer. Each destination samples differently; you'll get inconsistent states across the system.</li>
+    <li><b>Inter-clock-domain FIFOs</b> are the only safe way to send data across clock domains. They use a 2-FF sync on the read/write pointers plus Gray coding.</li>
+    <li><b>Reset signals are async too.</b> Released asynchronously? Use an async-assert, sync-deassert reset synchronizer.</li>
+  </ul>
+
+  <h2>Where this matters</h2>
+  <div class="crosslink">
+    <h4>Real situations</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Button presses</b> — async input from user; debounce + 2-FF sync before the state machine.</li>
+      <li><b style="color:var(--fg)">UART / SPI / I2C async sampling</b> — incoming bits aren't aligned with your clock; first thing to do is synchronize.</li>
+      <li><b style="color:var(--fg)">Clock-domain crossing in FPGAs</b> — every signal crossing a clock domain boundary must go through a sync. Vivado / Quartus will flag missing syncs as critical warnings.</li>
+      <li><b style="color:var(--fg)">External interrupt pins</b> — async edge → must sync before NVIC reads it. Most MCUs do this internally; some give you naked edge detection.</li>
+      <li><b style="color:var(--fg)">Reset deassertion</b> — async reset assertion is fine, but deassertion must be synchronous to avoid metastability on PoR.</li>
+      <li><b style="color:var(--fg)">PLL lock signals</b> — output of analog PLL is async to digital; needs sync.</li>
+      <li><b style="color:var(--fg)">USB device controllers</b> — SE0 condition detection from physical layer to logic layer requires sync.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Setup slack</dt><dd><span class="eq">t_arrive_before_clk − t_su</span></dd>
+        <dt>Hold slack</dt><dd><span class="eq">t_data_change_after_clk − t_h</span></dd>
+        <dt>MTBF</dt><dd><span class="eq">exp(t_res/τ) / (T_0·f_data·f_clk)</span></dd>
+        <dt>Per-stage margin</dt><dd><span class="eq">T_clk − t_co − t_su</span></dd>
+        <dt>N-stage</dt><dd><span class="eq">multiply margin by N (in exponent)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>RULES OF THUMB</h3>
+      <ul>
+        <li><b>2-FF synchronizer</b> for all async-to-sync signals — default.</li>
+        <li><b>3-FF</b> for safety-critical or ultra-high-clock-rate (1 GHz+).</li>
+        <li>FPGA: <b>set_max_delay between async input and first reg</b>.</li>
+        <li>Synchronizer FFs must be <b>physically adjacent in layout</b>.</li>
+        <li><b>Gray-code counters</b> when crossing domains (only 1 bit changes per increment).</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Fanning out async signal before sync</b> — different destinations see different states.</li>
+        <li><b>Mixing sync and async resets</b> in same block.</li>
+        <li><b>Single-FF sync</b> when speed and async rate are similar — MTBF drops to seconds.</li>
+        <li><b>Sync chain placed across long wire</b> — defeats the purpose; place adjacent.</li>
+        <li><b>Ignoring hold</b> in fast paths — short interconnect can violate t_h.</li>
+        <li><b>Forgetting reset sync</b> — async reset release causes startup metastability.</li>
+        <li><b>Sampling slow signals with too-fast clock</b> — Whittle MTBF; analyze before deploying.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EE Phase 5 — Digital Electronics</span> ·
+    Companion: <a href="logic-families-level-shift.html">Logic Families &amp; Level Shifting</a> ·
+    Forward: <a href="shift-registers.html">Shift Registers</a> for a synchronous shift application.
+  </footer>
+</main>
+<script>
+  let state = {
+    Tclk:100, t_su:20, t_h:3, t_d:15, // ns
+    rate:10, // MHz data
+    chain:1,
+  };
+
+  const PRESETS = {
+    tt:{Tclk:100, t_su:20, t_h:3, t_d:15, rate:10, chain:1},
+    iverilog:{Tclk:10, t_su:0.3, t_h:0.1, t_d:1, rate:100, chain:2},
+    mcu:{Tclk:62.5, t_su:1.5, t_h:0.5, t_d:5, rate:1, chain:2},
+    async:{Tclk:10, t_su:1, t_h:0.5, t_d:0.5, rate:50, chain:1},
+  };
+
+  function fmtT(t_ns){
+    if (t_ns >= 1e6) return (t_ns/1e6).toFixed(2) + " ms";
+    if (t_ns >= 1e3) return (t_ns/1e3).toFixed(2) + " µs";
+    if (t_ns >= 1) return t_ns.toFixed(1) + " ns";
+    return (t_ns*1000).toFixed(0) + " ps";
+  }
+  function fmtMtbf(years){
+    if (years < 1/60/60/24) return (years*60*60*24*1000).toFixed(0) + " ms";
+    if (years < 1/365) return (years*365*24*60).toFixed(0) + " minutes";
+    if (years < 1) return (years*365).toFixed(1) + " days";
+    if (years < 1e6) return years.toExponential(2) + " years";
+    return years.toExponential(2) + " years (>> universe)";
+  }
+
+  function compute(){
+    // setup slack: t_d (data arrives before clk) − t_su
+    const slack = state.t_d - state.t_su;
+    const hold_slack = state.t_d > 0 ? Infinity : (-state.t_d) - state.t_h;
+    // Metastability statistics
+    // τ ≈ 0.2 ns for modern CMOS, ~1 ns for 74HC
+    const tau_ns = state.Tclk < 20 ? 0.2 : 1.0;
+    const t_co = Math.max(2, state.Tclk/20); // estimate clk-to-output
+    const T_0 = 1e-13;
+    const f_data = state.rate * 1e6;
+    const f_clk = 1/(state.Tclk*1e-9);
+    // Per-stage margin = T_clk - t_co - t_su
+    const margin = state.Tclk - t_co - state.t_su;
+    let mtbf_1 = Infinity;
+    let mtbf_chain = Infinity;
+    if (slack < 0){
+      // setup violated → high prob of metastability per attempt
+      // MTBF is computed as if every event causes possible metastable state
+      const t_res_per_stage = margin > 0 ? margin : 1; // ns
+      const exponent = t_res_per_stage / tau_ns;
+      mtbf_1 = Math.exp(exponent) / (T_0 * f_data * f_clk); // seconds
+      mtbf_chain = Math.exp(state.chain * exponent) / (T_0 * f_data * f_clk);
+    } else if (state.chain > 0){
+      const t_res_per_stage = margin;
+      const exponent = t_res_per_stage / tau_ns;
+      mtbf_1 = Math.exp(exponent) / (T_0 * f_data * f_clk);
+      mtbf_chain = Math.exp(state.chain * exponent) / (T_0 * f_data * f_clk);
+    }
+    const mtbf_1_years = mtbf_1 / (365*24*3600);
+    const mtbf_chain_years = mtbf_chain / (365*24*3600);
+    return {slack, hold_slack, mtbf_1_years, mtbf_chain_years, margin, t_co, tau_ns};
+  }
+
+  function drawTiming(){
+    const svg = document.getElementById('timing');
+    const r = compute();
+    let s = '';
+    const PW = 700, PH = 360;
+    s += `<rect x="0" y="0" width="${PW}" height="${PH}" fill="var(--bg-elev2)"/>`;
+    // Time axis from -30 ns to +60 ns relative to clock edge
+    const tMin = -50, tMax = 80;
+    const PADL = 100, PADR = 30, PADT = 30, PADB = 30;
+    const W = PW - PADL - PADR;
+    function xT(t){ return PADL + (t - tMin)/(tMax - tMin) * W; }
+
+    // CLK trace
+    const cy = 100;
+    s += `<text x="${PADL-10}" y="${cy-15}" class="label" text-anchor="end">CLK</text>`;
+    // Clock waveform: rising edge at t=0, period = Tclk
+    // Show two clock periods around t=0
+    let clkPath = '';
+    const halfT = state.Tclk/2;
+    function clkY(t){
+      const phase = ((t + halfT) % state.Tclk + state.Tclk) % state.Tclk;
+      return phase < halfT ? cy - 25 : cy + 5;
+    }
+    let prevY = clkY(tMin);
+    clkPath = `M ${xT(tMin)} ${prevY}`;
+    for (let t = tMin; t <= tMax; t += 0.5){
+      const ny = clkY(t);
+      if (ny !== prevY){
+        clkPath += ` L ${xT(t)} ${prevY} L ${xT(t)} ${ny}`;
+        prevY = ny;
+      }
+    }
+    clkPath += ` L ${xT(tMax)} ${prevY}`;
+    s += `<path d="${clkPath}" stroke="var(--accent)" stroke-width="2" fill="none"/>`;
+
+    // Clock edge marker at t=0
+    s += `<line x1="${xT(0)}" y1="20" x2="${xT(0)}" y2="${PH-PADB}" stroke="var(--accent2)" stroke-width="1" stroke-dasharray="3 3"/>`;
+    s += `<text x="${xT(0)}" y="15" class="label-warn" text-anchor="middle">clk edge t=0</text>`;
+
+    // Setup window: from -t_su to 0
+    s += `<rect x="${xT(-state.t_su)}" y="155" width="${xT(0)-xT(-state.t_su)}" height="60" fill="var(--warn)" opacity="0.15"/>`;
+    s += `<text x="${xT(-state.t_su/2)}" y="148" class="label-warn" text-anchor="middle">SETUP window (t_su = ${state.t_su.toFixed(1)} ns)</text>`;
+    // Hold window: from 0 to t_h
+    s += `<rect x="${xT(0)}" y="155" width="${xT(state.t_h)-xT(0)}" height="60" fill="var(--warn)" opacity="0.15"/>`;
+    s += `<text x="${xT(state.t_h/2)}" y="220" class="label-warn" text-anchor="middle">HOLD (${state.t_h.toFixed(1)} ns)</text>`;
+
+    // Data D trace
+    const dy = 185;
+    s += `<text x="${PADL-10}" y="${dy-5}" class="label" text-anchor="end">D</text>`;
+    // D transitions at -t_d (t_d > 0 means D arrives t_d before clk edge)
+    const dTrans = -state.t_d;
+    // Before transition: D = low; after: D = high
+    s += `<line x1="${xT(tMin)}" y1="${dy+10}" x2="${xT(dTrans)}" y2="${dy+10}" stroke="var(--accent3)" stroke-width="2"/>`;
+    s += `<line x1="${xT(dTrans)}" y1="${dy+10}" x2="${xT(dTrans)}" y2="${dy-10}" stroke="var(--accent3)" stroke-width="2"/>`;
+    s += `<line x1="${xT(dTrans)}" y1="${dy-10}" x2="${xT(tMax)}" y2="${dy-10}" stroke="var(--accent3)" stroke-width="2"/>`;
+    s += `<text x="${xT(dTrans)}" y="${dy+25}" class="label-ok" text-anchor="middle">D transition</text>`;
+    s += `<text x="${xT(dTrans)}" y="${dy+38}" class="label-dim" text-anchor="middle">${state.t_d >= 0 ? '+' : ''}${state.t_d.toFixed(1)} ns before clk</text>`;
+
+    // Q output trace
+    const qy = 270;
+    s += `<text x="${PADL-10}" y="${qy-5}" class="label" text-anchor="end">Q</text>`;
+    let qStatus;
+    if (r.slack >= 0){
+      // Setup met → Q goes high after t_co
+      const qStartX = xT(0 + r.t_co);
+      s += `<line x1="${xT(tMin)}" y1="${qy+10}" x2="${qStartX}" y2="${qy+10}" stroke="var(--accent3)" stroke-width="2"/>`;
+      s += `<line x1="${qStartX}" y1="${qy+10}" x2="${qStartX}" y2="${qy-10}" stroke="var(--accent3)" stroke-width="2"/>`;
+      s += `<line x1="${qStartX}" y1="${qy-10}" x2="${xT(tMax)}" y2="${qy-10}" stroke="var(--accent3)" stroke-width="2"/>`;
+      s += `<text x="${qStartX+5}" y="${qy+25}" class="label-ok">Q valid at +${r.t_co.toFixed(1)} ns (t_co)</text>`;
+      qStatus = "ok";
+    } else {
+      // Setup violated → metastable region
+      const metaStart = xT(0 + r.t_co);
+      const metaEnd = xT(0 + r.t_co + Math.max(20, -r.slack*5));
+      s += `<line x1="${xT(tMin)}" y1="${qy+10}" x2="${metaStart}" y2="${qy+10}" stroke="var(--accent3)" stroke-width="2"/>`;
+      // Wiggly metastable region
+      let metaPath = `M ${metaStart} ${qy+10}`;
+      const segs = 20;
+      for (let i=1; i<=segs; i++){
+        const xp = metaStart + (metaEnd - metaStart)*i/segs;
+        const yp = qy + (Math.sin(i*0.9)*8);
+        metaPath += ` L ${xp} ${yp}`;
+      }
+      s += `<path d="${metaPath}" stroke="var(--warn)" stroke-width="2" fill="none"/>`;
+      // Then resolves to either 0 or 1
+      s += `<line x1="${metaEnd}" y1="${qy-10}" x2="${xT(tMax)}" y2="${qy-10}" stroke="var(--warn)" stroke-width="2" stroke-dasharray="4 3"/>`;
+      s += `<text x="${(metaStart+metaEnd)/2}" y="${qy+30}" class="label-warn" text-anchor="middle">METASTABLE</text>`;
+      qStatus = "meta";
+    }
+
+    // Annotate slack
+    if (r.slack >= 0){
+      s += `<text x="${PADL+W/2}" y="${PH-10}" class="label-ok" text-anchor="middle">Setup slack = +${r.slack.toFixed(1)} ns — captured cleanly</text>`;
+    } else {
+      s += `<text x="${PADL+W/2}" y="${PH-10}" class="label-warn" text-anchor="middle">Setup VIOLATION — slack = ${r.slack.toFixed(1)} ns — metastable</text>`;
+    }
+
+    svg.innerHTML = s;
+  }
+
+  function update(){
+    document.getElementById('tclkRead').textContent = fmtT(state.Tclk);
+    document.getElementById('tsRead').textContent = fmtT(state.t_su);
+    document.getElementById('thRead').textContent = fmtT(state.t_h);
+    document.getElementById('tdRead').textContent = (state.t_d >= 0 ? "+" : "") + state.t_d.toFixed(1) + " ns";
+    document.getElementById('frate').textContent = state.rate.toFixed(1) + " MHz";
+
+    const r = compute();
+    document.getElementById('tArrive').textContent = (state.t_d >= 0 ? "+" : "") + state.t_d.toFixed(1) + " ns";
+    document.getElementById('tSlack').textContent = (r.slack >= 0 ? "+" : "") + r.slack.toFixed(1) + " ns " + (r.slack >= 0 ? "(OK)" : "(FAIL)");
+    document.getElementById('tSetup').textContent = state.t_su.toFixed(1) + " ns before clk";
+    document.getElementById('tHold').textContent = state.t_h.toFixed(1) + " ns after clk";
+    document.getElementById('tMtbf').textContent = fmtMtbf(r.mtbf_1_years);
+    document.getElementById('tMtbfChain').textContent = state.chain === 0 ? "no sync — direct" : fmtMtbf(r.mtbf_chain_years);
+
+    let status, vd;
+    if (r.slack < 0){
+      status = "SETUP VIOLATED — metastability inevitable";
+      vd = `Data arrived ${(-r.slack).toFixed(1)} ns too late. Increase t_arrive OR shorten t_su (faster reg).`;
+    } else if (r.slack < 2){
+      status = "Marginal — within 2 ns of setup threshold";
+      vd = "Healthy now, but no margin for PVT (process/voltage/temperature) variation. Add more slack.";
+    } else {
+      status = "Healthy — setup met with margin";
+      if (state.chain === 0) vd = "OK, but DIRECT path is unsafe for async signals. Add a sync chain.";
+      else vd = `2-FF sync gives ${fmtMtbf(r.mtbf_chain_years)} MTBF — universe-safe.`;
+    }
+    document.getElementById('tStatus').textContent = status;
+    document.getElementById('vdCalc').textContent = vd;
+
+    drawTiming();
+  }
+
+  document.getElementById('tclk').addEventListener('input', e => { state.Tclk = parseFloat(e.target.value); update(); });
+  document.getElementById('ts').addEventListener('input', e => { state.t_su = parseFloat(e.target.value); update(); });
+  document.getElementById('th').addEventListener('input', e => { state.t_h = parseFloat(e.target.value); update(); });
+  document.getElementById('td').addEventListener('input', e => { state.t_d = parseFloat(e.target.value); update(); });
+  document.getElementById('rate').addEventListener('input', e => { state.rate = parseFloat(e.target.value); update(); });
+  document.getElementById('chain').addEventListener('change', e => { state.chain = parseInt(e.target.value); update(); });
+
+  document.querySelectorAll('.anchor').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.anchor').forEach(a => a.classList.remove('active'));
+      b.classList.add('active');
+      const p = PRESETS[b.dataset.preset];
+      Object.assign(state, p);
+      document.getElementById('tclk').value = state.Tclk;
+      document.getElementById('ts').value = state.t_su;
+      document.getElementById('th').value = state.t_h;
+      document.getElementById('td').value = state.t_d;
+      document.getElementById('rate').value = state.rate;
+      document.getElementById('chain').value = state.chain;
+      update();
+    });
+  });
+
+  update();
+</script>
+</body>
+</html>

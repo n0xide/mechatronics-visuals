@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Current Divider Explorer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .duality{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+  .duality .col{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .duality .col h3{margin:0 0 8px;font-size:11px;text-transform:uppercase}
+  .duality .col.v h3{color:var(--accent)}
+  .duality .col.i h3{color:var(--accent2)}
+  .duality .col table{margin:0;font-size:12px}
+  .duality .col th{font-size:11px}
+  .preset-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}
+  .preset-row button{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:5px 10px;
+    font:12px ui-monospace,Menlo,monospace;cursor:pointer}
+  .preset-row button:hover{border-color:var(--accent);color:var(--accent)}
+  .preset-row button.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .branch-arrow{stroke:var(--accent2);stroke-width:2;fill:none;
+    marker-end:url(#arrhead)}
+  .tol-bar{display:inline-block;height:6px;background:var(--accent3);
+    border-radius:2px;vertical-align:middle;margin-left:4px}
+  .tol-bar.warn{background:var(--warn)}
+  .key{display:inline-block;width:10px;height:10px;border-radius:2px;
+    vertical-align:middle;margin-right:4px}
+  @media (max-width: 720px){
+    .duality{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Current Divider Explorer</h1>
+  <p class="lede">Two (or more) resistors in parallel, one current going in, multiple currents coming out. The current splits inversely with resistance — the smaller R gets the bigger share. This visual is the parallel-circuit counterpart to the voltage divider, plus everything that makes parallel networks subtle: the conductance form, the tolerance trap that ruins parallel-LED designs, and the shunt-resistor measurement trick.</p>
+
+  <p>Three things to take away: (1) the <b>two-resistor formula flips</b> relative to the voltage divider — the current through R1 is proportional to <em>R2</em>, not R1, and that single sign-error sinks more homework problems than any other DC-circuit mistake; (2) the <b>conductance form</b> <code>I_k = I_total · G_k / ΣG</code> is the same shape as the voltage divider, so once you see currents as "voltage drops across conductances," parallel networks stop feeling foreign; (3) <b>real parallel circuits don't share current the way the math says</b> — resistor tolerance, copper trace resistance, and LED Vf spread all add up, and the divider formula tells you exactly how bad it will be.</p>
+
+  <section class="controls">
+    <div class="control"><label>I_total (source): <span class="readout" id="itRead">100 mA</span></label><input id="it" type="range" min="0.001" max="10.0" step="0.001" value="0.100"></div>
+    <div class="control"><label>Number of branches (N): <span class="readout" id="nRead">3</span></label><input id="n" type="range" min="2" max="6" step="1" value="3"></div>
+    <div class="control"><label>R1: <span class="readout" id="r1Read">100 Ω</span></label><input id="r1" type="range" min="0" max="60" step="1" value="24"></div>
+    <div class="control"><label>R2: <span class="readout" id="r2Read">220 Ω</span></label><input id="r2" type="range" min="0" max="60" step="1" value="28"></div>
+    <div class="control"><label>R3: <span class="readout" id="r3Read">470 Ω</span></label><input id="r3" type="range" min="0" max="60" step="1" value="32"></div>
+    <div class="control"><label>R4: <span class="readout" id="r4Read">1 kΩ</span></label><input id="r4" type="range" min="0" max="60" step="1" value="36"></div>
+    <div class="control"><label>R5: <span class="readout" id="r5Read">2.2 kΩ</span></label><input id="r5" type="range" min="0" max="60" step="1" value="40"></div>
+    <div class="control"><label>R6: <span class="readout" id="r6Read">4.7 kΩ</span></label><input id="r6" type="range" min="0" max="60" step="1" value="44"></div>
+    <div class="control"><label>Tolerance band: <span class="readout" id="tolRead">±1 %</span></label>
+      <select id="tol">
+        <option value="0.001">±0.1 % (precision thin-film)</option>
+        <option value="0.01" selected>±1 % (general thin-film)</option>
+        <option value="0.05">±5 % (carbon-film / generic)</option>
+        <option value="0.10">±10 % (legacy)</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="preset-row" id="presets">
+    <button data-p="led4">4× LED current share (100 Ω each, 80 mA)</button>
+    <button data-p="shunt">Shunt-style (1 Ω // 33 Ω, 0.5 A)</button>
+    <button data-p="dummy">Power dummy load (4× 1 Ω, 4 A)</button>
+    <button data-p="bias">Op-amp bias network (10k // 22k, 1 mA)</button>
+    <button data-p="brake">Dynamic brake bank (3× 33 Ω, 4.36 A)</button>
+    <button data-p="reset">Reset to defaults</button>
+  </div>
+
+  <div class="figure">
+    <svg id="circuit" viewBox="0 0 640 360" width="100%"></svg>
+    <table id="branchTbl">
+      <thead>
+        <tr><th>Branch</th><th>R</th><th>Conductance G = 1/R</th><th>I_k</th><th>Share %</th><th>P_k = I_k²·R</th><th>±tol drift</th></tr>
+      </thead>
+      <tbody id="branchBody"></tbody>
+      <tfoot>
+        <tr id="totalRow"><td><b>Σ / parallel</b></td><td id="tRpar" class="num">68.6 Ω</td><td id="tGtot" class="num">14.58 mS</td><td id="tItot" class="num">100.0 mA</td><td class="num">100 %</td><td id="tPtot" class="num">686 mW</td><td class="num">—</td></tr>
+      </tfoot>
+    </table>
+
+    <div class="vd" id="cdBox">
+      <b>Current-divider formula (two-resistor case):</b> I_R1 = I_total × R2 / (R1 + R2) &nbsp;·&nbsp; <span id="cdCalc">…</span>
+    </div>
+
+    <div class="vd" id="condBox" style="border-left-color:var(--accent)">
+      <b style="color:var(--accent)">N-branch form (always works):</b> I_k = I_total × G_k / ΣG  &nbsp;·&nbsp; <span id="condCalc">…</span>
+    </div>
+
+    <div class="vd" id="tolBox" style="border-left-color:var(--warn)">
+      <b style="color:var(--warn)">Tolerance worst-case (LED-sharing trap):</b> <span id="tolCalc">…</span>
+    </div>
+  </div>
+
+  <h2>How the formula falls out (KCL + Ohm)</h2>
+  <p>N resistors in parallel between two nodes; the same voltage V appears across every one. The total current is the sum of branch currents (KCL at the top node).</p>
+  <div class="deriv">
+    <span class="step">1.  All branches share the same V (definition of parallel): <b>V = I_k · R_k = I_j · R_j</b> for any j, k</span>
+    <span class="step">2.  KCL at the source node:                                 <b>I_total = ΣI_k</b></span>
+    <span class="step">3.  Substitute V = I_total · R_parallel (the parallel equivalent): <b>V = I_total · (1 / ΣG)</b>, where G_k = 1/R_k</span>
+    <span class="step">4.  Branch current = V / R_k = V · G_k:  <span class="arrow">→</span> <b>I_k = I_total · G_k / ΣG</b>   <i>(the always-true form)</i></span>
+    <span class="step">5.  For exactly two branches:  <b>G_1 / (G_1 + G_2) = (1/R_1) / (1/R_1 + 1/R_2) = R_2 / (R_1 + R_2)</b></span>
+    <span class="step">6.  So the two-resistor shortcut is:  <span class="arrow">→</span> <b>I_R1 = I_total · R_2 / (R_1 + R_2)</b>   <i>(note: R_2 in the numerator, not R_1)</i></span>
+  </div>
+  <p class="lede">The numerator is the <em>other</em> resistor. That's the entire reason students mess this up: the voltage-divider uses the resistor you're tapping across; the current-divider uses the resistor on the <em>other</em> branch. Both are correct — they have to be, because a small R sees a big voltage drop (voltage divider) <em>and</em> hogs the current (current divider).</p>
+
+  <h2>Duality with the voltage divider</h2>
+  <p>The two formulas are mirror images of each other. Voltage divider has a series loop with one current; current divider has a parallel network with one voltage. Swap the roles, swap the formulas:</p>
+
+  <div class="duality">
+    <div class="col v">
+      <h3>Voltage divider (series)</h3>
+      <table>
+        <tr><th>Shared quantity</th><td>current <b>I</b></td></tr>
+        <tr><th>Divided quantity</th><td>voltage <b>V</b></td></tr>
+        <tr><th>Network law</th><td><b>R_total = ΣR_k</b></td></tr>
+        <tr><th>Tap fraction</th><td><b>V_k / V_in = R_k / ΣR</b></td></tr>
+        <tr><th>Numerator</th><td>R of the element being tapped <b>across</b></td></tr>
+        <tr><th>Limit: tiny R</th><td>tiny voltage drop</td></tr>
+        <tr><th>Limit: huge R</th><td>almost all V</td></tr>
+      </table>
+    </div>
+    <div class="col i">
+      <h3>Current divider (parallel)</h3>
+      <table>
+        <tr><th>Shared quantity</th><td>voltage <b>V</b></td></tr>
+        <tr><th>Divided quantity</th><td>current <b>I</b></td></tr>
+        <tr><th>Network law</th><td><b>G_total = ΣG_k</b> &nbsp;(or 1/R_par = Σ1/R_k)</td></tr>
+        <tr><th>Branch fraction</th><td><b>I_k / I_in = G_k / ΣG</b></td></tr>
+        <tr><th>Numerator (2-branch)</th><td>R of the <b>other</b> branch</td></tr>
+        <tr><th>Limit: tiny R</th><td>hogs almost all I</td></tr>
+        <tr><th>Limit: huge R</th><td>almost no current</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <p>The conductance form is the unifying picture. If you write voltage-divider in resistance and current-divider in conductance, the two formulas are <em>literally identical</em>: <code>X_k / X_total = element_k / Σelement</code>. That's worth a minute of staring.</p>
+
+  <h2>The tolerance trap — why parallel LEDs almost always need individual resistors</h2>
+  <p>Real resistors carry a tolerance (1 %, 5 %, 10 %). Two parallel branches with the same <em>nominal</em> resistance can have very different <em>actual</em> resistances, and the current-divider formula tells you exactly how the imbalance lands.</p>
+
+  <p>For two equal-nominal resistors at tolerance ±t, the worst case puts one at R(1−t) and the other at R(1+t). The branch currents become:</p>
+
+  <div class="deriv">
+    <span class="step">I_low  / I_total = (1 + t) / 2  &nbsp;·&nbsp;  I_high / I_total = (1 − t) / 2</span>
+    <span class="step">Current ratio I_low : I_high = <b>(1 + t) : (1 − t)</b></span>
+    <span class="step">At t = 5 %: ratio = 1.05 : 0.95  →  <b>10.5 % imbalance</b> between the two LEDs</span>
+    <span class="step">At t = 1 %: ratio = 1.01 : 0.99  →  ~2 % imbalance — usually invisible to the eye</span>
+  </div>
+
+  <p>Now add the <b>LED Vf spread</b>. Two "identical" 20 mA white LEDs from the same reel can differ by 100 mV in Vf at 20 mA. If you drive two LEDs from a <em>single</em> series resistor — i.e., the LEDs are the parallel branches and the resistor is upstream — the LED with the lower Vf takes <em>much</em> more than half the current, can heat up, drop further in Vf (negative tempco), take even more current, and thermally run away. <b>This is why parallel-LED-with-one-resistor circuits are forbidden in any production design.</b> Each LED gets its own current-limiting resistor; the parallel-current-divider math only describes resistors, and even there it punishes you for being lazy.</p>
+
+  <h2>Special cases worth memorizing</h2>
+  <table>
+    <thead><tr><th>Configuration</th><th>What happens</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Two equal R (R // R)</td><td>R_par = R/2, current splits 50/50</td><td>Both branches present identical conductance</td></tr>
+      <tr><td>N equal R</td><td>R_par = R/N, current = I_total / N each</td><td>Each conductance is G = 1/R, ΣG = N/R</td></tr>
+      <tr><td>R // (much smaller r)</td><td>R_par ≈ r, all current goes through r</td><td>Conductance dominated by the larger G</td></tr>
+      <tr><td>R // open (no second branch)</td><td>R_par = R, no current sharing</td><td>Open branch has G = 0</td></tr>
+      <tr><td>R // short (R = 0)</td><td>R_par = 0, all current through the short, R sees no voltage</td><td>Short has G = ∞</td></tr>
+      <tr><td>Two unequals R_1, R_2 (R_1 ≠ R_2)</td><td>R_par = R_1·R_2 / (R_1 + R_2) — "product over sum"</td><td>The handy shortcut; only works for exactly 2</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Worked example 1 — Shunt resistor for current measurement</h2>
+  <div class="worked">
+    <h3>The problem</h3>
+    <p>You want to measure the current flowing into your robot's motor driver — call it 0–5 A. You don't have a Hall-effect sensor, but you do have an INA-style differential amp with a ±20 mV input range and a 12-bit ADC. The classic answer is a <b>shunt resistor</b>: a very small R in series with the load. The current flows through both the load and the shunt (they're in series, not parallel) — but the divider concept still applies because the shunt is in <em>parallel</em> with the ADC's measurement node.</p>
+
+    <h3>Why it's a parallel problem in disguise</h3>
+    <p>Putting an ADC across a shunt looks like two paths from V+ to V−: through the shunt (carries the real motor current) and through the ADC's input impedance (typically MΩ–GΩ, carries almost nothing). The current-divider math tells you how much the ADC "steals":</p>
+    <span class="eq">I_through_shunt = I_total · R_ADC / (R_shunt + R_ADC)</span>
+    <span class="eq">With R_shunt = 5 mΩ and R_ADC = 10 MΩ:  ratio = 10·10⁶ / (10·10⁶ + 0.005) ≈ 1.0000000005<span class="annot">(ADC steals 5 pA of every amp)</span></span>
+
+    <h3>The shunt sizing math</h3>
+    <span class="eq">Full-scale current: 5 A · 5 mΩ = 25 mV  <span class="annot">(over the INA's 20 mV range — too high, scale down)</span></span>
+    <span class="eq">Pick 3 mΩ shunt: 5 A · 3 mΩ = 15 mV at full scale  <span class="annot">(75 % of range — comfortable headroom)</span></span>
+    <span class="eq">Power dissipated in shunt at 5 A: P = I² · R = 25 A² · 0.003 Ω = 75 mW  <span class="annot">(0805 chip resistor handles &gt; 100 mW with airflow)</span></span>
+    <span class="eq">ADC resolution: 15 mV / 4095 = 3.66 µV/count → 3.66 µV / 3 mΩ = 1.22 mA/count  <span class="annot">(usable down to ~5 mA with averaging)</span></span>
+
+    <h3>Why the divider trick matters here</h3>
+    <p>If you instead used a 1 Ω shunt for "easy" 5 V/A scaling, the shunt would dissipate 25 W at 5 A — a power resistor with a heat-sink — and the shunt would also drop the motor's supply voltage by 5 V, which usually exceeds your headroom. The shunt resistor's <b>smallness</b> is what keeps the parallel-divider error and the power loss both negligible. The divider math justifies why "1 mΩ" isn't a typo.</p>
+  </div>
+
+  <h2>Worked example 2 — Three parallel power resistors sharing 200 W</h2>
+  <div class="worked">
+    <h3>The problem</h3>
+    <p>You're building a dynamic brake for a 48 V BLDC motor — when the controller switches the motor into regen, you dump the energy into a resistor bank. Total power budget: 200 W continuous, voltage at the bank: 48 V. You have a drawer full of <b>50 W, 33 Ω wirewound resistors</b>. How many in parallel, and what's the real current per resistor?</p>
+
+    <h3>The arithmetic (N equal resistors)</h3>
+    <span class="eq">R_required ≤ V² / P = 48² / 200 = 11.5 Ω</span>
+    <span class="eq">N = 33 / 11.5 ≈ 2.9  →  3 in parallel: R_par = 33 / 3 = 11.0 Ω <span class="annot">(rounds up so we don't exceed 200 W)</span></span>
+    <span class="eq">Total current at 48 V: I_total = 48 / 11 = 4.36 A</span>
+    <span class="eq">Per-resistor current (ideal split): 4.36 / 3 = 1.45 A  →  P = 1.45² · 33 = 69.5 W per resistor  <span class="annot">⚠ exceeds 50 W rating</span></span>
+
+    <h3>The trap and the fix</h3>
+    <p>69.5 W per resistor in a "50 W" package = thermal runaway and char marks. <b>Per-resistor power rating, not bank total, is what matters.</b> The fix: 4 in parallel instead of 3 → R_par = 8.25 Ω, I = 5.82 A, per-resistor 1.45 A · 33 = 47.9 W ✓ (and total bank wattage rating goes to 200 W). Or pick 100 W resistors. The <em>divider</em> insight is that the bank's resistance is what sets total current; the <em>per-element</em> dissipation is what kills you.</p>
+
+    <h3>Tolerance check</h3>
+    <p>±5 % wirewound, 4 in parallel: worst-case branch gets ~5/4 share = 25 % more than nominal. 47.9 W × 1.25 = 59.9 W per resistor — still over the 50 W rating. Move to 75 W or 100 W rated parts, or hand-match resistors with a 4½-digit meter and bin within ±1 %. This is exactly what production motor-controller dynamic-brake banks do.</p>
+  </div>
+
+  <h2>Worked example 3 — Reading a current divider out of a schematic</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>A 12 V supply feeds a 2 A load. In parallel with the load sits a <b>1 kΩ "bleeder" resistor</b> (used to discharge the supply's bulk capacitor when the load is removed). What's the current in each branch?</p>
+
+    <h3>The arithmetic</h3>
+    <span class="eq">R_load = V / I = 12 / 2 = 6 Ω  <span class="annot">(the load's equivalent resistance at this operating point)</span></span>
+    <span class="eq">G_load = 1 / 6 = 0.1667 S  &nbsp;·&nbsp;  G_bleed = 1 / 1000 = 0.001 S</span>
+    <span class="eq">I_load  = I_total · G_load  / (G_load + G_bleed) — but here you're told I_load directly</span>
+    <span class="eq">I_bleed at 12 V: 12 / 1000 = 12 mA  <span class="annot">(0.6 % of the 2 A load — negligible during normal operation)</span></span>
+    <span class="eq">Bleeder power: 12² / 1000 = 144 mW  <span class="annot">(a 1/4 W resistor is the minimum, 1/2 W gives margin)</span></span>
+
+    <h3>The insight</h3>
+    <p>The 1 kΩ bleeder is a parallel-current divider, but its job isn't to "share" current during normal operation — it's to <em>be there</em> when the load disappears. With the load gone, the bulk capacitor (say 1000 µF) discharges through the bleeder with τ = R · C = 1000 · 1·10⁻³ = 1 s, so within 5 s the cap is safe to touch. Without the bleeder, the cap can sit at 12 V for hours. The divider math confirms the bleeder is harmless when the load is connected; the time-constant math justifies why it's there at all.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Tiny R hogs current.</b> Drag R1 to its minimum; almost all the source current goes through it. This is the parallel dual of "tiny R sees tiny voltage drop in a series loop." Both are statements about <em>conductance dominance</em>.</li>
+    <li><b>The conductance form generalizes; the resistance shortcut only works for two branches.</b> Try increasing N past 2 — the "R₂ / (R1+R2)" shortcut from the box above stops applying, and only the G_k / ΣG form keeps making sense. Memorize the conductance form first; the two-resistor case is a corollary.</li>
+    <li><b>Equal-R branches give equal current.</b> Set R1 = R2 = R3; each branch carries 1/N of the total. This is the only configuration where parallel-LED-with-one-resistor "looks like it works" — and even then, only on the bench, not in production.</li>
+    <li><b>R_parallel is always less than the smallest branch.</b> Adding more paths can only increase total conductance, so total resistance only goes down. Adding one more 100 Ω in parallel with an existing 1 Ω drops R_par from 1 Ω to 0.99 Ω — barely. Adding 1 Ω in parallel with 1 Ω drops it to 0.5 Ω. Adding more <em>small</em> resistors matters; piling on big ones doesn't.</li>
+    <li><b>The tolerance band sets the worst-case imbalance.</b> Try the tolerance dropdown: ±10 % branches can be 22 % apart in current; ±0.1 % branches are tighter than your meter can measure. If your design needs precise current sharing (parallel power transistors, current mirrors, ladder DACs), use better resistors or trim with an op-amp.</li>
+    <li><b>Power doesn't divide proportionally to current — it divides as I²R, which is steeper.</b> A branch carrying 2× the current dissipates 4× the power if R is the same, or 2× if R is half. The branch with the smallest R hogs both the current <em>and</em> the heat — bad if that resistor is also the smallest physical part. Size for the worst-case branch, not the bank average.</li>
+  </ul>
+
+  <h2>Where you'll see this circuit</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Shunt resistor + ADC</b> — measure motor current by sensing voltage across a very small R. Worked example 1.</li>
+      <li><b style="color:var(--fg)">Parallel power resistors</b> — distribute heat across multiple smaller packages. Worked example 2.</li>
+      <li><b style="color:var(--fg)">Bleeder across a bulk capacitor</b> — drains the cap when the load is removed. Worked example 3.</li>
+      <li><b style="color:var(--fg)">Parallel MOSFETs sharing current</b> — same trap as parallel LEDs, but worse: MOSFETs have negative R_DS(on) tempco below saturation, so the hot one takes more current and runs hotter. Solution: source/emitter ballast resistors (small R in series with each device's source) to enforce sharing via local feedback.</li>
+      <li><b style="color:var(--fg)">Op-amp summing junction</b> — currents from N input branches sum at a virtual ground; the feedback resistor converts the summed current back to voltage. The "divider" here is current-into-the-summing-node from each input, and the analysis uses KCL identically.</li>
+      <li><b style="color:var(--fg)">Ladder DAC / R-2R</b> — the R-2R ladder is a beautifully recursive current divider, where each rung halves the current relative to the one above it.</li>
+      <li><b style="color:var(--fg)">PCB power-plane copper</b> — multiple via paths in parallel from a plane to a pin form a current divider; minimum vias for 1 A through 0.5 oz copper is ~4, calculated by the same conductance-sum.</li>
+      <li><b style="color:var(--fg)">Decoupling capacitor stacks</b> — multiple caps of different values (10 µF + 100 nF + 1 nF) in parallel divide the load's high-frequency current pulse across paths, with each cap dominating in its own frequency band. See <a href="../phase-7-signal-integrity-pcb/decoupling-caps.html">EE 7 — Decoupling Caps</a>.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>2-branch shortcut</dt><dd><span class="eq">I_R1 = I_total · R_2 / (R_1 + R_2)</span></dd>
+        <dt>N-branch (always)</dt><dd><span class="eq">I_k = I_total · G_k / ΣG</span></dd>
+        <dt>Parallel R</dt><dd><span class="eq">1 / R_par = Σ 1 / R_k</span></dd>
+        <dt>Product over sum (2)</dt><dd><span class="eq">R_par = R_1 · R_2 / (R_1 + R_2)</span></dd>
+        <dt>N equal R</dt><dd><span class="eq">R_par = R / N</span></dd>
+        <dt>Shared voltage</dt><dd><span class="eq">V = I_total · R_par = I_k · R_k</span></dd>
+        <dt>Branch power</dt><dd><span class="eq">P_k = I_k² · R_k = V² / R_k</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SHORTCUTS</h3>
+      <ul>
+        <li><b>Two equal R</b> → R/2, current splits 50/50.</li>
+        <li><b>N equal R</b> → R/N, current = I_total/N each.</li>
+        <li><b>Big R in parallel with small R</b> → R_par ≈ small R; the big R is almost invisible.</li>
+        <li><b>Numerator (2-branch)</b> is the <i>other</i> resistor — opposite convention from voltage divider.</li>
+        <li><b>Adding paths only lowers R_par</b>; never raises it.</li>
+        <li>For LED current sharing: <b>each LED gets its own resistor</b>, always.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Numerator-resistor swap</b> — using R1 in the numerator for I_R1. The 2-branch formula is I_R1 = I·R<i>2</i>/(R1+R2). When in doubt, fall back to conductance: I_k ∝ G_k.</li>
+        <li><b>Parallel LEDs from one resistor</b> — works on the bench, fails in production. Vf spread + negative tempco causes thermal runaway. Use one resistor per LED, or a constant-current driver.</li>
+        <li><b>Parallel MOSFETs without ballast</b> — same failure mode below saturation. Use source resistors or driver IC with current-balance feedback.</li>
+        <li><b>Sizing per bank instead of per element</b> — "200 W bank" with 4× 50 W resistors only works if each branch stays under 50 W. Worst-case branch sets the rating.</li>
+        <li><b>Ignoring trace/wire resistance</b> — for very small load R, the milli-ohms of copper trace are part of the divider. A 5 mΩ shunt with 2 mΩ of trace inline is now a 7 mΩ shunt, 40 % calibration error.</li>
+        <li><b>Forgetting the ADC isn't an open</b> — ADC input impedance during sample is finite (10 kΩ–100 MΩ depending on architecture). Usually negligible for voltage measurement, but check the datasheet.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 1 — DC Circuit Foundations</a> ·
+    Topic: Parallel Circuits &amp; Kirchhoff's Current Law ·
+    Back: <a href="voltage-divider-explorer.html">Voltage Divider Explorer</a> (the series counterpart) ·
+    Forward: <a href="thevenin-norton-explorer.html">Thévenin / Norton Explorer</a> (treat any divider as an equivalent source)
+  </footer>
+</main>
+<script>
+  const E12vals = [1,1.2,1.5,1.8,2.2,2.7,3.3,3.9,4.7,5.6,6.8,8.2,
+                   10,12,15,18,22,27,33,39,47,56,68,82,
+                   100,120,150,180,220,270,330,390,470,560,680,820,
+                   1000,1200,1500,1800,2200,2700,3300,3900,4700,5600,6800,8200,
+                   10000,12000,15000,18000,22000,27000,33000,39000,47000,
+                   56000,68000,82000,100000];
+
+  function rOf(i){ return E12vals[Math.min(E12vals.length-1, Math.max(0, parseInt(i)))]; }
+  function fmtR(r){
+    if(r<1)         return (r*1000).toFixed(r<0.01?2:1)+" mΩ";
+    if(r>=1e6)      return (r/1e6).toFixed(2)+" MΩ";
+    if(r>=1e3)      return (r/1e3).toFixed(r>=10000?0:1)+" kΩ";
+    return r.toFixed(r<10?1:0)+" Ω";
+  }
+  function fmtI(i){
+    if(Math.abs(i)<1e-6) return (i*1e9).toFixed(1)+" nA";
+    if(Math.abs(i)<1e-3) return (i*1e6).toFixed(1)+" µA";
+    if(Math.abs(i)<1)    return (i*1e3).toFixed(2)+" mA";
+    return i.toFixed(3)+" A";
+  }
+  function fmtP(p){
+    if(Math.abs(p)<1e-6) return (p*1e9).toFixed(1)+" nW";
+    if(Math.abs(p)<1e-3) return (p*1e6).toFixed(1)+" µW";
+    if(Math.abs(p)<1)    return (p*1e3).toFixed(2)+" mW";
+    return p.toFixed(3)+" W";
+  }
+  function fmtG(g){
+    if(Math.abs(g)<1e-6) return (g*1e9).toFixed(1)+" nS";
+    if(Math.abs(g)<1e-3) return (g*1e6).toFixed(1)+" µS";
+    if(Math.abs(g)<1)    return (g*1e3).toFixed(2)+" mS";
+    return g.toFixed(3)+" S";
+  }
+
+  const ids=['it','n','r1','r2','r3','r4','r5','r6','tol'];
+  const els={}; ids.forEach(k=>els[k]=document.getElementById(k));
+
+  // Color per branch (matches table row + circuit)
+  const branchColors = ['#5ec8ff','#ffb86c','#a3e635','#c084fc','#ff7b72','#f0e68c'];
+
+  function drawCircuit(I_total, branches, V){
+    const svg = document.getElementById('circuit');
+    const N = branches.length;
+    const ymax = 360;
+    const branchSpacing = 80;
+    const totalWidth = 80 + (N+1) * branchSpacing + 80;
+    const W = Math.max(640, totalWidth);
+    const topY = 90;
+    const botY = 270;
+    const sourceX = 50;
+    // ladder rails
+    let svgContent = '';
+
+    // current arrow head marker
+    svgContent += `<defs>
+      <marker id="arrhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="${branchColors[1]}"/>
+      </marker>
+      <marker id="arrhead2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="${branchColors[0]}"/>
+      </marker>
+    </defs>`;
+
+    // source on the left
+    svgContent += `<text x="${sourceX}" y="55" class="label" text-anchor="middle">I_total</text>`;
+    svgContent += `<text x="${sourceX}" y="70" class="label-ok" text-anchor="middle">${fmtI(I_total)}</text>`;
+    // current source symbol — circle with arrow
+    svgContent += `<circle cx="${sourceX}" cy="${(topY+botY)/2}" r="22" fill="var(--bg-elev2)" stroke="var(--accent3)" stroke-width="1.5"/>`;
+    svgContent += `<line x1="${sourceX}" y1="${(topY+botY)/2+12}" x2="${sourceX}" y2="${(topY+botY)/2-8}" stroke="${branchColors[2]}" stroke-width="2"/>`;
+    svgContent += `<polygon points="${sourceX-5},${(topY+botY)/2-6} ${sourceX+5},${(topY+botY)/2-6} ${sourceX},${(topY+botY)/2-14}" fill="${branchColors[2]}"/>`;
+    // top rail (current goes right)
+    svgContent += `<line x1="${sourceX}" y1="${(topY+botY)/2-22}" x2="${sourceX}" y2="${topY}" class="wire"/>`;
+    svgContent += `<line x1="${sourceX}" y1="${topY}" x2="${80 + N*branchSpacing}" y2="${topY}" class="wire"/>`;
+    // bottom rail
+    svgContent += `<line x1="${sourceX}" y1="${(topY+botY)/2+22}" x2="${sourceX}" y2="${botY}" class="wire"/>`;
+    svgContent += `<line x1="${sourceX}" y1="${botY}" x2="${80 + N*branchSpacing}" y2="${botY}" class="wire"/>`;
+
+    // V label between rails
+    svgContent += `<text x="${80 + (N+0.5)*branchSpacing + 10}" y="${(topY+botY)/2}" class="label">V = ${V.toFixed(3)} V</text>`;
+    svgContent += `<text x="${80 + (N+0.5)*branchSpacing + 10}" y="${(topY+botY)/2 + 15}" class="label-dim">(across all)</text>`;
+
+    // each branch
+    for(let i=0; i<N; i++){
+      const bx = 80 + (i+1) * branchSpacing;
+      const color = branchColors[i % branchColors.length];
+      const b = branches[i];
+      // top wire to resistor
+      svgContent += `<line x1="${bx}" y1="${topY}" x2="${bx}" y2="${topY+15}" class="wire"/>`;
+      // resistor box (zigzag-ish, but we'll use a rect for clarity)
+      svgContent += `<rect x="${bx-15}" y="${topY+15}" width="30" height="80" fill="var(--bg-elev2)" stroke="${color}" stroke-width="1.5"/>`;
+      svgContent += `<text x="${bx}" y="${topY+62}" class="label" text-anchor="middle" fill="${color}">R${i+1}</text>`;
+      svgContent += `<text x="${bx-22}" y="${topY+110}" class="label-dim" text-anchor="middle">${fmtR(b.R)}</text>`;
+      // bottom wire
+      svgContent += `<line x1="${bx}" y1="${topY+95}" x2="${bx}" y2="${botY}" class="wire"/>`;
+      // current arrow with magnitude — width proportional to share
+      const share = b.I / I_total;
+      const arrowLen = 18 + 40 * share; // 18-58 px
+      svgContent += `<line x1="${bx+18}" y1="${topY+25}" x2="${bx+18}" y2="${topY+25+arrowLen}"
+        stroke="${color}" stroke-width="${1.5 + 3*share}" marker-end="url(#arrhead)"
+        style="opacity:0.85"/>`;
+      // current readout
+      svgContent += `<text x="${bx+24}" y="${topY+30+arrowLen+10}" class="label" fill="${color}">${fmtI(b.I)}</text>`;
+      svgContent += `<text x="${bx+24}" y="${topY+30+arrowLen+24}" class="label-dim">${(share*100).toFixed(1)}%</text>`;
+    }
+
+    // GND symbol on the far right of bottom rail
+    const gndX = 80 + N*branchSpacing + 40;
+    svgContent += `<line x1="${gndX}" y1="${botY}" x2="${gndX}" y2="${botY+10}" class="wire"/>`;
+    svgContent += `<line x1="${gndX-15}" y1="${botY+10}" x2="${gndX+15}" y2="${botY+10}" class="wire"/>`;
+    svgContent += `<line x1="${gndX-10}" y1="${botY+16}" x2="${gndX+10}" y2="${botY+16}" class="wire"/>`;
+    svgContent += `<line x1="${gndX-5}" y1="${botY+22}" x2="${gndX+5}" y2="${botY+22}" class="wire"/>`;
+    svgContent += `<text x="${gndX+22}" y="${botY+14}" class="label-dim">GND</text>`;
+
+    svg.innerHTML = svgContent;
+    svg.setAttribute('viewBox', `0 30 ${W} 340`);
+  }
+
+  function update(){
+    const I_total = parseFloat(els.it.value);
+    const N       = parseInt(els.n.value);
+    const tol     = parseFloat(els.tol.value);
+    const allR    = [rOf(els.r1.value), rOf(els.r2.value), rOf(els.r3.value),
+                     rOf(els.r4.value), rOf(els.r5.value), rOf(els.r6.value)];
+    const R       = allR.slice(0, N);
+
+    document.getElementById('itRead').textContent  = fmtI(I_total);
+    document.getElementById('nRead').textContent   = N;
+    for(let i=0; i<6; i++){
+      document.getElementById('r'+(i+1)+'Read').textContent = fmtR(allR[i]);
+    }
+    document.getElementById('tolRead').textContent = "±" + (tol*100).toFixed(tol<0.01?1:0) + " %";
+
+    // Disable unused branch sliders visually
+    for(let i=2; i<6; i++){
+      const slot = document.getElementById('r'+(i+1)).parentElement;
+      slot.style.opacity = i < N ? '1' : '0.35';
+    }
+
+    // Compute conductances and parallel
+    const G = R.map(r => 1/r);
+    const Gtot = G.reduce((a,b)=>a+b, 0);
+    const Rpar = 1 / Gtot;
+    const V = I_total * Rpar;
+
+    const branches = R.map((r, i) => ({
+      R: r,
+      G: G[i],
+      I: I_total * G[i] / Gtot,
+      share: G[i] / Gtot,
+      P: (I_total * G[i] / Gtot)**2 * r,
+    }));
+
+    // table body
+    const tbody = document.getElementById('branchBody');
+    tbody.innerHTML = branches.map((b, i) => {
+      // ±tol drift: worst-case branch share at the tolerance band
+      // Assume this branch at R(1−t), others at R(1+t) for worst-case max
+      const Rlow  = b.R * (1 - tol);
+      const Ghigh = 1 / Rlow;
+      // recompute everybody else at R(1+t) for worst case
+      let Gother = 0;
+      for(let j=0; j<R.length; j++){
+        if(j===i) continue;
+        Gother += 1 / (R[j] * (1 + tol));
+      }
+      const shareHigh = Ghigh / (Ghigh + Gother);
+      const driftPct = (shareHigh - b.share) / b.share * 100;
+      const color = branchColors[i % branchColors.length];
+      const driftWarn = Math.abs(driftPct) > 5;
+      return `<tr style="background:rgba(${parseInt(color.substr(1,2),16)},${parseInt(color.substr(3,2),16)},${parseInt(color.substr(5,2),16)},0.04)">
+        <td><span class="key" style="background:${color}"></span>R${i+1}</td>
+        <td>${fmtR(b.R)}</td>
+        <td class="num">${fmtG(b.G)}</td>
+        <td class="num" style="color:${color}">${fmtI(b.I)}</td>
+        <td class="num">${(b.share*100).toFixed(1)} %</td>
+        <td class="num">${fmtP(b.P)}</td>
+        <td class="num" style="color:${driftWarn?'var(--warn)':'var(--fg-dim)'}">+${driftPct.toFixed(2)} %</td>
+      </tr>`;
+    }).join('');
+
+    // totals
+    const Ptot = I_total * V;
+    document.getElementById('tRpar').textContent  = fmtR(Rpar);
+    document.getElementById('tGtot').textContent  = fmtG(Gtot);
+    document.getElementById('tItot').textContent  = fmtI(I_total);
+    document.getElementById('tPtot').textContent  = fmtP(Ptot);
+
+    // two-resistor shortcut box (only meaningful for N=2)
+    const cdBox = document.getElementById('cdCalc');
+    if(N === 2){
+      const R1 = R[0], R2 = R[1];
+      cdBox.innerHTML = `I_R1 = ${fmtI(I_total)} × ${fmtR(R2)} / (${fmtR(R1)} + ${fmtR(R2)}) = <b style="color:var(--accent3)">${fmtI(I_total * R2/(R1+R2))}</b>`;
+    } else {
+      cdBox.innerHTML = `<span style="color:var(--fg-dim)">N = ${N}, so the 2-branch shortcut doesn't apply. Use the conductance form below.</span>`;
+    }
+
+    // conductance form
+    const k = 0;
+    const Gsum = G.map(g => fmtG(g)).join(' + ');
+    document.getElementById('condCalc').innerHTML =
+      `I_${k+1} = ${fmtI(I_total)} × ${fmtG(G[k])} / (${Gsum}) = <b style="color:var(--accent3)">${fmtI(branches[0].I)}</b>`;
+
+    // tolerance worst-case (find the branch with the biggest drift)
+    let worstIdx = 0, worstDrift = 0;
+    for(let i=0; i<branches.length; i++){
+      const Rlow = R[i] * (1 - tol);
+      const Ghigh = 1 / Rlow;
+      let Gother = 0;
+      for(let j=0; j<R.length; j++){
+        if(j===i) continue;
+        Gother += 1 / (R[j] * (1 + tol));
+      }
+      const drift = (Ghigh / (Ghigh + Gother) - branches[i].share) / branches[i].share * 100;
+      if(Math.abs(drift) > Math.abs(worstDrift)){ worstDrift = drift; worstIdx = i; }
+    }
+    const tolBox = document.getElementById('tolCalc');
+    const driftAbs = Math.abs(worstDrift);
+    const ratio = (1 + tol) / (1 - tol);
+    if(driftAbs < 0.5){
+      tolBox.innerHTML = `±${(tol*100).toFixed(1)} % resistors → worst-case branch (R${worstIdx+1}) drifts <b style="color:var(--accent3)">${worstDrift.toFixed(2)} %</b> from its nominal share. Tight enough for precision instrumentation.`;
+    } else if(driftAbs < 5){
+      tolBox.innerHTML = `±${(tol*100).toFixed(1)} % resistors → worst-case branch (R${worstIdx+1}) drifts <b>${worstDrift.toFixed(2)} %</b> from its nominal share (2-resistor ratio ${ratio.toFixed(3)} : 1). Fine for most things.`;
+    } else {
+      tolBox.innerHTML = `±${(tol*100).toFixed(1)} % resistors → worst-case branch (R${worstIdx+1}) drifts <b style="color:var(--warn)">${worstDrift.toFixed(1)} %</b> from its nominal share (2-resistor ratio ${ratio.toFixed(3)} : 1). For parallel power devices or LED current sharing, this is the failure mode — use tighter parts or per-element current limiting.`;
+    }
+
+    drawCircuit(I_total, branches, V);
+  }
+
+  // Presets — change N + slider values to demonstrate canonical configurations
+  // E12 index map: 0=1Ω, 12=10Ω, 18=33Ω, 24=100Ω, 28=220Ω, 32=470Ω, 36=1kΩ, 40=2.2kΩ, 44=4.7kΩ, 48=10kΩ, 52=22kΩ
+  function applyPreset(p){
+    const presets = {
+      led4:  {it: 0.080, n: 4, r: [24,24,24,24]},          // 4× 100 Ω, 20 mA each
+      shunt: {it: 0.500, n: 2, r: [0, 18]},                // 1 Ω "shunt" // 33 Ω load
+      dummy: {it: 4.000, n: 4, r: [0,0,0,0]},              // 4× 1 Ω = 0.25 Ω, 4 A
+      bias:  {it: 0.001, n: 2, r: [48, 52]},               // 10 kΩ // 22 kΩ
+      brake: {it: 4.360, n: 3, r: [18, 18, 18]},           // 3× 33 Ω dynamic brake (worked ex 2)
+      reset: {it: 0.100, n: 3, r: [24, 28, 32, 36, 40, 44]}// defaults
+    };
+    const cfg = presets[p];
+    if(!cfg) return;
+    els.it.value = cfg.it;
+    els.n.value = cfg.n;
+    for(let i=0; i<cfg.r.length; i++){
+      els['r'+(i+1)].value = cfg.r[i];
+    }
+    document.querySelectorAll('#presets button').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.p === p);
+    });
+    update();
+  }
+
+  ids.forEach(k => els[k].addEventListener('input', update));
+  els.tol.addEventListener('change', update);
+  document.querySelectorAll('#presets button').forEach(btn => {
+    btn.addEventListener('click', () => applyPreset(btn.dataset.p));
+  });
+  update();
+</script>
+</body>
+</html>

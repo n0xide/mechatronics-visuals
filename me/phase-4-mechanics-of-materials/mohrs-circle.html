@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mohr's Circle — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>Mohr's Circle</h1>
+  <p class="lede">Stress isn't a scalar — it's a tensor whose value depends on the orientation of the plane you measure. Mohr's circle is the geometric trick that lets you rotate a stress state by hand. Drag σ_x, σ_y, and τ_xy; the circle redraws, principal stresses pop out as the two extremes, and max shear lives on the top of the circle. The element on the right shows what the stress looks like when rotated by θ_p.</p>
+
+  <div class="anchors">
+    <span class="anchor"><b>Center</b>: σ_avg = (σ_x + σ_y) / 2</span>
+    <span class="anchor"><b>Radius</b>: R = √((σ_x − σ_y)/2)² + τ²)</span>
+    <span class="anchor"><b>σ₁, σ₂</b>: σ_avg ± R (principal)</span>
+    <span class="anchor"><b>τ_max</b>: equal to R</span>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>σ_x: <span class="readout" id="sxRead">100 MPa</span></label><input id="sx" type="range" min="-150" max="200" step="5" value="100"></div>
+    <div class="control"><label>σ_y: <span class="readout" id="syRead">40 MPa</span></label><input id="sy" type="range" min="-150" max="200" step="5" value="40"></div>
+    <div class="control"><label>τ_xy: <span class="readout" id="txyRead">30 MPa</span></label><input id="txy" type="range" min="-100" max="100" step="2" value="30"></div>
+    <div class="control"><label>Rotation θ: <span class="readout" id="thRead">0°</span></label><input id="th" type="range" min="-90" max="90" step="1" value="0"></div>
+  </section>
+
+  <div class="figure">
+    <svg id="mohr" viewBox="0 0 920 440" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+      <tr><td>σ_avg (center)</td><td id="rAvg" class="num">70 MPa</td><td><code>(σ_x + σ_y) / 2</code></td></tr>
+      <tr><td>Radius R</td><td id="rR" class="num">42.4 MPa</td><td><code>√((σ_x−σ_y)/2)² + τ²)</code></td></tr>
+      <tr><td>σ₁ (max principal)</td><td id="rS1" class="num">112.4 MPa</td><td><code>σ_avg + R</code></td></tr>
+      <tr><td>σ₂ (min principal)</td><td id="rS2" class="num">27.6 MPa</td><td><code>σ_avg − R</code></td></tr>
+      <tr><td>τ_max (max shear)</td><td id="rTmax" class="num">42.4 MPa</td><td><code>R</code></td></tr>
+      <tr><td>θ_p (principal angle)</td><td id="rThp" class="num">22.5°</td><td><code>½ · atan2(2τ, σ_x−σ_y)</code></td></tr>
+      <tr><td>σ_x' at rotation θ</td><td id="rSxr" class="num">100 MPa</td><td><code>see formula derivation</code></td></tr>
+      <tr><td>τ' at rotation θ</td><td id="rTxr" class="num">30 MPa</td><td><code>see formula derivation</code></td></tr>
+    </table>
+  </div>
+
+  <h2>The transformation equations (and why a circle)</h2>
+  <p>If you rotate the x-y axes by θ to new axes x'-y', the stress components transform as:</p>
+  <div class="deriv">
+    <span class="step">σ_x'  = (σ_x + σ_y)/2 + (σ_x − σ_y)/2 · cos 2θ + τ_xy · sin 2θ</span>
+    <span class="step">σ_y'  = (σ_x + σ_y)/2 − (σ_x − σ_y)/2 · cos 2θ − τ_xy · sin 2θ</span>
+    <span class="step">τ_x'y' = −(σ_x − σ_y)/2 · sin 2θ + τ_xy · cos 2θ</span>
+  </div>
+  <p>Let σ_c = (σ_x + σ_y)/2 (the center) and let a = (σ_x − σ_y)/2 (half-difference). Then σ_x' − σ_c and τ_x'y' parametrize as:</p>
+  <div class="deriv">
+    <span class="step">σ_x' − σ_c = a · cos 2θ + τ · sin 2θ</span>
+    <span class="step">τ_x'y'     = −a · sin 2θ + τ · cos 2θ</span>
+    <span class="step">Square and add: <b>(σ_x' − σ_c)² + (τ_x'y')² = a² + τ² = R²</b></span>
+    <span class="step"><span class="arrow">→</span> circle of radius R centered at (σ_c, 0) in (σ, τ) space.</span>
+    <span class="step">Each plane orientation θ corresponds to one point on the circle. Rotate the element by θ in physical space → walk around the circle by 2θ in Mohr space.</span>
+  </div>
+
+  <h2>Reading the circle</h2>
+  <ul class="notice">
+    <li><b>Principal stresses σ₁, σ₂</b> — the two points where the circle crosses the σ axis (τ = 0). σ₁ on the right is the maximum normal stress; σ₂ on the left is the minimum.</li>
+    <li><b>Maximum shear</b> — the top and bottom of the circle (τ = ±R). The two planes of max shear are 45° rotated from the principal planes (which makes geometric sense: max shear = 45° from max tension in pure tension).</li>
+    <li><b>Sign convention for τ</b> — most textbooks plot τ_xy positive <em>downward</em> on the Mohr plane (or, equivalently, negate τ). This makes rotating the physical element CCW correspond to walking CCW on the circle. We use the "downward positive" convention; if your textbook does it the other way, the principal angle direction just flips sign.</li>
+    <li><b>Pure shear case</b> — σ_x = σ_y = 0, τ ≠ 0: circle is centered at origin. Principal stresses are ±τ. A bar in pure torsion has 45° spirals of tension/compression (why brittle shafts crack at 45°).</li>
+    <li><b>Uniaxial tension</b> — σ_x > 0, σ_y = 0, τ = 0: circle goes from 0 to σ_x. τ_max = σ_x/2 at 45° (why ductile rods fail in shear bands at 45° in tension).</li>
+  </ul>
+
+  <h2>Worked example — pressure vessel + axial load</h2>
+  <div class="worked">
+    <h3>The stress state</h3>
+    <p>Thin-walled cylinder (r = 100 mm, t = 5 mm) under internal pressure 2 MPa. Additional axial load adds 30 MPa tension. Wall element experiences:</p>
+    <span class="eq">σ_hoop = pr/t = 2 · 100 / 5 = 40 MPa</span>
+    <span class="eq">σ_long = pr/(2t) + 30 = 20 + 30 = 50 MPa (axial sum)</span>
+    <span class="eq">τ_xy = 0 (no torque on the vessel)</span>
+
+    <h3>Mohr's circle directly</h3>
+    <span class="eq">σ_avg = (40 + 50) / 2 = 45 MPa <span class="annot">(center)</span></span>
+    <span class="eq">R = |(40 − 50) / 2| = 5 MPa <span class="annot">(half-difference, τ = 0)</span></span>
+    <span class="eq">σ₁ = 50 MPa, σ₂ = 40 MPa <span class="annot">(longitudinal and hoop, already principal)</span></span>
+    <span class="eq">τ_max,in-plane = 5 MPa <span class="annot">(small — vessel is benign in shear)</span></span>
+
+    <h3>3D consideration — out-of-plane</h3>
+    <span class="eq">σ_radial ≈ 0 (free surface) → σ₃ = 0</span>
+    <span class="eq">τ_max,3D = (σ₁ − σ₃)/2 = 25 MPa <span class="annot">(this is what fails ductile materials)</span></span>
+    <p style="color:var(--fg-dim);font-size:12px;margin-top:8px">Lesson: in-plane Mohr's circle gave 5 MPa max shear, but the true max shear is 25 MPa because the radial direction is at zero. Always check the 3D max shear when one principal stress is zero.</p>
+  </div>
+
+  <h2>Cross-links</h2>
+  <div class="crosslink">
+    <h4>Related</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Pressure vessel</b> — <a href="pressure-vessel.html">σ_hoop, σ_long</a>. The example above.</li>
+      <li><b style="color:var(--fg)">Axial stress / strain</b> — <a href="axial-stress-strain.html">σ = F/A foundation</a>.</li>
+      <li><b style="color:var(--fg)">Failure theories</b> — <a href="failure-theories.html">von Mises vs Tresca</a>. Both use principal stresses straight from Mohr.</li>
+      <li><b style="color:var(--fg)">Torsion of shafts</b> — <a href="torsion-shaft.html">τ = Tr/J</a>. Pure shear on the cylindrical surface → 45° principals.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Center</dt><dd><span class="eq">σ_c = (σ_x + σ_y)/2</span></dd>
+        <dt>Radius</dt><dd><span class="eq">R = √(((σ_x−σ_y)/2)² + τ²)</span></dd>
+        <dt>Principal</dt><dd><span class="eq">σ₁,₂ = σ_c ± R</span></dd>
+        <dt>τ_max (in-plane)</dt><dd><span class="eq">τ_max = R</span></dd>
+        <dt>θ_p</dt><dd><span class="eq">tan 2θ_p = 2τ / (σ_x − σ_y)</span></dd>
+        <dt>τ_max (3D)</dt><dd><span class="eq">(σ_max − σ_min)/2 of {σ₁,σ₂,σ₃}</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SHORTCUTS</h3>
+      <ul>
+        <li><b>Physical rotation θ</b> = Mohr rotation 2θ</li>
+        <li><b>Principal planes</b> = 0 shear on faces</li>
+        <li><b>Max-shear planes</b> = 45° from principals</li>
+        <li><b>Brittle fails on σ₁</b>: tension perpendicular to crack</li>
+        <li><b>Ductile fails on τ_max</b>: slip at 45° from tension</li>
+        <li><b>3D check</b> when any σ = 0</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li><b>Sign of τ in plot</b> — different conventions; pick one and stick with it.</li>
+        <li><b>Forgetting 2θ</b> — physical 30° rotation = 60° around Mohr circle.</li>
+        <li><b>Skipping 3D</b> — in-plane τ_max isn't 3D τ_max if σ_z ≠ σ₁ or σ₂.</li>
+        <li><b>Plane-stress vs plane-strain</b> — different boundary conditions; doesn't change the circle but changes σ_z.</li>
+        <li><b>Mohr for strain</b> — same circle, different axes (ε_x, γ/2); divide γ by 2 to plot.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">ME Phase 4 — Mechanics of Materials</span> ·
+    Related: <a href="pressure-vessel.html">Pressure Vessel</a> ·
+    <a href="failure-theories.html">Failure Theories</a>
+  </footer>
+</main>
+<script>
+  const sxEl = document.getElementById('sx');
+  const syEl = document.getElementById('sy');
+  const txyEl = document.getElementById('txy');
+  const thEl = document.getElementById('th');
+
+  function update(){
+    const sx = parseFloat(sxEl.value);
+    const sy = parseFloat(syEl.value);
+    const txy = parseFloat(txyEl.value);
+    const th = parseFloat(thEl.value);
+    document.getElementById('sxRead').textContent = sx.toFixed(0)+" MPa";
+    document.getElementById('syRead').textContent = sy.toFixed(0)+" MPa";
+    document.getElementById('txyRead').textContent = txy.toFixed(0)+" MPa";
+    document.getElementById('thRead').textContent  = th.toFixed(0)+"°";
+
+    const avg = (sx + sy) / 2;
+    const half = (sx - sy) / 2;
+    const R = Math.sqrt(half*half + txy*txy);
+    const s1 = avg + R;
+    const s2 = avg - R;
+    const thp_rad = 0.5 * Math.atan2(2*txy, sx - sy);
+    const thp = thp_rad * 180 / Math.PI;
+
+    // rotation at theta
+    const thrad = th * Math.PI / 180;
+    const sxr = avg + half*Math.cos(2*thrad) + txy*Math.sin(2*thrad);
+    const syr = avg - half*Math.cos(2*thrad) - txy*Math.sin(2*thrad);
+    const txyr = -half*Math.sin(2*thrad) + txy*Math.cos(2*thrad);
+
+    document.getElementById('rAvg').textContent  = avg.toFixed(1)+" MPa";
+    document.getElementById('rR').textContent    = R.toFixed(1)+" MPa";
+    document.getElementById('rS1').textContent   = s1.toFixed(1)+" MPa";
+    document.getElementById('rS2').textContent   = s2.toFixed(1)+" MPa";
+    document.getElementById('rTmax').textContent = R.toFixed(1)+" MPa";
+    document.getElementById('rThp').textContent  = thp.toFixed(1)+"°";
+    document.getElementById('rSxr').textContent  = sxr.toFixed(1)+" MPa";
+    document.getElementById('rTxr').textContent  = txyr.toFixed(1)+" MPa";
+
+    drawMohr(sx, sy, txy, th, avg, R, s1, s2, thp_rad, sxr, syr, txyr);
+  }
+
+  function drawMohr(sx, sy, txy, th, avg, R, s1, s2, thp_rad, sxr, syr, txyr){
+    const svg = document.getElementById('mohr');
+    // Two panels: circle on left, element on right
+    const ox = 270, oy = 200;
+    const range = 300;  // px
+    const stressRange = 300;  // MPa visible
+    const scale = range / stressRange;  // px per MPa
+
+    // axes
+    let s = `
+      <text x="20" y="30" class="label">Mohr's Circle (σ on x, τ on y, τ positive downward)</text>
+      <line x1="20" y1="${oy}" x2="540" y2="${oy}" stroke="var(--fg-dim)" stroke-width="1"/>
+      <line x1="${ox}" y1="20" x2="${ox}" y2="380" stroke="var(--fg-dim)" stroke-width="1"/>
+      <text x="535" y="${oy-4}" class="label-dim">σ</text>
+      <text x="${ox+4}" y="380" class="label-dim">τ (↓+)</text>
+      <!-- ticks -->
+    `;
+    // grid ticks
+    for(let v=-200; v<=200; v+=50){
+      const x = ox + v * scale;
+      if(x>30 && x<530){
+        s += `<line x1="${x}" y1="${oy-3}" x2="${x}" y2="${oy+3}" stroke="var(--fg-dim)" stroke-width="1"/>
+              <text x="${x}" y="${oy+15}" class="label-dim" text-anchor="middle">${v}</text>`;
+      }
+    }
+    // circle
+    s += `<circle cx="${ox + avg*scale}" cy="${oy}" r="${R*scale}"
+                  fill="none" stroke="var(--accent)" stroke-width="2"/>`;
+    // center marker
+    s += `<circle cx="${ox + avg*scale}" cy="${oy}" r="3" fill="var(--accent)"/>
+          <text x="${ox + avg*scale + 6}" y="${oy-6}" class="label-dim">σ_c</text>`;
+    // principal stress points
+    s += `<circle cx="${ox + (avg+R)*scale}" cy="${oy}" r="5" fill="var(--accent3)"/>
+          <text x="${ox + (avg+R)*scale + 8}" y="${oy-8}" class="label-ok">σ₁ = ${(avg+R).toFixed(0)}</text>`;
+    s += `<circle cx="${ox + (avg-R)*scale}" cy="${oy}" r="5" fill="var(--accent3)"/>
+          <text x="${ox + (avg-R)*scale - 8}" y="${oy-8}" class="label-ok" text-anchor="end">σ₂ = ${(avg-R).toFixed(0)}</text>`;
+    // max shear points
+    s += `<circle cx="${ox + avg*scale}" cy="${oy + R*scale}" r="5" fill="var(--warn)"/>
+          <text x="${ox + avg*scale + 8}" y="${oy + R*scale}" class="label-warn">τ_max = ${R.toFixed(0)}</text>`;
+    // X face point (sx, txy)
+    s += `<circle cx="${ox + sx*scale}" cy="${oy + txy*scale}" r="5" fill="var(--accent2)"/>
+          <text x="${ox + sx*scale + 8}" y="${oy + txy*scale + 4}" class="label">X (σ_x, τ)</text>`;
+    // Y face point (sy, -txy)
+    s += `<circle cx="${ox + sy*scale}" cy="${oy - txy*scale}" r="5" fill="var(--accent2)"/>
+          <text x="${ox + sy*scale - 8}" y="${oy - txy*scale}" class="label" text-anchor="end">Y (σ_y, −τ)</text>`;
+    // diameter line through X-Y
+    s += `<line x1="${ox + sx*scale}" y1="${oy + txy*scale}" x2="${ox + sy*scale}" y2="${oy - txy*scale}"
+                stroke="var(--accent2)" stroke-width="1" stroke-dasharray="3,3"/>`;
+    // current rotation point (X')
+    s += `<circle cx="${ox + sxr*scale}" cy="${oy + txyr*scale}" r="6" fill="none" stroke="var(--accent3)" stroke-width="2"/>
+          <text x="${ox + sxr*scale - 8}" y="${oy + txyr*scale + 22}" class="label-ok">X' @ 2θ=${(2*th).toFixed(0)}°</text>`;
+
+    // ============== Right panel: physical element ==============
+    const px = 720, py = 200, sz = 80;
+    s += `<text x="${px-50}" y="30" class="label">Element @ θ = ${th.toFixed(0)}° (rotated)</text>`;
+    // element box
+    s += `<g transform="rotate(${-th} ${px} ${py})">`;
+    s += `<rect x="${px-sz}" y="${py-sz}" width="${2*sz}" height="${2*sz}"
+                fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="2"/>`;
+    // σ_x' arrows (right + left faces)
+    const ar1 = sxr / 200 * 40;  // arrow length proxy
+    s += `<line x1="${px+sz}" y1="${py}" x2="${px+sz+ar1}" y2="${py}" stroke="var(--accent3)" stroke-width="2"/>`;
+    s += `<polygon points="${px+sz+ar1},${py} ${px+sz+ar1-6*Math.sign(ar1||1)},${py-3} ${px+sz+ar1-6*Math.sign(ar1||1)},${py+3}" fill="var(--accent3)"/>`;
+    s += `<line x1="${px-sz}" y1="${py}" x2="${px-sz-ar1}" y2="${py}" stroke="var(--accent3)" stroke-width="2"/>`;
+    s += `<polygon points="${px-sz-ar1},${py} ${px-sz-ar1+6*Math.sign(ar1||1)},${py-3} ${px-sz-ar1+6*Math.sign(ar1||1)},${py+3}" fill="var(--accent3)"/>`;
+    s += `<text x="${px+sz+ar1+10}" y="${py+5}" class="label-ok">σ_x' = ${sxr.toFixed(0)}</text>`;
+    // σ_y' arrows (top + bottom)
+    const ar2 = syr / 200 * 40;
+    s += `<line x1="${px}" y1="${py-sz}" x2="${px}" y2="${py-sz-ar2}" stroke="var(--accent3)" stroke-width="2"/>`;
+    s += `<polygon points="${px},${py-sz-ar2} ${px-3},${py-sz-ar2+6*Math.sign(ar2||1)} ${px+3},${py-sz-ar2+6*Math.sign(ar2||1)}" fill="var(--accent3)"/>`;
+    s += `<line x1="${px}" y1="${py+sz}" x2="${px}" y2="${py+sz+ar2}" stroke="var(--accent3)" stroke-width="2"/>`;
+    s += `<polygon points="${px},${py+sz+ar2} ${px-3},${py+sz+ar2-6*Math.sign(ar2||1)} ${px+3},${py+sz+ar2-6*Math.sign(ar2||1)}" fill="var(--accent3)"/>`;
+    s += `<text x="${px+8}" y="${py-sz-ar2-5}" class="label-ok">σ_y' = ${syr.toFixed(0)}</text>`;
+    // shear arrows
+    const ts = txyr / 100 * 25;
+    s += `<line x1="${px+sz-25}" y1="${py-sz-5}" x2="${px+sz+5}" y2="${py-sz-5}" stroke="var(--warn)" stroke-width="2"/>`;
+    s += `<text x="${px+sz+8}" y="${py-sz-2}" class="label-warn">τ'=${txyr.toFixed(0)}</text>`;
+    s += `</g>`;
+    svg.innerHTML = s;
+  }
+
+  sxEl.addEventListener('input', update);
+  syEl.addEventListener('input', update);
+  txyEl.addEventListener('input', update);
+  thEl.addEventListener('input', update);
+  update();
+</script>
+</body>
+</html>

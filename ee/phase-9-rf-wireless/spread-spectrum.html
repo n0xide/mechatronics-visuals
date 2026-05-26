@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Spread Spectrum — DSSS &amp; FHSS</title>
+<style>:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 system-ui,sans-serif}
+main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright)}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+.control input,.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 8px;font:13px ui-monospace,monospace}
+.readout{color:var(--accent);font-family:ui-monospace,monospace;font-size:13px}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+.deriv b{color:var(--fg)}
+.cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.cheat-card h3{margin:0 0 8px;font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px;color:var(--accent)}
+.cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+.cheat-card ul li{margin:3px 0}.cheat-card ul li b{color:var(--fg)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>Spread Spectrum — DSSS &amp; FHSS</h1>
+<p class="lede">Two strategies to push narrowband data over a much wider bandwidth: <b>DSSS</b> (Direct-Sequence Spread Spectrum) multiplies the bit stream by a fast pseudo-random "chipping" code, smearing the signal across the whole channel; <b>FHSS</b> (Frequency-Hopping Spread Spectrum) jumps between many narrow channels in a known pattern. Both buy processing gain at the cost of bandwidth. Common in CDMA cell (DSSS), legacy WiFi (DSSS), Bluetooth Classic (FHSS), and LoRa (CSS, a related technique).</p>
+
+<div class="anchors">
+<span class="anchor"><b>Processing gain</b> = 10·log(W_signal / W_data)</span>
+<span class="anchor"><b>WiFi DSSS</b>: 11 chips × 1 Mbps → 11 Mbps spread</span>
+<span class="anchor"><b>BT Classic FHSS</b>: 1600 hops/sec across 79 ch</span>
+<span class="anchor"><b>CDMA</b>: ~64-chip Walsh codes, IS-95</span>
+</div>
+
+<section class="controls">
+<div class="control"><label>Technique</label>
+<select id="tech"><option value="dsss" selected>DSSS — chipping</option><option value="fhss">FHSS — hopping</option><option value="css">CSS (LoRa) — chirp</option></select>
+</div>
+<div class="control"><label>Data rate (kbps): <span class="readout" id="drRead">10</span></label><input id="dr" type="range" min="1" max="1000" step="1" value="10"></div>
+<div class="control"><label>Spread factor: <span class="readout" id="sfRead">100</span></label><input id="sf" type="range" min="2" max="1000" step="1" value="100"></div>
+<div class="control"><label>Spread bandwidth (kHz): <span class="readout" id="bwRead">1000</span></label></div>
+</section>
+
+<div class="figure"><table>
+<tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+<tr><td>Spread bandwidth</td><td id="tBw">1000 kHz</td><td>data_rate × spread_factor</td></tr>
+<tr><td>Processing gain</td><td id="tGain">20 dB</td><td>10·log₁₀(spread_factor)</td></tr>
+<tr><td>Required SNR (post-despread)</td><td id="tSnr">10 dB</td><td>(typical for BPSK BER 10⁻⁵)</td></tr>
+<tr><td>Required SNR (pre-despread, in air)</td><td id="tSnrPre">−10 dB</td><td>post − processing_gain</td></tr>
+<tr><td>Operating below noise floor?</td><td id="tBelow">YES</td><td>pre-SNR &lt; 0 dB → covert / robust</td></tr>
+</table></div>
+
+<h2>DSSS — multiply data by a chipping code</h2>
+<p>The data bit b<sub>k</sub> is multiplied by a pseudo-random chipping sequence c<sub>n</sub> that changes much faster (typically 10–1000× faster). Each data bit becomes N "chips". The receiver multiplies the received signal by the same sequence and integrates, recovering the data.</p>
+
+<div class="deriv">
+<span class="step">Data: b<sub>k</sub> at rate 1/T_b</span>
+<span class="step">Chip sequence: c<sub>n</sub> ∈ {−1, +1} at rate 1/T_c (T_c &lt; T_b)</span>
+<span class="step">Transmitted: x(t) = b<sub>k</sub> · c<sub>n</sub> at the chip rate</span>
+<span class="step">Receiver: y(t) · c<sub>n</sub> = b<sub>k</sub> · c<sub>n</sub>² = b<sub>k</sub> &nbsp; (since c<sub>n</sub>² = 1)</span>
+<span class="step">Spread factor SF = T_b / T_c = chipping_rate / data_rate</span>
+<span class="step">Processing gain G<sub>p</sub> = 10·log₁₀(SF) &nbsp;dB</span>
+</div>
+
+<p>Because the receiver knows the sequence, the data despreads back to baseband. Any signal not multiplied by the same sequence (interference, noise) stays spread — and after the receiver's narrowband filter, only 1/SF of that interference's energy gets through.</p>
+
+<h2>FHSS — hop carriers in a known pattern</h2>
+<p>Instead of spreading per-bit, transmit on one narrow channel for a brief "dwell" time, then jump to a different channel. The hop pattern is a pseudo-random sequence known to both transmitter and receiver.</p>
+
+<ul class="notice">
+<li><b>Slow FHSS</b>: many bits per hop (Bluetooth Classic dwells 625 µs at each hop = ~50 bits).</li>
+<li><b>Fast FHSS</b>: more than one hop per bit (military jam-resistant).</li>
+<li><b>Resistant to narrowband interference</b> — a jammer at a single frequency only hits 1/N hops, recovered by FEC.</li>
+<li><b>Bluetooth Classic</b>: 79 channels at 1 MHz spacing in 2.4 GHz; 1600 hops/sec; hop pattern derived from device address + clock.</li>
+</ul>
+
+<h2>Processing gain in action</h2>
+<p>With SF = 100, the transmitted signal is 100× wider in bandwidth. After despreading, the receiver only "sees" interference falling into 1/100 of the bandwidth — a 20 dB rejection.</p>
+
+<div class="deriv">
+<span class="step">Example: data 1 kbps, spread to 100 kHz bandwidth (SF = 100).</span>
+<span class="step">In-air SNR: receiver sees signal 20 dB below noise floor (−20 dB SNR pre-despread).</span>
+<span class="step">After despreading: signal SNR rises 20 dB → 0 dB.</span>
+<span class="step">If BPSK needs 10 dB SNR for BER 10⁻⁵ → you can demodulate at −10 dB SNR in air.</span>
+<span class="step">This is why CDMA and GPS can work below thermal noise floor.</span>
+</div>
+
+<h2>Comparison table</h2>
+<table>
+<tr><th>Property</th><th>DSSS</th><th>FHSS</th><th>CSS (LoRa)</th></tr>
+<tr><td>Spreading mechanism</td><td>multiply by chip code</td><td>hop carrier frequency</td><td>linear chirp sweep</td></tr>
+<tr><td>Receiver synchronization</td><td>code phase lock (PN seq)</td><td>hop timing + pattern</td><td>chirp slope correlation</td></tr>
+<tr><td>Power per subchannel</td><td>spread evenly</td><td>full power per channel briefly</td><td>full power per chirp</td></tr>
+<tr><td>Vulnerability</td><td>broadband jamming</td><td>fast follower jammer</td><td>narrowband jamming (in chirp band)</td></tr>
+<tr><td>Used by</td><td>CDMA, IS-95, original WiFi</td><td>Bluetooth Classic, military</td><td>LoRa</td></tr>
+</table>
+
+<h2>Cheat sheet</h2>
+<section class="cheatsheet">
+<div class="cheat-card"><h3>FORMULAS</h3><ul>
+<li>SF = chipping_rate / data_rate</li>
+<li>G_p = 10·log₁₀(SF) dB</li>
+<li>Required pre-SNR = post-SNR − G_p</li>
+<li>Bandwidth = data_rate × SF (DSSS)</li>
+</ul></div>
+<div class="cheat-card"><h3>WHEN TO USE</h3><ul>
+<li><b>DSSS</b>: multiple users in same band (CDMA), long range with low SNR (GPS)</li>
+<li><b>FHSS</b>: rapid jammer-resistant comms, regulatory (FCC ISM)</li>
+<li><b>CSS (LoRa)</b>: long range + low power for IoT</li>
+</ul></div>
+<div class="cheat-card"><h3>PITFALLS</h3><ul>
+<li>Code length too short → poor processing gain</li>
+<li>Cross-correlation between codes → multi-user interference</li>
+<li>FHSS hop too slow → vulnerable to follower jamming</li>
+<li>Doppler shift in CSS → de-chirp offset</li>
+</ul></div>
+</section>
+
+<footer>Curriculum: <a target="_top" href="../../index.html">EE Phase 9 — RF &amp; Wireless</a> · Cross-links: <a href="lora-modulation.html">LoRa Modulation</a>, <a href="wireless-spectrum.html">Wireless Spectrum</a>.</footer>
+
+</main><script>
+const els = ['tech','dr','sf'].reduce((m,k)=>{m[k]=document.getElementById(k);return m;},{});
+function update(){
+  const dr = parseFloat(els.dr.value);
+  const sf = parseFloat(els.sf.value);
+  document.getElementById('drRead').textContent = dr;
+  document.getElementById('sfRead').textContent = sf;
+  const bw = dr * sf;
+  document.getElementById('bwRead').textContent = bw.toFixed(0);
+  document.getElementById('tBw').textContent = (bw < 1000 ? bw + ' kHz' : (bw/1000).toFixed(1) + ' MHz');
+  const gp = 10 * Math.log10(sf);
+  document.getElementById('tGain').textContent = gp.toFixed(1) + ' dB';
+  document.getElementById('tSnrPre').textContent = (10 - gp).toFixed(1) + ' dB';
+  document.getElementById('tBelow').textContent = (10 - gp) < 0 ? 'YES — covert/robust operation possible' : 'no';
+}
+['dr','sf'].forEach(k => els[k].addEventListener('input', update));
+els.tech.addEventListener('change', update);
+update();
+</script></body></html>

@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bend Allowance &amp; K-Factor — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>Bend Allowance &amp; K-Factor</h1>
+  <p class="lede">Bend a flat sheet and three things happen simultaneously: the outside stretches, the inside compresses, and somewhere between them sits a <em>neutral fiber</em> that neither stretches nor compresses. The <em>K-factor</em> is the position of that neutral fiber as a fraction of thickness. Pick a material/thickness; the bend-allowance formula tells you exactly how much flat material the bend consumes.</p>
+
+  <div class="anchors">
+    <span class="anchor"><b>K-factor</b>: 0.33–0.50 typical</span>
+    <span class="anchor"><b>BA</b> = (π/180) × (R + K·t) × angle</span>
+    <span class="anchor"><b>BD</b> (deduction) = 2 (R + t) tan(α/2) − BA</span>
+    <span class="anchor"><b>Flat blank</b> = leg₁ + leg₂ + BA</span>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>Material</label>
+      <select id="mat">
+        <option value="al6061" selected>Aluminum 6061 — K=0.40</option>
+        <option value="al5052">Aluminum 5052 (formable) — K=0.45</option>
+        <option value="alSoft">Soft aluminum / 1100 — K=0.50</option>
+        <option value="steelSoft">Mild steel CRS — K=0.45</option>
+        <option value="steelHard">Hardened steel / spring — K=0.33</option>
+        <option value="ss304">Stainless 304 — K=0.43</option>
+        <option value="brass">Brass / copper — K=0.45</option>
+      </select>
+    </div>
+    <div class="control"><label>Thickness t: <span class="readout" id="tRead">2.0 mm</span></label><input id="t" type="range" min="0.5" max="6" step="0.1" value="2"></div>
+    <div class="control"><label>Inside radius R: <span class="readout" id="rRead">2.0 mm</span></label><input id="r" type="range" min="0.2" max="20" step="0.1" value="2"></div>
+    <div class="control"><label>Bend angle: <span class="readout" id="aRead">90°</span></label><input id="a" type="range" min="10" max="180" step="5" value="90"></div>
+    <div class="control"><label>Leg 1 (flange A): <span class="readout" id="L1Read">30 mm</span></label><input id="L1" type="range" min="5" max="100" step="1" value="30"></div>
+    <div class="control"><label>Leg 2 (flange B): <span class="readout" id="L2Read">40 mm</span></label><input id="L2" type="range" min="5" max="100" step="1" value="40"></div>
+  </section>
+
+  <div class="figure">
+    <svg id="diagram" viewBox="0 0 920 380" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+      <tr><td>K-factor</td><td id="rK" class="num">0.40</td><td><code>position of neutral fiber / t</code></td></tr>
+      <tr><td>Inside fiber length</td><td id="rLin" class="num">3.14 mm</td><td><code>(π/180) × R × angle</code></td></tr>
+      <tr><td>Outside fiber length</td><td id="rLout" class="num">6.28 mm</td><td><code>(π/180) × (R + t) × angle</code></td></tr>
+      <tr><td>Neutral fiber length</td><td id="rLneut" class="num">4.40 mm</td><td><code>(π/180) × (R + K·t) × angle</code></td></tr>
+      <tr><td><b>Bend Allowance (BA)</b></td><td id="rBA" class="num">4.40 mm</td><td><code>arc length of neutral fiber</code></td></tr>
+      <tr><td>Bend Deduction (BD)</td><td id="rBD" class="num">3.60 mm</td><td><code>2 (R+t) tan(α/2) − BA</code></td></tr>
+      <tr><td>Flat blank length</td><td id="rFlat" class="num">74.40 mm</td><td><code>L1 + L2 + BA</code></td></tr>
+      <tr><td>Bent length over-corner</td><td id="rOC" class="num">71.6 mm</td><td><code>L1 + L2 − BD (mold-line method)</code></td></tr>
+    </table>
+    <div class="vd"><b>Both methods agree</b> on the bent part dimensions. They give the flat blank length differently; pick whichever your CAM uses.</div>
+  </div>
+
+  <h2>Where the K-factor comes from</h2>
+  <p>The K-factor parametrizes a real, measurable thing: how close to the inside surface the neutral fiber sits during a bend.</p>
+  <div class="deriv">
+    <span class="step">1.  In pure bending, the inside compresses (negative strain) and the outside stretches (positive strain). At one fiber across the thickness, strain = 0 → no stretch, no compress.</span>
+    <span class="step">2.  If the material were perfectly elastic, the neutral fiber sits dead center (K = 0.5). It would also have to be exactly at the centerline before AND after bending.</span>
+    <span class="step">3.  Real metal bending is past yield — much of the bend is plastic deformation. Material thins on the outside (more than it thickens on the inside) → neutral fiber shifts toward the inside.</span>
+    <span class="step">4.  Tighter R / t → more thinning on the outside → K is lower.</span>
+    <span class="step">5.  Softer / more formable material → less thinning → K closer to 0.5.</span>
+    <span class="step">6.  Air-bending: K ~ 0.45. Bottom bending / coining: K ~ 0.33–0.40 (more squeeze).</span>
+    <span class="step">7.  <span class="arrow">→</span> Always determine K by bending a sample, measuring the result, and back-calculating. Tables are starting points only.</span>
+  </div>
+
+  <h2>Bend allowance formula — the arc length of the neutral fiber</h2>
+  <div class="deriv">
+    <span class="step">The neutral fiber sits at radius (R + K·t) from the bend center.</span>
+    <span class="step">For bend angle α (degrees), the arc length is <b>BA = (π/180) · (R + K·t) · α</b>.</span>
+    <span class="step">That's exactly how much linear flat material gets "consumed" by the bend (because the neutral fiber neither stretched nor compressed — it has the same length flat and bent).</span>
+    <span class="step">Flat blank length: <b>L_flat = L₁ + L₂ + BA</b>. Where L₁, L₂ are the flat <em>legs</em> measured from the start/end of the bend arc (not from the corner).</span>
+    <span class="step">Alternative: <b>bend deduction BD = 2(R+t) tan(α/2) − BA</b>. Used when dimensions are taken to the mold-line corner: <b>L_flat = L1_outside + L2_outside − BD</b>.</span>
+    <span class="step">Both methods give the same blank. BA-method is more natural for CAM; BD-method matches drawing dimensions.</span>
+  </div>
+
+  <h2>Worked example — sheet-metal Pico bracket</h2>
+  <div class="worked">
+    <h3>The bracket</h3>
+    <p>Mount a Pico 2 W to a wall with a sheet-metal L-bracket. CRS (cold-rolled steel), 1.5 mm thick. Inside bend radius 1.5 mm. Bend angle 90°. Total mold-line dimensions: 40 mm (vertical) × 30 mm (horizontal).</p>
+
+    <h3>K-factor</h3>
+    <span class="eq">Mild steel air-bend at R/t = 1.0 → K ≈ 0.42 (interpolated)</span>
+
+    <h3>Bend allowance</h3>
+    <span class="eq">BA = (π/180) × (R + K·t) × α = (π/180) × (1.5 + 0.42·1.5) × 90</span>
+    <span class="eq">    = 0.01745 × 2.13 × 90 = 3.346 mm</span>
+
+    <h3>Bend deduction</h3>
+    <span class="eq">BD = 2(R+t) tan(α/2) − BA = 2 × 3.0 × tan(45°) − 3.346 = 6.0 − 3.346 = 2.654 mm</span>
+
+    <h3>Flat blank</h3>
+    <span class="eq">Mold-line: 40 + 30 = 70 mm; subtract BD: 70 − 2.654 = <b>67.35 mm flat</b></span>
+    <span class="eq">Cross-check via BA: legs from end-of-arc = 38.5 + 28.5 + 3.35 = 70.35 — wait, off by 1 mm</span>
+    <span class="eq">Reason: BA-method uses <b>tangent-line legs</b>, not mold-line; subtract (R+t) from each mold-line dimension.</span>
+    <span class="eq">Tangent legs: 40 − 3.0 = 37.0 and 30 − 3.0 = 27.0; flat = 37.0 + 27.0 + 3.346 = <b>67.35 mm</b> ✓</span>
+
+    <h3>Tool selection</h3>
+    <p style="color:var(--fg-dim);font-size:12px;margin-top:8px">Use a press-brake punch with 1.5 mm tip radius for the R = 1.5 mm bend. Die V-opening should be 6–8× material thickness for air-bending → 8 mm minimum. The minimum flat-to-bend distance from the die is ~ V/2 = 4 mm; ensure your bracket geometry leaves enough flat to grip.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Sharp inside radius cracks</b> — if R &lt; t, the outside stretches past UTS and you get tearing. Minimum bend radius for ductile material ≈ t; for harder material (spring steel, full-hard CRS), 2–4t.</li>
+    <li><b>Springback</b> — sheet metal partially elastic returns when released. You over-bend by 1–5° to compensate. Spring steel can spring back 5° at 90° nominal — hardest to control.</li>
+    <li><b>Bending across the grain is weaker</b> — for severe bends, orient the bend line perpendicular to the rolling direction. Cracking is more common parallel to grain.</li>
+    <li><b>Bottoming and coining shift K</b> — air-bending: K = 0.40–0.45; bottoming (touches die floor): K = 0.38; coining (high force, pressed flat): K = 0.33. Coining gives the most repeatable result but eats tooling.</li>
+    <li><b>Tangent-line vs mold-line dimensioning</b> — the two methods (BA vs BD) come from different drawing conventions. BA-method needs flat legs out to the start of the bend arc; BD-method works with overall L-shape outside dimensions. Pick the one your drawing uses.</li>
+    <li><b>Empirical K beats catalog K</b> — bend a sample, measure the actual flat blank required, back-calculate K. Use that K for the rest of the run. Catalog values are ±0.05 from reality; that's ±0.1 mm on the flat for a typical bend.</li>
+  </ul>
+
+  <h2>Cross-links</h2>
+  <div class="crosslink">
+    <h4>Related</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Sheet metal</b> — <a href="sheet-metal.html">processes and equipment</a>. Bend allowance is the calculation engine; this is the equipment side.</li>
+      <li><b style="color:var(--fg)">Material classes</b> — <a href="../phase-2-materials-science/material-classes.html">ductility, hardness</a>. K-factor correlates with ductility.</li>
+      <li><b style="color:var(--fg)">Stress-strain</b> — <a href="../phase-2-materials-science/stress-strain.html">elastic + plastic ranges</a>. Bending is past yield; that's why springback exists.</li>
+      <li><b style="color:var(--fg)">Speeds &amp; feeds</b> — <a href="speeds-feeds.html">machining counterpart</a>. Different process, same "empirical tables" reality.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>BA</dt><dd><span class="eq">(π/180) × (R + K·t) × α</span></dd>
+        <dt>BD</dt><dd><span class="eq">2(R+t) tan(α/2) − BA</span></dd>
+        <dt>Flat (BA)</dt><dd><span class="eq">L1_tangent + L2_tangent + BA</span></dd>
+        <dt>Flat (BD)</dt><dd><span class="eq">L1_mold + L2_mold − BD</span></dd>
+        <dt>Outside arc</dt><dd><span class="eq">(π/180) (R+t) α</span></dd>
+        <dt>Min R</dt><dd><span class="eq">~ t (ductile) up to 4t (spring)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>K-FACTOR QUICK TABLE</h3>
+      <ul>
+        <li><b>Soft Al / Cu</b>: 0.45–0.50</li>
+        <li><b>Al 6061</b>: 0.40 air, 0.38 bottom</li>
+        <li><b>Mild steel CRS</b>: 0.45 air</li>
+        <li><b>Stainless 304</b>: 0.43</li>
+        <li><b>Spring steel</b>: 0.33 air</li>
+        <li><b>Bottom-bend</b>: subtract 0.02 from air-bend K</li>
+        <li><b>Coined</b>: subtract 0.07–0.10 from air-bend K</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li><b>Wrong tangent vs mold-line</b> — measure flat legs to start of arc, not to corner.</li>
+        <li><b>Catalog K</b> ≠ shop K — bend a sample and back-calc.</li>
+        <li><b>R &lt; t</b> → cracking. Use bigger die or different material.</li>
+        <li><b>No springback compensation</b> → 90° drawing nets 87°.</li>
+        <li><b>Bending into a feature</b> — leave ≥ V/2 + 2t from any cutout edge to the bend line.</li>
+        <li><b>Grain direction</b> — cracks form parallel to rolling for tight bends.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">ME Phase 5 — Manufacturing</span> ·
+    Related: <a href="sheet-metal.html">Sheet Metal</a> · <a href="speeds-feeds.html">Speeds &amp; Feeds</a>
+  </footer>
+</main>
+<script>
+  const MAT_K = {
+    'al6061': 0.40, 'al5052': 0.45, 'alSoft': 0.50,
+    'steelSoft': 0.45, 'steelHard': 0.33,
+    'ss304': 0.43, 'brass': 0.45
+  };
+  const matEl = document.getElementById('mat');
+  const tEl = document.getElementById('t');
+  const rEl = document.getElementById('r');
+  const aEl = document.getElementById('a');
+  const L1El = document.getElementById('L1');
+  const L2El = document.getElementById('L2');
+
+  function update(){
+    const mat = matEl.value;
+    const t = parseFloat(tEl.value);
+    const R = parseFloat(rEl.value);
+    const a = parseFloat(aEl.value);
+    const L1 = parseFloat(L1El.value);
+    const L2 = parseFloat(L2El.value);
+    const K = MAT_K[mat];
+    document.getElementById('tRead').textContent = t.toFixed(1)+" mm";
+    document.getElementById('rRead').textContent = R.toFixed(1)+" mm";
+    document.getElementById('aRead').textContent = a.toFixed(0)+"°";
+    document.getElementById('L1Read').textContent = L1.toFixed(0)+" mm";
+    document.getElementById('L2Read').textContent = L2.toFixed(0)+" mm";
+
+    const rad = a * Math.PI / 180;
+    const Lin   = R * rad;
+    const Lout  = (R + t) * rad;
+    const Lneut = (R + K*t) * rad;
+    const BA = Lneut;
+    const BD = 2*(R+t)*Math.tan(rad/2) - BA;
+    // Flat using BA method (legs are tangent-line, i.e., mold-line minus (R+t))
+    const flatBA = (L1 - (R+t)) + (L2 - (R+t)) + BA;
+    // Flat using BD method (legs are mold-line)
+    const flatBD = L1 + L2 - BD;
+
+    document.getElementById('rK').textContent   = K.toFixed(2);
+    document.getElementById('rLin').textContent  = Lin.toFixed(2)+" mm";
+    document.getElementById('rLout').textContent = Lout.toFixed(2)+" mm";
+    document.getElementById('rLneut').textContent = Lneut.toFixed(2)+" mm";
+    document.getElementById('rBA').textContent   = BA.toFixed(2)+" mm";
+    document.getElementById('rBD').textContent   = BD.toFixed(2)+" mm";
+    document.getElementById('rFlat').textContent = flatBA.toFixed(2)+" mm (BA method)";
+    document.getElementById('rOC').textContent   = flatBD.toFixed(2)+" mm (BD method)";
+
+    drawBend(t, R, a, L1, L2, K);
+  }
+
+  function drawBend(t, R, a, L1, L2, K){
+    const svg = document.getElementById('diagram');
+    // Show bend cross-section: inside radius R, thickness t, angle a
+    // Bend center at (cx, cy); inside arc starts horizontally at (cx + R, cy)
+    const cx = 460, cy = 220;
+    const sc = 5;  // px per mm
+    const Rpx = R*sc;
+    const tpx = t*sc;
+    const ang = a*Math.PI/180;
+
+    // start angle (horizontal right), end at (ang above)
+    // Inside arc from angle 0 to angle (ang) going CCW
+    const ax1 = cx + Rpx;            // start point on inside arc
+    const ay1 = cy;
+    const ax2 = cx + Rpx*Math.cos(ang);
+    const ay2 = cy - Rpx*Math.sin(ang);
+    const bx1 = cx + (Rpx+tpx);
+    const by1 = cy;
+    const bx2 = cx + (Rpx+tpx)*Math.cos(ang);
+    const by2 = cy - (Rpx+tpx)*Math.sin(ang);
+    // legs
+    const L1px = L1*sc, L2px = L2*sc;
+    // leg 1: horizontal to the right
+    const leg1ix = ax1 + L1px, leg1iy = ay1;
+    const leg1ox = bx1 + L1px, leg1oy = by1;
+    // leg 2: at angle (ang)
+    const leg2ix = ax2 - L2px*Math.cos(ang - Math.PI/2);  // tangent perpendicular
+    // Actually leg2 extends from end of arc, tangent direction
+    // The tangent at end-of-arc points perpendicular to radial direction:
+    // tangent dir = (-sin(ang), -cos(ang))
+    const tdx = -Math.sin(ang), tdy = -Math.cos(ang);
+    const leg2ix2 = ax2 + L2px*tdx, leg2iy2 = ay2 + L2px*tdy;
+    const leg2ox2 = bx2 + L2px*tdx, leg2oy2 = by2 + L2px*tdy;
+
+    let s = `
+      <text x="${cx-100}" y="30" class="label">Bend cross-section — inside R, thickness t</text>
+      <!-- Inside arc -->
+      <path d="M ${leg1ix} ${leg1iy} L ${ax1} ${ay1} A ${Rpx} ${Rpx} 0 0 0 ${ax2} ${ay2} L ${leg2ix2} ${leg2iy2}"
+            stroke="var(--warn)" stroke-width="2" fill="none"/>
+      <!-- Outside arc -->
+      <path d="M ${leg1ox} ${leg1oy} L ${bx1} ${by1} A ${Rpx+tpx} ${Rpx+tpx} 0 0 0 ${bx2} ${by2} L ${leg2ox2} ${leg2oy2}"
+            stroke="var(--accent3)" stroke-width="2" fill="none"/>
+      <!-- material fill -->
+      <path d="M ${leg1ix} ${leg1iy} L ${ax1} ${ay1} A ${Rpx} ${Rpx} 0 0 0 ${ax2} ${ay2} L ${leg2ix2} ${leg2iy2} L ${leg2ox2} ${leg2oy2} L ${bx2} ${by2} A ${Rpx+tpx} ${Rpx+tpx} 0 0 1 ${bx1} ${by1} L ${leg1ox} ${leg1oy} Z"
+            fill="var(--bg-elev2)" stroke="none"/>
+      <!-- Re-draw outlines on top -->
+      <path d="M ${leg1ix} ${leg1iy} L ${ax1} ${ay1} A ${Rpx} ${Rpx} 0 0 0 ${ax2} ${ay2} L ${leg2ix2} ${leg2iy2}"
+            stroke="var(--warn)" stroke-width="2" fill="none"/>
+      <path d="M ${leg1ox} ${leg1oy} L ${bx1} ${by1} A ${Rpx+tpx} ${Rpx+tpx} 0 0 0 ${bx2} ${by2} L ${leg2ox2} ${leg2oy2}"
+            stroke="var(--accent3)" stroke-width="2" fill="none"/>
+      <!-- Neutral fiber -->
+      <path d="M ${ax1+K*tpx} ${ay1} A ${Rpx+K*tpx} ${Rpx+K*tpx} 0 0 0 ${(cx + (Rpx+K*tpx)*Math.cos(ang))} ${(cy - (Rpx+K*tpx)*Math.sin(ang))}"
+            stroke="var(--accent)" stroke-width="1.5" fill="none" stroke-dasharray="4,3"/>
+
+      <!-- labels -->
+      <text x="${ax1+10}" y="${ay1+25}" class="label-warn">inside (compressed)</text>
+      <text x="${bx1+10}" y="${by1-10}" class="label-ok">outside (stretched)</text>
+      <text x="${cx + (Rpx+K*tpx)*Math.cos(ang/2) + 8}" y="${cy - (Rpx+K*tpx)*Math.sin(ang/2)}" class="label" fill="var(--accent)">neutral fiber (K·t from inside)</text>
+      <!-- bend center -->
+      <circle cx="${cx}" cy="${cy}" r="3" fill="var(--fg-dim)"/>
+      <text x="${cx-15}" y="${cy+5}" class="label-dim">bend center</text>
+
+      <!-- angle indicator -->
+      <path d="M ${cx+30} ${cy} A 30 30 0 0 0 ${cx+30*Math.cos(ang)} ${cy-30*Math.sin(ang)}"
+            stroke="var(--fg-dim)" stroke-width="1" fill="none"/>
+      <text x="${cx+35}" y="${cy-15}" class="label-dim">${a}°</text>
+
+      <text x="20" y="350" class="label-dim">Inside fiber length = ${(R*ang).toFixed(2)} mm • Outside fiber length = ${((R+t)*ang).toFixed(2)} mm • Neutral = ${((R+K*t)*ang).toFixed(2)} mm (= bend allowance)</text>
+    `;
+    svg.innerHTML = s;
+  }
+
+  matEl.addEventListener('change', update);
+  tEl.addEventListener('input', update);
+  rEl.addEventListener('input', update);
+  aEl.addEventListener('input', update);
+  L1El.addEventListener('input', update);
+  L2El.addEventListener('input', update);
+  update();
+</script>
+</body>
+</html>

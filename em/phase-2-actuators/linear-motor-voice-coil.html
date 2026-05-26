@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice Coil / Linear Motor — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  pre{background:var(--bg-elev2);border-left:3px solid var(--accent);padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg);
+    border-radius:0 4px 4px 0;overflow-x:auto}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .tabs{display:flex;gap:2px;margin:14px 0 0;flex-wrap:wrap}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+</style>
+</head>
+<body>
+<main>
+  <h1>Voice Coil &amp; Linear Motor — F = B·I·L</h1>
+  <p class="lede">A wire in a magnetic field. Push current through it; it experiences a force perpendicular to both. The voice coil is the simplest, most elegant linear actuator: no commutation, no gears, no friction, no hysteresis. Speakers, hard-drive heads, autofocus lenses, hexapod nano-positioners — all the same equation.</p>
+
+  <p>The Lorentz force on a current-carrying conductor in a magnetic field is <b>F = I·L × B</b>; when the wire is perpendicular to the field (the usual case), the magnitude reduces to <b>F = B·I·L</b>, where B is the flux density in tesla, I is the current in amps, and L is the total length of wire in the field (in meters). A voice-coil actuator wraps a coil of length L_eff in the gap of a permanent magnet, so when you push current through the coil, the whole coil (and whatever's bonded to it: the cone of a speaker, the carriage of a hard-drive head, the lens of a phone camera) moves linearly. The force is proportional to current, instantly, with no detent, no cogging, and no friction beyond the spider/spring guidance.</p>
+
+  <div class="anchors">
+    <div class="anchor"><b>B in gap</b> ~0.5–1.5 T</div>
+    <div class="anchor"><b>K_f (force const)</b> N/A</div>
+    <div class="anchor"><b>K_e (back-EMF)</b> V/(m/s) — equals K_f numerically in SI</div>
+    <div class="anchor"><b>Speaker stroke</b> ~5 mm</div>
+    <div class="anchor"><b>HDD VCM stroke</b> ~10 mm arc</div>
+    <div class="anchor"><b>Phone AF stroke</b> ~0.3 mm</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="phys">F = BIL</div>
+    <div class="tab" data-tab="model">Electromechanical model</div>
+    <div class="tab" data-tab="examples">Speaker vs HDD vs AF</div>
+    <div class="tab" data-tab="design">Sizing</div>
+  </div>
+
+  <!-- PHYSICS -->
+  <div class="tab-panel active" data-pane="phys">
+    <h3>The Lorentz force on a current loop in a radial gap</h3>
+    <p>A typical voice coil sits in an annular gap between a center magnet pole and an outer return iron. The flux is <b>radial</b> in the gap — pointing outward from the center pole. The coil is wound circumferentially, so the current flows tangentially everywhere in the coil. Cross-product I × B is therefore axial — and uniformly so for every loop in the coil. Net force = B · I · L_eff, where L_eff is the total length of wire in the gap (N turns × 2π · r_coil for a circular coil).</p>
+
+    <div class="figure">
+      <svg viewBox="0 0 600 280">
+        <text x="300" y="20" class="label" text-anchor="middle">Cross-section of voice-coil motor (radial gap)</text>
+        <!-- center pole (top half cross-section) -->
+        <g transform="translate(300,150)">
+          <!-- top iron return -->
+          <rect x="-130" y="-100" width="260" height="20" fill="var(--fg-dim)" opacity="0.7"/>
+          <text x="0" y="-110" class="label" text-anchor="middle">top yoke (steel)</text>
+          <!-- center magnet -->
+          <rect x="-30" y="-80" width="60" height="120" fill="var(--accent3)" opacity="0.4" stroke="var(--accent3)"/>
+          <text x="0" y="0" class="label" text-anchor="middle">N</text>
+          <text x="0" y="38" class="label" text-anchor="middle">magnet</text>
+          <text x="0" y="80" class="label" text-anchor="middle">S</text>
+          <!-- outer iron return -->
+          <rect x="-130" y="40" width="60" height="40" fill="var(--fg-dim)" opacity="0.7"/>
+          <rect x="70" y="40" width="60" height="40" fill="var(--fg-dim)" opacity="0.7"/>
+          <text x="-100" y="100" class="label" text-anchor="middle">iron</text>
+          <text x="100" y="100" class="label" text-anchor="middle">iron</text>
+          <!-- coil (the bobbin sits in the gap) -->
+          <rect x="-65" y="-50" width="20" height="80" fill="none" stroke="var(--accent)" stroke-width="2"/>
+          <rect x="45" y="-50" width="20" height="80" fill="none" stroke="var(--accent)" stroke-width="2"/>
+          <!-- coil x's and dots -->
+          <text x="-55" y="-30" class="label" text-anchor="middle" fill="var(--accent)">⊗</text>
+          <text x="-55" y="-10" class="label" text-anchor="middle" fill="var(--accent)">⊗</text>
+          <text x="-55" y="10" class="label" text-anchor="middle" fill="var(--accent)">⊗</text>
+          <text x="55" y="-30" class="label" text-anchor="middle" fill="var(--accent)">⊙</text>
+          <text x="55" y="-10" class="label" text-anchor="middle" fill="var(--accent)">⊙</text>
+          <text x="55" y="10" class="label" text-anchor="middle" fill="var(--accent)">⊙</text>
+          <text x="-55" y="50" class="label-dim" text-anchor="middle">into page</text>
+          <text x="55" y="50" class="label-dim" text-anchor="middle">out of page</text>
+          <!-- B field arrows (radial) -->
+          <path d="M 0 -10 L -45 -10" stroke="var(--accent2)" marker-end="url(#fa)" stroke-width="1.5"/>
+          <path d="M 0 -10 L 45 -10" stroke="var(--accent2)" marker-end="url(#fa)" stroke-width="1.5"/>
+          <text x="-100" y="-30" class="label" fill="var(--accent2)">B (radial)</text>
+          <!-- F (axial) -->
+          <path d="M -55 -50 L -55 -90" stroke="var(--accent3)" marker-end="url(#fa3)" stroke-width="2"/>
+          <path d="M 55 -50 L 55 -90" stroke="var(--accent3)" marker-end="url(#fa3)" stroke-width="2"/>
+          <text x="80" y="-70" class="label" fill="var(--accent3)">F = BIL (axial)</text>
+          <defs>
+            <marker id="fa" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L7,3 z" fill="var(--accent2)"/></marker>
+            <marker id="fa3" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L7,3 z" fill="var(--accent3)"/></marker>
+          </defs>
+        </g>
+      </svg>
+    </div>
+
+    <p>On every turn of wire, the radial B and the tangential I produce an axial F. All turns push in the same direction, so the force adds up. Reverse the current and the force reverses — voice coils are inherently bidirectional, no switching circuitry needed.</p>
+
+    <section class="controls">
+      <div class="control"><label>B in gap: <span class="readout" id="phBRead">0.8 T</span></label><input id="phB" type="range" min="0.1" max="1.5" step="0.05" value="0.8"></div>
+      <div class="control"><label>Coil current I: <span class="readout" id="phIRead">1.0 A</span></label><input id="phI" type="range" min="0" max="5" step="0.05" value="1.0"></div>
+      <div class="control"><label>Turns N: <span class="readout" id="phNRead">120</span></label><input id="phN" type="range" min="20" max="500" step="5" value="120"></div>
+      <div class="control"><label>Coil radius: <span class="readout" id="phRRead">12 mm</span></label><input id="phR" type="range" min="2" max="40" step="0.5" value="12"></div>
+    </section>
+
+    <div class="figure">
+      <table>
+        <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+        <tr><td>L_eff (total wire in gap)</td><td id="phLeff" class="num">—</td><td>N · 2π · r</td></tr>
+        <tr><td>Force constant K_f</td><td id="phKf" class="num">—</td><td>B · L_eff (N/A)</td></tr>
+        <tr><td>Force F</td><td id="phF" class="num">—</td><td>K_f · I = B·I·L_eff</td></tr>
+        <tr><td>Mass equivalent (1g)</td><td id="phG" class="num">—</td><td>F / (m·g) → cancels how many g?</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- MODEL -->
+  <div class="tab-panel" data-pane="model">
+    <h3>The electromechanical model (V → I → F → v → x)</h3>
+    <p>A voice coil acts as a simple second-order LR + mechanical mass-spring-damper system. The electrical side: V_applied drives current through coil resistance R and inductance L, fighting a back-EMF e = K_e · v that depends on velocity. The mechanical side: force F = K_f · I accelerates mass m against damping b and spring stiffness k. Crucially, in SI units, <b>K_e (V·s/m) = K_f (N/A)</b> numerically — both are equal to B·L_eff. This is the energy-conservation argument that the same constant ties the electrical and mechanical sides together.</p>
+
+    <div class="deriv">
+      <span class="step">Electrical:  <b>V = R·I + L·dI/dt + K_e·v</b>     (v = velocity in m/s)</span>
+      <span class="step">Mechanical:  <b>F = K_f·I = m·a + b·v + k·x</b>    (a = dv/dt)</span>
+      <span class="step">Energy:  P_elec = V·I,  P_mech = F·v,  P_heat = R·I²</span>
+      <span class="step">Conservation forces  <b>K_e = K_f</b>  in SI (called "motor constant")</span>
+    </div>
+
+    <section class="controls">
+      <div class="control"><label>V applied: <span class="readout" id="mdVRead">12 V</span></label><input id="mdV" type="range" min="0" max="24" step="0.1" value="12"></div>
+      <div class="control"><label>R (coil): <span class="readout" id="mdRRead">8 Ω</span></label><input id="mdR" type="range" min="0.5" max="50" step="0.5" value="8"></div>
+      <div class="control"><label>K_f = K_e: <span class="readout" id="mdKfRead">10 N/A</span></label><input id="mdKf" type="range" min="0.5" max="40" step="0.5" value="10"></div>
+      <div class="control"><label>Mass: <span class="readout" id="mdMRead">200 g</span></label><input id="mdM" type="range" min="10" max="2000" step="10" value="200"></div>
+      <div class="control"><label>Spring k: <span class="readout" id="mdKRead">200 N/m</span></label><input id="mdK" type="range" min="0" max="2000" step="10" value="200"></div>
+    </section>
+
+    <div class="figure">
+      <svg id="mdFig" viewBox="0 0 600 220"></svg>
+      <table>
+        <tr><th>Quantity</th><th>Value</th></tr>
+        <tr><td>Stall current (v=0)</td><td id="mdIs" class="num">—</td></tr>
+        <tr><td>Stall force</td><td id="mdFs" class="num">—</td></tr>
+        <tr><td>No-load velocity (F=0)</td><td id="mdV0" class="num">—</td></tr>
+        <tr><td>Continuous force @ T_coil_max = 100°C</td><td id="mdFc" class="num">—</td></tr>
+        <tr><td>Resonance with mass+spring</td><td id="mdFr" class="num">—</td></tr>
+        <tr><td>Electrical time constant τ_e = L/R</td><td id="mdTe" class="num">—</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- EXAMPLES -->
+  <div class="tab-panel" data-pane="examples">
+    <h3>Three voice coils in your daily life</h3>
+    <table>
+      <tr><th>Device</th><th>Coil size</th><th>B</th><th>Stroke</th><th>Force</th><th>Bandwidth</th></tr>
+      <tr><td>Speaker (5" mid-range)</td><td>30 mm dia, 30 turns</td><td>~1.1 T</td><td>±5 mm</td><td>2–5 N peak</td><td>30 Hz–8 kHz</td></tr>
+      <tr><td>HDD voice coil (VCM)</td><td>15 mm × 25 mm flat coil</td><td>~0.8 T (NdFeB)</td><td>10 mm arc</td><td>0.5–2 N</td><td>track seek ~ 1 ms = 1 kHz</td></tr>
+      <tr><td>Phone camera AF (VCM)</td><td>5 mm dia, ~40 turns</td><td>~0.5 T</td><td>±0.15 mm</td><td>50 mN</td><td>10 ms step = ~50 Hz</td></tr>
+      <tr><td>Hexapod nano-positioner</td><td>20 mm dia × 6 (one per leg)</td><td>~1.3 T</td><td>±5 mm</td><td>10 N</td><td>250 Hz</td></tr>
+      <tr><td>Industrial pick-and-place voice coil</td><td>50 mm dia</td><td>~1.0 T</td><td>±50 mm</td><td>50 N</td><td>200 Hz</td></tr>
+    </table>
+
+    <h3>Why each one is a voice coil and not a motor + leadscrew</h3>
+    <ul class="notice">
+      <li><b>Speaker</b> — needs ±5 mm stroke at 100 Hz to 5 kHz, no hysteresis, zero friction. A motor-leadscrew has tens of ms of dead band; a voice coil has microseconds. No competition.</li>
+      <li><b>HDD head</b> — needs to settle on a track in &lt; 1 ms with sub-µm precision. The voice coil is force-controlled by a high-bandwidth current loop; the head's mass is small, so a few hundred mA of current snaps it to position.</li>
+      <li><b>Phone autofocus</b> — needs to move a tiny lens ±150 µm in &lt; 20 ms with no audible noise. Voice coil + position feedback (Hall sensor) does this in 4 mm³ of motor volume.</li>
+      <li><b>Nano-positioner / wafer stage</b> — semiconductor lithography stages run on voice coils because there's no contact friction (no stiction), so position can be servo'd to nm precision with feedback from a laser interferometer.</li>
+    </ul>
+
+    <p>The common thread: <b>direct force control</b>, no gear backlash, no static friction beyond the suspension. The voice coil's downside is also its defining limit: it generates force per ampere but not per volt — at high speed, back-EMF eats into the headroom, capping the achievable velocity. It's a <em>short-stroke</em> precision actuator, not a long-throw workhorse.</p>
+  </div>
+
+  <!-- DESIGN -->
+  <div class="tab-panel" data-pane="design">
+    <h3>How to size a voice coil for your application</h3>
+    <p>You start with a force and stroke target. The force determines K_f (and through that B · L_eff). The continuous force is thermally limited — too much current, the coil cooks. The peak force is what current the driver can deliver. Stroke determines how big the magnet gap and coil bobbin need to be.</p>
+
+    <div class="deriv">
+      <span class="step">1. Given F_peak, choose B (typical 0.5–1.2 T for NdFeB) and pick L_eff: <b>L_eff = F_peak / (B · I_peak)</b></span>
+      <span class="step">2. Coil winding constraint: with fill factor κ ≈ 0.4–0.6, L_eff in volume V_coil → <b>I_max² · R = P_thermal_max</b></span>
+      <span class="step">3. Continuous current limited by R·I² heating: <b>I_cont = √(P_max / R)</b> → F_cont = K_f · I_cont</span>
+      <span class="step">4. Bandwidth from electrical τ = L/R and mechanical √(k/m): pick whichever is slower</span>
+      <span class="step"><span class="arrow">→</span> trade: more turns = more L_eff = more F per A, but more R = more heat, and more L = slower current rise time</span>
+    </div>
+
+    <section class="controls">
+      <div class="control"><label>F_peak target: <span class="readout" id="dsFRead">20 N</span></label><input id="dsF" type="range" min="0.5" max="100" step="0.5" value="20"></div>
+      <div class="control"><label>Stroke target: <span class="readout" id="dsSRead">10 mm</span></label><input id="dsS" type="range" min="0.1" max="100" step="0.5" value="10"></div>
+      <div class="control"><label>Magnet B in gap: <span class="readout" id="dsBRead">0.9 T</span></label><input id="dsB" type="range" min="0.3" max="1.5" step="0.05" value="0.9"></div>
+      <div class="control"><label>Supply V_max: <span class="readout" id="dsVRead">24 V</span></label><input id="dsV" type="range" min="3" max="48" step="1" value="24"></div>
+      <div class="control"><label>Driver I_peak: <span class="readout" id="dsIRead">3 A</span></label><input id="dsI" type="range" min="0.1" max="20" step="0.1" value="3"></div>
+    </section>
+
+    <div class="figure">
+      <table>
+        <tr><th>Spec</th><th>Value</th><th>Note</th></tr>
+        <tr><td>L_eff needed</td><td id="dsLeff" class="num">—</td><td>= F_peak / (B · I_peak)</td></tr>
+        <tr><td>Coil turns (assume 12 mm dia)</td><td id="dsN" class="num">—</td><td>= L_eff / (2π · r)</td></tr>
+        <tr><td>K_f = K_e</td><td id="dsKf" class="num">—</td><td>= B · L_eff</td></tr>
+        <tr><td>v_max (zero force at supply)</td><td id="dsVmax" class="num">—</td><td>= V_supply / K_e</td></tr>
+        <tr><td>Resistance (28 AWG estimate)</td><td id="dsR" class="num">—</td><td>= ρ·L_total/A_wire</td></tr>
+        <tr><td>I²R at I_peak</td><td id="dsP" class="num">—</td><td>thermal-limited</td></tr>
+        <tr><td>Continuous force (5W limit)</td><td id="dsFc" class="num">—</td><td>= K_f · √(5/R)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h2>Worked example — focus actuator for a microscope autofocus</h2>
+  <div class="worked">
+    <h3>Spec</h3>
+    <p>Microscope objective focus drive: 50 g lens, ±1 mm stroke, 0.1 µm resolution, 100 Hz settling, no friction (sample sensitive to vibration).</p>
+
+    <h3>Numbers</h3>
+    <span class="eq">F_peak target: accelerate 50 g at 50 m/s² (to settle in 10 ms across 1 mm) → F = 0.05 · 50 = 2.5 N</span>
+    <span class="eq">Choose B = 0.7 T (off-the-shelf NdFeB ring magnet)
+       I_peak target = 0.5 A from driver
+       L_eff = 2.5 / (0.7 · 0.5) = 7.14 m</span>
+    <span class="eq">8 mm dia coil → 2π · 0.004 = 0.025 m per turn
+       N = 7.14 / 0.025 = 286 turns</span>
+    <span class="eq">28 AWG copper, ρ_l = 0.214 Ω/m → R = 286·0.025·0.214 = 1.53 Ω</span>
+    <span class="eq">P_max = 0.5² · 1.53 = 0.38 W (cool to the touch, no heatsinking needed)</span>
+    <span class="eq">K_e = 0.7 · 7.14 = 5.0 V·s/m
+       v_max @ 12 V supply = 12 / 5 = 2.4 m/s — way more than needed
+       Resonance with no spring: just mass dynamics, control loop bandwidth limited by mech</span>
+
+    <h3>Position feedback</h3>
+    <p>Sub-µm requires position feedback, not open-loop. Common solutions: a Hall-effect sensor with a position magnet (5–10 µm resolution), a glass linear encoder (0.1 µm), or an LVDT (0.5 µm, magnetic immunity). For 0.1 µm, use the encoder.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>K_e = K_f (numerically in SI)</b> — the motor constant ties electrical and mechanical sides. Measure either; the other follows.</li>
+    <li><b>Force per amp is constant</b> — that's why voice-coil current loops are so well-behaved. Set I, get F, end of story (until you saturate the magnet).</li>
+    <li><b>Continuous force ≪ peak force</b> — peak force is limited by driver current; continuous force is limited by I²R heating. Typical ratio 3–10×.</li>
+    <li><b>v_max = V_supply / K_e</b> — back-EMF limits top speed. At v_max, the entire supply voltage is canceling back-EMF and no current flows — zero force. To go faster you need more voltage or a smaller K_e (fewer turns).</li>
+    <li><b>The coil is the moving mass</b> — every gram of copper has to accelerate. For high-bandwidth voice coils, use aluminum wire or hollow-core composite formers to cut moving mass.</li>
+    <li><b>Spring suspensions add resonance</b> — speaker spider+surround has k ≈ 1500 N/m, the coil + cone has m ≈ 5 g, giving resonance at ~ 85 Hz. Below this, the spring dominates; above, the mass. The bass response of a speaker is shaped around this resonance.</li>
+  </ul>
+
+  <h2>Where you'll see this circuit</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Loudspeakers and headphones</b> — every dynamic driver from a 5 cent earbud to a 200 W woofer.</li>
+      <li><b style="color:var(--fg)">Hard disk head positioners</b> — fast settling for track-to-track seeks.</li>
+      <li><b style="color:var(--fg)">Camera autofocus and OIS</b> — every phone camera, every mirrorless body.</li>
+      <li><b style="color:var(--fg)">Optical pickups</b> — CD/DVD/Blu-ray focus &amp; tracking actuators.</li>
+      <li><b style="color:var(--fg)">Precision stages</b> — wafer steppers, scanning microscopes, atomic-force microscopes.</li>
+      <li><b style="color:var(--fg)">Haptic actuators</b> — phone vibration buzzers, game-controller rumble, Apple Taptic Engine (a large voice coil mass spring).</li>
+      <li><b style="color:var(--fg)">Active engine mounts</b> — automotive vibration cancellation.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Lorentz force</dt><dd><span class="eq">F = B·I·L_eff (perpendicular)</span></dd>
+        <dt>K_f</dt><dd><span class="eq">K_f = B · L_eff (N/A)</span></dd>
+        <dt>K_e = K_f</dt><dd><span class="eq">K_e = B · L_eff (V·s/m)</span></dd>
+        <dt>L_eff coil</dt><dd><span class="eq">L_eff = N · 2π · r</span></dd>
+        <dt>Stall I</dt><dd><span class="eq">I_stall = V / R</span></dd>
+        <dt>v_max</dt><dd><span class="eq">v_max = V_supply / K_e</span></dd>
+        <dt>Power (heat)</dt><dd><span class="eq">P_diss = I² · R</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SHORTCUTS</h3>
+      <ul>
+        <li><b>Force is linear in current</b>, instantly. No saturation until the magnet's iron path does.</li>
+        <li><b>Reverse current → reverse force</b>, no commutation logic.</li>
+        <li>Continuous current ≈ √(P_thermal / R); peak current = driver limit.</li>
+        <li>Bandwidth ≈ min(mechanical, electrical) — speaker mech is the limit; HDD electrical is.</li>
+        <li>Suspension stiffness adds <b>resonance at √(k/m)</b>; pick stiff = fast & high-bandwidth, soft = quiet & long-stroke.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Overheating the coil</b> — once enamel insulation cooks (~150 °C), turns short and the coil dies. Always thermal-spec the continuous current.</li>
+        <li><b>Coil not centered in gap</b> — partial overlap reduces L_eff, reducing K_f, and produces axial side-loads. Use a spider/surround that constrains the coil radially.</li>
+        <li><b>Forgetting back-EMF</b> — control loops that ignore K_e·v give you no warning before they slam into v_max.</li>
+        <li><b>Misorienting the magnet</b> — must be radial in the gap, not axial. Reversing N/S flips the force direction (sometimes useful, sometimes a bug).</li>
+        <li><b>No driver protection for stall</b> — at zero velocity, full V_supply / R can flow forever and burn the coil. Add current limit in software.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: EM Phase 2 — Actuators · Topic: Linear motors / voice coils ·
+    Companions: dc-motor-fundamentals, solenoids-relays, mems-sensors
+  </footer>
+</main>
+<script>
+  // Physics pane
+  const phIds = ['phB','phI','phN','phR'];
+  const phEls = {}; phIds.forEach(k => phEls[k] = document.getElementById(k));
+  function updatePh(){
+    const B = parseFloat(phEls.phB.value);
+    const I = parseFloat(phEls.phI.value);
+    const N = parseFloat(phEls.phN.value);
+    const r = parseFloat(phEls.phR.value) * 1e-3; // m
+    document.getElementById('phBRead').textContent = B.toFixed(2) + ' T';
+    document.getElementById('phIRead').textContent = I.toFixed(2) + ' A';
+    document.getElementById('phNRead').textContent = N.toFixed(0);
+    document.getElementById('phRRead').textContent = (r*1000).toFixed(1) + ' mm';
+    const Leff = N * 2 * Math.PI * r;
+    const Kf = B * Leff;
+    const F = Kf * I;
+    document.getElementById('phLeff').textContent = Leff.toFixed(2) + ' m';
+    document.getElementById('phKf').textContent = Kf.toFixed(2) + ' N/A';
+    document.getElementById('phF').textContent = F.toFixed(2) + ' N';
+    document.getElementById('phG').textContent = (F / (1e-3 * 9.81)).toFixed(0) + 'g (lift force / 1g of mass)';
+  }
+
+  // Model pane
+  const mdIds = ['mdV','mdR','mdKf','mdM','mdK'];
+  const mdEls = {}; mdIds.forEach(k => mdEls[k] = document.getElementById(k));
+  function updateMd(){
+    const V = parseFloat(mdEls.mdV.value);
+    const R = parseFloat(mdEls.mdR.value);
+    const Kf = parseFloat(mdEls.mdKf.value);
+    const m = parseFloat(mdEls.mdM.value) * 1e-3; // kg
+    const k = parseFloat(mdEls.mdK.value);
+    document.getElementById('mdVRead').textContent = V.toFixed(1) + ' V';
+    document.getElementById('mdRRead').textContent = R.toFixed(1) + ' Ω';
+    document.getElementById('mdKfRead').textContent = Kf.toFixed(1) + ' N/A';
+    document.getElementById('mdMRead').textContent = (m*1000).toFixed(0) + ' g';
+    document.getElementById('mdKRead').textContent = k.toFixed(0) + ' N/m';
+
+    const Is = V/R;
+    const Fs = Kf*Is;
+    const v0 = V/Kf;
+    const Pmax = 5; // 5W thermal
+    const Ic = Math.sqrt(Pmax/R);
+    const Fc = Kf*Ic;
+    const fr = (1/(2*Math.PI)) * Math.sqrt(k/m);
+    // assume L ≈ 1mH per ohm of R (rough)
+    const Lcoil = R * 1e-3;
+    const taue = Lcoil / R;
+    document.getElementById('mdIs').textContent = Is.toFixed(2) + ' A';
+    document.getElementById('mdFs').textContent = Fs.toFixed(2) + ' N';
+    document.getElementById('mdV0').textContent = v0.toFixed(3) + ' m/s';
+    document.getElementById('mdFc').textContent = Fc.toFixed(2) + ' N';
+    document.getElementById('mdFr').textContent = fr.toFixed(1) + ' Hz';
+    document.getElementById('mdTe').textContent = (taue*1e3).toFixed(2) + ' ms';
+
+    // schematic
+    const svg = document.getElementById('mdFig');
+    svg.innerHTML = `
+      <text x="300" y="20" class="label" text-anchor="middle">Combined electrical + mechanical model</text>
+      <!-- electrical loop -->
+      <text x="20" y="50" class="label-dim">Electrical side</text>
+      <text x="30" y="80" class="label">V</text>
+      <line x1="50" y1="75" x2="100" y2="75" class="wire"/>
+      <rect x="100" y="68" width="50" height="14" fill="var(--bg-elev2)" stroke="var(--accent)"/>
+      <text x="125" y="79" class="label" text-anchor="middle">R</text>
+      <line x1="150" y1="75" x2="200" y2="75" class="wire"/>
+      <path d="M 200 75 q 8 -8 16 0 q 8 -8 16 0 q 8 -8 16 0" stroke="var(--accent2)" stroke-width="1.5" fill="none"/>
+      <text x="230" y="65" class="label">L</text>
+      <line x1="248" y1="75" x2="280" y2="75" class="wire"/>
+      <!-- back-EMF source -->
+      <circle cx="295" cy="75" r="15" fill="var(--bg-elev2)" stroke="var(--accent3)"/>
+      <text x="295" y="80" class="label" text-anchor="middle">e</text>
+      <text x="320" y="55" class="label-dim">K_e·v</text>
+      <line x1="310" y1="75" x2="340" y2="75" class="wire"/>
+      <!-- mechanical side -->
+      <text x="370" y="50" class="label-dim">Mechanical side</text>
+      <rect x="380" y="65" width="80" height="40" fill="var(--bg-elev2)" stroke="var(--accent)"/>
+      <text x="420" y="90" class="label" text-anchor="middle">mass m</text>
+      <line x1="460" y1="85" x2="510" y2="85" class="wire"/>
+      <text x="540" y="90" class="label" fill="var(--accent3)">→ x, v</text>
+      <!-- spring -->
+      <path d="M 380 130 l 10 -5 l 10 10 l 10 -10 l 10 10 l 10 -10 l 10 10 l 10 -5" stroke="var(--accent)" fill="none"/>
+      <text x="370" y="135" class="label" text-anchor="end">k=</text>
+      <text x="460" y="135" class="label">${k.toFixed(0)} N/m</text>
+      <!-- damper -->
+      <line x1="380" y1="165" x2="460" y2="165" class="wire"/>
+      <rect x="410" y="160" width="20" height="10" fill="var(--bg-elev2)" stroke="var(--accent)"/>
+      <text x="370" y="170" class="label" text-anchor="end">b=</text>
+      <text x="465" y="170" class="label">damping</text>
+      <!-- arrow F -->
+      <line x1="500" y1="50" x2="500" y2="85" stroke="var(--warn)" stroke-width="2" marker-end="url(#mdarr)"/>
+      <text x="510" y="55" class="label" fill="var(--warn)">F = K_f·I</text>
+      <defs><marker id="mdarr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L7,3 z" fill="var(--warn)"/></marker></defs>
+    `;
+  }
+
+  // Design pane
+  const dsIds = ['dsF','dsS','dsB','dsV','dsI'];
+  const dsEls = {}; dsIds.forEach(k => dsEls[k] = document.getElementById(k));
+  function updateDs(){
+    const F = parseFloat(dsEls.dsF.value);
+    const S = parseFloat(dsEls.dsS.value);
+    const B = parseFloat(dsEls.dsB.value);
+    const V = parseFloat(dsEls.dsV.value);
+    const I = parseFloat(dsEls.dsI.value);
+    document.getElementById('dsFRead').textContent = F.toFixed(1) + ' N';
+    document.getElementById('dsSRead').textContent = S.toFixed(1) + ' mm';
+    document.getElementById('dsBRead').textContent = B.toFixed(2) + ' T';
+    document.getElementById('dsVRead').textContent = V.toFixed(0) + ' V';
+    document.getElementById('dsIRead').textContent = I.toFixed(1) + ' A';
+
+    const Leff = F / (B * I);
+    const r = 0.006; // 12 mm dia coil
+    const N = Leff / (2*Math.PI*r);
+    const Kf = B * Leff;
+    const vmax = V / Kf;
+    // 28 AWG wire: ~ 0.214 Ω/m, diameter 0.32 mm
+    const R = Leff * 0.214;
+    const P = I*I*R;
+    const Fc = Kf * Math.sqrt(5 / R);
+    document.getElementById('dsLeff').textContent = Leff.toFixed(2) + ' m';
+    document.getElementById('dsN').textContent = N.toFixed(0) + ' turns';
+    document.getElementById('dsKf').textContent = Kf.toFixed(2) + ' N/A';
+    document.getElementById('dsVmax').textContent = vmax.toFixed(2) + ' m/s';
+    document.getElementById('dsR').textContent = R.toFixed(2) + ' Ω';
+    document.getElementById('dsP').textContent = P.toFixed(2) + ' W';
+    document.getElementById('dsFc').textContent = Fc.toFixed(2) + ' N';
+  }
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.querySelector(`.tab-panel[data-pane="${t.dataset.tab}"]`).classList.add('active');
+    });
+  });
+
+  phIds.forEach(k => phEls[k].addEventListener('input', updatePh));
+  mdIds.forEach(k => mdEls[k].addEventListener('input', updateMd));
+  dsIds.forEach(k => dsEls[k].addEventListener('input', updateDs));
+  updatePh(); updateMd(); updateDs();
+</script>
+</body>
+</html>

@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Battery + Power Budget Calculator — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+    --lipo:#5ec8ff; --liion:#a3e635; --lifepo4:#ffb86c;
+    --nimh:#c084fc; --pbacid:#ff7b72;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:1040px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);
+     margin:18px 0 6px;text-transform:uppercase;letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+
+  .tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:18px;
+    overflow-x:auto;white-space:nowrap}
+  .tab{background:transparent;color:var(--fg-dim);border:none;
+    padding:10px 16px;font:13px ui-monospace,Menlo,monospace;cursor:pointer;
+    border-bottom:2px solid transparent;white-space:nowrap}
+  .tab:hover{color:var(--fg)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .pane{display:none}
+  .pane.active{display:block}
+
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number],.control input[type=text]{
+    background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:5px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid{stroke:var(--grid);stroke-width:1;stroke-dasharray:2 3}
+
+  .footer-note{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .footer-note a{color:var(--accent);text-decoration:none}
+
+  .component-row{display:grid;gap:6px;grid-template-columns:2fr 1fr 1fr 1fr 0.6fr 0.4fr;
+    align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+  .component-row input{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:3px;padding:4px 6px;
+    font:12px ui-monospace,Menlo,monospace;width:100%}
+  .component-row button{background:var(--bg-elev2);color:var(--warn);
+    border:1px solid var(--line);border-radius:3px;padding:4px;cursor:pointer;
+    font:12px ui-monospace,Menlo,monospace}
+  .component-row button:hover{background:var(--warn);color:var(--bg)}
+  .component-header{display:grid;gap:6px;grid-template-columns:2fr 1fr 1fr 1fr 0.6fr 0.4fr;
+    font:11px ui-monospace,Menlo,monospace;color:var(--fg-dim);
+    text-transform:uppercase;letter-spacing:0.04em;padding-bottom:4px;
+    border-bottom:1px solid var(--line)}
+  .btn-add{background:var(--bg-elev2);color:var(--accent3);
+    border:1px solid var(--accent3);border-radius:4px;padding:6px 12px;cursor:pointer;
+    font:12px ui-monospace,Menlo,monospace;margin-top:8px}
+  .btn-add:hover{background:var(--accent3);color:var(--bg)}
+
+  .summary-box{background:var(--bg-elev2);border-left:3px solid var(--accent3);
+    padding:12px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .summary-box .row{display:flex;justify-content:space-between;margin:4px 0}
+  .summary-box .row b{color:var(--accent3)}
+  .summary-box .runtime{font-size:18px;color:var(--accent3);margin-top:8px}
+
+  .crate-bar{height:20px;background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:4px;overflow:hidden;position:relative;margin:6px 0}
+  .crate-fill{height:100%;transition:width 0.3s,background-color 0.3s}
+  .crate-label{position:absolute;top:0;left:0;right:0;text-align:center;
+    font:12px ui-monospace,monospace;line-height:20px;color:var(--fg-bright);
+    text-shadow:0 0 3px rgba(0,0,0,0.7)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Battery + Power Budget Calculator</h1>
+  <p class="lede">From cell chemistry to runtime — pick the right pack, size it to your load, and sanity-check the C-rate before the magic smoke shows up. Six tabs cover everything you need to spec a battery for a real project: chemistry trade-offs, capacity-to-runtime, the CC/CV charge waveform, multi-load power budgeting, BMS topology, and burst-current headroom. Anchored to the fold-p4-pico cyberdeck so the numbers stay real.</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="chemistry">Chemistry compare</button>
+    <button class="tab" data-tab="runtime">Capacity ↔ runtime</button>
+    <button class="tab" data-tab="charge">CC/CV charge</button>
+    <button class="tab" data-tab="budget">Power budget</button>
+    <button class="tab" data-tab="bms">BMS / protection</button>
+    <button class="tab" data-tab="crate">C-rate check</button>
+  </div>
+
+  <!-- =================================================================== -->
+  <!-- TAB 1: CHEMISTRY COMPARISON -->
+  <!-- =================================================================== -->
+  <section class="pane active" id="pane-chemistry">
+    <h2>Chemistry comparison — pick the right pack for the job</h2>
+    <p>Each chemistry is a trade-off on six axes. There's no "best" — there's "best for cyberdeck handheld" (LiPo), "best for solar shed" (LiFePO4), "best for car starter" (lead-acid), and so on. The radar plot makes the trade-offs visible.</p>
+
+    <div class="anchors">
+      <span class="anchor"><b>LiPo 1S</b> 3.0–4.2 V · 150 Wh/kg · 25C burst</span>
+      <span class="anchor"><b>18650 Li-ion</b> 2500–3500 mAh · 250 Wh/kg · 1–5C</span>
+      <span class="anchor"><b>LiFePO4</b> 2.5–3.65 V · 90–120 Wh/kg · 2000+ cycles</span>
+      <span class="anchor"><b>NiMH AA</b> 1.2 V · 1900 mAh · 1.5–2.5 Ah typ.</span>
+      <span class="anchor"><b>Lead-acid 12 V</b> 30–50 Wh/kg · cheap, heavy</span>
+    </div>
+
+    <h3>Side-by-side specs</h3>
+    <table>
+      <tr><th>Property</th><th>LiPo</th><th>Li-ion 18650/21700</th><th>LiFePO4</th><th>NiMH</th><th>Pb-acid</th></tr>
+      <tr><td>Nominal cell V</td><td class="num">3.7 V</td><td class="num">3.6–3.7 V</td><td class="num">3.2 V</td><td class="num">1.2 V</td><td class="num">2.0 V</td></tr>
+      <tr><td>Full charge V</td><td class="num">4.20 V</td><td class="num">4.20 V</td><td class="num">3.65 V</td><td class="num">1.45 V</td><td class="num">2.4 V</td></tr>
+      <tr><td>Cutoff V</td><td class="num">3.0 V</td><td class="num">2.5–3.0 V</td><td class="num">2.5 V</td><td class="num">1.0 V</td><td class="num">1.75 V</td></tr>
+      <tr><td>Specific energy (Wh/kg)</td><td class="num">100–180</td><td class="num">200–270</td><td class="num">90–130</td><td class="num">60–120</td><td class="num">30–50</td></tr>
+      <tr><td>Volumetric (Wh/L)</td><td class="num">250–400</td><td class="num">500–700</td><td class="num">220–300</td><td class="num">140–300</td><td class="num">60–110</td></tr>
+      <tr><td>Cycle life @ 80% DoD</td><td class="num">300–500</td><td class="num">500–1500</td><td class="num">2000–5000</td><td class="num">500–1000</td><td class="num">200–800</td></tr>
+      <tr><td>Self-discharge / month</td><td class="num">2–5 %</td><td class="num">1–3 %</td><td class="num">2–3 %</td><td class="num">15–30 %</td><td class="num">3–20 %</td></tr>
+      <tr><td>Peak C-rate (burst)</td><td class="num">20–50C</td><td class="num">2–10C</td><td class="num">3–10C</td><td class="num">5–10C</td><td class="num">3–5C</td></tr>
+      <tr><td>Cost / Wh ($)</td><td class="num">0.30–0.60</td><td class="num">0.20–0.40</td><td class="num">0.20–0.35</td><td class="num">0.40–0.80</td><td class="num">0.10–0.20</td></tr>
+      <tr><td>Safety / abuse</td><td class="num">poor</td><td class="num">moderate</td><td class="num">very good</td><td class="num">good</td><td class="num">good (vented)</td></tr>
+    </table>
+
+    <h3>Radar — pick a chemistry to highlight</h3>
+    <div class="controls">
+      <div class="control">
+        <label>Chemistry overlay</label>
+        <select id="radar-pick" multiple size="5" style="height:auto">
+          <option value="lipo" selected>LiPo</option>
+          <option value="liion" selected>Li-ion (18650)</option>
+          <option value="lifepo4" selected>LiFePO4</option>
+          <option value="nimh">NiMH</option>
+          <option value="pbacid">Lead-acid</option>
+        </select>
+      </div>
+      <div class="control" style="grid-column:span 2">
+        <label style="color:var(--fg-dim);font-size:11px">Ctrl/Cmd-click to add or remove overlays. Axis labels: outer ring = best of the five chemistries on that axis. Inner ring = worst.</label>
+      </div>
+    </div>
+
+    <div class="figure">
+      <svg id="radar" viewBox="0 0 520 380" width="100%"></svg>
+    </div>
+
+    <h3>Voltage discharge curves (1 cell, normalized)</h3>
+    <p>The shape of the discharge curve tells you whether you can use battery voltage as a state-of-charge gauge. <b>LiPo / Li-ion sag smoothly</b> from 4.2 V to 3.0 V — you can map V → SoC with ±5 % accuracy via a 6-point table. <b>LiFePO4 is flat</b> (~3.3 V across 80 % of capacity), so V is useless as a fuel gauge — you need coulomb counting. <b>NiMH is also nearly flat</b>, same problem.</p>
+    <div class="figure">
+      <svg id="disc-curve" viewBox="0 0 520 280" width="100%"></svg>
+    </div>
+
+    <h3>Use-case match</h3>
+    <table>
+      <tr><th>Application</th><th>Best chemistry</th><th>Why</th></tr>
+      <tr><td>RC car / drone (high burst)</td><td>LiPo</td><td>20C+ burst, lightweight</td></tr>
+      <tr><td>Cyberdeck / handheld</td><td>LiPo or Li-ion 18650</td><td>Energy density, smooth V curve for fuel gauge</td></tr>
+      <tr><td>Power-tool pack</td><td>Li-ion 18650/21700</td><td>Cycle life + energy density + cost</td></tr>
+      <tr><td>Solar off-grid</td><td>LiFePO4</td><td>2000+ cycles, safe, flat V</td></tr>
+      <tr><td>Backup UPS / vehicle starter</td><td>Lead-acid (AGM)</td><td>Cheap, tolerates float, high burst</td></tr>
+      <tr><td>Low-budget toy / NiMH AA holder</td><td>NiMH</td><td>Drop-in for alkaline, rechargeable</td></tr>
+      <tr><td>Marine / EV traction</td><td>LiFePO4 or NMC</td><td>Cycle life, safety, energy density trade</td></tr>
+    </table>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- TAB 2: CAPACITY <-> RUNTIME -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-runtime">
+    <h2>Capacity ↔ runtime calculator</h2>
+    <p>The naive formula is <code>runtime_hours = capacity_Ah / load_A</code>. It's wrong at high loads and cold temps. <b>Peukert's equation</b> is the correction: the higher the discharge rate, the less usable capacity you get. Most acute in lead-acid (k = 1.1–1.3); moderate in Li-ion (k ≈ 1.05); negligible in LiFePO4 (k ≈ 1.02).</p>
+
+    <div class="controls">
+      <div class="control">
+        <label>Capacity: <span class="readout" id="rt-capRead">1500 mAh</span></label>
+        <input id="rt-cap" type="range" min="100" max="20000" step="100" value="1500">
+      </div>
+      <div class="control">
+        <label>Pack voltage: <span class="readout" id="rt-vRead">3.7 V</span></label>
+        <input id="rt-v" type="range" min="1.2" max="48" step="0.1" value="3.7">
+      </div>
+      <div class="control">
+        <label>Average load: <span class="readout" id="rt-avgRead">80 mA</span></label>
+        <input id="rt-avg" type="range" min="1" max="5000" step="1" value="80">
+      </div>
+      <div class="control">
+        <label>Peak load: <span class="readout" id="rt-peakRead">300 mA</span></label>
+        <input id="rt-peak" type="range" min="1" max="20000" step="1" value="300">
+      </div>
+      <div class="control">
+        <label>Peukert k</label>
+        <select id="rt-k">
+          <option value="1.02">1.02 — LiFePO4</option>
+          <option value="1.05" selected>1.05 — Li-ion / LiPo</option>
+          <option value="1.10">1.10 — NiMH</option>
+          <option value="1.20">1.20 — Lead-acid (deep-cycle)</option>
+          <option value="1.30">1.30 — Lead-acid (starter, cold)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Usable depth-of-discharge</label>
+        <select id="rt-dod">
+          <option value="1.0">100 % (use to dead — lithium with BMS)</option>
+          <option value="0.8" selected>80 % (LiPo, healthy life)</option>
+          <option value="0.5">50 % (lead-acid, cycle life)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="summary-box">
+      <div class="row"><span>Energy (Wh)</span><b id="rt-wh">5.55 Wh</b></div>
+      <div class="row"><span>Energy (kJ)</span><b id="rt-kj">19.98 kJ</b></div>
+      <div class="row"><span>Naive runtime @ average load</span><b id="rt-naive">18.75 h</b></div>
+      <div class="row"><span>Peukert-corrected runtime</span><b id="rt-peukert">17.49 h</b></div>
+      <div class="row"><span>Runtime at peak load (if 100% peak)</span><b id="rt-peakrun">4.65 h</b></div>
+      <div class="row"><span>C-rate at average load</span><b id="rt-cavg">0.053 C</b></div>
+      <div class="row"><span>C-rate at peak load</span><b id="rt-cpeak">0.200 C</b></div>
+      <div class="runtime" id="rt-final">→ Usable runtime ≈ 13.99 h</div>
+    </div>
+
+    <h3>Peukert's equation — why heavy loads cheat you</h3>
+    <div class="deriv">
+      <span class="step">Naive:    <b>t = C / I</b>  (treating C as fixed capacity)</span>
+      <span class="step">Reality:  high current → faster ion transport → polarization → cell internal heating → less usable capacity.</span>
+      <span class="step">Peukert: <span class="arrow">→</span> <b>t = (C / I^k) · (1 A)^(k−1)</b>  — capacity falls off as I rises</span>
+      <span class="step">Equivalently: <b>C_effective = C · (I_ref / I)^(k−1)</b> where I_ref is the rate at which C was specified (usually C/20 for lead-acid, 1C for Li).</span>
+    </div>
+    <p class="lede">For lithium chemistries the effect is small — capacity is rated at 1C or 0.5C and stays within ~5% to 2–3C. For lead-acid the effect is dramatic: a 100 Ah deep-cycle battery rated at 20-hour rate delivers maybe 60 Ah at the 1-hour rate. Cold temperatures make Peukert k worse for all chemistries; below 0 °C lithium loses 20–40 % usable capacity.</p>
+
+    <h3>Discharge-rate curve at your settings</h3>
+    <div class="figure">
+      <svg id="peukert-svg" viewBox="0 0 520 240" width="100%"></svg>
+    </div>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- TAB 3: CC/CV CHARGE -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-charge">
+    <h2>CC/CV charging — the two-phase Li-ion algorithm</h2>
+    <p>Every lithium charger IC (TP4056, MCP73831, BQ24074, MAX1555 family) implements the same two-phase profile because the chemistry demands it. <b>Constant Current</b> until the cell hits 4.20 V; then <b>Constant Voltage</b> at 4.20 V until current tails to a small fraction of the initial rate. The animation below shows V_cell, I_charge, and SoC moving through the two phases.</p>
+
+    <div class="controls">
+      <div class="control">
+        <label>Cell capacity: <span class="readout" id="ch-capRead">1500 mAh</span></label>
+        <input id="ch-cap" type="range" min="200" max="5000" step="100" value="1500">
+      </div>
+      <div class="control">
+        <label>CC rate (C): <span class="readout" id="ch-cRead">0.5 C</span></label>
+        <input id="ch-c" type="range" min="0.1" max="2.0" step="0.05" value="0.5">
+      </div>
+      <div class="control">
+        <label>Termination current (C/20 typ)</label>
+        <select id="ch-term">
+          <option value="0.02">C/50 (slow, ~99% full)</option>
+          <option value="0.05" selected>C/20 (standard, ~95% full)</option>
+          <option value="0.10">C/10 (fast cutoff, ~85% full)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Initial SoC %</label>
+        <input id="ch-soc0" type="number" min="0" max="90" value="10" step="5">
+      </div>
+      <div class="control">
+        <label style="visibility:hidden">play</label>
+        <button id="ch-play" style="background:var(--bg-elev2);color:var(--accent3);border:1px solid var(--accent3);border-radius:4px;padding:6px 12px;cursor:pointer;font:13px ui-monospace,monospace">▶ animate charge</button>
+      </div>
+    </div>
+
+    <div class="figure">
+      <svg id="ch-svg" viewBox="0 0 520 320" width="100%"></svg>
+    </div>
+
+    <div class="summary-box">
+      <div class="row"><span>CC current</span><b id="ch-icc">750 mA</b></div>
+      <div class="row"><span>Termination current</span><b id="ch-iterm">75 mA</b></div>
+      <div class="row"><span>CC phase duration (10 → 100% if uninterrupted)</span><b id="ch-tcc">~108 min</b></div>
+      <div class="row"><span>CV phase duration (4.2 V hold)</span><b id="ch-tcv">~45 min</b></div>
+      <div class="row"><span>Total charge time (from initial SoC)</span><b id="ch-total">~153 min</b></div>
+      <div class="row"><span>Energy delivered</span><b id="ch-energy">5.55 Wh</b></div>
+    </div>
+
+    <h3>Phase breakdown</h3>
+    <table>
+      <tr><th>Phase</th><th>Trigger</th><th>Behavior</th><th>Risk if violated</th></tr>
+      <tr><td>1. Pre-charge / trickle</td><td>V_cell &lt; 3.0 V (deeply depleted)</td><td>Charge at C/10 until V_cell &gt; 3.0 V, then enter CC. Limits damage to over-discharged cell.</td><td>Skipping it on a 0 V cell causes a fast inrush + thermal runaway. Some chargers refuse to charge below 2.5 V.</td></tr>
+      <tr><td>2. Constant current (CC)</td><td>V_cell &lt; 4.20 V</td><td>I held at C/2 (typ) or 1C (fast). V rises naturally as ions intercalate.</td><td>CC rate too high (&gt;1C on most cells) → lithium plating, capacity loss, dendrite growth.</td></tr>
+      <tr><td>3. Constant voltage (CV)</td><td>V_cell = 4.20 V hit</td><td>V held at 4.20 V (±10 mV); I tails exponentially as cell saturates.</td><td>Holding above 4.25 V destroys cycle life; below 4.10 V undercharges to ~80%.</td></tr>
+      <tr><td>4. Termination</td><td>I_charge ≤ C/20 (or timer)</td><td>Stop charging. Cell sits at 4.20 V open-circuit for hours.</td><td>Trickle-charging at 4.20 V (no termination) accelerates calendar aging severely.</td></tr>
+      <tr><td>5. Balance (multi-cell)</td><td>Cell ΔV &gt; 10 mV at top</td><td>Bleed resistor on high cells until matched. Slow — milliseconds of current.</td><td>Without balancing, multi-cell packs drift; weakest cell triggers BMS cutoff early.</td></tr>
+    </table>
+
+    <h3>The 4.20 V target — why exactly that?</h3>
+    <p class="lede">Cobalt-oxide cathode (NMC, NCA, LCO) starts evolving oxygen above ~4.25 V at the positive electrode. The 4.20 V target is the standard safe ceiling — every datasheet specifies ±10 mV (so 4.20 to 4.21 max). Some "high-voltage" Li-ion goes to 4.35 or 4.40 V for ~10 % more capacity at the cost of cycle life. <b>Never set the CV target by hand</b> — use a charger IC.</p>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- TAB 4: POWER BUDGET BUILDER -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-budget">
+    <h2>Power budget builder — total mA from your real load list</h2>
+    <p>List every component, give it an active current, sleep current, and active-duty %, and the tool computes the time-averaged draw. Add the battery capacity and you get runtime. Anchored to the fold-p4-pico cyberdeck: Pico W active 80 mA, sleep 5 mA, display 30 mA when on, etc.</p>
+
+    <div class="controls">
+      <div class="control">
+        <label>Battery capacity: <span class="readout" id="bd-capRead">1500 mAh</span></label>
+        <input id="bd-cap" type="range" min="100" max="20000" step="100" value="1500">
+      </div>
+      <div class="control">
+        <label>Pack voltage: <span class="readout" id="bd-vRead">3.7 V</span></label>
+        <input id="bd-v" type="range" min="1.2" max="48" step="0.1" value="3.7">
+      </div>
+      <div class="control">
+        <label>Regulator efficiency</label>
+        <select id="bd-eff">
+          <option value="1.0">100 % (LDO, V_out ≈ V_in)</option>
+          <option value="0.85" selected>85 % (typical buck)</option>
+          <option value="0.92">92 % (good buck @ 3.3 V)</option>
+          <option value="0.70">70 % (cheap boost / wide gap)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Usable DoD</label>
+        <select id="bd-dod">
+          <option value="0.8" selected>80 %</option>
+          <option value="1.0">100 %</option>
+          <option value="0.5">50 %</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="figure">
+      <div class="component-header">
+        <div>Component</div>
+        <div>Active mA</div>
+        <div>Sleep mA</div>
+        <div>Duty %</div>
+        <div>Avg mA</div>
+        <div></div>
+      </div>
+      <div id="bd-rows"></div>
+      <button class="btn-add" id="bd-add">+ add component</button>
+    </div>
+
+    <div class="summary-box">
+      <div class="row"><span>Total average current</span><b id="bd-iavg">0 mA</b></div>
+      <div class="row"><span>Total average power</span><b id="bd-pavg">0 mW</b></div>
+      <div class="row"><span>Pack energy (Wh)</span><b id="bd-wh">5.55 Wh</b></div>
+      <div class="row"><span>Effective pack energy after reg + DoD</span><b id="bd-wheff">3.77 Wh</b></div>
+      <div class="runtime" id="bd-runtime">→ runtime ≈ — h</div>
+    </div>
+
+    <h3>How the duty-cycle average works</h3>
+    <div class="deriv">
+      <span class="step">Per-component:  <b>I_avg = I_active · D + I_sleep · (1 − D)</b></span>
+      <span class="step">Where D = duty cycle (0 to 1) — the fraction of time the part is in active mode.</span>
+      <span class="step">Total system:   <b>I_system = Σ I_avg(i)</b>  (sum over all components)</span>
+      <span class="step">Add the regulator overhead:  <b>I_battery = I_system / η_reg · (V_out / V_pack)</b></span>
+      <span class="step">Runtime: <span class="arrow">→</span> <b>t = C_pack · DoD / I_battery</b></span>
+    </div>
+
+    <h3>Anchor numbers — typical loads</h3>
+    <table>
+      <tr><th>Component</th><th>Active mA</th><th>Sleep mA</th><th>Typical duty</th><th>Notes</th></tr>
+      <tr><td>Pico W (RP2040) at 125 MHz</td><td class="num">25</td><td class="num">1.5</td><td class="num">100%</td><td>Wi-Fi off (CYW43 dormant)</td></tr>
+      <tr><td>Pico W + Wi-Fi active</td><td class="num">80</td><td class="num">5</td><td class="num">10%</td><td>Telemetry burst every 10 s</td></tr>
+      <tr><td>Pico 2 W (RP2350) idle</td><td class="num">18</td><td class="num">1.2</td><td class="num">100%</td><td>RP2350 is more power-efficient</td></tr>
+      <tr><td>ESP32-S3 active</td><td class="num">120</td><td class="num">10 µA</td><td class="num">5%</td><td>Deep sleep is 10 µA, not 10 mA</td></tr>
+      <tr><td>ILI9488 TFT (3.5" 480×320)</td><td class="num">90</td><td class="num">0.1</td><td class="num">60%</td><td>Backlight dominates; sleep = backlight off</td></tr>
+      <tr><td>ST7789 1.3" IPS</td><td class="num">25</td><td class="num">0.05</td><td class="num">80%</td><td>Smaller backlight</td></tr>
+      <tr><td>LoRa RYLR998 TX burst</td><td class="num">120</td><td class="num">0.002</td><td class="num">0.1%</td><td>TX ~100 ms / hour</td></tr>
+      <tr><td>BME280 sensor</td><td class="num">0.7</td><td class="num">0.0001</td><td class="num">1%</td><td>Force-mode read once/sec</td></tr>
+      <tr><td>Standard servo (idle)</td><td class="num">10</td><td class="num">5</td><td class="num">100%</td><td>Moving: 200–800 mA</td></tr>
+      <tr><td>SD card (idle)</td><td class="num">0.5</td><td class="num">0.05</td><td class="num">100%</td><td>Write burst: 50–100 mA</td></tr>
+    </table>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- TAB 5: BMS / PROTECTION -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-bms">
+    <h2>Battery protection IC — what a BMS actually does</h2>
+    <p>A lithium pack without protection is a fire and a brick waiting to happen. A "BMS" (Battery Management System) is one or more ICs that monitor each cell and disconnect the pack on fault. For a 1S LiPo: a single DW01 or AP9101 + dual N-FET. For 3S–8S: a TI BQ7693x / BQ40z80 / similar with per-cell taps.</p>
+
+    <div class="anchors">
+      <span class="anchor"><b>OVP</b> Over-voltage protect — cell above 4.25 V</span>
+      <span class="anchor"><b>UVP</b> Under-voltage protect — cell below 2.5 V</span>
+      <span class="anchor"><b>OCP</b> Over-current protect — discharge above limit</span>
+      <span class="anchor"><b>SCP</b> Short-circuit protect — usually &lt; 1 ms</span>
+      <span class="anchor"><b>OTP</b> Over-temperature protect — NTC monitored</span>
+      <span class="anchor"><b>Balance</b> bleed current from high cell</span>
+    </div>
+
+    <h3>3S BMS topology — schematic view</h3>
+    <p>Three cells in series, four wire taps (B−, BAT1, BAT2, B+). Each cell has a voltage divider monitored by the BMS chip. A bleed FET + resistor across each cell can drop the high-cell during balance. A pair of back-to-back N-FETs on the discharge path can open on any fault. The current shunt (10–50 mΩ) is read by the BMS for OCP and coulomb counting.</p>
+    <div class="figure">
+      <svg id="bms-svg" viewBox="0 0 600 380" width="100%"></svg>
+    </div>
+
+    <h3>Protection thresholds — typical</h3>
+    <table>
+      <tr><th>Fault</th><th>LiPo / Li-ion threshold</th><th>LiFePO4 threshold</th><th>Response</th></tr>
+      <tr><td>Cell over-voltage (OVP)</td><td class="num">4.25 V (release 4.10 V)</td><td class="num">3.75 V (release 3.50 V)</td><td>Open charge FET; close on release</td></tr>
+      <tr><td>Cell under-voltage (UVP)</td><td class="num">2.50 V (release 3.00 V)</td><td class="num">2.20 V (release 2.80 V)</td><td>Open discharge FET; close on charge restart</td></tr>
+      <tr><td>Discharge over-current (OCP)</td><td class="num">2–10 C (delay 1–500 ms)</td><td class="num">3–5 C (delay 1–200 ms)</td><td>Open discharge FET</td></tr>
+      <tr><td>Short-circuit (SCP)</td><td class="num">5–20 C (delay &lt; 1 ms)</td><td class="num">5–10 C</td><td>Open both FETs instantly</td></tr>
+      <tr><td>Over-temperature (OTP)</td><td class="num">+60 °C charge, +70 °C discharge</td><td class="num">same</td><td>Open relevant FET</td></tr>
+      <tr><td>Cell imbalance ΔV (balance threshold)</td><td class="num">&gt; 10–30 mV at top</td><td class="num">&gt; 30 mV at top</td><td>Bleed high cell during CV phase</td></tr>
+    </table>
+
+    <h3>Balance bleed math</h3>
+    <div class="deriv">
+      <span class="step">Cell A: 4.18 V — cell B: 4.20 V — ΔV = 20 mV at top of charge.</span>
+      <span class="step">Bleed resistor on cell B: typically 33–100 Ω. With 33 Ω: I_bleed = 4.20 / 33 = 127 mA.</span>
+      <span class="step">To drop B by 20 mV needs ~ΔV · C_cell / I_bleed = 0.020 · 2.5 Ah / 0.127 A = 0.39 h ≈ 24 min.</span>
+      <span class="step">Real-world: balance happens during the CV tail, when charge current is small. <b>Balancing is slow</b>; first few cycles take a week of cumulative balance time.</span>
+    </div>
+
+    <h3>What a BMS does NOT do</h3>
+    <ul class="notice">
+      <li><b>Reverse-polarity protection</b> — connecting the pack backwards to a charger will fry the BMS and/or cells. Most BMS chips have no reverse-V tolerance on the charger input.</li>
+      <li><b>Cell matching at assembly</b> — a BMS keeps cells balanced after manufacture, but if you build a 3S pack out of cells with wildly different IR (internal resistance) or capacity, no BMS rescues you. Capacity-match within 5 %, IR within 20 %.</li>
+      <li><b>Charge-rate limiting</b> — most simple BMS chips pass through whatever current the charger supplies. The charger IC (e.g., TP4056) is what limits I_charge to 1C.</li>
+      <li><b>Voltage regulation for the load</b> — the BMS gives you raw pack voltage. A buck/boost regulator separately drops it to 3.3 V or 5 V.</li>
+    </ul>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- TAB 6: C-RATE CHECK -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-crate">
+    <h2>C-rate sanity check — can your pack push the burst current?</h2>
+    <p>"C" is shorthand for <em>current = capacity</em>. A 2500 mAh cell at 1C delivers 2.5 A; at 10C, 25 A; at 0.1C, 250 mA. Each chemistry has a rated continuous and burst C-rate; exceeding it overheats the cell, dents cycle life, or triggers BMS cutoff. This tab is the "before you wire the motor, check the cell can handle it" check.</p>
+
+    <div class="controls">
+      <div class="control">
+        <label>Pack capacity: <span class="readout" id="cr-capRead">1500 mAh</span></label>
+        <input id="cr-cap" type="range" min="100" max="20000" step="100" value="1500">
+      </div>
+      <div class="control">
+        <label>Peak load: <span class="readout" id="cr-peakRead">8 A</span></label>
+        <input id="cr-peak" type="range" min="0.1" max="100" step="0.1" value="8">
+      </div>
+      <div class="control">
+        <label>Chemistry</label>
+        <select id="cr-chem">
+          <option value="lipo-std">LiPo standard (25C burst, 15C cont)</option>
+          <option value="lipo-hd" selected>LiPo HD/HV (50C burst, 30C cont)</option>
+          <option value="liion-std">Li-ion 18650 (5C burst, 2C cont)</option>
+          <option value="liion-hd">Li-ion 18650 HD (10C burst, 5C cont)</option>
+          <option value="lifepo4">LiFePO4 (5C burst, 3C cont)</option>
+          <option value="nimh">NiMH (10C burst, 5C cont)</option>
+          <option value="pbacid">Pb-acid (5C burst, 1C cont)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Burst duration</label>
+        <select id="cr-dur">
+          <option value="cont">Continuous</option>
+          <option value="burst" selected>Burst (&lt; 10 s)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="summary-box">
+      <div class="row"><span>Pack 1C current</span><b id="cr-1c">1.5 A</b></div>
+      <div class="row"><span>Your load as C-rate</span><b id="cr-load">5.33 C</b></div>
+      <div class="row"><span>Pack rating (selected mode)</span><b id="cr-rating">50 C burst</b></div>
+      <div class="row"><span>Headroom (rating − load)</span><b id="cr-head">44.67 C headroom</b></div>
+    </div>
+
+    <div class="figure">
+      <div style="font:12px ui-monospace,monospace;color:var(--fg-dim);margin-bottom:4px">
+        Load as % of rating
+      </div>
+      <div class="crate-bar">
+        <div class="crate-fill" id="cr-bar" style="width:0%;background:var(--accent3)"></div>
+        <div class="crate-label" id="cr-barLabel">0 %</div>
+      </div>
+      <p id="cr-verdict" style="margin:8px 0;font:13px ui-monospace,monospace;color:var(--accent3)">
+        Verdict will appear here.
+      </p>
+    </div>
+
+    <h3>What the rating actually means</h3>
+    <p class="lede">"50C burst" on a LiPo datasheet means peak current = 50 × capacity, sustained for ~10 seconds, at 25 °C. The fine print: <b>burst rate halves below 0 °C</b>, the rating drops 20 % over the cell's life, and "marketing C-rate" on cheap packs can be 2–3× optimistic. For a serious design, derate by 50 %: a 50C-rated cell should be sized as if it were 25C.</p>
+
+    <h3>C-rate ↔ continuous power table</h3>
+    <table>
+      <tr><th>Pack</th><th>1C current</th><th>5C current</th><th>25C burst</th><th>P at 5C × 3.7 V</th></tr>
+      <tr><td>1S 500 mAh LiPo</td><td class="num">0.5 A</td><td class="num">2.5 A</td><td class="num">12.5 A</td><td class="num">9.25 W</td></tr>
+      <tr><td>1S 1500 mAh LiPo</td><td class="num">1.5 A</td><td class="num">7.5 A</td><td class="num">37.5 A</td><td class="num">27.75 W</td></tr>
+      <tr><td>3S 2200 mAh LiPo</td><td class="num">2.2 A</td><td class="num">11 A</td><td class="num">55 A</td><td class="num">122 W (11.1 V)</td></tr>
+      <tr><td>4S 5000 mAh LiPo (FPV)</td><td class="num">5 A</td><td class="num">25 A</td><td class="num">125 A</td><td class="num">370 W (14.8 V)</td></tr>
+      <tr><td>1×18650 3000 mAh Li-ion</td><td class="num">3 A</td><td class="num">15 A</td><td class="num">— (over rating)</td><td class="num">55.5 W</td></tr>
+      <tr><td>4S2P 21700 (15Ah)</td><td class="num">15 A</td><td class="num">75 A</td><td class="num">— (over rating)</td><td class="num">1110 W (14.8 V)</td></tr>
+    </table>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- WORKED EXAMPLE -->
+  <!-- =================================================================== -->
+  <h2>Worked example — fold-p4-pico cyberdeck</h2>
+  <div class="worked">
+    <h3>The constraints</h3>
+    <p>Single 1S LiPo, 1500 mAh, 3.0–4.2 V. Pico 2 W running a TUI on a small TFT, with bursty Wi-Fi for telemetry. Target: ≥ 8 h of usable runtime on a single charge.</p>
+
+    <h3>Load list (the same data you would punch into the Power Budget tab)</h3>
+    <table>
+      <tr><th>Component</th><th>Active mA</th><th>Sleep mA</th><th>Duty %</th><th>Avg mA</th></tr>
+      <tr><td>Pico 2 W (idle + display refresh)</td><td class="num">25</td><td class="num">1.2</td><td class="num">100</td><td class="num">25.0</td></tr>
+      <tr><td>Wi-Fi burst (telemetry / SSH)</td><td class="num">80</td><td class="num">0</td><td class="num">5</td><td class="num">4.0</td></tr>
+      <tr><td>ST7789 1.3" TFT + backlight</td><td class="num">25</td><td class="num">0.05</td><td class="num">60</td><td class="num">15.0</td></tr>
+      <tr><td>RYLR998 LoRa TX bursts</td><td class="num">120</td><td class="num">0.002</td><td class="num">0.1</td><td class="num">0.12</td></tr>
+      <tr><td>BME280 environmental sensor</td><td class="num">0.7</td><td class="num">0.0001</td><td class="num">1</td><td class="num">0.01</td></tr>
+      <tr><th>Subtotal at 3.3 V output</th><th></th><th></th><th></th><th class="num"><b>44.1 mA</b></th></tr>
+    </table>
+
+    <h3>The arithmetic</h3>
+    <span class="eq">Subtotal at 3.3 V rail: I_load = 44.1 mA, P_load = 44.1 mA × 3.3 V = 145.5 mW</span>
+    <span class="eq">Buck efficiency η = 0.85 typical at this current. I_battery = 145.5 mW / (3.7 V × 0.85) = 46.3 mA</span>
+    <span class="eq">Usable capacity: 1500 mAh × 0.80 DoD = 1200 mAh</span>
+    <span class="eq">Runtime = 1200 mAh / 46.3 mA = <b>25.9 hours</b> <span class="annot">comfortably above 8h target</span></span>
+    <span class="eq">Margin for "what if" loads (extra Wi-Fi, full-brightness display): even at 100 mA continuous draw, runtime = 1200 / 100 = 12 h</span>
+    <span class="eq">Energy stored: 1.5 Ah × 3.7 V = 5.55 Wh = 19.98 kJ <span class="annot">≈ 5 minutes of microwave at full power</span></span>
+    <span class="eq">Charge time @ TP4056 (500 mA = 0.33C): t_cc ≈ 90 min CC + ~40 min CV = ~130 min full cycle</span>
+
+    <h3>Why this checks out</h3>
+    <p>The dominant load is the Pico SoC plus its display backlight — Wi-Fi is bursty enough to be negligible in the average, but worth tracking because the <b>peak</b> draw during a Wi-Fi burst (~120 mA total system) lands at 0.08 C — far below any C-rate concern even for a low-end LiPo. The 25.9 h headline is conservative because it assumes the display is on 60 % of the time; with a typical 5-minute screen timeout the real-world runtime is closer to 40 h.</p>
+  </div>
+
+  <!-- =================================================================== -->
+  <!-- CHEAT SHEET -->
+  <!-- =================================================================== -->
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Energy</dt><dd><span class="eq">Wh = Ah · V_nominal</span></dd>
+        <dt>C-rate</dt><dd><span class="eq">I [A] = C-rate · capacity [Ah]</span></dd>
+        <dt>Runtime (naive)</dt><dd><span class="eq">t = C_Ah / I_load</span></dd>
+        <dt>Peukert</dt><dd><span class="eq">t = C / I^k · 1^(k−1)</span></dd>
+        <dt>Duty avg</dt><dd><span class="eq">I_avg = I_on · D + I_off · (1−D)</span></dd>
+        <dt>Regulator</dt><dd><span class="eq">I_bat = (V_out · I_out) / (V_bat · η)</span></dd>
+        <dt>Charge time CC</dt><dd><span class="eq">t_cc ≈ ΔSoC / (CC_rate)</span></dd>
+        <dt>Termination</dt><dd><span class="eq">I_term ≈ C / 20 (5 % of CC)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>ANCHORS TO MEMORIZE</h3>
+      <ul>
+        <li><b>1 LiPo cell</b> = 3.0–4.2 V, 3.7 V nominal</li>
+        <li><b>18650</b> = 2500–3500 mAh, 9–13 Wh, 47 g</li>
+        <li><b>1S 1500 mAh</b> = 5.55 Wh ≈ 5 min microwave</li>
+        <li><b>LiFePO4 cell</b> = 2.5–3.65 V, 3.2 V nominal</li>
+        <li><b>NiMH</b> = 1.2 V nominal, 1.0 V cutoff</li>
+        <li><b>Lead-acid cell</b> = 2.0 V nominal, 6 cells = 12 V</li>
+        <li><b>1C of 1000 mAh</b> = 1 A (memorize the unit collapse)</li>
+        <li>Charging tail at <b>C/20</b> termination is standard</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>mAh ≠ Wh</b> — always multiply by V_nominal to compare across chemistries. A 1000 mAh 1S LiPo (3.7 Wh) and a 1000 mAh 3S LiPo (11.1 Wh) are not the same battery.</li>
+        <li><b>Peak ≠ average</b> — sizing the pack on peak load wastes capacity; sizing on average ignores the BMS OCP. Use peak for C-rate, average for runtime.</li>
+        <li><b>DC bias derating does NOT apply</b> — that's a ceramic-capacitor thing. Battery capacity DOES vary with temperature (–20 % at 0 °C for Li-ion) and load (Peukert) — but not with applied DC voltage.</li>
+        <li><b>"50C burst" is marketing</b> — derate cheap LiPo by 2× before sizing. Use the data sheet's continuous rating with 50 % margin.</li>
+        <li><b>Don't forget the regulator</b> — a 3.3 V load drawing 100 mA from a 3.7 V LiPo through an 85 % buck draws ~104 mA from the battery, not 100. Step-up from 3.7 V to 5 V at 70 % efficiency draws ~190 mA — much worse.</li>
+        <li><b>Self-discharge for NiMH is huge</b> — 20 % per month means a fully-charged NiMH AA holder is at 50 % in 3 months on the shelf. Use low-self-discharge cells (Eneloop) if shelf time matters.</li>
+        <li><b>Charging in cold weather damages Li</b> — never charge a Li-ion cell below 0 °C; lithium plating is permanent. Discharge to 0 °C is fine, but capacity drops.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- CROSS-LINKS -->
+  <!-- =================================================================== -->
+  <div class="crosslink">
+    <h4>WHERE TO GO NEXT</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px;font-family:ui-monospace,monospace">
+      <li><a href="../ee/phase-1-dc-circuits/voltage-divider-explorer.html">EE Phase 1 — Voltage Divider Explorer</a> for the battery-monitor ADC scaling.</li>
+      <li><a href="../em/phase-6-power-management-em/" style="color:var(--fg-dim)">EM Phase 6 — Power Budgeting</a> (curriculum reading; uses these numbers).</li>
+      <li><a href="../ee/phase-6-power-electronics/" style="color:var(--fg-dim)">EE Phase 6 — Charging + DC-DC</a> for buck/boost regulator design.</li>
+      <li><a href="component-picker.html">Component Picker</a> — for the resistors that scale a cell into your ADC.</li>
+      <li><a href="unit-converter.html">Unit Converter</a> — Wh ↔ kWh ↔ J for energy comparisons.</li>
+    </ul>
+  </div>
+
+  <footer class="footer-note">
+    Curriculum: <a href="../em/phase-6-power-management-em/">EM Phase 6 — Power Management</a> · Companion: <a href="../../../projects/cyberdeck/fold-p4-pico/">fold-p4-pico cyberdeck</a> · Forward: <a href="../ee/phase-6-power-electronics/">EE Phase 6 — Switch-Mode Power Supplies</a>
+  </footer>
+</main>
+
+<script>
+/* ============ TAB SWITCHING ============ */
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.pane').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('pane-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+/* ============ FORMATTERS ============ */
+function fmtI(mA){
+  if(mA < 0.001) return (mA*1e6).toFixed(1) + ' nA';
+  if(mA < 1)     return (mA*1000).toFixed(1) + ' µA';
+  if(mA < 1000)  return mA.toFixed(mA < 10 ? 2 : 1) + ' mA';
+  return (mA/1000).toFixed(2) + ' A';
+}
+function fmtP(mW){
+  if(mW < 1)     return (mW*1000).toFixed(1) + ' µW';
+  if(mW < 1000)  return mW.toFixed(mW < 10 ? 2 : 1) + ' mW';
+  return (mW/1000).toFixed(2) + ' W';
+}
+function fmtT(hours){
+  if(hours < 1/60) return (hours*3600).toFixed(0) + ' s';
+  if(hours < 1)    return (hours*60).toFixed(1) + ' min';
+  if(hours < 48)   return hours.toFixed(2) + ' h';
+  return (hours/24).toFixed(1) + ' d';
+}
+
+/* ============================================================== */
+/* TAB 1 — RADAR CHART + DISCHARGE CURVES                         */
+/* ============================================================== */
+
+// Each chemistry has six normalized scores (0..1, where 1 = best across the five):
+// [energy_grav, energy_vol, cycle_life, burst_C, safety, low_cost]
+const CHEMS = {
+  lipo:    {name:'LiPo',      color:'var(--lipo)',    scores:[0.65, 0.55, 0.15, 1.00, 0.20, 0.50]},
+  liion:   {name:'Li-ion 18650',color:'var(--liion)', scores:[1.00, 1.00, 0.50, 0.30, 0.50, 0.70]},
+  lifepo4: {name:'LiFePO4',   color:'var(--lifepo4)', scores:[0.45, 0.45, 1.00, 0.35, 1.00, 0.75]},
+  nimh:    {name:'NiMH',      color:'var(--nimh)',    scores:[0.35, 0.30, 0.40, 0.50, 0.85, 0.35]},
+  pbacid:  {name:'Lead-acid', color:'var(--pbacid)',  scores:[0.15, 0.10, 0.30, 0.25, 0.75, 1.00]},
+};
+const AXES = ['Wh/kg', 'Wh/L', 'Cycle life', 'Burst C', 'Safety', 'Cost (low=better)'];
+
+function drawRadar(){
+  const svg = document.getElementById('radar');
+  const cx = 260, cy = 200, R = 130;
+  const N = AXES.length;
+  const selected = [...document.getElementById('radar-pick').selectedOptions].map(o => o.value);
+  let html = '';
+  // grid rings
+  for(let r=1; r<=5; r++){
+    const rr = R * r / 5;
+    let pts = '';
+    for(let i=0; i<N; i++){
+      const a = -Math.PI/2 + (2*Math.PI*i/N);
+      pts += `${cx + rr*Math.cos(a)},${cy + rr*Math.sin(a)} `;
+    }
+    html += `<polygon points="${pts}" fill="none" stroke="var(--grid)" stroke-width="1"/>`;
+  }
+  // axis spokes + labels
+  for(let i=0; i<N; i++){
+    const a = -Math.PI/2 + (2*Math.PI*i/N);
+    const x2 = cx + R*Math.cos(a), y2 = cy + R*Math.sin(a);
+    html += `<line x1="${cx}" y1="${cy}" x2="${x2}" y2="${y2}" stroke="var(--fg-dim)" stroke-width="1"/>`;
+    const lx = cx + (R+18)*Math.cos(a), ly = cy + (R+18)*Math.sin(a) + 4;
+    html += `<text x="${lx}" y="${ly}" text-anchor="middle" fill="var(--fg-dim)" font-family="ui-monospace,monospace" font-size="11">${AXES[i]}</text>`;
+  }
+  // polygons per chemistry
+  selected.forEach(key => {
+    const ch = CHEMS[key]; if(!ch) return;
+    let pts = '';
+    for(let i=0; i<N; i++){
+      const a = -Math.PI/2 + (2*Math.PI*i/N);
+      const s = ch.scores[i];
+      pts += `${cx + R*s*Math.cos(a)},${cy + R*s*Math.sin(a)} `;
+    }
+    html += `<polygon points="${pts}" fill="${ch.color}" fill-opacity="0.18" stroke="${ch.color}" stroke-width="2"/>`;
+  });
+  // legend
+  let legY = 30;
+  selected.forEach(key => {
+    const ch = CHEMS[key]; if(!ch) return;
+    html += `<rect x="430" y="${legY-9}" width="12" height="12" fill="${ch.color}" fill-opacity="0.4" stroke="${ch.color}"/>`;
+    html += `<text x="448" y="${legY}" fill="var(--fg)" font-family="ui-monospace,monospace" font-size="11">${ch.name}</text>`;
+    legY += 18;
+  });
+  svg.innerHTML = html;
+}
+document.getElementById('radar-pick').addEventListener('change', drawRadar);
+drawRadar();
+
+// Discharge curves: V vs SoC, normalized SoC 0..1, V in volts
+const DISCHARGE = {
+  lipo:    {pts:[[0,4.20],[0.10,4.10],[0.20,3.95],[0.40,3.80],[0.60,3.72],[0.80,3.60],[0.95,3.40],[1.00,3.00]], color:'var(--lipo)', name:'LiPo'},
+  liion:   {pts:[[0,4.20],[0.10,4.05],[0.30,3.85],[0.50,3.70],[0.70,3.60],[0.85,3.45],[0.95,3.20],[1.00,2.80]], color:'var(--liion)', name:'Li-ion'},
+  lifepo4: {pts:[[0,3.55],[0.05,3.35],[0.20,3.32],[0.50,3.28],[0.80,3.20],[0.95,3.00],[1.00,2.50]], color:'var(--lifepo4)', name:'LiFePO4'},
+  nimh:    {pts:[[0,1.40],[0.05,1.32],[0.20,1.26],[0.50,1.22],[0.80,1.18],[0.95,1.10],[1.00,0.95]], color:'var(--nimh)', name:'NiMH'},
+  pbacid:  {pts:[[0,2.12],[0.20,2.05],[0.50,1.97],[0.80,1.90],[0.95,1.85],[1.00,1.75]], color:'var(--pbacid)', name:'Pb-acid'},
+};
+function drawDischarge(){
+  const svg = document.getElementById('disc-curve');
+  const W = 520, H = 280;
+  const xL = 50, xR = W-30, yT = 20, yB = H-30;
+  let html = '';
+  // axes
+  html += `<line x1="${xL}" y1="${yB}" x2="${xR}" y2="${yB}" class="axis"/>`;
+  html += `<line x1="${xL}" y1="${yT}" x2="${xL}" y2="${yB}" class="axis"/>`;
+  // grid + labels
+  for(let v=1.0; v<=4.5; v+=0.5){
+    const y = yB - (v-1.0)/(4.5-1.0) * (yB-yT);
+    if(y >= yT && y <= yB){
+      html += `<line x1="${xL}" y1="${y}" x2="${xR}" y2="${y}" class="grid"/>`;
+      html += `<text x="${xL-6}" y="${y+4}" text-anchor="end" class="axis-label">${v.toFixed(1)} V</text>`;
+    }
+  }
+  for(let x=0; x<=1.0; x+=0.2){
+    const xp = xL + x*(xR-xL);
+    html += `<text x="${xp}" y="${yB+18}" text-anchor="middle" class="axis-label">${(x*100).toFixed(0)}%</text>`;
+  }
+  html += `<text x="${(xL+xR)/2}" y="${H-2}" text-anchor="middle" class="axis-label">Depth of discharge</text>`;
+  // curves
+  let legX = xR - 110, legY = yT+5;
+  Object.values(DISCHARGE).forEach(d => {
+    const path = d.pts.map((p,i) => {
+      const x = xL + p[0]*(xR-xL);
+      const y = yB - (p[1]-1.0)/(4.5-1.0) * (yB-yT);
+      return (i?'L':'M') + x.toFixed(1) + ' ' + y.toFixed(1);
+    }).join(' ');
+    html += `<path d="${path}" stroke="${d.color}" stroke-width="2" fill="none"/>`;
+    html += `<rect x="${legX}" y="${legY-8}" width="10" height="10" fill="${d.color}"/>`;
+    html += `<text x="${legX+14}" y="${legY}" fill="var(--fg)" font-family="ui-monospace,monospace" font-size="11">${d.name}</text>`;
+    legY += 16;
+  });
+  svg.innerHTML = html;
+}
+drawDischarge();
+
+/* ============================================================== */
+/* TAB 2 — RUNTIME / PEUKERT                                      */
+/* ============================================================== */
+const RT_IDS = ['cap','v','avg','peak','k','dod'];
+function rtUpdate(){
+  const cap_mAh = parseFloat(document.getElementById('rt-cap').value);
+  const v = parseFloat(document.getElementById('rt-v').value);
+  const i_avg = parseFloat(document.getElementById('rt-avg').value);
+  const i_peak = parseFloat(document.getElementById('rt-peak').value);
+  const k = parseFloat(document.getElementById('rt-k').value);
+  const dod = parseFloat(document.getElementById('rt-dod').value);
+
+  document.getElementById('rt-capRead').textContent = cap_mAh + ' mAh';
+  document.getElementById('rt-vRead').textContent = v.toFixed(1) + ' V';
+  document.getElementById('rt-avgRead').textContent = fmtI(i_avg);
+  document.getElementById('rt-peakRead').textContent = fmtI(i_peak);
+
+  const cap_Ah = cap_mAh / 1000;
+  const wh = cap_Ah * v;
+  const kj = wh * 3.6;
+  const i_avg_A = i_avg / 1000;
+  const i_peak_A = i_peak / 1000;
+  const t_naive = cap_Ah / i_avg_A;
+  // Peukert: t = (C / I^k) · (1 A)^(k-1)
+  // Express vs reference rate (assume rated at C/1 = 1C-equivalent for the cell)
+  // C_eff = C · (I_ref / I)^(k-1) where I_ref ≈ 0.2C (industry convention for lead-acid; we'll use C/1)
+  const i_ref = cap_Ah * 1.0; // 1C reference
+  const c_eff = cap_Ah * Math.pow(i_ref / i_avg_A, k - 1);
+  const t_peukert = c_eff / i_avg_A;
+  const t_peak = cap_Ah * Math.pow(i_ref / i_peak_A, k - 1) / i_peak_A;
+  const c_avg_rate = i_avg_A / cap_Ah;
+  const c_peak_rate = i_peak_A / cap_Ah;
+  const t_usable = t_peukert * dod;
+
+  document.getElementById('rt-wh').textContent = wh.toFixed(2) + ' Wh';
+  document.getElementById('rt-kj').textContent = kj.toFixed(2) + ' kJ';
+  document.getElementById('rt-naive').textContent = fmtT(t_naive);
+  document.getElementById('rt-peukert').textContent = fmtT(t_peukert);
+  document.getElementById('rt-peakrun').textContent = fmtT(t_peak);
+  document.getElementById('rt-cavg').textContent = c_avg_rate.toFixed(3) + ' C';
+  document.getElementById('rt-cpeak').textContent = c_peak_rate.toFixed(3) + ' C';
+  document.getElementById('rt-final').textContent = '→ Usable runtime ≈ ' + fmtT(t_usable) + ' (' + (dod*100).toFixed(0) + '% DoD, Peukert k=' + k.toFixed(2) + ')';
+
+  drawPeukert(cap_Ah, k, i_avg_A, i_peak_A);
+}
+function drawPeukert(cap_Ah, k, i_avg, i_peak){
+  const svg = document.getElementById('peukert-svg');
+  const W = 520, H = 240;
+  const xL = 60, xR = W-30, yT = 20, yB = H-40;
+  let html = '';
+  // x-axis: load as C-rate, log scale 0.05 to 10
+  const xMin = 0.05, xMax = 10;
+  function x2px(c){ return xL + (Math.log10(c)-Math.log10(xMin))/(Math.log10(xMax)-Math.log10(xMin))*(xR-xL); }
+  // y-axis: usable capacity (Ah), 0 to cap_Ah*1.05
+  const yMax = cap_Ah * 1.05, yMin = 0;
+  function y2px(c){ return yB - (c-yMin)/(yMax-yMin)*(yB-yT); }
+  html += `<line x1="${xL}" y1="${yB}" x2="${xR}" y2="${yB}" class="axis"/>`;
+  html += `<line x1="${xL}" y1="${yT}" x2="${xL}" y2="${yB}" class="axis"/>`;
+  // x gridlines (decades + key points)
+  const decades = [0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10];
+  decades.forEach(c => {
+    const xp = x2px(c);
+    html += `<line x1="${xp}" y1="${yT}" x2="${xp}" y2="${yB}" class="grid"/>`;
+    html += `<text x="${xp}" y="${yB+14}" text-anchor="middle" class="axis-label">${c}C</text>`;
+  });
+  // y gridlines
+  for(let i=0; i<=5; i++){
+    const c = cap_Ah * i / 5;
+    const yp = y2px(c);
+    html += `<line x1="${xL}" y1="${yp}" x2="${xR}" y2="${yp}" class="grid"/>`;
+    html += `<text x="${xL-6}" y="${yp+4}" text-anchor="end" class="axis-label">${c.toFixed(2)} Ah</text>`;
+  }
+  html += `<text x="${(xL+xR)/2}" y="${H-3}" text-anchor="middle" class="axis-label">Discharge rate (C)</text>`;
+  // curve: C_eff(c_rate) = cap_Ah * (1 / c_rate)^(k-1)
+  let path = '';
+  for(let c = xMin; c <= xMax; c *= 1.05){
+    const c_eff = cap_Ah * Math.pow(1 / c, k - 1);
+    const xp = x2px(c), yp = y2px(Math.min(yMax, c_eff));
+    path += (path ? 'L' : 'M') + xp.toFixed(1) + ' ' + yp.toFixed(1);
+  }
+  html += `<path d="${path}" stroke="var(--accent2)" stroke-width="2" fill="none"/>`;
+  // markers for avg and peak
+  const c_avg = i_avg / cap_Ah, c_peak = i_peak / cap_Ah;
+  [['avg', c_avg, i_avg, 'var(--accent3)'], ['peak', c_peak, i_peak, 'var(--warn)']].forEach(([label, cr, i, col]) => {
+    if(cr < xMin || cr > xMax) return;
+    const c_eff = cap_Ah * Math.pow(1 / cr, k - 1);
+    const xp = x2px(cr), yp = y2px(Math.min(yMax, c_eff));
+    html += `<circle cx="${xp}" cy="${yp}" r="4" fill="${col}"/>`;
+    html += `<text x="${xp+8}" y="${yp-6}" fill="${col}" font-family="ui-monospace,monospace" font-size="11">${label} (${cr.toFixed(2)}C → ${c_eff.toFixed(2)} Ah)</text>`;
+  });
+  svg.innerHTML = html;
+}
+RT_IDS.forEach(id => {
+  const el = document.getElementById('rt-' + id);
+  if(el) el.addEventListener('input', rtUpdate);
+});
+rtUpdate();
+
+/* ============================================================== */
+/* TAB 3 — CC/CV CHARGE ANIMATION                                 */
+/* ============================================================== */
+let chState = {soc: 10, phase: 'cc', t: 0, running: false, raf: null, lastTick: 0};
+
+function chParams(){
+  const cap = parseFloat(document.getElementById('ch-cap').value); // mAh
+  const c = parseFloat(document.getElementById('ch-c').value); // C-rate
+  const term = parseFloat(document.getElementById('ch-term').value); // fraction
+  const soc0 = parseFloat(document.getElementById('ch-soc0').value); // percent
+  return {cap, c, term, soc0};
+}
+function chUpdateReadouts(){
+  const {cap, c, term} = chParams();
+  document.getElementById('ch-capRead').textContent = cap + ' mAh';
+  document.getElementById('ch-cRead').textContent = c.toFixed(2) + ' C';
+  const icc = cap * c;
+  const iterm = cap * term;
+  // CC duration: cover ~80% of capacity at CC rate (10% pre-existing, charges to ~90% in CC)
+  const cc_minutes = (0.80 / c) * 60;
+  // CV tail: exponential decay from icc to iterm. Time constant ~ 30 min for typical.
+  // Approximate CV duration as ln(icc/iterm) * 15 minutes characteristic time.
+  const cv_minutes = Math.log(icc / iterm) * 15;
+  const total = cc_minutes + cv_minutes;
+  const energy = (cap / 1000) * 3.85; // average voltage during charge ≈ 3.85 V
+  document.getElementById('ch-icc').textContent = icc.toFixed(0) + ' mA';
+  document.getElementById('ch-iterm').textContent = iterm.toFixed(0) + ' mA';
+  document.getElementById('ch-tcc').textContent = '~' + cc_minutes.toFixed(0) + ' min';
+  document.getElementById('ch-tcv').textContent = '~' + cv_minutes.toFixed(0) + ' min';
+  document.getElementById('ch-total').textContent = '~' + total.toFixed(0) + ' min';
+  document.getElementById('ch-energy').textContent = energy.toFixed(2) + ' Wh';
+}
+// Model: V_cell(soc, current) heuristic.
+// In CC: V_cell rises from ~3.4 V at 10% SoC to 4.20 V at ~90% SoC.
+// In CV: V_cell pinned at 4.20 V; current decays exponentially.
+function chCellV(soc, phase, i_norm){
+  if(phase === 'cv') return 4.20;
+  // Linear rise during CC from initial-V to 4.20 V at soc=90
+  const v0 = 3.30 + 0.03 * i_norm; // higher current = more IR rise
+  const v_top = 4.20;
+  const f = Math.min(1, Math.max(0, (soc - 5) / 85));
+  return v0 + (v_top - v0) * f;
+}
+function drawCharge(state){
+  const svg = document.getElementById('ch-svg');
+  const W = 520, H = 320;
+  const xL = 50, xR = W-30, yT = 30, yB = H-40;
+  const {cap, c, term, soc0} = chParams();
+  const t_end_min = 180; // x-axis: 0 to 180 min visible
+  function x2px(t){ return xL + Math.min(1, t/t_end_min)*(xR-xL); }
+  // y-axis: dual — left = voltage 3.0-4.3, right = current 0-icc
+  const v_min = 3.0, v_max = 4.3;
+  function v2px(v){ return yB - (v-v_min)/(v_max-v_min)*(yB-yT); }
+  const icc = cap * c;
+  function i2px(i){ return yB - (i/icc)*(yB-yT); }
+  let html = '';
+  // axes
+  html += `<line x1="${xL}" y1="${yB}" x2="${xR}" y2="${yB}" class="axis"/>`;
+  html += `<line x1="${xL}" y1="${yT}" x2="${xL}" y2="${yB}" class="axis"/>`;
+  html += `<line x1="${xR}" y1="${yT}" x2="${xR}" y2="${yB}" class="axis"/>`;
+  // grids + labels
+  for(let v=3.0; v<=4.3; v+=0.2){
+    const y = v2px(v);
+    html += `<line x1="${xL}" y1="${y}" x2="${xR}" y2="${y}" class="grid"/>`;
+    html += `<text x="${xL-6}" y="${y+4}" text-anchor="end" class="axis-label">${v.toFixed(1)} V</text>`;
+  }
+  for(let i=0; i<=icc; i+=icc/5){
+    const y = i2px(i);
+    html += `<text x="${xR+6}" y="${y+4}" text-anchor="start" class="axis-label" fill="var(--accent2)">${i.toFixed(0)} mA</text>`;
+  }
+  for(let t=0; t<=t_end_min; t+=30){
+    const xp = x2px(t);
+    html += `<line x1="${xp}" y1="${yT}" x2="${xp}" y2="${yB}" class="grid"/>`;
+    html += `<text x="${xp}" y="${yB+14}" text-anchor="middle" class="axis-label">${t} min</text>`;
+  }
+  html += `<text x="${(xL+xR)/2}" y="${H-3}" text-anchor="middle" class="axis-label">Time (minutes)</text>`;
+  // Model: CC from t=0 to t_cc_end, I = icc, V rises 3.4 -> 4.20 by t_cc_end.
+  // CV from t_cc_end onward, V = 4.20, I = icc * exp(-(t - t_cc_end)/tau), clamped at i_term.
+  const soc_to_full_in_cc = Math.max(0, 90 - soc0); // covers up to 90% in CC, rest in CV
+  const t_cc_end = (soc_to_full_in_cc / 100) * cap / icc * 60; // minutes
+  const tau = 15; // CV decay time-constant (minutes)
+  let v_path = '', i_path = '', soc_path = '';
+  for(let t=0; t<=t_end_min; t+=0.5){
+    let v, i, soc;
+    if(t <= t_cc_end){
+      i = icc;
+      soc = soc0 + (t / t_cc_end) * soc_to_full_in_cc;
+      const f = Math.min(1, t / Math.max(0.1, t_cc_end));
+      v = 3.40 + (4.20 - 3.40) * f;
+    } else {
+      const dt_cv = t - t_cc_end;
+      i = icc * Math.exp(-dt_cv / tau);
+      if(i < cap * term) i = cap * term;
+      v = 4.20;
+      // SoC continues toward 100% in CV: integral of i over time, normalized
+      // Approx: each CV minute adds ~i/cap*100/60 % SoC
+      soc = Math.min(100, 90 + (1 - Math.exp(-dt_cv / tau)) * 10);
+    }
+    const xp = x2px(t);
+    v_path += (v_path?'L':'M') + xp.toFixed(1) + ' ' + v2px(v).toFixed(1);
+    i_path += (i_path?'L':'M') + xp.toFixed(1) + ' ' + i2px(i).toFixed(1);
+    soc_path += (soc_path?'L':'M') + xp.toFixed(1) + ' ' + (yB - (soc/100)*(yB-yT)).toFixed(1);
+  }
+  // phase divider
+  const xph = x2px(t_cc_end);
+  html += `<line x1="${xph}" y1="${yT}" x2="${xph}" y2="${yB}" stroke="var(--warn)" stroke-width="1" stroke-dasharray="3 3"/>`;
+  html += `<text x="${xph}" y="${yT-6}" text-anchor="middle" fill="var(--warn)" font-family="ui-monospace,monospace" font-size="11">CC → CV</text>`;
+  // SoC trace (dotted accent3)
+  html += `<path d="${soc_path}" stroke="var(--accent3)" stroke-width="1.5" stroke-dasharray="2 2" fill="none"/>`;
+  // I trace (accent2)
+  html += `<path d="${i_path}" stroke="var(--accent2)" stroke-width="2" fill="none"/>`;
+  // V trace (accent)
+  html += `<path d="${v_path}" stroke="var(--accent)" stroke-width="2" fill="none"/>`;
+  // animation marker
+  const tx = (state && state.t !== undefined) ? Math.min(t_end_min, state.t) : 0;
+  if(state && state.running){
+    const xp = x2px(tx);
+    html += `<line x1="${xp}" y1="${yT}" x2="${xp}" y2="${yB}" stroke="var(--fg-bright)" stroke-width="1"/>`;
+    // compute current state values
+    let v, i, soc;
+    if(tx <= t_cc_end){
+      i = icc; v = 3.40 + (4.20-3.40)*Math.min(1, tx/Math.max(0.1,t_cc_end));
+      soc = soc0 + (tx/t_cc_end)*soc_to_full_in_cc;
+    } else {
+      i = Math.max(cap*term, icc * Math.exp(-(tx-t_cc_end)/tau));
+      v = 4.20;
+      soc = Math.min(100, 90 + (1-Math.exp(-(tx-t_cc_end)/tau))*10);
+    }
+    html += `<circle cx="${xp}" cy="${v2px(v)}" r="4" fill="var(--accent)"/>`;
+    html += `<circle cx="${xp}" cy="${i2px(i)}" r="4" fill="var(--accent2)"/>`;
+    html += `<text x="${xp+8}" y="${v2px(v)-6}" fill="var(--accent)" font-family="ui-monospace,monospace" font-size="11">${v.toFixed(2)} V</text>`;
+    html += `<text x="${xp+8}" y="${i2px(i)+12}" fill="var(--accent2)" font-family="ui-monospace,monospace" font-size="11">${i.toFixed(0)} mA</text>`;
+    html += `<text x="${xp+8}" y="${v2px(v)+10}" fill="var(--accent3)" font-family="ui-monospace,monospace" font-size="11">SoC ${soc.toFixed(1)} %</text>`;
+  }
+  // legend
+  html += `<rect x="${xR-180}" y="${yT+4}" width="10" height="2" fill="var(--accent)"/>`;
+  html += `<text x="${xR-165}" y="${yT+9}" fill="var(--accent)" font-family="ui-monospace,monospace" font-size="11">V_cell</text>`;
+  html += `<rect x="${xR-110}" y="${yT+4}" width="10" height="2" fill="var(--accent2)"/>`;
+  html += `<text x="${xR-95}" y="${yT+9}" fill="var(--accent2)" font-family="ui-monospace,monospace" font-size="11">I_chg</text>`;
+  html += `<rect x="${xR-50}" y="${yT+4}" width="10" height="2" fill="var(--accent3)" stroke-dasharray="2 1"/>`;
+  html += `<text x="${xR-35}" y="${yT+9}" fill="var(--accent3)" font-family="ui-monospace,monospace" font-size="11">SoC</text>`;
+  svg.innerHTML = html;
+}
+function chTick(now){
+  if(!chState.running){ chState.raf = null; return; }
+  if(!chState.lastTick) chState.lastTick = now;
+  const dt = (now - chState.lastTick) / 1000; // seconds elapsed real-time
+  chState.lastTick = now;
+  chState.t += dt * 20; // 1 second real = 20 simulated minutes
+  if(chState.t > 180){ chState.t = 0; }
+  drawCharge(chState);
+  chState.raf = requestAnimationFrame(chTick);
+}
+document.getElementById('ch-play').addEventListener('click', () => {
+  chState.running = !chState.running;
+  document.getElementById('ch-play').textContent = chState.running ? '⏸ pause' : '▶ animate charge';
+  if(chState.running){
+    chState.lastTick = 0;
+    chState.t = 0;
+    chState.raf = requestAnimationFrame(chTick);
+  } else {
+    if(chState.raf) cancelAnimationFrame(chState.raf);
+  }
+});
+['ch-cap','ch-c','ch-term','ch-soc0'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => { chUpdateReadouts(); drawCharge(chState); });
+});
+chUpdateReadouts();
+drawCharge(chState);
+
+/* ============================================================== */
+/* TAB 4 — POWER BUDGET BUILDER                                   */
+/* ============================================================== */
+const DEFAULT_ROWS = [
+  {name:'Pico 2 W (idle)', active:25, sleep:1.2, duty:100},
+  {name:'Wi-Fi burst', active:80, sleep:0, duty:5},
+  {name:'ST7789 1.3" TFT', active:25, sleep:0.05, duty:60},
+  {name:'LoRa RYLR998 TX', active:120, sleep:0.002, duty:0.1},
+];
+let bdRows = JSON.parse(JSON.stringify(DEFAULT_ROWS));
+
+function bdRender(){
+  const container = document.getElementById('bd-rows');
+  container.innerHTML = bdRows.map((r, idx) => `
+    <div class="component-row" data-idx="${idx}">
+      <input type="text" data-f="name" value="${r.name.replace(/"/g,'&quot;')}">
+      <input type="number" step="0.1" min="0" data-f="active" value="${r.active}">
+      <input type="number" step="0.001" min="0" data-f="sleep" value="${r.sleep}">
+      <input type="number" step="0.1" min="0" max="100" data-f="duty" value="${r.duty}">
+      <span class="readout" data-readout></span>
+      <button data-del>×</button>
+    </div>
+  `).join('');
+  container.querySelectorAll('.component-row').forEach(rowEl => {
+    const idx = parseInt(rowEl.dataset.idx);
+    rowEl.querySelectorAll('input').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const f = inp.dataset.f;
+        if(f === 'name') bdRows[idx][f] = inp.value;
+        else bdRows[idx][f] = parseFloat(inp.value) || 0;
+        bdUpdate();
+      });
+    });
+    rowEl.querySelector('[data-del]').addEventListener('click', () => {
+      bdRows.splice(idx, 1);
+      bdRender();
+      bdUpdate();
+    });
+  });
+  bdUpdate();
+}
+
+function bdUpdate(){
+  const cap = parseFloat(document.getElementById('bd-cap').value);
+  const v = parseFloat(document.getElementById('bd-v').value);
+  const eff = parseFloat(document.getElementById('bd-eff').value);
+  const dod = parseFloat(document.getElementById('bd-dod').value);
+  document.getElementById('bd-capRead').textContent = cap + ' mAh';
+  document.getElementById('bd-vRead').textContent = v.toFixed(1) + ' V';
+
+  let total_mA = 0;
+  document.querySelectorAll('.component-row').forEach(rowEl => {
+    const idx = parseInt(rowEl.dataset.idx);
+    const r = bdRows[idx];
+    if(!r) return;
+    const d = (r.duty || 0) / 100;
+    const avg = r.active * d + r.sleep * (1 - d);
+    rowEl.querySelector('[data-readout]').textContent = fmtI(avg);
+    total_mA += avg;
+  });
+
+  // Assume V_rail = 3.3 V for now (typical for MCU loads)
+  const V_rail = 3.3;
+  const total_mW = total_mA * V_rail;
+  // Battery current: P_load / (V_pack · η)
+  const I_battery_mA = (total_mW / (v * eff));
+  const wh = cap / 1000 * v;
+  const wh_eff = wh * eff * dod;
+  const runtime_h = (cap * dod) / I_battery_mA;
+
+  document.getElementById('bd-iavg').textContent = fmtI(total_mA) + ' (at 3.3 V rail) → ' + fmtI(I_battery_mA) + ' from battery';
+  document.getElementById('bd-pavg').textContent = fmtP(total_mW);
+  document.getElementById('bd-wh').textContent = wh.toFixed(2) + ' Wh';
+  document.getElementById('bd-wheff').textContent = wh_eff.toFixed(2) + ' Wh';
+  document.getElementById('bd-runtime').textContent = (total_mA > 0 ?
+    '→ runtime ≈ ' + fmtT(runtime_h) + ' (DoD ' + (dod*100).toFixed(0) + '%, η ' + (eff*100).toFixed(0) + '%)'
+    : '→ add a component above');
+}
+
+document.getElementById('bd-add').addEventListener('click', () => {
+  bdRows.push({name:'New component', active:10, sleep:0.5, duty:50});
+  bdRender();
+});
+['bd-cap','bd-v','bd-eff','bd-dod'].forEach(id => {
+  document.getElementById(id).addEventListener('input', bdUpdate);
+});
+bdRender();
+
+/* ============================================================== */
+/* TAB 5 — BMS SCHEMATIC                                          */
+/* ============================================================== */
+function drawBMS(){
+  const svg = document.getElementById('bms-svg');
+  // 3S pack: three cells in series, BMS chip with taps, FETs on discharge
+  let html = '';
+  // Cells
+  const cells = [
+    {x:80,  y:60, label:'Cell 1', tap:'B−'},
+    {x:80,  y:160,label:'Cell 2', tap:'BAT1'},
+    {x:80,  y:260,label:'Cell 3', tap:'BAT2'},
+  ];
+  cells.forEach((c, i) => {
+    html += `<rect x="${c.x}" y="${c.y}" width="100" height="60" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="1.5"/>`;
+    html += `<text x="${c.x+50}" y="${c.y+30}" text-anchor="middle" fill="var(--fg)" font-family="ui-monospace,monospace" font-size="12">${c.label}</text>`;
+    html += `<text x="${c.x+50}" y="${c.y+48}" text-anchor="middle" fill="var(--fg-dim)" font-family="ui-monospace,monospace" font-size="10">3.7 V</text>`;
+    // Wires
+    html += `<line x1="${c.x+50}" y1="${c.y}" x2="${c.x+50}" y2="${c.y-15}" stroke="var(--fg)" stroke-width="1.5"/>`;
+    html += `<line x1="${c.x+50}" y1="${c.y+60}" x2="${c.x+50}" y2="${c.y+75}" stroke="var(--fg)" stroke-width="1.5"/>`;
+    // Cell tap point
+    const tapY = c.y + 60;
+    html += `<circle cx="${c.x+50}" cy="${tapY}" r="3" fill="var(--accent2)"/>`;
+    html += `<line x1="${c.x+50}" y1="${tapY}" x2="${c.x+220}" y2="${tapY}" stroke="var(--accent2)" stroke-width="1" stroke-dasharray="2 2"/>`;
+    html += `<text x="${c.x+225}" y="${tapY+4}" fill="var(--accent2)" font-family="ui-monospace,monospace" font-size="11">${c.tap}</text>`;
+    // Balance bleed FET + resistor on each cell
+    html += `<rect x="${c.x+105}" y="${c.y+10}" width="30" height="14" fill="var(--bg-elev2)" stroke="var(--fg-dim)" stroke-width="1"/>`;
+    html += `<text x="${c.x+120}" y="${c.y+21}" text-anchor="middle" fill="var(--fg-dim)" font-family="ui-monospace,monospace" font-size="9">R_bal</text>`;
+    html += `<line x1="${c.x+135}" y1="${c.y+17}" x2="${c.x+155}" y2="${c.y+17}" stroke="var(--fg-dim)" stroke-width="1"/>`;
+    html += `<rect x="${c.x+155}" y="${c.y+8}" width="16" height="18" fill="var(--bg-elev2)" stroke="var(--accent3)" stroke-width="1"/>`;
+    html += `<text x="${c.x+163}" y="${c.y+20}" text-anchor="middle" fill="var(--accent3)" font-family="ui-monospace,monospace" font-size="9">FET</text>`;
+  });
+  // top tap (B+)
+  html += `<line x1="130" y1="45" x2="290" y2="45" stroke="var(--accent2)" stroke-width="1" stroke-dasharray="2 2"/>`;
+  html += `<circle cx="130" cy="45" r="3" fill="var(--accent2)"/>`;
+  html += `<text x="295" y="49" fill="var(--accent2)" font-family="ui-monospace,monospace" font-size="11">B+</text>`;
+  // BMS chip box
+  html += `<rect x="350" y="100" width="120" height="120" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="2"/>`;
+  html += `<text x="410" y="125" text-anchor="middle" fill="var(--accent)" font-family="ui-monospace,monospace" font-size="13" font-weight="600">BMS IC</text>`;
+  html += `<text x="410" y="143" text-anchor="middle" fill="var(--fg-dim)" font-family="ui-monospace,monospace" font-size="10">(e.g., BQ7693x)</text>`;
+  html += `<text x="410" y="165" text-anchor="middle" fill="var(--fg-dim)" font-family="ui-monospace,monospace" font-size="10">OVP / UVP / OCP</text>`;
+  html += `<text x="410" y="180" text-anchor="middle" fill="var(--fg-dim)" font-family="ui-monospace,monospace" font-size="10">SCP / OTP / Balance</text>`;
+  html += `<text x="410" y="200" text-anchor="middle" fill="var(--fg-dim)" font-family="ui-monospace,monospace" font-size="10">I²C / SMBus to host</text>`;
+
+  // Discharge FETs
+  html += `<rect x="500" y="160" width="30" height="40" fill="var(--bg-elev2)" stroke="var(--accent3)" stroke-width="1.5"/>`;
+  html += `<text x="515" y="183" text-anchor="middle" fill="var(--accent3)" font-family="ui-monospace,monospace" font-size="10">DSG</text>`;
+  html += `<rect x="540" y="160" width="30" height="40" fill="var(--bg-elev2)" stroke="var(--accent3)" stroke-width="1.5"/>`;
+  html += `<text x="555" y="183" text-anchor="middle" fill="var(--accent3)" font-family="ui-monospace,monospace" font-size="10">CHG</text>`;
+  html += `<line x1="470" y1="180" x2="500" y2="180" stroke="var(--fg)" stroke-width="1.5"/>`;
+  html += `<line x1="530" y1="180" x2="540" y2="180" stroke="var(--fg)" stroke-width="1.5"/>`;
+  html += `<line x1="570" y1="180" x2="585" y2="180" stroke="var(--fg)" stroke-width="1.5"/>`;
+  html += `<text x="585" y="184" fill="var(--accent2)" font-family="ui-monospace,monospace" font-size="11">PACK+</text>`;
+  // shunt
+  html += `<rect x="500" y="230" width="80" height="14" fill="var(--bg-elev2)" stroke="var(--warn)" stroke-width="1.5"/>`;
+  html += `<text x="540" y="241" text-anchor="middle" fill="var(--warn)" font-family="ui-monospace,monospace" font-size="10">R_shunt 10–50 mΩ</text>`;
+  html += `<line x1="500" y1="237" x2="470" y2="237" stroke="var(--fg)" stroke-width="1.5"/>`;
+  html += `<line x1="580" y1="237" x2="600" y2="237" stroke="var(--fg)" stroke-width="1.5"/>`;
+  html += `<text x="595" y="241" fill="var(--accent2)" font-family="ui-monospace,monospace" font-size="11">PACK−</text>`;
+  // bottom ground
+  html += `<line x1="130" y1="335" x2="470" y2="335" stroke="var(--fg)" stroke-width="1.5"/>`;
+  html += `<line x1="115" y1="345" x2="145" y2="345" stroke="var(--fg)" stroke-width="2"/>`;
+  html += `<line x1="120" y1="350" x2="140" y2="350" stroke="var(--fg)" stroke-width="2"/>`;
+  html += `<line x1="125" y1="355" x2="135" y2="355" stroke="var(--fg)" stroke-width="2"/>`;
+  // legend
+  html += `<text x="40" y="20" fill="var(--accent2)" font-family="ui-monospace,monospace" font-size="11">orange = cell-tap signals to BMS (sense lines)</text>`;
+  html += `<text x="40" y="372" fill="var(--accent3)" font-family="ui-monospace,monospace" font-size="11">green = N-FETs controlled by BMS (gates not shown)</text>`;
+  svg.innerHTML = html;
+}
+drawBMS();
+
+/* ============================================================== */
+/* TAB 6 — C-RATE CHECK                                           */
+/* ============================================================== */
+const CRATE_RATINGS = {
+  'lipo-std':   {cont:15, burst:25, name:'LiPo standard'},
+  'lipo-hd':    {cont:30, burst:50, name:'LiPo HD/HV'},
+  'liion-std':  {cont:2,  burst:5,  name:'Li-ion 18650 std'},
+  'liion-hd':   {cont:5,  burst:10, name:'Li-ion 18650 HD'},
+  'lifepo4':    {cont:3,  burst:5,  name:'LiFePO4'},
+  'nimh':       {cont:5,  burst:10, name:'NiMH'},
+  'pbacid':     {cont:1,  burst:5,  name:'Pb-acid'},
+};
+function crUpdate(){
+  const cap = parseFloat(document.getElementById('cr-cap').value);
+  const peak = parseFloat(document.getElementById('cr-peak').value);
+  const chem = document.getElementById('cr-chem').value;
+  const mode = document.getElementById('cr-dur').value;
+  document.getElementById('cr-capRead').textContent = cap + ' mAh';
+  document.getElementById('cr-peakRead').textContent = peak.toFixed(1) + ' A';
+
+  const cap_Ah = cap / 1000;
+  const c_1c = cap_Ah; // current at 1C in A
+  const c_rate = peak / cap_Ah;
+  const rating = CRATE_RATINGS[chem];
+  const limit = mode === 'burst' ? rating.burst : rating.cont;
+  const head = limit - c_rate;
+  const pct = (c_rate / limit) * 100;
+
+  document.getElementById('cr-1c').textContent = c_1c.toFixed(2) + ' A';
+  document.getElementById('cr-load').textContent = c_rate.toFixed(2) + ' C (' + (peak).toFixed(1) + ' A)';
+  document.getElementById('cr-rating').textContent = limit.toFixed(0) + ' C ' + (mode === 'burst' ? 'burst' : 'continuous');
+  document.getElementById('cr-head').textContent = (head >= 0 ? '+' : '') + head.toFixed(2) + ' C headroom';
+
+  const bar = document.getElementById('cr-bar');
+  const label = document.getElementById('cr-barLabel');
+  const verdict = document.getElementById('cr-verdict');
+  bar.style.width = Math.min(100, pct).toFixed(1) + '%';
+  label.textContent = pct.toFixed(1) + '% of rating';
+  if(pct < 50){
+    bar.style.background = 'var(--accent3)';
+    verdict.style.color = 'var(--accent3)';
+    verdict.textContent = 'OK: pack has comfortable headroom. Cells will run cool.';
+  } else if(pct < 80){
+    bar.style.background = 'var(--accent2)';
+    verdict.style.color = 'var(--accent2)';
+    verdict.textContent = 'Acceptable: within rated burst but check sustained-temperature in your enclosure.';
+  } else if(pct <= 100){
+    bar.style.background = 'var(--warn)';
+    verdict.style.color = 'var(--warn)';
+    verdict.textContent = 'Tight: at or near the rated limit. Add a bigger pack or split into parallel cells. Watch for voltage sag and heating.';
+  } else {
+    bar.style.background = 'var(--warn)';
+    verdict.style.color = 'var(--warn)';
+    verdict.textContent = 'OVER LIMIT — pack will sag, heat, age fast, and possibly fail. Bigger capacity, more parallel cells, or different chemistry required.';
+  }
+}
+['cr-cap','cr-peak','cr-chem','cr-dur'].forEach(id => {
+  document.getElementById(id).addEventListener('input', crUpdate);
+});
+crUpdate();
+</script>
+</body>
+</html>

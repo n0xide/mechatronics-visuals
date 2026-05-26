@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CMRR Explorer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim);cursor:pointer}
+  .anchor:hover{border-color:var(--accent)}
+  .anchor.active{border-color:var(--accent);color:var(--accent)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:4px 8px;
+    font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid{stroke:var(--grid);stroke-width:0.5}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>CMRR Explorer</h1>
+  <p class="lede">A difference amplifier outputs V_out = A_d·(V+ − V−) — but only if its resistors match exactly. Real resistors have tolerance (typically ±1 %), and that mismatch lets common-mode signals (V+ ≈ V−, both swinging together) leak into the output. CMRR measures how badly: CMRR = A_d / A_cm. For a textbook diff-amp with 4 resistors at ±δ tolerance, CMRR ≈ (1+2R2/R1) / (4δ). Slide R1, R2, and the mismatch δ — and compare against the instrumentation amp (3-op-amp INA), which keeps high CMRR even with mediocre resistor tolerance.</p>
+
+  <div class="anchors">
+    <button class="anchor active" data-topology="diff"><b>Difference amp</b> · 4-R, sensitive to mismatch</button>
+    <button class="anchor" data-topology="ina"><b>3-op-amp INA</b> · gain in front, robust</button>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>R1 (input): <span class="readout" id="r1Read">10 kΩ</span></label><input id="r1" type="range" min="0.1" max="100" step="0.1" value="10"></div>
+    <div class="control"><label>R2 (feedback): <span class="readout" id="r2Read">100 kΩ</span></label><input id="r2" type="range" min="0.1" max="1000" step="0.1" value="100"></div>
+    <div class="control"><label>Resistor tolerance δ: <span class="readout" id="dRead">±1.0 %</span></label><input id="d" type="range" min="0.01" max="10" step="0.01" value="1"></div>
+    <div class="control"><label>V_cm (common-mode in): <span class="readout" id="vcmRead">1.0 V</span></label><input id="vcm" type="range" min="0" max="10" step="0.1" value="1"></div>
+    <div class="control"><label>V_diff (differential in mV): <span class="readout" id="vdRead">10 mV</span></label><input id="vd" type="range" min="0.1" max="500" step="0.1" value="10"></div>
+    <div class="control"><label>INA R_gain (kΩ): <span class="readout" id="rgRead">10 kΩ</span></label><input id="rg" type="range" min="0.1" max="100" step="0.1" value="10"></div>
+  </section>
+
+  <div class="figure">
+    <svg id="schem" viewBox="0 0 700 320" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+      <tr><td>Differential gain A_d</td><td id="tAd" class="num">10.0</td><td><code>diff: R2/R1; INA: 1 + 2R2/Rg, then ×1 in output stage</code></td></tr>
+      <tr><td>Common-mode gain A_cm</td><td id="tAcm" class="num">0.0010</td><td><code>diff: ~ (4δ)/(1+2R2/R1); INA: same back-end</code></td></tr>
+      <tr><td>CMRR (linear)</td><td id="tCmrrLin" class="num">10,000</td><td><code>A_d / A_cm</code></td></tr>
+      <tr><td>CMRR (dB)</td><td id="tCmrrDb" class="num">80 dB</td><td><code>20·log10(CMRR)</code></td></tr>
+      <tr><td>V_out (diff component)</td><td id="tVod" class="num">100 mV</td><td><code>A_d · V_diff</code></td></tr>
+      <tr><td>V_out (CM leakage)</td><td id="tVocm" class="num">1.0 mV</td><td><code>A_cm · V_cm</code></td></tr>
+      <tr><td>Total V_out</td><td id="tVo" class="num">101 mV</td><td><code>V_od + V_ocm</code></td></tr>
+      <tr><td>SNR error from CM</td><td id="tErr" class="num">1.0 %</td><td><code>|V_ocm| / |V_od|</code></td></tr>
+    </table>
+    <div class="vd"><b>Live CMRR derivation:</b> <span id="vdCalc">CMRR = (1 + 2·R2/R1) / (4δ) — for 4-R diff amp</span></div>
+  </div>
+
+  <h2>The ideal vs the real difference amplifier</h2>
+  <p>The standard difference amplifier uses 4 resistors, in two pairs: R1 (input) and R2 (feedback). The ideal output is V_out = (R2/R1)·(V+ − V−). The derivation assumes <em>perfect matching</em>: R1a = R1b, R2a = R2b. Reality: each resistor has tolerance δ, so their ratios differ by ~ 2δ.</p>
+  <div class="deriv">
+    <span class="step">Inverting input (V_-): KCL gives v_- = V+·R2/(R1+R2)  (after also setting v_+ via R2/(R1+R2) divider)</span>
+    <span class="step">If pairs match exactly: V_out = (R2/R1)·(V+ − V−). <b>A_cm = 0</b>, CMRR = ∞.</span>
+    <span class="step">If R1a = R1·(1+δ₁), R1b = R1·(1+δ₂), R2a = R2·(1+δ₃), R2b = R2·(1+δ₄): the V_+ and V_- divider ratios differ.</span>
+    <span class="step"><span class="arrow">→</span> Combined worst-case mismatch ≈ 4δ → <b>A_cm ≈ 4δ·R2/(R1·(1+R2/R1))</b></span>
+    <span class="step"><span class="arrow">→</span> <b>CMRR ≈ (1 + 2·R2/R1) / (4δ)</b> (one common parameterization)</span>
+    <span class="step">For R2/R1 = 10 (gain 10) and δ = 1 %: CMRR = 21/0.04 = 525 = 54 dB</span>
+    <span class="step">For 0.1 % resistors: CMRR = 525×10 = 5250 = 74 dB. Each 10× tolerance improvement = 20 dB more CMRR.</span>
+  </div>
+
+  <h2>Why the 3-op-amp INA is so much better</h2>
+  <p>The instrumentation amplifier (3-op-amp INA) is a difference amp <em>preceded</em> by a high-impedance input stage that delivers gain. Two op-amps (a buffer + amplifier configured as a long-tail pair via R_G) provide differential gain (1 + 2·R2/R_G), while passing common-mode through with unity gain. Then the back-end diff amp subtracts the common mode at its low (unity) gain. CMRR scales linearly with the front-end gain.</p>
+  <div class="deriv">
+    <span class="step">Front stage differential gain: <b>A_front = 1 + 2·R2/R_G</b></span>
+    <span class="step">Front stage common-mode gain: <b>A_cm_front = 1</b> (both buffers pass it through)</span>
+    <span class="step">Back-end diff amp: <b>A_back = R3/R3 = 1</b>; A_cm_back = (4δ·R3) / R3 ≈ 4δ (limited by tolerance)</span>
+    <span class="step">Total differential gain: <b>A_d = A_front · A_back = 1 + 2·R2/R_G</b></span>
+    <span class="step">Total CM gain: <b>A_cm_total = A_cm_back ≈ 4δ</b> (unchanged from back-end alone)</span>
+    <span class="step"><span class="arrow">→</span> <b>CMRR_INA = A_d / A_cm_total = (1 + 2·R2/R_G) / (4δ)</b></span>
+    <span class="step">Compare diff-amp CMRR ≈ (R2/R1)/(4δ): same denominator (4δ), but numerator scales with gain — high gain INAs get high CMRR for free.</span>
+    <span class="step">A 100× gain INA at 1 % resistors: CMRR = 201/0.04 = 5000 = 74 dB. Same R tolerance as the diff amp got 54 dB!</span>
+  </div>
+
+  <h2>Real CMRR of integrated INAs</h2>
+  <table>
+    <tr><th>Part</th><th>CMRR (min @ 60 Hz)</th><th>I_n_input</th><th>BW</th><th>Use</th></tr>
+    <tr><td>INA126</td><td class="num">100 dB</td><td>0.7 nA</td><td>200 kHz</td><td>medical electrodes</td></tr>
+    <tr><td>INA128</td><td class="num">120 dB</td><td>5 nA</td><td>1.3 MHz</td><td>general purpose</td></tr>
+    <tr><td>INA333</td><td class="num">115 dB</td><td>0.2 nA</td><td>150 kHz</td><td>low-power sensor</td></tr>
+    <tr><td>AD8221</td><td class="num">130 dB</td><td>0.4 nA</td><td>825 kHz</td><td>precision measurement</td></tr>
+    <tr><td>OPA627 (op-amp for comparison)</td><td class="num">120 dB (typ)</td><td>0.5 pA</td><td>16 MHz</td><td>generic, but no built-in INA</td></tr>
+  </table>
+  <p>Integrated INAs achieve 100–130 dB because the on-chip resistors are laser-trimmed to &lt; 0.01 % matching. Discrete INAs using 1 % resistors max out at ~50–60 dB even with a great op-amp.</p>
+
+  <h2>Worked example — ECG signal in a noisy lab</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>Human ECG signal: ±1 mV differential. Body acts as antenna for 60 Hz mains: ±1 V common-mode pickup. Signal-to-noise on differential: needs &lt; 1 % distortion.</p>
+    <h3>How much CMRR do we need?</h3>
+    <span class="eq">CM = 1 V; want CM leakage at output ≤ 1 % of 1 mV signal at output</span>
+    <span class="eq">Diff signal at output (gain 1000): 1000 · 1 mV = 1 V</span>
+    <span class="eq">Allowed CM leakage at output: 1 % of 1 V = 10 mV</span>
+    <span class="eq">CM at input = 1 V → max A_cm = 0.01 → CMRR ≥ 1000/0.01 = 100,000 = 100 dB</span>
+    <h3>Pick the part</h3>
+    <p>INA126 or AD8221 both deliver ≥ 100 dB at 60 Hz. A discrete diff amp with 1 % resistors would give only 50 dB — completely unusable for this signal. <b>This is why you do not build precision medical instrumentation with discrete op-amps.</b></p>
+  </div>
+
+  <h2>Worked example — strain gauge bridge</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>Wheatstone bridge with 350 Ω gauges, excitation 5 V. Common-mode at output of bridge: 2.5 V (mid-rail). Full-scale differential at output: ±10 mV. Need INA gain 200 to give ±2 V at output.</p>
+    <h3>CMRR requirement</h3>
+    <span class="eq">CM at INA input = 2.5 V; output CM with A_cm = 200/CMRR_lin</span>
+    <span class="eq">For 0.1 % accuracy on a 2 V output: CM leakage ≤ 2 mV at output</span>
+    <span class="eq">A_cm ≤ 0.002/2.5 = 0.0008 → CMRR ≥ 250,000 = 108 dB</span>
+    <span class="eq">INA128 (120 dB typ) does this easily; INA126 (100 dB min) just barely meets spec.</span>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>CMRR is a ratio, not an absolute number</b> — you can have 80 dB CMRR with gain 10 (A_cm = 0.001) or gain 100 (A_cm = 0.01). Both are 80 dB.</li>
+    <li><b>Tighter resistor tolerance helps proportionally</b>. 1 % → 0.1 % adds 20 dB. 0.1 % → 0.01 % adds another 20 dB. Beyond ±0.01 % becomes hard to find off-the-shelf.</li>
+    <li><b>Gain helps CMRR linearly</b> for the INA — every 2× gain adds 6 dB CMRR. For the simple diff amp, gain doesn't help: CMRR ≈ (1+2·R2/R1)/(4δ), so the numerator grows but A_d grows the same.</li>
+    <li><b>CMRR is frequency-dependent</b>. At DC: limited by R tolerance. At HF: limited by op-amp imperfect symmetry. Real INA datasheets specify CMRR(f). Above ~10 kHz, even an AD8221 drops to 80 dB.</li>
+    <li><b>Common-mode INPUT range matters too</b>. Even with infinite CMRR, the INA's V+ and V− pins must stay within the supply rails. ±10 V CM on a 5 V INA = overflow, garbage.</li>
+    <li><b>Capacitive imbalance is just as bad as resistive</b>. C-mismatch at the inputs degrades CMRR at HF even if R is perfect. INAs minimize this by trimming both R and C.</li>
+  </ul>
+
+  <h2>Where CMRR matters most</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Biomedical (ECG/EEG/EMG)</b> — body's 60 Hz pickup is enormous; CMRR ≥ 100 dB mandatory.</li>
+      <li><b style="color:var(--fg)">Industrial strain gauges</b> — bridge biased to mid-rail; mV signal at output.</li>
+      <li><b style="color:var(--fg)">High-side current sensing</b> — shunt at 48 V or higher rail; INA measures voltage across shunt despite huge CM.</li>
+      <li><b style="color:var(--fg)">Differential I/O</b> — RS-485, USB, HDMI; CMRR rejects ground-loop pickup between transmitter and receiver.</li>
+      <li><b style="color:var(--fg)">Long sensor cables</b> — capacitive pickup on a 10 m thermocouple cable is mostly common-mode; high CMRR receiver kills it.</li>
+      <li><b style="color:var(--fg)">Audio balanced lines</b> — XLR cables on a stage carry V_diff between pins 2 and 3; CMRR rejects hum from poor ground reference.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>CMRR_diff</dt><dd><span class="eq">(1+2R2/R1) / (4δ)</span></dd>
+        <dt>CMRR_INA</dt><dd><span class="eq">(1 + 2R2/Rg) / (4δ)</span></dd>
+        <dt>A_d INA</dt><dd><span class="eq">1 + 2R2/R_G</span></dd>
+        <dt>A_cm</dt><dd><span class="eq">A_d / CMRR_lin</span></dd>
+        <dt>V_out</dt><dd><span class="eq">A_d·V_diff + A_cm·V_cm</span></dd>
+        <dt>CMRR (dB)</dt><dd><span class="eq">20·log10(CMRR_lin)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>RULES OF THUMB</h3>
+      <ul>
+        <li><b>1 % resistors</b> → ~50 dB CMRR. <b>0.1 %</b> → ~70 dB. <b>0.01 %</b> → ~90 dB.</li>
+        <li>Integrated INAs achieve <b>100–130 dB</b> with laser-trimmed resistors.</li>
+        <li>Add <b>20 dB per gain decade</b> for INA (free CMRR boost).</li>
+        <li>CMRR drops at HF; use AC CMRR plot from datasheet.</li>
+        <li>Common-mode INPUT range must <b>respect rails</b>.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Using 5 % carbon resistors in a "precision" diff amp</b> → CMRR ≈ 40 dB. Mains noise dominates.</li>
+        <li><b>Mismatched cable capacitance</b> on the two input lines — kills HF CMRR even with perfect resistors.</li>
+        <li><b>Driving INA from high impedance source asymmetrically</b> → input bias-current effects create offset.</li>
+        <li><b>Ignoring CM input range</b> — INA still has DC swing limits inside its supply rails.</li>
+        <li><b>"Triboelectric" cable shake</b> in long cables → low-freq CM noise, often not specified.</li>
+        <li><b>Ground-fault loop</b> at the receiver — INA expects V_cm finite; rip ground reference, CM blows past limits.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EE Phase 4 — Semiconductors</span> ·
+    Companion: <a href="bjt-small-signal.html">BJT Small Signal</a> ·
+    Forward: <a href="../phase-7-signal-integrity-pcb/ground-bounce.html">Ground Bounce</a> for the ground-loop side of CM noise.
+  </footer>
+</main>
+<script>
+  let state = {
+    topology:"diff", R1:10000, R2:100000, delta:0.01, Vcm:1.0, Vdiff:0.01, Rg:10000,
+  };
+
+  function fmtR(r){
+    if (r >= 1e6) return (r/1e6).toFixed(2) + " MΩ";
+    if (r >= 1e3) return (r/1e3).toFixed(1) + " kΩ";
+    return r.toFixed(0) + " Ω";
+  }
+  function fmtV(v){
+    if (Math.abs(v) >= 1) return v.toFixed(3) + " V";
+    return (v*1000).toFixed(2) + " mV";
+  }
+
+  function compute(){
+    let A_d, A_cm, CMRR_lin, CMRR_dB;
+    if (state.topology === "diff"){
+      A_d = state.R2 / state.R1;
+      // Worst-case CM gain: ~4δ * R2/(R1+R2) for parameterized topology
+      A_cm = 4 * state.delta * A_d / (1 + A_d);
+      if (A_cm < 1e-12) A_cm = 1e-12;
+      CMRR_lin = Math.abs(A_d / A_cm);
+    } else {
+      // INA: front-stage gain (1 + 2R2/Rg), back-stage unity
+      const Af = 1 + 2*state.R2/state.Rg;
+      A_d = Af;
+      // Back-end CM-gain ≈ 4δ (back-end at unity gain), front passes CM with gain 1
+      A_cm = 4 * state.delta;
+      if (A_cm < 1e-12) A_cm = 1e-12;
+      CMRR_lin = Math.abs(A_d / A_cm);
+    }
+    CMRR_dB = 20 * Math.log10(CMRR_lin);
+    const V_od = A_d * state.Vdiff;
+    const V_ocm = A_cm * state.Vcm;
+    const V_o = V_od + V_ocm;
+    const err = V_od !== 0 ? Math.abs(V_ocm / V_od) : 0;
+    return {A_d, A_cm, CMRR_lin, CMRR_dB, V_od, V_ocm, V_o, err};
+  }
+
+  function drawDiff(){
+    const svg = document.getElementById('schem');
+    const r = compute();
+    let s = '';
+    s += `<rect x="0" y="0" width="700" height="320" fill="var(--bg-elev2)"/>`;
+    // Op-amp
+    const ox = 380, oy = 160;
+    s += `<polygon points="${ox},${oy-30} ${ox+70},${oy} ${ox},${oy+30}" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1.5"/>`;
+    s += `<text x="${ox+10}" y="${oy-13}" class="label">−</text>`;
+    s += `<text x="${ox+10}" y="${oy+17}" class="label">+</text>`;
+    // Output
+    s += `<line x1="${ox+73}" y1="${oy}" x2="${ox+130}" y2="${oy}" class="wire"/>`;
+    s += `<text x="${ox+135}" y="${oy-5}" class="label-ok">V_out</text>`;
+
+    // V+ input chain (top)
+    s += `<text x="80" y="80" class="label">V_+</text>`;
+    s += `<line x1="100" y1="100" x2="220" y2="100" class="wire"/>`;
+    // R1 (top input)
+    s += `<rect x="220" y="93" width="40" height="14" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1.5"/>`;
+    s += `<text x="240" y="85" class="label" text-anchor="middle">R1 = ${fmtR(state.R1)}</text>`;
+    s += `<line x1="260" y1="100" x2="${ox}" y2="100" class="wire"/>`;
+    s += `<line x1="${ox}" y1="100" x2="${ox}" y2="${oy+15}" class="wire"/>`;
+    // R2 to ground at non-inverting
+    s += `<line x1="${ox+15}" y1="${oy+15}" x2="${ox+15}" y2="${oy+50}" class="wire"/>`;
+    s += `<rect x="${ox+5}" y="${oy+50}" width="20" height="40" fill="var(--bg-elev)" stroke="var(--accent2)" stroke-width="1.5"/>`;
+    s += `<text x="${ox+35}" y="${oy+72}" class="label">R2 = ${fmtR(state.R2)}</text>`;
+    s += `<line x1="${ox+15}" y1="${oy+90}" x2="${ox+15}" y2="${oy+110}" class="wire"/>`;
+    // GND
+    s += `<line x1="${ox+5}" y1="${oy+110}" x2="${ox+25}" y2="${oy+110}" stroke="var(--fg)" stroke-width="1.5"/>`;
+    s += `<line x1="${ox+10}" y1="${oy+114}" x2="${ox+20}" y2="${oy+114}" stroke="var(--fg)" stroke-width="1"/>`;
+
+    // V- input chain (bottom)
+    s += `<text x="80" y="240" class="label">V_−</text>`;
+    s += `<line x1="100" y1="220" x2="220" y2="220" class="wire"/>`;
+    s += `<rect x="220" y="213" width="40" height="14" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1.5"/>`;
+    s += `<text x="240" y="245" class="label" text-anchor="middle">R1 = ${fmtR(state.R1)}</text>`;
+    s += `<line x1="260" y1="220" x2="350" y2="220" class="wire"/>`;
+    s += `<line x1="350" y1="220" x2="350" y2="${oy-15}" class="wire"/>`;
+    s += `<line x1="350" y1="${oy-15}" x2="${ox}" y2="${oy-15}" class="wire"/>`;
+    // R2 feedback
+    s += `<line x1="${ox+15}" y1="${oy-15}" x2="${ox+15}" y2="${oy-50}" class="wire"/>`;
+    s += `<line x1="${ox+15}" y1="${oy-50}" x2="${ox+85}" y2="${oy-50}" class="wire"/>`;
+    s += `<rect x="${ox+25}" y="${oy-57}" width="40" height="14" fill="var(--bg-elev)" stroke="var(--accent2)" stroke-width="1.5"/>`;
+    s += `<text x="${ox+45}" y="${oy-63}" class="label" text-anchor="middle">R2 = ${fmtR(state.R2)}</text>`;
+    s += `<line x1="${ox+85}" y1="${oy-50}" x2="${ox+85}" y2="${oy}" class="wire"/>`;
+    s += `<line x1="${ox+73}" y1="${oy}" x2="${ox+85}" y2="${oy}" class="wire"/>`;
+
+    // Mismatch indicator
+    if (state.delta > 0.001){
+      s += `<text x="80" y="40" class="label-warn">Mismatch δ = ±${(state.delta*100).toFixed(2)} % — CMRR ≈ ${r.CMRR_dB.toFixed(0)} dB</text>`;
+    } else {
+      s += `<text x="80" y="40" class="label-ok">Matched resistors (ideal) — CMRR → ∞</text>`;
+    }
+    s += `<text x="80" y="290" class="label-dim">DIFF AMP: A_d = R2/R1 = ${(state.R2/state.R1).toFixed(2)}; A_cm = ${r.A_cm.toExponential(2)}</text>`;
+    svg.innerHTML = s;
+  }
+
+  function drawINA(){
+    const svg = document.getElementById('schem');
+    const r = compute();
+    let s = '';
+    s += `<rect x="0" y="0" width="700" height="320" fill="var(--bg-elev2)"/>`;
+    // Three op-amps
+    // Top: V+ → A1
+    s += `<polygon points="200,40 270,70 200,100" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1.5"/>`;
+    s += `<text x="215" y="58" class="label">+</text>`;
+    s += `<text x="215" y="92" class="label">−</text>`;
+    s += `<text x="235" y="68" class="label-dim" text-anchor="middle">A1</text>`;
+    s += `<text x="100" y="58" class="label">V_+</text>`;
+    s += `<line x1="130" y1="55" x2="200" y2="55" class="wire"/>`;
+
+    // Bottom: V- → A2
+    s += `<polygon points="200,220 270,250 200,280" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1.5"/>`;
+    s += `<text x="215" y="238" class="label">+</text>`;
+    s += `<text x="215" y="272" class="label">−</text>`;
+    s += `<text x="235" y="248" class="label-dim" text-anchor="middle">A2</text>`;
+    s += `<text x="100" y="238" class="label">V_−</text>`;
+    s += `<line x1="130" y1="235" x2="200" y2="235" class="wire"/>`;
+
+    // R_G between the two amps (between the inverting inputs)
+    s += `<line x1="200" y1="90" x2="200" y2="130" class="wire"/>`;
+    s += `<line x1="200" y1="265" x2="200" y2="200" class="wire"/>`;
+    s += `<rect x="190" y="130" width="20" height="70" fill="var(--bg-elev)" stroke="var(--accent2)" stroke-width="1.5"/>`;
+    s += `<text x="170" y="165" class="label-warn" text-anchor="end">R_G = ${fmtR(state.Rg)}</text>`;
+
+    // Feedback R2 around A1 and A2
+    s += `<line x1="200" y1="90" x2="200" y2="115" class="wire"/>`;
+    s += `<line x1="200" y1="115" x2="285" y2="115" class="wire"/>`;
+    s += `<rect x="285" y="60" width="40" height="14" fill="var(--bg-elev)" stroke="var(--accent2)" stroke-width="1"/>`;
+    s += `<text x="305" y="55" class="label" text-anchor="middle">R2</text>`;
+    s += `<line x1="285" y1="115" x2="285" y2="67" class="wire"/>`;
+    s += `<line x1="325" y1="67" x2="325" y2="70" class="wire"/>`;
+    s += `<line x1="325" y1="70" x2="270" y2="70" class="wire"/>`;
+    // A2 feedback
+    s += `<line x1="200" y1="265" x2="285" y2="265" class="wire"/>`;
+    s += `<rect x="285" y="245" width="40" height="14" fill="var(--bg-elev)" stroke="var(--accent2)" stroke-width="1"/>`;
+    s += `<text x="305" y="285" class="label" text-anchor="middle">R2</text>`;
+    s += `<line x1="285" y1="265" x2="285" y2="252" class="wire"/>`;
+    s += `<line x1="325" y1="252" x2="325" y2="250" class="wire"/>`;
+    s += `<line x1="325" y1="250" x2="270" y2="250" class="wire"/>`;
+
+    // Outputs of A1, A2 → diff amp inputs
+    s += `<line x1="270" y1="70" x2="380" y2="70" class="wire"/>`;
+    s += `<line x1="270" y1="250" x2="380" y2="250" class="wire"/>`;
+
+    // Diff amp (A3)
+    const ox = 530, oy = 160;
+    s += `<polygon points="${ox-50},${oy-30} ${ox+30},${oy} ${ox-50},${oy+30}" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1.5"/>`;
+    s += `<text x="${ox-40}" y="${oy-13}" class="label">−</text>`;
+    s += `<text x="${ox-40}" y="${oy+17}" class="label">+</text>`;
+    s += `<text x="${ox-15}" y="${oy+5}" class="label-dim" text-anchor="middle">A3</text>`;
+    // R3 input pair
+    s += `<rect x="430" y="63" width="30" height="14" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1"/>`;
+    s += `<text x="445" y="55" class="label" text-anchor="middle">R3</text>`;
+    s += `<rect x="430" y="243" width="30" height="14" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1"/>`;
+    s += `<text x="445" y="265" class="label" text-anchor="middle">R3</text>`;
+    s += `<line x1="380" y1="70" x2="430" y2="70" class="wire"/>`;
+    s += `<line x1="460" y1="70" x2="${ox-50}" y2="70" class="wire"/>`;
+    s += `<line x1="${ox-50}" y1="70" x2="${ox-50}" y2="${oy-15}" class="wire"/>`;
+    s += `<line x1="380" y1="250" x2="430" y2="250" class="wire"/>`;
+    s += `<line x1="460" y1="250" x2="${ox-50}" y2="250" class="wire"/>`;
+    s += `<line x1="${ox-50}" y1="250" x2="${ox-50}" y2="${oy+15}" class="wire"/>`;
+    // Feedback R3
+    s += `<line x1="${ox-50}" y1="${oy-15}" x2="${ox-50}" y2="${oy-50}" class="wire"/>`;
+    s += `<line x1="${ox-50}" y1="${oy-50}" x2="${ox+50}" y2="${oy-50}" class="wire"/>`;
+    s += `<rect x="${ox-30}" y="${oy-57}" width="30" height="14" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1"/>`;
+    s += `<text x="${ox-15}" y="${oy-63}" class="label" text-anchor="middle">R3</text>`;
+    s += `<line x1="${ox+50}" y1="${oy-50}" x2="${ox+50}" y2="${oy}" class="wire"/>`;
+    // Bottom R3 to GND
+    s += `<line x1="${ox-50}" y1="${oy+15}" x2="${ox-50}" y2="${oy+50}" class="wire"/>`;
+    s += `<rect x="${ox-60}" y="${oy+50}" width="20" height="40" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1"/>`;
+    s += `<line x1="${ox-50}" y1="${oy+90}" x2="${ox-50}" y2="${oy+105}" class="wire"/>`;
+    s += `<line x1="${ox-60}" y1="${oy+105}" x2="${ox-40}" y2="${oy+105}" stroke="var(--fg)" stroke-width="1.5"/>`;
+
+    // Output
+    s += `<line x1="${ox+30}" y1="${oy}" x2="${ox+80}" y2="${oy}" class="wire"/>`;
+    s += `<text x="${ox+85}" y="${oy-5}" class="label-ok">V_out</text>`;
+
+    s += `<text x="80" y="35" class="label-ok">INA: gain ${r.A_d.toFixed(1)} (front) → CMRR ${r.CMRR_dB.toFixed(0)} dB at δ = ±${(state.delta*100).toFixed(2)} %</text>`;
+    s += `<text x="80" y="305" class="label-dim">A_d = 1 + 2·R2/R_G = ${r.A_d.toFixed(2)}; A_cm = ${r.A_cm.toExponential(2)}</text>`;
+    svg.innerHTML = s;
+  }
+
+  function update(){
+    document.getElementById('r1Read').textContent = fmtR(state.R1);
+    document.getElementById('r2Read').textContent = fmtR(state.R2);
+    document.getElementById('dRead').textContent = "±" + (state.delta*100).toFixed(2) + " %";
+    document.getElementById('vcmRead').textContent = state.Vcm.toFixed(2) + " V";
+    document.getElementById('vdRead').textContent = (state.Vdiff*1000).toFixed(1) + " mV";
+    document.getElementById('rgRead').textContent = fmtR(state.Rg);
+
+    const r = compute();
+    document.getElementById('tAd').textContent = r.A_d.toFixed(2);
+    document.getElementById('tAcm').textContent = r.A_cm.toExponential(2);
+    document.getElementById('tCmrrLin').textContent = r.CMRR_lin.toExponential(2);
+    document.getElementById('tCmrrDb').textContent = r.CMRR_dB.toFixed(1) + " dB";
+    document.getElementById('tVod').textContent = fmtV(r.V_od);
+    document.getElementById('tVocm').textContent = fmtV(r.V_ocm);
+    document.getElementById('tVo').textContent = fmtV(r.V_o);
+    document.getElementById('tErr').textContent = (r.err*100).toFixed(2) + " %";
+
+    if (state.topology === "diff"){
+      document.getElementById('vdCalc').textContent =
+        `(1 + 2·${(state.R2/state.R1).toFixed(2)}) / (4·${state.delta}) = ${r.CMRR_lin.toFixed(0)} = ${r.CMRR_dB.toFixed(1)} dB`;
+      drawDiff();
+    } else {
+      document.getElementById('vdCalc').textContent =
+        `(1 + 2·${(state.R2/state.Rg).toFixed(2)}) / (4·${state.delta}) = ${r.CMRR_lin.toFixed(0)} = ${r.CMRR_dB.toFixed(1)} dB`;
+      drawINA();
+    }
+  }
+
+  document.getElementById('r1').addEventListener('input', e => { state.R1 = parseFloat(e.target.value)*1000; update(); });
+  document.getElementById('r2').addEventListener('input', e => { state.R2 = parseFloat(e.target.value)*1000; update(); });
+  document.getElementById('d').addEventListener('input', e => { state.delta = parseFloat(e.target.value)/100; update(); });
+  document.getElementById('vcm').addEventListener('input', e => { state.Vcm = parseFloat(e.target.value); update(); });
+  document.getElementById('vd').addEventListener('input', e => { state.Vdiff = parseFloat(e.target.value)/1000; update(); });
+  document.getElementById('rg').addEventListener('input', e => { state.Rg = parseFloat(e.target.value)*1000; update(); });
+
+  document.querySelectorAll('.anchor').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.anchor').forEach(a => a.classList.remove('active'));
+      b.classList.add('active');
+      state.topology = b.dataset.topology;
+      update();
+    });
+  });
+
+  update();
+</script>
+</body>
+</html>

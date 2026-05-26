@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nodal Analysis Explorer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .matrix{background:var(--bg-elev2);border-radius:6px;padding:14px 16px;margin:10px 0;font:13px ui-monospace,monospace;color:var(--fg);overflow-x:auto;text-align:center}
+  .matrix .row{display:block;white-space:pre}
+  .matrix .accent{color:var(--accent)}
+  .duality{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+  .duality .col{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .duality .col h3{margin:0 0 8px;font-size:11px;text-transform:uppercase}
+  .duality .col.v h3{color:var(--accent)}
+  .duality .col.i h3{color:var(--accent2)}
+  .preset-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}
+  .preset-row button{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 10px;font:12px ui-monospace,Menlo,monospace;cursor:pointer}
+  .preset-row button:hover{border-color:var(--accent);color:var(--accent)}
+  .preset-row button.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .topo-tab{display:flex;gap:6px;margin:14px 0 8px}
+  .topo-tab button{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 14px;font:12px ui-monospace,Menlo,monospace;cursor:pointer}
+  .topo-tab button.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .key{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:middle;margin-right:4px}
+  @media (max-width:720px){.duality{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Nodal Analysis Explorer</h1>
+  <p class="lede">Nodal analysis is the systematic dual of mesh analysis: pick a reference node (ground), assign a voltage to every other node, and write one KCL equation per node. The result is a conductance-matrix equation <code>G·V = I</code> with the same "by inspection" structure as the mesh matrix — but built from conductances (1/R) and current sources instead of resistances and voltage sources. This is the technique SPICE actually uses internally (modified nodal analysis, MNA), and the one to reach for whenever current sources dominate or the circuit has many loops but few nodes (op-amp circuits, transistor amplifiers).</p>
+
+  <p>Three things to take away: (1) <b>node voltages are referenced to ground</b> — pick the ground node by convention (the largest plane, or the negative supply, or wherever your scope ground will clip), and every other node is "potential relative to that"; (2) the conductance matrix has a fixed pattern — <b>diagonal G[k][k] = sum of conductances touching node k</b>, <b>off-diagonal G[j][k] = negative of conductance between j and k</b>, <b>RHS I[k] = net current injected into node k</b>; (3) the dual table — voltage ↔ current, resistance ↔ conductance, mesh ↔ node, KVL ↔ KCL — turns nodal analysis into "mesh with the labels swapped," which is why both techniques are taught together.</p>
+
+  <div class="topo-tab" id="topoTab">
+    <button data-topo="2node" class="active">2-Node circuit</button>
+    <button data-topo="3node">3-Node circuit</button>
+  </div>
+
+  <section class="controls" id="ctrls">
+    <div class="control"><label>I1 (current into node 1): <span class="readout" id="i1Read">10 mA</span></label><input id="i1" type="range" min="-50" max="50" step="0.5" value="10"></div>
+    <div class="control"><label>I2 (current into node 2): <span class="readout" id="i2Read">5 mA</span></label><input id="i2" type="range" min="-50" max="50" step="0.5" value="5"></div>
+    <div class="control"><label>I3 (current into node 3): <span class="readout" id="i3Read">0 mA</span></label><input id="i3" type="range" min="-50" max="50" step="0.5" value="0"></div>
+    <div class="control"><label>R1 (node 1 ↔ gnd): <span class="readout" id="r1Read">100 Ω</span></label><input id="r1" type="range" min="10" max="2000" step="10" value="100"></div>
+    <div class="control"><label>R2 (node 1 ↔ node 2): <span class="readout" id="r2Read">220 Ω</span></label><input id="r2" type="range" min="10" max="2000" step="10" value="220"></div>
+    <div class="control"><label>R3 (node 2 ↔ gnd): <span class="readout" id="r3Read">330 Ω</span></label><input id="r3" type="range" min="10" max="2000" step="10" value="330"></div>
+    <div class="control"><label>R4 (node 2 ↔ node 3): <span class="readout" id="r4Read">470 Ω</span></label><input id="r4" type="range" min="10" max="2000" step="10" value="470"></div>
+    <div class="control"><label>R5 (node 3 ↔ gnd): <span class="readout" id="r5Read">680 Ω</span></label><input id="r5" type="range" min="10" max="2000" step="10" value="680"></div>
+  </section>
+
+  <div class="preset-row" id="presets">
+    <button data-p="textbook">Textbook 2-node</button>
+    <button data-p="opamp">Op-amp summing-style</button>
+    <button data-p="ladder">Resistor ladder (3-node)</button>
+    <button data-p="bridge">Bridge-like</button>
+    <button data-p="reset">Reset</button>
+  </div>
+
+  <div class="figure">
+    <svg id="circuit" viewBox="0 0 640 320" width="100%"></svg>
+    <h3 style="margin-top:14px">Matrix equation (by inspection)</h3>
+    <div class="matrix" id="matBox">…</div>
+    <table id="solnTbl">
+      <thead><tr><th>Node / Branch</th><th>Value</th><th>Reading</th></tr></thead>
+      <tbody id="solnBody"></tbody>
+    </table>
+    <div class="vd"><b>KCL check:</b> <span id="checkCalc">…</span></div>
+  </div>
+
+  <h2>The systematic procedure</h2>
+  <div class="deriv">
+    <span class="step">1.  Pick a <b>reference node</b> (call it ground, V = 0). Every other node gets a labeled voltage V_k.</span>
+    <span class="step">2.  For each non-reference node, write <b>KCL</b>: Σ currents leaving the node = Σ currents injected into the node.</span>
+    <span class="step">3.  Current through a resistor from node j to node k is <b>(V_j − V_k) / R</b> — flowing from j to k if V_j > V_k.</span>
+    <span class="step">4.  Stack into matrix form: <span class="arrow">→</span> <b>G · V = I</b>, where G is N×N (N = non-reference nodes), V is the column of node voltages, I is the column of injected currents.</span>
+    <span class="step">5.  Solve. Branch currents come from (V_j − V_k)/R afterwards.</span>
+  </div>
+
+  <h2>The "by inspection" pattern (no algebra needed)</h2>
+  <div class="deriv">
+    <span class="step"><b>G[k][k]</b> (diagonal): sum of <em>all</em> conductances touching node k (including resistors to ground). <span class="arrow">Always positive.</span></span>
+    <span class="step"><b>G[j][k]</b> (off-diagonal, j ≠ k): <em>negative</em> sum of conductances directly between j and k. <span class="arrow">Always non-positive. Zero if no direct R between them.</span></span>
+    <span class="step"><b>I[k]</b> (RHS): net current <em>flowing into</em> node k from external sources (current sources, or voltage-source–through–series-resistor converted via Norton).</span>
+    <span class="step"><b>Symmetric</b>: G[j][k] = G[k][j] for resistor-only networks. Same as mesh — symmetric matrices factor cheaply.</span>
+  </div>
+
+  <h2>Duality with mesh analysis</h2>
+  <p>Every mesh-analysis concept has a nodal counterpart. Memorize the table once and both techniques become mirrors of each other:</p>
+  <div class="duality">
+    <div class="col v">
+      <h3>Mesh (series loops)</h3>
+      <table>
+        <tr><th>Variable</th><td>Mesh current I_k (CW)</td></tr>
+        <tr><th>Reference</th><td>None — currents are loop variables</td></tr>
+        <tr><th>Equation</th><td>KVL: Σ voltages around the loop = 0</td></tr>
+        <tr><th>Matrix</th><td>R · I = V, units = ohms</td></tr>
+        <tr><th>Diagonal</th><td>+ sum of all R in mesh k</td></tr>
+        <tr><th>Off-diag</th><td>− R shared between meshes</td></tr>
+        <tr><th>RHS</th><td>Σ voltage sources pushing CW</td></tr>
+        <tr><th>Source preferred</th><td>Voltage source</td></tr>
+        <tr><th>Difficult case</th><td>Current source → supermesh</td></tr>
+      </table>
+    </div>
+    <div class="col i">
+      <h3>Nodal (shunt nodes)</h3>
+      <table>
+        <tr><th>Variable</th><td>Node voltage V_k (vs ground)</td></tr>
+        <tr><th>Reference</th><td>Ground node (V = 0)</td></tr>
+        <tr><th>Equation</th><td>KCL: Σ currents leaving the node = injected</td></tr>
+        <tr><th>Matrix</th><td>G · V = I, units = siemens</td></tr>
+        <tr><th>Diagonal</th><td>+ sum of all G touching node k</td></tr>
+        <tr><th>Off-diag</th><td>− G between nodes j and k</td></tr>
+        <tr><th>RHS</th><td>Net current injected into node</td></tr>
+        <tr><th>Source preferred</th><td>Current source</td></tr>
+        <tr><th>Difficult case</th><td>Voltage source → supernode</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h2>Worked example — 2-node circuit step-by-step</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>Two non-reference nodes connected to ground through resistors, and to each other through a middle resistor. Current sources inject I1 = 10 mA into node 1 and I2 = 5 mA into node 2. R1 = 100 Ω (node 1 → gnd), R2 = 220 Ω (node 1 → node 2), R3 = 330 Ω (node 2 → gnd).</p>
+
+    <h3>Write KCL at node 1</h3>
+    <span class="eq">Current leaving node 1 to ground (through R1):  V_1 / 100</span>
+    <span class="eq">Current leaving node 1 to node 2 (through R2):  (V_1 − V_2) / 220</span>
+    <span class="eq">Current injected: 0.010 A</span>
+    <span class="eq">KCL: V_1/100 + (V_1 − V_2)/220 = 0.010</span>
+    <span class="eq">Collect: <b>(1/100 + 1/220)·V_1 − (1/220)·V_2 = 0.010</b></span>
+    <span class="eq">In conductance: <b>(0.010 + 0.00455)·V_1 − 0.00455·V_2 = 0.010</b></span>
+
+    <h3>Write KCL at node 2</h3>
+    <span class="eq">Currents leaving node 2: through R2 toward node 1 (V_2 − V_1)/220, through R3 toward gnd V_2/330</span>
+    <span class="eq">KCL: (V_2 − V_1)/220 + V_2/330 = 0.005</span>
+    <span class="eq">Collect: <b>−(1/220)·V_1 + (1/220 + 1/330)·V_2 = 0.005</b></span>
+
+    <h3>Matrix form (G · V = I)</h3>
+    <span class="eq">[ 0.01455  −0.00455 ] [ V_1 ]   [ 0.010 ]</span>
+    <span class="eq">[ −0.00455  0.00758 ] [ V_2 ] = [ 0.005 ]</span>
+    <p>By inspection: G[1][1] = 1/R1 + 1/R2 = 0.01455 S. G[2][2] = 1/R2 + 1/R3 = 0.00758 S. G[1][2] = −1/R2 = −0.00455 S. <b>No algebra needed</b> — the matrix is read directly from the schematic.</p>
+
+    <h3>Solve</h3>
+    <span class="eq">det = 0.01455 · 0.00758 − (−0.00455)² = 1.103·10⁻⁴ − 2.07·10⁻⁵ = 8.96·10⁻⁵</span>
+    <span class="eq">V_1 = (0.010·0.00758 − (−0.00455)·0.005) / det = (7.58 + 2.275)·10⁻⁵ / 8.96·10⁻⁵ = <b>1.10 V</b></span>
+    <span class="eq">V_2 = (0.01455·0.005 − (−0.00455)·0.010) / det = (7.275 + 4.55)·10⁻⁵ / 8.96·10⁻⁵ = <b>1.32 V</b></span>
+
+    <h3>Recover branch currents</h3>
+    <span class="eq">I_R1 = V_1/100 = 11.0 mA  (node 1 → gnd)</span>
+    <span class="eq">I_R2 = (V_1 − V_2)/220 = (1.10 − 1.32)/220 = <b>−1.00 mA</b>  <span class="annot">(actually flowing node 2 → node 1)</span></span>
+    <span class="eq">I_R3 = V_2/330 = 4.00 mA  (node 2 → gnd)</span>
+    <span class="eq">Sanity: KCL at node 1: 10 mA in = 11 mA out R1 − 1 mA out R2 → 10 mA. ✓</span>
+  </div>
+
+  <h2>Worked example — 3-node ladder by inspection</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>3 nodes connected in series to ground through R1, R3, R5 (one shunt per node) and chained to each other by R2 and R4. I1 = 10 mA into node 1, I2 = 5 mA into node 2, I3 = 0 mA into node 3. R1 = 100, R2 = 200, R3 = 300, R4 = 400, R5 = 500.</p>
+
+    <h3>Matrix by inspection</h3>
+    <span class="eq">G[1][1] = 1/100 + 1/200 = 0.015 S  <span class="annot">(R1 and R2 touch node 1)</span></span>
+    <span class="eq">G[2][2] = 1/200 + 1/300 + 1/400 = 0.01083 S  <span class="annot">(R2, R3, R4 touch node 2)</span></span>
+    <span class="eq">G[3][3] = 1/400 + 1/500 = 0.0045 S  <span class="annot">(R4 and R5 touch node 3)</span></span>
+    <span class="eq">G[1][2] = G[2][1] = −1/200 = −0.005 S</span>
+    <span class="eq">G[1][3] = G[3][1] = 0  <span class="annot">(no direct R between nodes 1 and 3)</span></span>
+    <span class="eq">G[2][3] = G[3][2] = −1/400 = −0.0025 S</span>
+
+    <h3>Matrix</h3>
+    <span class="eq">[  0.01500  −0.00500   0.00000 ] [ V_1 ]   [ 0.010 ]</span>
+    <span class="eq">[ −0.00500   0.01083  −0.00250 ] [ V_2 ] = [ 0.005 ]</span>
+    <span class="eq">[  0.00000  −0.00250   0.00450 ] [ V_3 ]   [ 0.000 ]</span>
+    <span class="eq">Solve → V_1 ≈ 0.95 V, V_2 ≈ 0.85 V, V_3 ≈ 0.47 V  <span class="annot">(use the explorer above to verify with sliders)</span></span>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Set the reference smartly.</b> The "ground" node is just a label — you can pick any node. Choose the one with the most connections (largest plane in a real layout), the most resistors going to ground, or the node whose voltage you don't need. Smaller matrix, fewer unknowns.</li>
+    <li><b>Negative node voltages are fine.</b> If a current source pulls current <em>out</em> of a node (negative injection), the node voltage goes negative. This is the dual of "voltage source reversed → mesh current reverses."</li>
+    <li><b>Branch current sign tells you direction.</b> Compute I_branch = (V_high − V_low) / R using your node labels. If you get a negative number, the actual flow is the other direction. Don't second-guess — let the algebra carry the sign.</li>
+    <li><b>Conductance form is "more natural" for nodal.</b> Nodal analysis lives in conductance space (G = 1/R, units siemens) the way mesh lives in resistance space. Datasheets sometimes give Y-parameters (admittance) directly because they're the nodal-matrix entries for a black box.</li>
+    <li><b>Op-amps love nodal.</b> An ideal op-amp enforces V+ = V− (virtual short) — that's just a constraint between two nodes, naturally fitting into the nodal equations. Mesh analysis with op-amps is awkward because the loop currents depend on the supply rails.</li>
+    <li><b>Voltage source between two non-reference nodes</b> → supernode. You merge the two nodes into one and add the constraint V_j − V_k = V_source. This explorer keeps to current-source-only circuits for clarity, but the technique generalizes.</li>
+  </ul>
+
+  <h2>Where you'll see this technique</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">SPICE / LTspice internals</b> — every simulator solves G·V = I (with extra rows for inductors/voltage sources). This is modified nodal analysis (MNA).</li>
+      <li><b style="color:var(--fg)">Op-amp circuit hand analysis</b> — golden rules + KCL at the summing junction = closed-form gain.</li>
+      <li><b style="color:var(--fg)">Power-distribution networks (PDN)</b> — DC IR-drop analysis on a power plane is exactly nodal analysis on a 2D resistor mesh.</li>
+      <li><b style="color:var(--fg)">Transistor small-signal models</b> — hybrid-π is naturally drawn as nodal admittances.</li>
+      <li><b style="color:var(--fg)">FEA / heat-flow analogues</b> — node voltage ↔ temperature, current ↔ heat flux, conductance ↔ thermal conductance. Same matrix, different units.</li>
+      <li><b style="color:var(--fg)">Cross-link:</b> see <a href="mesh-analysis.html">Mesh Analysis Explorer</a> for the dual technique, and <a href="source-transformations.html">Source Transformations</a> for the bridge that lets you switch between them.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>System</dt><dd><span class="eq">G · V = I</span></dd>
+        <dt>Diagonal</dt><dd><span class="eq">G[k][k] = Σ G touching node k</span></dd>
+        <dt>Off-diag</dt><dd><span class="eq">G[j][k] = − G_between(j,k)</span></dd>
+        <dt>RHS</dt><dd><span class="eq">I[k] = injected into k</span></dd>
+        <dt>Branch I</dt><dd><span class="eq">I_jk = (V_j − V_k) / R_jk</span></dd>
+        <dt>Conductance</dt><dd><span class="eq">G = 1 / R, in siemens (S)</span></dd>
+        <dt>2x2 det</dt><dd><span class="eq">det = ad − bc</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>PROCEDURE</h3>
+      <ul>
+        <li>Pick the <b>ground</b> node (V=0).</li>
+        <li>Label every other node V_k.</li>
+        <li><b>Diagonal</b> = Σ conductances at node.</li>
+        <li><b>Off-diag</b> = −G between nodes.</li>
+        <li><b>RHS</b> = net current injected.</li>
+        <li>Solve, then branch I = ΔV/R.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Forgetting the minus on off-diagonals.</b> Conductance between nodes goes in with a negative sign.</li>
+        <li><b>Mixing R and G in the same matrix.</b> Stay in conductance throughout; convert once at the end if needed.</li>
+        <li><b>Voltage source between two non-ground nodes</b> → use a supernode (merge them, add a constraint).</li>
+        <li><b>Sign of injected current</b> — pulling current out is negative injection. Easy to flip.</li>
+        <li><b>Op-amp output as a node</b> — yes, it's a node, but the op-amp's <em>output stage</em> sources/sinks current to maintain V+ = V−, so it acts like an ideal voltage source. Use a supernode or substitute the virtual-short constraint.</li>
+        <li><b>Floating sub-network</b> — if a sub-circuit has no DC path to ground, its node voltage is undefined. Always sanity check.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 1 — DC Circuit Foundations</a> ·
+    Dual: <a href="mesh-analysis.html">Mesh Analysis Explorer</a> ·
+    Forward: <a href="source-transformations.html">Source Transformations</a>
+  </footer>
+</main>
+<script>
+  const els = {};
+  ['i1','i2','i3','r1','r2','r3','r4','r5'].forEach(k => els[k] = document.getElementById(k));
+  let topo = '2node';
+  function fmtV(v){
+    if(Math.abs(v) < 1e-3) return (v*1e6).toFixed(1)+' µV';
+    if(Math.abs(v) < 1)    return (v*1e3).toFixed(2)+' mV';
+    return v.toFixed(3)+' V';
+  }
+  function fmtI(i){
+    if(Math.abs(i) < 1e-3) return (i*1e6).toFixed(1)+' µA';
+    if(Math.abs(i) < 1)    return (i*1e3).toFixed(2)+' mA';
+    return i.toFixed(3)+' A';
+  }
+  function fmtR(r){
+    if(r >= 1e3) return (r/1e3).toFixed(2)+' kΩ';
+    return r.toFixed(0)+' Ω';
+  }
+  function fmtG(g){
+    if(g >= 1) return g.toFixed(3)+' S';
+    if(g >= 1e-3) return (g*1e3).toFixed(3)+' mS';
+    return (g*1e6).toFixed(1)+' µS';
+  }
+  function solve2(a,b,c,d,e,f){
+    const det = a*d - b*c;
+    if(Math.abs(det) < 1e-18) return [0,0];
+    return [(e*d - b*f)/det, (a*f - e*c)/det];
+  }
+  function solve3(M, V){
+    function det3(m){
+      return m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])
+           - m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])
+           + m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+    }
+    const D = det3(M);
+    if(Math.abs(D) < 1e-18) return [0,0,0];
+    const out = [];
+    for(let k=0; k<3; k++){
+      const Mk = M.map(r => r.slice());
+      for(let i=0; i<3; i++) Mk[i][k] = V[i];
+      out.push(det3(Mk)/D);
+    }
+    return out;
+  }
+
+  function resistor(cx, cy, dir, label, R, color){
+    let s = '';
+    if(dir === 'h'){
+      s += `<rect x="${cx-26}" y="${cy-7}" width="52" height="14" fill="var(--bg-elev2)" stroke="${color}" stroke-width="1.4"/>`;
+      s += `<text x="${cx}" y="${cy-12}" class="label" text-anchor="middle" fill="${color}">${label}</text>`;
+      s += `<text x="${cx}" y="${cy+22}" class="label-dim" text-anchor="middle">${fmtR(R)}</text>`;
+    } else {
+      s += `<rect x="${cx-7}" y="${cy-26}" width="14" height="52" fill="var(--bg-elev2)" stroke="${color}" stroke-width="1.4"/>`;
+      s += `<text x="${cx+12}" y="${cy+4}" class="label" fill="${color}">${label}</text>`;
+      s += `<text x="${cx-12}" y="${cy+4}" class="label-dim" text-anchor="end">${fmtR(R)}</text>`;
+    }
+    return s;
+  }
+  function isource(cx, cy, label, I, color){
+    let s = '';
+    s += `<circle cx="${cx}" cy="${cy}" r="14" fill="var(--bg-elev2)" stroke="${color}" stroke-width="1.4"/>`;
+    s += `<line x1="${cx}" y1="${cy+6}" x2="${cx}" y2="${cy-4}" stroke="${color}" stroke-width="1.5"/>`;
+    s += `<polygon points="${cx-3},${cy-2} ${cx+3},${cy-2} ${cx},${cy-8}" fill="${color}"/>`;
+    s += `<text x="${cx-22}" y="${cy+4}" class="label-dim" text-anchor="end">${label} ${fmtI(I)}</text>`;
+    return s;
+  }
+  function nodeDot(cx, cy, label, V, color){
+    let s = '';
+    s += `<circle cx="${cx}" cy="${cy}" r="4" fill="${color}"/>`;
+    s += `<text x="${cx-4}" y="${cy-12}" class="label" fill="${color}">${label}</text>`;
+    s += `<text x="${cx-4}" y="${cy-26}" class="label-dim">${fmtV(V)}</text>`;
+    return s;
+  }
+  function gnd(cx, cy){
+    let s = '';
+    s += `<line x1="${cx}" y1="${cy}" x2="${cx}" y2="${cy+10}" class="wire"/>`;
+    s += `<line x1="${cx-12}" y1="${cy+10}" x2="${cx+12}" y2="${cy+10}" class="wire"/>`;
+    s += `<line x1="${cx-8}" y1="${cy+15}" x2="${cx+8}" y2="${cy+15}" class="wire"/>`;
+    s += `<line x1="${cx-4}" y1="${cy+20}" x2="${cx+4}" y2="${cy+20}" class="wire"/>`;
+    return s;
+  }
+
+  function drawCircuit2(V1, V2, R){
+    const svg = document.getElementById('circuit');
+    svg.setAttribute('viewBox','0 0 640 320');
+    let s = '';
+    // node positions
+    const N1x=180, N2x=460, Ny=100;
+    const Gy=240;
+    // ground rail
+    s += `<line x1="60" y1="${Gy}" x2="580" y2="${Gy}" class="wire"/>`;
+    // node 1 wire to ground via R1
+    s += `<line x1="${N1x}" y1="${Ny}" x2="${N1x}" y2="${Ny+22}" class="wire"/>`;
+    s += resistor(N1x, Ny+50, 'v', 'R1', R.R1, '#5ec8ff');
+    s += `<line x1="${N1x}" y1="${Ny+76}" x2="${N1x}" y2="${Gy}" class="wire"/>`;
+    // node 2 wire to ground via R3
+    s += `<line x1="${N2x}" y1="${Ny}" x2="${N2x}" y2="${Ny+22}" class="wire"/>`;
+    s += resistor(N2x, Ny+50, 'v', 'R3', R.R3, '#ffb86c');
+    s += `<line x1="${N2x}" y1="${Ny+76}" x2="${N2x}" y2="${Gy}" class="wire"/>`;
+    // R2 connecting node 1 to node 2 horizontally
+    s += `<line x1="${N1x}" y1="${Ny}" x2="${(N1x+N2x)/2 - 26}" y2="${Ny}" class="wire"/>`;
+    s += resistor((N1x+N2x)/2, Ny, 'h', 'R2', R.R2, '#a3e635');
+    s += `<line x1="${(N1x+N2x)/2 + 26}" y1="${Ny}" x2="${N2x}" y2="${Ny}" class="wire"/>`;
+    // current sources injecting from ground rail to nodes
+    s += isource(N1x - 60, Ny - 30, 'I1', R.I1, '#5ec8ff');
+    s += `<line x1="${N1x-60}" y1="${Ny-30+14}" x2="${N1x-60}" y2="${Gy-2}" class="wire" style="opacity:0.6"/>`;
+    s += `<line x1="${N1x-60}" y1="${Ny-30-14}" x2="${N1x-60}" y2="${Ny - 30 - 24}" class="wire" style="opacity:0.6"/>`;
+    s += `<line x1="${N1x-60}" y1="${Ny - 30 - 24}" x2="${N1x}" y2="${Ny - 30 - 24}" class="wire" style="opacity:0.6"/>`;
+    s += `<line x1="${N1x}" y1="${Ny - 30 - 24}" x2="${N1x}" y2="${Ny}" class="wire" style="opacity:0.6"/>`;
+    s += isource(N2x + 60, Ny - 30, 'I2', R.I2, '#ffb86c');
+    s += `<line x1="${N2x+60}" y1="${Ny-30+14}" x2="${N2x+60}" y2="${Gy-2}" class="wire" style="opacity:0.6"/>`;
+    s += `<line x1="${N2x+60}" y1="${Ny-30-14}" x2="${N2x+60}" y2="${Ny - 30 - 24}" class="wire" style="opacity:0.6"/>`;
+    s += `<line x1="${N2x+60}" y1="${Ny - 30 - 24}" x2="${N2x}" y2="${Ny - 30 - 24}" class="wire" style="opacity:0.6"/>`;
+    s += `<line x1="${N2x}" y1="${Ny - 30 - 24}" x2="${N2x}" y2="${Ny}" class="wire" style="opacity:0.6"/>`;
+    // node dots + labels
+    s += nodeDot(N1x, Ny, 'V_1', V1, '#5ec8ff');
+    s += nodeDot(N2x, Ny, 'V_2', V2, '#ffb86c');
+    s += gnd(320, Gy);
+    s += `<text x="345" y="${Gy + 14}" class="label-dim">GND</text>`;
+    svg.innerHTML = s;
+  }
+
+  function drawCircuit3(V1, V2, V3, R){
+    const svg = document.getElementById('circuit');
+    svg.setAttribute('viewBox','0 0 720 320');
+    let s = '';
+    const N1x=140, N2x=360, N3x=580, Ny=100;
+    const Gy=240;
+    s += `<line x1="60" y1="${Gy}" x2="660" y2="${Gy}" class="wire"/>`;
+    // shunts
+    s += `<line x1="${N1x}" y1="${Ny}" x2="${N1x}" y2="${Ny+22}" class="wire"/>`;
+    s += resistor(N1x, Ny+50, 'v', 'R1', R.R1, '#5ec8ff');
+    s += `<line x1="${N1x}" y1="${Ny+76}" x2="${N1x}" y2="${Gy}" class="wire"/>`;
+    s += `<line x1="${N2x}" y1="${Ny}" x2="${N2x}" y2="${Ny+22}" class="wire"/>`;
+    s += resistor(N2x, Ny+50, 'v', 'R3', R.R3, '#ffb86c');
+    s += `<line x1="${N2x}" y1="${Ny+76}" x2="${N2x}" y2="${Gy}" class="wire"/>`;
+    s += `<line x1="${N3x}" y1="${Ny}" x2="${N3x}" y2="${Ny+22}" class="wire"/>`;
+    s += resistor(N3x, Ny+50, 'v', 'R5', R.R5, '#a3e635');
+    s += `<line x1="${N3x}" y1="${Ny+76}" x2="${N3x}" y2="${Gy}" class="wire"/>`;
+    // series R2 and R4
+    s += `<line x1="${N1x}" y1="${Ny}" x2="${(N1x+N2x)/2 - 26}" y2="${Ny}" class="wire"/>`;
+    s += resistor((N1x+N2x)/2, Ny, 'h', 'R2', R.R2, '#c084fc');
+    s += `<line x1="${(N1x+N2x)/2 + 26}" y1="${Ny}" x2="${N2x}" y2="${Ny}" class="wire"/>`;
+    s += `<line x1="${N2x}" y1="${Ny}" x2="${(N2x+N3x)/2 - 26}" y2="${Ny}" class="wire"/>`;
+    s += resistor((N2x+N3x)/2, Ny, 'h', 'R4', R.R4, '#c084fc');
+    s += `<line x1="${(N2x+N3x)/2 + 26}" y1="${Ny}" x2="${N3x}" y2="${Ny}" class="wire"/>`;
+    s += nodeDot(N1x, Ny, 'V_1', V1, '#5ec8ff');
+    s += nodeDot(N2x, Ny, 'V_2', V2, '#ffb86c');
+    s += nodeDot(N3x, Ny, 'V_3', V3, '#a3e635');
+    s += gnd(360, Gy);
+    s += `<text x="385" y="${Gy + 14}" class="label-dim">GND</text>`;
+    // injection labels above each node
+    s += `<text x="${N1x}" y="${Ny - 40}" class="label-dim" text-anchor="middle">I1 = ${fmtI(R.I1)}</text>`;
+    s += `<text x="${N2x}" y="${Ny - 40}" class="label-dim" text-anchor="middle">I2 = ${fmtI(R.I2)}</text>`;
+    s += `<text x="${N3x}" y="${Ny - 40}" class="label-dim" text-anchor="middle">I3 = ${fmtI(R.I3)}</text>`;
+    svg.innerHTML = s;
+  }
+
+  function update(){
+    const I1 = parseFloat(els.i1.value)/1000;
+    const I2 = parseFloat(els.i2.value)/1000;
+    const I3 = parseFloat(els.i3.value)/1000;
+    const R1 = parseFloat(els.r1.value);
+    const R2 = parseFloat(els.r2.value);
+    const R3 = parseFloat(els.r3.value);
+    const R4 = parseFloat(els.r4.value);
+    const R5 = parseFloat(els.r5.value);
+    document.getElementById('i1Read').textContent = fmtI(I1);
+    document.getElementById('i2Read').textContent = fmtI(I2);
+    document.getElementById('i3Read').textContent = fmtI(I3);
+    document.getElementById('r1Read').textContent = fmtR(R1);
+    document.getElementById('r2Read').textContent = fmtR(R2);
+    document.getElementById('r3Read').textContent = fmtR(R3);
+    document.getElementById('r4Read').textContent = fmtR(R4);
+    document.getElementById('r5Read').textContent = fmtR(R5);
+    const matBox = document.getElementById('matBox');
+    const body = document.getElementById('solnBody');
+    const chk = document.getElementById('checkCalc');
+    if(topo === '2node'){
+      const G11 = 1/R1 + 1/R2;
+      const G22 = 1/R2 + 1/R3;
+      const Goff = -1/R2;
+      const [V1, V2] = solve2(G11, Goff, Goff, G22, I1, I2);
+      matBox.innerHTML =
+        `<span class="row"><span class="accent">[ ${fmtG(G11).padStart(10)}  ${fmtG(Goff).padStart(10)} ]</span>   [ V_1 ]     [ ${fmtI(I1).padStart(10)} ]</span>` +
+        `<span class="row"><span class="accent">[ ${fmtG(Goff).padStart(10)}  ${fmtG(G22).padStart(10)} ]</span> · [ V_2 ]  =  [ ${fmtI(I2).padStart(10)} ]</span>` +
+        `<span class="row" style="margin-top:8px;color:var(--accent3)">V_1 = ${fmtV(V1)}    V_2 = ${fmtV(V2)}</span>`;
+      const IR1 = V1/R1, IR2 = (V1-V2)/R2, IR3 = V2/R3;
+      body.innerHTML =
+        `<tr><td><span class="key" style="background:#5ec8ff"></span>Node 1</td><td class="num" style="color:#5ec8ff">${fmtV(V1)}</td><td>vs ground</td></tr>` +
+        `<tr><td><span class="key" style="background:#ffb86c"></span>Node 2</td><td class="num" style="color:#ffb86c">${fmtV(V2)}</td><td>vs ground</td></tr>` +
+        `<tr><td>I_R1 (node 1 → gnd)</td><td class="num">${fmtI(IR1)}</td><td>= V_1 / R1</td></tr>` +
+        `<tr><td>I_R2 (node 1 → node 2)</td><td class="num">${fmtI(IR2)}</td><td>= (V_1 − V_2) / R2</td></tr>` +
+        `<tr><td>I_R3 (node 2 → gnd)</td><td class="num">${fmtI(IR3)}</td><td>= V_2 / R3</td></tr>`;
+      const kclN1 = I1 - IR1 - IR2;
+      const kclN2 = I2 + IR2 - IR3;
+      chk.innerHTML = `KCL @ node 1 residual = ${fmtI(kclN1)} · KCL @ node 2 residual = ${fmtI(kclN2)} (should be ≈ 0)`;
+      drawCircuit2(V1, V2, {I1,I2,R1,R2,R3});
+    } else {
+      const G = [
+        [1/R1 + 1/R2, -1/R2, 0],
+        [-1/R2, 1/R2 + 1/R3 + 1/R4, -1/R4],
+        [0, -1/R4, 1/R4 + 1/R5]
+      ];
+      const [V1, V2, V3] = solve3(G, [I1, I2, I3]);
+      matBox.innerHTML =
+        `<span class="row"><span class="accent">[ ${fmtG(G[0][0]).padStart(10)}  ${fmtG(G[0][1]).padStart(10)}  ${fmtG(G[0][2]).padStart(10)} ]</span>   [ V_1 ]     [ ${fmtI(I1).padStart(10)} ]</span>` +
+        `<span class="row"><span class="accent">[ ${fmtG(G[1][0]).padStart(10)}  ${fmtG(G[1][1]).padStart(10)}  ${fmtG(G[1][2]).padStart(10)} ]</span> · [ V_2 ]  =  [ ${fmtI(I2).padStart(10)} ]</span>` +
+        `<span class="row"><span class="accent">[ ${fmtG(G[2][0]).padStart(10)}  ${fmtG(G[2][1]).padStart(10)}  ${fmtG(G[2][2]).padStart(10)} ]</span>   [ V_3 ]     [ ${fmtI(I3).padStart(10)} ]</span>` +
+        `<span class="row" style="margin-top:8px;color:var(--accent3)">V_1 = ${fmtV(V1)}    V_2 = ${fmtV(V2)}    V_3 = ${fmtV(V3)}</span>`;
+      const IR1 = V1/R1, IR3 = V2/R3, IR5 = V3/R5;
+      const IR2 = (V1-V2)/R2, IR4 = (V2-V3)/R4;
+      body.innerHTML =
+        `<tr><td><span class="key" style="background:#5ec8ff"></span>Node 1</td><td class="num" style="color:#5ec8ff">${fmtV(V1)}</td><td>vs ground</td></tr>` +
+        `<tr><td><span class="key" style="background:#ffb86c"></span>Node 2</td><td class="num" style="color:#ffb86c">${fmtV(V2)}</td><td>vs ground</td></tr>` +
+        `<tr><td><span class="key" style="background:#a3e635"></span>Node 3</td><td class="num" style="color:#a3e635">${fmtV(V3)}</td><td>vs ground</td></tr>` +
+        `<tr><td>I_R1 (N1 → gnd)</td><td class="num">${fmtI(IR1)}</td><td>= V_1 / R1</td></tr>` +
+        `<tr><td>I_R2 (N1 → N2)</td><td class="num">${fmtI(IR2)}</td><td>= (V_1 − V_2) / R2</td></tr>` +
+        `<tr><td>I_R3 (N2 → gnd)</td><td class="num">${fmtI(IR3)}</td><td>= V_2 / R3</td></tr>` +
+        `<tr><td>I_R4 (N2 → N3)</td><td class="num">${fmtI(IR4)}</td><td>= (V_2 − V_3) / R4</td></tr>` +
+        `<tr><td>I_R5 (N3 → gnd)</td><td class="num">${fmtI(IR5)}</td><td>= V_3 / R5</td></tr>`;
+      const res1 = I1 - IR1 - IR2;
+      const res2 = I2 + IR2 - IR3 - IR4;
+      const res3 = I3 + IR4 - IR5;
+      chk.innerHTML = `KCL residuals: N1 = ${fmtI(res1)} · N2 = ${fmtI(res2)} · N3 = ${fmtI(res3)} (all ≈ 0)`;
+      drawCircuit3(V1, V2, V3, {I1,I2,I3,R1,R2,R3,R4,R5});
+    }
+  }
+
+  function applyPreset(p){
+    const cfg = {
+      textbook: {i1:10, i2:5, i3:0, r1:100, r2:220, r3:330, r4:470, r5:680, topo:'2node'},
+      opamp:    {i1:5,  i2:5, i3:0, r1:1000, r2:10000, r3:1000, r4:10000, r5:1000, topo:'2node'},
+      ladder:   {i1:5,  i2:5, i3:5, r1:200, r2:100, r3:200, r4:100, r5:200, topo:'3node'},
+      bridge:   {i1:10, i2:-10, i3:0, r1:100, r2:100, r3:100, r4:100, r5:100, topo:'3node'},
+      reset:    {i1:10, i2:5, i3:0, r1:100, r2:220, r3:330, r4:470, r5:680, topo:'2node'}
+    }[p];
+    if(!cfg) return;
+    ['i1','i2','i3','r1','r2','r3','r4','r5'].forEach(k => els[k].value = cfg[k]);
+    setTopo(cfg.topo);
+    document.querySelectorAll('#presets button').forEach(b => b.classList.toggle('active', b.dataset.p === p));
+    update();
+  }
+  function setTopo(t){
+    topo = t;
+    document.querySelectorAll('#topoTab button').forEach(b => b.classList.toggle('active', b.dataset.topo === t));
+    const show = (t === '3node');
+    document.getElementById('r4').parentElement.style.opacity = show ? '1' : '0.35';
+    document.getElementById('r5').parentElement.style.opacity = show ? '1' : '0.35';
+    document.getElementById('i3').parentElement.style.opacity = show ? '1' : '0.35';
+  }
+  Object.values(els).forEach(el => el.addEventListener('input', update));
+  document.querySelectorAll('#topoTab button').forEach(b => b.addEventListener('click', () => { setTopo(b.dataset.topo); update(); }));
+  document.querySelectorAll('#presets button').forEach(b => b.addEventListener('click', () => applyPreset(b.dataset.p)));
+  setTopo('2node');
+  update();
+</script>
+</body>
+</html>

@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Creep &amp; Relaxation &mdash; visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .grid-line{stroke:var(--grid);stroke-width:1;stroke-dasharray:3 3}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2)}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>Creep &amp; Stress Relaxation &mdash; slow strain under constant load</h1>
+  <p class="lede">Apply a constant load to a polymer, soft metal, or hot ceramic, and the strain keeps growing for hours, days, or years. That is <b>creep</b>. Fix the strain (eg. tighten a bolt) and the stress drops over time as the material flows; that is <b>stress relaxation</b>. For thermoplastic mechanical parts &mdash; printed brackets, 3D-printed jigs, plastic gears, polymer-housed bolted joints &mdash; creep is the dominant long-term failure mode and the reason every M3 screw into a heat-set insert needs re-torquing after a thermal cycle.</p>
+
+  <div class="anchors">
+    <span class="anchor"><b>PLA</b> creeps at room T (T_g 60&deg;C)</span>
+    <span class="anchor"><b>PEEK</b> stable below 250&deg;C</span>
+    <span class="anchor"><b>Bolted PA preload</b> drops 30&ndash;50 % in 24 h</span>
+    <span class="anchor"><b>T/T_m &gt; 0.4</b> &rarr; metal creep regime</span>
+    <span class="anchor"><b>Activation energy Q_c</b> &mdash; Arrhenius creep rate</span>
+    <span class="anchor"><b>Larson&ndash;Miller parameter</b> for life prediction</span>
+  </div>
+
+  <h2>The three creep regimes &mdash; primary, secondary, tertiary</h2>
+  <p>Plot strain vs. time at constant load and temperature. Three regions appear in order:</p>
+
+  <div class="figure">
+    <svg id="creepCurve" viewBox="0 0 720 360"></svg>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>Stress &sigma; (MPa): <span class="readout" id="sigRead">10 MPa</span></label>
+      <input id="sig" type="range" min="1" max="50" step="1" value="10"></div>
+    <div class="control"><label>Temperature: <span class="readout" id="tRead">25 &deg;C</span></label>
+      <input id="t" type="range" min="-20" max="200" step="5" value="25"></div>
+    <div class="control"><label>Material: <span class="readout" id="matRead">PA12 nylon</span></label>
+      <select id="mat">
+        <option value="pla">PLA (Tg 60&deg;C)</option>
+        <option value="petg">PETG (Tg 80&deg;C)</option>
+        <option value="abs">ABS (Tg 105&deg;C)</option>
+        <option value="pa12" selected>PA12 / nylon (Tg 50&deg;C)</option>
+        <option value="pcblend">PC blend (Tg 140&deg;C)</option>
+        <option value="peek">PEEK (Tg 145&deg;C)</option>
+        <option value="alu">Aluminum 6061 (Tm 660&deg;C)</option>
+        <option value="steel">Carbon steel (Tm 1500&deg;C)</option>
+        <option value="inco718">Inconel 718 (Tm 1430&deg;C)</option>
+      </select>
+    </div>
+    <div class="control"><label>Time range: <span class="readout" id="tmaxRead">10000 h</span></label>
+      <select id="tmax">
+        <option value="100">100 h</option>
+        <option value="1000">1000 h</option>
+        <option value="10000" selected>10 000 h (~1.1 year)</option>
+        <option value="100000">100 000 h (~11 years)</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <h3 style="margin:6px 0">Phenomena at this stress / T</h3>
+    <table>
+      <tbody id="phenomTable"></tbody>
+    </table>
+  </div>
+
+  <h2>The math of secondary (steady-state) creep</h2>
+  <p>The flat middle of the curve has a constant slope: the <b>steady-state creep rate</b> &epsilon;-dot. For metals, the dominant relationship is Norton's law:</p>
+
+  <div class="deriv">
+    <span class="step"><b>&epsilon;-dot_ss = A &middot; &sigma;<sup>n</sup> &middot; exp(&minus;Q_c / R T)</b></span>
+    <span class="step">A: material constant; n: stress exponent (3&ndash;5 for metals, 1&ndash;3 for polymers); Q_c: activation energy for creep; R: 8.314 J/(mol&middot;K); T: absolute temperature (K)</span>
+    <span class="step"><span class="arrow">&rarr;</span> doubling stress on a steel at 600&deg;C with n=5 makes the creep rate 32&times; faster.</span>
+    <span class="step"><span class="arrow">&rarr;</span> Going from 500&deg;C to 600&deg;C with Q_c = 300 kJ/mol multiplies the rate by exp(300000/8.314 &middot; (1/773 - 1/873)) &asymp; 100&times;.</span>
+  </div>
+
+  <p>For polymers, use the simpler <b>Findley power law</b> for short-term creep:</p>
+  <div class="deriv">
+    <span class="step"><b>&epsilon;(t) = &epsilon;<sub>0</sub> + m &middot; t<sup>n</sup></b></span>
+    <span class="step">&epsilon;<sub>0</sub>: instantaneous elastic strain at load application; m: stress-dependent coefficient; n: time exponent (0.1&ndash;0.3 for many thermoplastics &mdash; sub-linear, the strain rate slows over decades).</span>
+  </div>
+
+  <h2>Stress relaxation &mdash; the dual problem</h2>
+  <p>Same material, different boundary condition. Instead of constant stress, the strain is held fixed (eg. a bolt tightened to a fixed elongation). The stress decays:</p>
+
+  <div class="figure">
+    <svg id="relaxCurve" viewBox="0 0 720 220"></svg>
+  </div>
+
+  <div class="deriv">
+    <span class="step"><b>&sigma;(t) = &sigma;<sub>0</sub> &middot; exp(&minus;t / &tau;)</b> &mdash; single-Maxwell-element approximation</span>
+    <span class="step">&tau; (relaxation time) is the time at which &sigma; falls to 1/e &asymp; 37 % of &sigma;<sub>0</sub>. &tau; is highly temperature-dependent (Arrhenius).</span>
+    <span class="step"><span class="arrow">&rarr;</span> Bolt into PA12 boss: &tau; at 25&deg;C might be 30 days; at 60&deg;C might be 30 hours. <b>Heat-cycle a printed assembly and the preload is gone after the first hot day.</b></span>
+  </div>
+
+  <p>Real polymers do not follow a single exponential; they follow a stretched exponential or a sum of relaxation modes. The single &tau; is a useful first-order estimate.</p>
+
+  <h2>Homologous temperature &mdash; predict creep without testing</h2>
+  <p>The <b>homologous temperature</b> is T / T_m, both in kelvin. Creep becomes significant above:</p>
+  <table>
+    <thead><tr><th>Class</th><th>T_homologous threshold</th><th>Reading</th></tr></thead>
+    <tbody>
+      <tr><td>Metals (BCC, like steels)</td><td class="num">0.3&ndash;0.4</td><td>Steel (T_m 1810 K) creeps above ~540 K = 270&deg;C</td></tr>
+      <tr><td>Metals (FCC, like aluminum)</td><td class="num">0.4&ndash;0.5</td><td>Al (T_m 933 K) creeps above ~390 K = 120&deg;C</td></tr>
+      <tr><td>Superalloys (Inconel, Hastelloy)</td><td class="num">0.6&ndash;0.7</td><td>Inconel 718 (T_m 1700 K) good to ~700&deg;C</td></tr>
+      <tr><td>Thermoplastics</td><td class="num">use T_g, not T_m</td><td>Significant creep above ~0.7 &middot; T_g; designable below ~0.5 &middot; T_g</td></tr>
+      <tr><td>Ceramics</td><td class="num">0.4&ndash;0.5</td><td>Alumina (T_m 2330 K) creeps above ~930 K = 660&deg;C</td></tr>
+    </tbody>
+  </table>
+  <p class="lede">For thermoplastics, T_g is the practical limit: above T_g, the polymer behaves rubbery and the creep rate is enormous. <b>PLA at 60&deg;C is at T_g and will deform under any load.</b> A car interior in summer hits 70&deg;C; PLA parts inside soften and creep.</p>
+
+  <h2>Worked example &mdash; bolt preload loss in a PA-CF printed boss</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>Cyberdeck enclosure: M3 screw through a printed PA-CF (carbon-filled nylon) boss into a heat-set brass insert. Tightened to recommended 0.6 N&middot;m preload (~1500 N axial). The boss compresses elastically by ~0.05 mm. Ambient between 10&ndash;45&deg;C.</p>
+    <h3>The relaxation prediction</h3>
+    <span class="eq">PA-CF T_g &asymp; 55&deg;C. Service temp 25&deg;C &rarr; T/T_g = 0.91 (absolute K)</span>
+    <span class="eq">Relaxation time &tau; at 25&deg;C &asymp; 50 hours (literature; PA-CF datasheets list ~30&ndash;100 h)</span>
+    <span class="eq">After 24 h: &sigma;/&sigma;<sub>0</sub> = exp(&minus;24/50) = 0.62. <b>Preload dropped from 1500 N to 930 N.</b></span>
+    <span class="eq">After 1 week (168 h): &sigma;/&sigma;<sub>0</sub> = exp(&minus;168/50) = 0.035. <b>Preload essentially gone.</b></span>
+    <h3>The mitigation</h3>
+    <span class="eq">a) <b>Re-torque after 24 h</b> and again after 7 days. This is why every assembly into plastic recommends "torque check after first heat cycle".</span>
+    <span class="eq">b) <b>Use shoulder bolts</b> &mdash; metal-on-metal preload bears on a steel shoulder; the plastic boss just carries lateral load.</span>
+    <span class="eq">c) <b>Use thread-locker</b> &mdash; chemical bond replaces some preload as the friction lock.</span>
+    <span class="eq">d) <b>Switch to PEEK or PC for the boss</b> &mdash; T_g 145&deg;C; &tau; at 25&deg;C &gt; 10 years.</span>
+  </div>
+
+  <h2>Worked example &mdash; shelf made of PLA print</h2>
+  <div class="worked">
+    <h3>The part</h3>
+    <p>Wall-mounted PLA shelf, 200 mm cantilever, 20 mm wide, 5 mm thick. Loaded with 1 kg (10 N) at the tip. Maximum bending stress at the wall:</p>
+    <span class="eq">M = F &middot; L = 10 &middot; 0.2 = 2 N&middot;m</span>
+    <span class="eq">&sigma; = M&middot;c/I = 2 &middot; 0.0025 / [(0.02 &middot; 0.005&sup3;)/12] = 2 &middot; 0.0025 / 2.08e-10 = 24 MPa</span>
+    <h3>The instant strain (Hooke)</h3>
+    <span class="eq">PLA E &asymp; 3.5 GPa. Elastic deflection &delta; = F L&sup3; / (3 E I) = 10 &middot; 0.008 / (3 &middot; 3.5e9 &middot; 2.08e-10) = 36 mm? Recalc: 10 &middot; 0.2&sup3; / (3 &middot; 3.5e9 &middot; 2.08e-10) = 0.08 / 2.18 = <b>36 mm</b>. <i>Yes, that big.</i></span>
+    <span class="eq">36 mm is the instantaneous (elastic) tip droop. Already too much for a flat shelf.</span>
+    <h3>The creep prediction</h3>
+    <span class="eq">PLA at 24 MPa, 25&deg;C: Findley with m &asymp; 5e-4, n &asymp; 0.25 gives &epsilon;(t) &asymp; 0.007 + 5e-4 &middot; t<sup>0.25</sup> (t in hours)</span>
+    <span class="eq">After 1 year (8760 h): &epsilon; = 0.007 + 5e-4 &middot; 9.7 = 0.012. Strain doubled vs. instantaneous.</span>
+    <span class="eq">Tip droop after 1 year &asymp; 72 mm. After 5 years &asymp; 100 mm. <b>The shelf is now a slide.</b></span>
+    <span class="eq">Conclusion: PLA at 24 MPa is not a long-term structural material. PETG would reduce creep ~30 %. PA-CF would be predictable. Metal bracket would not creep meaningfully.</span>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Polymers creep at room temperature</b> &mdash; metals only creep at homologous T &gt; 0.3. Treat every plastic load-bearing part as creep-limited unless the load is far below long-term design stress.</li>
+    <li><b>Long-term design stress &ne; yield stress</b> &mdash; polymer datasheets list "1000-h creep stress" or "creep modulus at 100 MPa &middot; 1 yr". Design to those, not to the tensile yield.</li>
+    <li><b>Stress relaxation is creep's twin</b> &mdash; identical molecular process, different boundary condition. Constant stress &rarr; growing strain (creep). Constant strain &rarr; falling stress (relaxation).</li>
+    <li><b>Bolted preload into plastic is doomed</b> &mdash; the only safe answers are metal-on-metal (shoulder, washer, insert), thread-locker, or periodic re-torque.</li>
+    <li><b>Tertiary creep ends in fracture</b> &mdash; necking, voids, and acceleration. The "creep life" you read on a datasheet is usually the time to onset of tertiary, not failure.</li>
+    <li><b>Larson&ndash;Miller parameter</b> packs T and time-to-rupture into a single number: <code>LMP = T(20 + log&#8323;&#8320; t)</code>. Extrapolate short, hot tests to long, cool service.</li>
+    <li><b>Temperature is the lever</b> &mdash; doubling T (in K) typically multiplies creep rate by 10&ndash;100&times;. Cooling a polymer part 20&deg;C can extend life 10&times;.</li>
+  </ul>
+
+  <h2>Where this links into the curriculum</h2>
+  <div class="crosslink">
+    <h4>Related visuals &amp; references</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Stress / strain</b> &mdash; <a href="stress-strain.html">stress-strain.html</a> &mdash; the elastic curve at t=0 vs. the creep curve at t&gt;0.</li>
+      <li><b style="color:var(--fg)">Elastic properties</b> &mdash; <a href="elastic-properties.html">elastic-properties.html</a> &mdash; creep modulus replaces E for long-term polymer design.</li>
+      <li><b style="color:var(--fg)">Anisotropic FDM</b> &mdash; <a href="anisotropic-fdm.html">anisotropic-fdm.html</a> &mdash; Z-direction creeps faster (weaker bonds yield first).</li>
+      <li><b style="color:var(--fg)">Heat-set inserts &amp; adhesives</b> &mdash; <a href="../phase-6-fasteners-joining/heat-set-adhesives.html">heat-set-adhesives.html</a> &mdash; the preload-loss mitigation toolkit for plastic.</li>
+      <li><b style="color:var(--fg)">Torque &amp; preload</b> &mdash; <a href="../phase-6-fasteners-joining/torque-preload.html">torque-preload.html</a> &mdash; preload calculation assumes elastic joint; relaxation invalidates that.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Norton</dt><dd><span class="eq">&epsilon;-dot = A&sigma;<sup>n</sup>exp(&minus;Q/RT)</span></dd>
+        <dt>Findley</dt><dd><span class="eq">&epsilon;(t)=&epsilon;<sub>0</sub>+m&middot;t<sup>n</sup></span></dd>
+        <dt>Relax</dt><dd><span class="eq">&sigma;(t)=&sigma;<sub>0</sub>&middot;e<sup>&minus;t/&tau;</sup></span></dd>
+        <dt>Larson-Miller</dt><dd><span class="eq">LMP=T(20+log&#8323;&#8320;t)</span></dd>
+        <dt>Threshold (metal)</dt><dd>T/T_m &gt; 0.3&ndash;0.5</dd>
+        <dt>Threshold (polymer)</dt><dd>T/T_g &gt; 0.5</dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SHORTCUTS</h3>
+      <ul>
+        <li><b>Primary</b>: decelerating creep, work-hardening.</li>
+        <li><b>Secondary</b>: steady rate, design region.</li>
+        <li><b>Tertiary</b>: accelerating &rarr; rupture.</li>
+        <li><b>Doubling stress</b> (n=5 metal) &asymp; 32&times; faster.</li>
+        <li><b>Polymers</b>: design to 1000-h or 1-yr creep modulus.</li>
+        <li><b>Bolts in plastic</b>: re-torque after first heat cycle.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Using short-term E</b> for long-term polymer design &mdash; off by 2&ndash;10&times;.</li>
+        <li><b>Forgetting T effect</b> &mdash; a part qualified at 25&deg;C fails at 60&deg;C in months.</li>
+        <li><b>Extrapolating linearly</b> &mdash; creep is sub-linear in time and super-linear in stress.</li>
+        <li><b>Designing to yield only</b> &mdash; creep limits are usually lower for long-term service.</li>
+        <li><b>Treating relaxation as decay-to-zero</b> &mdash; some polymers (semicrystalline) plateau above zero due to crystalline anchoring.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">ME Phase 2 &mdash; Materials Science</span> &middot;
+    Topic: Creep &amp; stress relaxation &middot;
+    Companion visuals: <a href="stress-strain.html">Stress / Strain</a>, <a href="elastic-properties.html">Elastic Properties</a>, <a href="../phase-6-fasteners-joining/heat-set-adhesives.html">Heat-set Inserts</a>
+  </footer>
+</main>
+
+<script>
+  // Curve-drawing helpers and Findley creep simulation.
+  const els = {};
+  ['sig','t','mat','tmax'].forEach(id => els[id] = document.getElementById(id));
+  ['sigRead','tRead','matRead','tmaxRead'].forEach(id => els[id] = document.getElementById(id));
+
+  // material constants: tg in C, tm in K (Tm not relevant for polymers; use Tg)
+  // m and n control Findley; A and Q control Norton (for metals).
+  const materials = {
+    pla:    {name:'PLA',           tg:60,  tm:null, m:5e-4, n:0.25, q:55, dom:'polymer'},
+    petg:   {name:'PETG',          tg:80,  tm:null, m:3e-4, n:0.22, q:80, dom:'polymer'},
+    abs:    {name:'ABS',           tg:105, tm:null, m:2.5e-4,n:0.20, q:105, dom:'polymer'},
+    pa12:   {name:'PA12 / nylon',  tg:50,  tm:null, m:4e-4, n:0.25, q:50, dom:'polymer'},
+    pcblend:{name:'PC blend',      tg:140, tm:null, m:1.2e-4,n:0.18, q:140, dom:'polymer'},
+    peek:   {name:'PEEK',          tg:145, tm:null, m:5e-5, n:0.15, q:200, dom:'polymer'},
+    alu:    {name:'Aluminum 6061', tg:null,tm:933,  Ah:1e-15, n:4.2, q:140e3, dom:'metal'},
+    steel:  {name:'Carbon steel',  tg:null,tm:1810, Ah:1e-22, n:5.0, q:280e3, dom:'metal'},
+    inco718:{name:'Inconel 718',   tg:null,tm:1700, Ah:1e-25, n:4.5, q:380e3, dom:'metal'}
+  };
+
+  function findleyStrain(stress, t_h, m, nExp){
+    // stress dependence baked into m for simplicity here; small-stress linear
+    const eps0 = stress / 3500; // ~modulus 3.5 GPa for polymers
+    return eps0 + m * (stress / 10) * Math.pow(Math.max(0.001, t_h), nExp);
+  }
+
+  function nortonRate(stress, tempK, A, nExp, Q){
+    const R = 8.314;
+    return A * Math.pow(stress * 1e6, nExp) * Math.exp(-Q / (R * tempK));
+  }
+
+  function drawCreepCurve(){
+    const svg = document.getElementById('creepCurve');
+    const matKey = els.mat.value;
+    const mat = materials[matKey];
+    const stress = parseFloat(els.sig.value);
+    const tempC = parseFloat(els.t.value);
+    const tmax = parseFloat(els.tmax.value);
+    const tempK = tempC + 273.15;
+
+    // viewBox 720 x 360; plot region inside
+    const x0 = 70, y0 = 320, xw = 600, yh = 250;
+
+    let s = '';
+    // grid + axes
+    s += `<rect x="${x0}" y="${y0-yh}" width="${xw}" height="${yh}" fill="#0e1116" stroke="#2a313c"/>`;
+    for(let i=0; i<=5; i++){
+      const y = y0 - i * yh/5;
+      s += `<line x1="${x0}" y1="${y}" x2="${x0+xw}" y2="${y}" class="grid-line"/>`;
+    }
+    for(let i=0; i<=5; i++){
+      const x = x0 + i * xw/5;
+      s += `<line x1="${x}" y1="${y0}" x2="${x}" y2="${y0-yh}" class="grid-line"/>`;
+    }
+    // axes labels
+    s += `<text x="${x0+xw/2}" y="${y0+30}" class="label" text-anchor="middle">time (log h)</text>`;
+    s += `<text x="${x0-44}" y="${y0-yh/2}" class="label" text-anchor="middle" transform="rotate(-90 ${x0-44} ${y0-yh/2})">strain &epsilon;</text>`;
+
+    // time ticks (logarithmic)
+    const logMin = -1, logMax = Math.log10(tmax);
+    for(let i=0; i<=5; i++){
+      const lt = logMin + i*(logMax-logMin)/5;
+      const x = x0 + i*xw/5;
+      const t = Math.pow(10, lt);
+      const lbl = t < 1 ? (60*t).toFixed(0)+'min' : t < 24 ? t.toFixed(1)+'h' : t<8760 ? (t/24).toFixed(1)+'d' : (t/8760).toFixed(1)+'yr';
+      s += `<text x="${x}" y="${y0+16}" class="label-dim" text-anchor="middle">${lbl}</text>`;
+    }
+
+    // compute curve and find max strain for scaling
+    const pts = [];
+    let maxEps = 0;
+    const N = 240;
+    for(let i = 0; i <= N; i++){
+      const lt = logMin + i*(logMax-logMin)/N;
+      const t = Math.pow(10, lt);
+      let eps;
+      if(mat.dom === 'polymer'){
+        // boost m strongly above T_g
+        const tRatio = (tempC) / mat.tg;
+        const mEff = mat.m * Math.pow(2, tRatio*2 - 1); // above Tg, accelerates
+        eps = findleyStrain(stress, t, mEff, mat.n);
+      } else {
+        // metal: Norton steady-state plus small primary
+        const rate = nortonRate(stress, tempK, mat.Ah, mat.n, mat.q);
+        const primary = 0.0005 * (1 - Math.exp(-t*2));
+        eps = primary + rate * 3600 * t; // rate per second &times; 3600 &times; h
+      }
+      pts.push({t, eps});
+      if(eps > maxEps) maxEps = eps;
+    }
+    const yScale = yh / Math.max(0.001, maxEps * 1.2);
+    // strain axis labels
+    for(let i=0; i<=5; i++){
+      const y = y0 - i*yh/5;
+      const v = (i*0.2 * maxEps * 1.2);
+      s += `<text x="${x0-6}" y="${y+4}" class="label-dim" text-anchor="end">${(v*100).toFixed(2)}%</text>`;
+    }
+    // path
+    const pathD = pts.map((p,i) => {
+      const lt = Math.log10(p.t);
+      const x = x0 + (lt-logMin)/(logMax-logMin) * xw;
+      const y = y0 - p.eps * yScale;
+      return `${i===0?'M':'L'}${x.toFixed(2)},${y.toFixed(2)}`;
+    }).join(' ');
+    s += `<path d="${pathD}" fill="none" stroke="#5ec8ff" stroke-width="2.5"/>`;
+
+    // Primary / secondary / tertiary highlights (only meaningful for metals with rupture)
+    if(mat.dom === 'metal' && maxEps > 0.02){
+      // shade the regions
+      const trans1 = pts.findIndex(p => p.eps > 0.005);
+      const trans2 = pts.findIndex(p => p.eps > 0.02);
+      function shade(i1, i2, color, label){
+        if(i1 < 0 || i2 < 0) return '';
+        const lt1 = Math.log10(pts[i1].t), lt2 = Math.log10(pts[i2].t);
+        const x1 = x0 + (lt1-logMin)/(logMax-logMin) * xw;
+        const x2 = x0 + (lt2-logMin)/(logMax-logMin) * xw;
+        return `<rect x="${x1}" y="${y0-yh}" width="${x2-x1}" height="${yh}" fill="${color}" opacity="0.06"/>
+                <text x="${(x1+x2)/2}" y="${y0-yh+14}" class="label-dim" text-anchor="middle" fill="${color}">${label}</text>`;
+      }
+      s += shade(0, trans1, '#a3e635', 'primary (I)');
+      s += shade(trans1, trans2, '#5ec8ff', 'secondary (II)');
+      s += shade(trans2, pts.length-1, '#ff7b72', 'tertiary (III)');
+    } else {
+      // polymer: no rupture in time window. label region as steady.
+      s += `<text x="${x0+xw*0.45}" y="${y0-yh+18}" class="label-dim" fill="#5ec8ff" text-anchor="middle">decelerating creep (sub-linear in time)</text>`;
+    }
+    s += `<text x="${x0+8}" y="${y0-yh-6}" class="label" fill="#a3e635">Creep: &sigma; = ${stress} MPa, T = ${tempC} &deg;C, ${mat.name}</text>`;
+
+    svg.innerHTML = s;
+  }
+
+  function drawRelaxCurve(){
+    const svg = document.getElementById('relaxCurve');
+    const matKey = els.mat.value;
+    const mat = materials[matKey];
+    const tempC = parseFloat(els.t.value);
+
+    // tau in hours, simple model: scales inversely with rate
+    let tauH;
+    if(mat.dom === 'polymer'){
+      const aboveTg = Math.max(0, tempC - mat.tg);
+      tauH = 1000 * Math.exp(-aboveTg / 10) * (mat.q / 60);
+      if(tempC < mat.tg - 50) tauH = tauH * 100; // very long below
+    } else {
+      const tempK = tempC + 273.15;
+      const rate = nortonRate(10, tempK, mat.Ah, mat.n, mat.q);
+      tauH = 1 / (rate * 3600);
+    }
+
+    const x0 = 70, y0 = 180, xw = 600, yh = 140;
+    let s = '';
+    s += `<rect x="${x0}" y="${y0-yh}" width="${xw}" height="${yh}" fill="#0e1116" stroke="#2a313c"/>`;
+    for(let i=0; i<=5; i++){
+      const y = y0 - i*yh/5;
+      s += `<line x1="${x0}" y1="${y}" x2="${x0+xw}" y2="${y}" class="grid-line"/>`;
+    }
+    // time axis log
+    const tmax = parseFloat(els.tmax.value);
+    const logMin = -1, logMax = Math.log10(tmax);
+    for(let i=0; i<=5; i++){
+      const x = x0 + i*xw/5;
+      const t = Math.pow(10, logMin + i*(logMax-logMin)/5);
+      const lbl = t < 1 ? (60*t).toFixed(0)+'min' : t < 24 ? t.toFixed(1)+'h' : t<8760 ? (t/24).toFixed(1)+'d' : (t/8760).toFixed(1)+'yr';
+      s += `<text x="${x}" y="${y0+16}" class="label-dim" text-anchor="middle">${lbl}</text>`;
+    }
+    // sigma axis labels (100% to 0)
+    for(let i=0; i<=5; i++){
+      const y = y0 - i*yh/5;
+      s += `<text x="${x0-6}" y="${y+4}" class="label-dim" text-anchor="end">${i*20}%</text>`;
+    }
+    // path
+    const N = 200;
+    let d = '';
+    for(let i=0; i<=N; i++){
+      const lt = logMin + i*(logMax-logMin)/N;
+      const t = Math.pow(10, lt);
+      const ratio = Math.exp(-t/tauH);
+      const x = x0 + (lt-logMin)/(logMax-logMin)*xw;
+      const y = y0 - ratio * yh;
+      d += (i===0?'M':'L')+x.toFixed(2)+','+y.toFixed(2)+' ';
+    }
+    s += `<path d="${d}" fill="none" stroke="#ffb86c" stroke-width="2.5"/>`;
+    // tau line
+    const ltTau = Math.log10(tauH);
+    if(ltTau >= logMin && ltTau <= logMax){
+      const xt = x0 + (ltTau-logMin)/(logMax-logMin)*xw;
+      s += `<line x1="${xt}" y1="${y0}" x2="${xt}" y2="${y0-yh}" stroke="#a3e635" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+      s += `<text x="${xt+4}" y="${y0-yh+14}" class="label" fill="#a3e635">&tau; = ${tauH.toFixed(1)} h</text>`;
+    }
+    s += `<text x="${x0+8}" y="${y0-yh-6}" class="label" fill="#ffb86c">Relaxation: &sigma;(t)/&sigma;<sub>0</sub> &mdash; preload decay at T = ${tempC} &deg;C</text>`;
+    svg.innerHTML = s;
+  }
+
+  function updatePhenom(){
+    const matKey = els.mat.value;
+    const mat = materials[matKey];
+    const stress = parseFloat(els.sig.value);
+    const tempC = parseFloat(els.t.value);
+    const tempK = tempC + 273.15;
+
+    const rows = [];
+    if(mat.dom === 'polymer'){
+      const ratio = (tempC + 273.15) / (mat.tg + 273.15);
+      const regime = tempC < mat.tg - 30 ? 'glass (designable)' : tempC < mat.tg ? 'near T_g (significant creep)' : 'above T_g (rubbery, severe creep)';
+      rows.push(`<tr><td>T_g</td><td class="num">${mat.tg} &deg;C</td></tr>`);
+      rows.push(`<tr><td>T / T_g (absolute K)</td><td class="num">${ratio.toFixed(2)}</td></tr>`);
+      rows.push(`<tr><td>Regime</td><td>${regime}</td></tr>`);
+      rows.push(`<tr><td>Findley m, n</td><td class="num">m=${mat.m.toExponential(1)}, n=${mat.n}</td></tr>`);
+    } else {
+      const ratio = tempK / mat.tm;
+      const regime = ratio < 0.3 ? 'cold (no creep)' : ratio < 0.5 ? 'creep starts (design with care)' : 'high-T creep (mandatory life calc)';
+      rows.push(`<tr><td>T_m</td><td class="num">${mat.tm} K (${(mat.tm-273).toFixed(0)} &deg;C)</td></tr>`);
+      rows.push(`<tr><td>T / T_m</td><td class="num">${ratio.toFixed(2)}</td></tr>`);
+      rows.push(`<tr><td>Regime</td><td>${regime}</td></tr>`);
+      rows.push(`<tr><td>Norton n, Q (kJ/mol)</td><td class="num">n=${mat.n}, Q=${(mat.q/1000).toFixed(0)}</td></tr>`);
+      const rate = nortonRate(stress, tempK, mat.Ah, mat.n, mat.q);
+      rows.push(`<tr><td>Steady-state rate</td><td class="num">${(rate*3600).toExponential(2)} /h &asymp; ${(rate*3600*8760*100).toExponential(2)} %/yr</td></tr>`);
+    }
+    rows.push(`<tr><td>Applied stress</td><td class="num">${stress} MPa</td></tr>`);
+    rows.push(`<tr><td>Temperature</td><td class="num">${tempC} &deg;C = ${tempK.toFixed(0)} K</td></tr>`);
+
+    document.getElementById('phenomTable').innerHTML = rows.join('');
+  }
+
+  function update(){
+    els.sigRead.textContent = els.sig.value + ' MPa';
+    els.tRead.textContent   = els.t.value + ' °C';
+    els.matRead.textContent = materials[els.mat.value].name;
+    els.tmaxRead.textContent= parseInt(els.tmax.value).toLocaleString() + ' h';
+    drawCreepCurve();
+    drawRelaxCurve();
+    updatePhenom();
+  }
+  ['sig','t','mat','tmax'].forEach(id=>{
+    els[id].addEventListener('input', update);
+    els[id].addEventListener('change', update);
+  });
+  update();
+</script>
+</body>
+</html>

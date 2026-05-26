@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WiFi Channels &amp; OFDM — visual</title>
+<style>:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 system-ui,sans-serif}
+main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:0.04em}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+.control select,.control input{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 8px;font:13px ui-monospace,monospace}
+.readout{color:var(--accent);font-family:ui-monospace,monospace;font-size:13px}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,monospace;color:var(--accent2)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.cheat-card h3{margin:0 0 8px;font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.cheat-card.formulas h3{color:var(--accent)}.cheat-card.pitfalls h3{color:var(--warn)}.cheat-card.memorize h3{color:var(--accent3)}
+.cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+.cheat-card ul li{margin:3px 0}.cheat-card ul li b{color:var(--fg)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+footer a{color:var(--accent);text-decoration:none}
+.worked{background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+.worked h3{margin:0 0 8px;color:var(--accent3)}
+.worked .eq{display:block;color:var(--accent);font:13px ui-monospace,monospace;background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2)}
+</style></head>
+<body><main>
+
+<h1>WiFi Channels &amp; OFDM Subcarriers</h1>
+<p class="lede">802.11's allocation of the 2.4 GHz, 5 GHz, and 6 GHz bands, plus the OFDM scheme that breaks each channel into ~64–2048 narrow subcarriers carrying parallel modulated data. Why are 2.4 GHz channels 1/6/11 always recommended? Why does WiFi 6 get faster than WiFi 5 even at the same SNR? OFDM is the answer.</p>
+
+<div class="anchors">
+<span class="anchor"><b>2.4 GHz</b>: 11-14 channels, 20 MHz wide</span>
+<span class="anchor"><b>5 GHz</b>: ~25 non-overlapping 20 MHz channels</span>
+<span class="anchor"><b>6 GHz (WiFi 6E)</b>: ~59 non-overlap channels</span>
+<span class="anchor"><b>OFDM (n/ac)</b>: 64 subcarriers per 20 MHz</span>
+<span class="anchor"><b>OFDM (ax)</b>: 256 subcarriers per 20 MHz (OFDMA)</span>
+</div>
+
+<section class="controls">
+<div class="control"><label>Band</label>
+<select id="band">
+<option value="2.4">2.4 GHz (legacy)</option>
+<option value="5" selected>5 GHz (modern)</option>
+<option value="6">6 GHz (WiFi 6E)</option>
+</select>
+</div>
+<div class="control"><label>Channel width (MHz)</label>
+<select id="bw">
+<option value="20">20 MHz</option>
+<option value="40">40 MHz</option>
+<option value="80" selected>80 MHz</option>
+<option value="160">160 MHz</option>
+</select>
+</div>
+<div class="control"><label>WiFi standard</label>
+<select id="std">
+<option value="n">802.11n (2009)</option>
+<option value="ac">802.11ac (2013)</option>
+<option value="ax" selected>802.11ax / WiFi 6 (2019)</option>
+<option value="be">802.11be / WiFi 7 (2024)</option>
+</select>
+</div>
+</section>
+
+<div class="figure">
+<table>
+<tr><th>Quantity</th><th>Value</th></tr>
+<tr><td>Subcarrier spacing</td><td id="scSpacing">312.5 kHz (n/ac) or 78.125 kHz (ax/be)</td></tr>
+<tr><td>Subcarriers per 20 MHz</td><td id="scCount">64 / 256 (ax)</td></tr>
+<tr><td>Data subcarriers</td><td id="scData">52 / 234</td></tr>
+<tr><td>Pilot subcarriers</td><td id="scPilot">4 / 8 (used for channel tracking)</td></tr>
+<tr><td>Null subcarriers</td><td id="scNull">8 / 14 (guard at band edges + DC)</td></tr>
+<tr><td>Peak PHY rate (MIMO 1x1)</td><td id="rate">600 Mbps</td></tr>
+<tr><td>Peak PHY rate (MIMO 4x4)</td><td id="rate4">2.4 Gbps</td></tr>
+</table>
+</div>
+
+<h2>2.4 GHz — the 1/6/11 overlap rule</h2>
+<p>2.4 GHz has 11 channels in the US (14 in Japan), each 20 MHz wide, spaced 5 MHz apart. Adjacent channels overlap significantly. Channels 1, 6, 11 are spaced 25 MHz apart — just enough to be non-overlapping.</p>
+<div class="figure">
+<svg id="ch24" viewBox="0 0 720 200" width="100%"></svg>
+</div>
+
+<h2>5 GHz — many more, but with DFS</h2>
+<p>5 GHz has 25+ non-overlapping 20 MHz channels in the U-NII bands. The U-NII-2 sub-bands require DFS (dynamic frequency selection) — must detect and avoid radar signals. WiFi 6 and 6E bond channels into 40, 80, or 160 MHz blocks.</p>
+<div class="figure">
+<svg id="ch5" viewBox="0 0 720 200" width="100%"></svg>
+</div>
+
+<h2>OFDM subcarriers — parallel streams of data</h2>
+<p>OFDM divides a 20 MHz channel into many narrow subcarriers, each carrying a slowly-modulated stream. Three things make this work:</p>
+<ul class="notice">
+<li><b>Orthogonality</b> — subcarrier spacing equals the symbol rate, so each subcarrier's null aligns with the peak of its neighbors. No inter-carrier interference.</li>
+<li><b>Frequency-selective fading handling</b> — a deep notch (multipath null) kills only the subcarriers in that frequency, not the whole channel. Forward error correction recovers.</li>
+<li><b>OFDMA (WiFi 6+)</b> — instead of giving each device the full 20 MHz briefly, assign subsets of subcarriers to multiple devices simultaneously. Lower per-device throughput but lower latency and better with many devices.</li>
+</ul>
+
+<div class="figure">
+<svg id="ofdm" viewBox="0 0 720 220" width="100%"></svg>
+</div>
+
+<h2>Worked example — WiFi 6 PHY rate</h2>
+<div class="worked">
+<h3>Configuration</h3>
+<p>802.11ax (WiFi 6) on a 80 MHz channel with 4-stream MIMO, 1024-QAM modulation, 5/6 coding rate, short guard interval.</p>
+
+<h3>Calculation</h3>
+<span class="eq">Subcarriers in 80 MHz: 1024 (256 per 20 MHz × 4)</span>
+<span class="eq">Data subcarriers: 980 (rest are pilots/null)</span>
+<span class="eq">Bits per symbol per subcarrier: 10 (1024-QAM = 2^10 states)</span>
+<span class="eq">Bits per OFDM symbol: 980 × 10 = 9800 bits raw</span>
+<span class="eq">Coding rate 5/6: useful bits = 9800 × 5/6 = 8167</span>
+<span class="eq">Symbol time + guard: 13.6 µs (ax with 0.8 µs GI)</span>
+<span class="eq">Per-stream rate: 8167 / 13.6e-6 = 600 Mbps</span>
+<span class="eq">4× MIMO: 4 × 600 Mbps = 2.4 Gbps PHY rate</span>
+<span class="eq">After overhead (MAC, contention): ~1.8 Gbps useful throughput</span>
+</div>
+
+<h2>Pitfalls + reality checks</h2>
+<ul class="notice">
+<li><b>2.4 GHz is the IoT junk band</b> — Bluetooth, BLE, ZigBee, microwave ovens, baby monitors, garage openers. Use 5/6 GHz for serious traffic.</li>
+<li><b>5 GHz DFS channels</b> can lose connection when radar is detected — base station drops to a different channel mid-stream. Avoid DFS in low-latency apps.</li>
+<li><b>Width vs range tradeoff</b> — 160 MHz channel = 2× speed but 6 dB lower spectral density → 4× weaker signal at a given distance. Wider is faster but closer-range.</li>
+<li><b>MIMO needs spatial diversity</b> — 4×4 MIMO requires 4 antennas with sufficient λ/2 spacing (~6 cm at 2.4 GHz, 3 cm at 5 GHz). Small devices can't fit 4×4.</li>
+<li><b>OFDMA latency win comes with throughput loss</b> per device — useful for many sparse devices (IoT) but worse than full-channel allocation for one heavy user.</li>
+<li><b>WiFi 7 features</b> — 320 MHz channels (6 GHz only), 4096-QAM, multi-link operation. Marginal gain in throughput, real gain in latency.</li>
+</ul>
+
+<h2>Cheat sheet</h2>
+<section class="cheatsheet">
+<div class="cheat-card formulas"><h3>KEY NUMBERS</h3><ul>
+<li>2.4 GHz: 14 channels, 20 MHz wide, 5 MHz spacing</li>
+<li>5 GHz: ~25 non-overlapping 20 MHz channels (U-NII 1/2/3)</li>
+<li>OFDM symbol time: 3.6 µs (legacy), 12.8 µs (ax/be longer)</li>
+<li>Subcarrier spacing: 312.5 kHz (n/ac), 78.125 kHz (ax/be)</li>
+<li>1024-QAM: 10 bits/symbol</li>
+<li>4096-QAM (WiFi 7): 12 bits/symbol</li>
+</ul></div>
+<div class="cheat-card memorize"><h3>STANDARDS BY YEAR</h3><ul>
+<li><b>n (2009)</b>: 40 MHz, 64 sub, MIMO 4x4, 600 Mbps</li>
+<li><b>ac (2013)</b>: 160 MHz, 256-QAM, 1.7 Gbps</li>
+<li><b>ax / WiFi 6 (2019)</b>: OFDMA, 1024-QAM, 2.4 Gbps</li>
+<li><b>ax-E / 6E (2020)</b>: + 6 GHz band</li>
+<li><b>be / WiFi 7 (2024)</b>: 320 MHz, 4096-QAM, MLO, 9.6 Gbps</li>
+</ul></div>
+<div class="cheat-card pitfalls"><h3>PITFALLS</h3><ul>
+<li><b>2.4 GHz is congested.</b> Move serious traffic to 5+ GHz.</li>
+<li><b>Wider channel ≠ always better</b> — fewer channels available, more interference.</li>
+<li><b>1024-QAM needs ~31 dB SNR</b> — only close-range.</li>
+<li><b>DFS channels</b> = unpredictable disconnects.</li>
+<li><b>Mesh and 6 GHz</b> — only 6E+ devices can join 6 GHz, so mixed networks fall back.</li>
+</ul></div>
+</section>
+
+<footer>Curriculum: <a target="_top" href="../../index.html">EE Phase 9 — RF &amp; Wireless</a> · Cross-links: <a href="wireless-spectrum.html">Wireless Spectrum</a>, <a href="link-budget.html">Link Budget</a>, <a href="ble-gatt.html">BLE GATT</a>.</footer>
+
+</main>
+<script>
+const els = ['band','bw','std'].reduce((m,k)=>{m[k]=document.getElementById(k);return m;},{});
+
+function draw24Channels(){
+  const svg = document.getElementById('ch24');
+  let s = '';
+  // 14 channels at 2412-2484 MHz, 5 MHz spacing, 20 MHz wide
+  for(let ch = 1; ch <= 14; ch++){
+    const center = 2412 + (ch - 1) * 5;
+    const x = 40 + (center - 2400) * 6.5;
+    const w = 20 * 6.5; // 20 MHz wide
+    const isNonOverlap = (ch === 1 || ch === 6 || ch === 11);
+    const color = isNonOverlap ? '#5ec8ff' : '#8f99a8';
+    s += `<rect x="${x - w/2}" y="${30 + ch * 8}" width="${w}" height="6" fill="${color}" opacity="0.7" stroke="${color}" stroke-width="1"/>`;
+    s += `<text x="${x - w/2 - 6}" y="${30 + ch * 8 + 5}" fill="${color}" font-family="ui-monospace,monospace" font-size="10" text-anchor="end">${ch}</text>`;
+  }
+  s += `<text x="30" y="20" fill="#fff" font-family="ui-monospace,monospace" font-size="11">14 channels, 20 MHz wide, 5 MHz spacing</text>`;
+  s += `<text x="30" y="160" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">blue: 1, 6, 11 (non-overlapping by 25 MHz spacing)</text>`;
+  s += `<text x="30" y="178" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">grey: overlap neighbors</text>`;
+  svg.innerHTML = s;
+}
+
+function draw5Channels(){
+  const svg = document.getElementById('ch5');
+  let s = '';
+  // U-NII 1: 5170-5250 → ch 36, 40, 44, 48
+  // U-NII 2A: 5250-5330 → ch 52, 56, 60, 64 (DFS)
+  // U-NII 2C: 5490-5730 → ch 100..144 (DFS)
+  // U-NII 3: 5735-5835 → ch 149, 153, 157, 161, 165
+  const channels = [
+    {ch:36, freq:5180, dfs:false},
+    {ch:40, freq:5200, dfs:false},
+    {ch:44, freq:5220, dfs:false},
+    {ch:48, freq:5240, dfs:false},
+    {ch:52, freq:5260, dfs:true},
+    {ch:56, freq:5280, dfs:true},
+    {ch:60, freq:5300, dfs:true},
+    {ch:64, freq:5320, dfs:true},
+    {ch:100, freq:5500, dfs:true},
+    {ch:104, freq:5520, dfs:true},
+    {ch:108, freq:5540, dfs:true},
+    {ch:112, freq:5560, dfs:true},
+    {ch:116, freq:5580, dfs:true},
+    {ch:120, freq:5600, dfs:true},
+    {ch:124, freq:5620, dfs:true},
+    {ch:128, freq:5640, dfs:true},
+    {ch:132, freq:5660, dfs:true},
+    {ch:136, freq:5680, dfs:true},
+    {ch:140, freq:5700, dfs:true},
+    {ch:144, freq:5720, dfs:true},
+    {ch:149, freq:5745, dfs:false},
+    {ch:153, freq:5765, dfs:false},
+    {ch:157, freq:5785, dfs:false},
+    {ch:161, freq:5805, dfs:false},
+    {ch:165, freq:5825, dfs:false},
+  ];
+  const fmin = 5170, fmax = 5840;
+  const W = 680;
+  for(let i = 0; i < channels.length; i++){
+    const c = channels[i];
+    const x = 40 + ((c.freq - fmin) / (fmax - fmin)) * (W - 40);
+    const color = c.dfs ? '#ffb86c' : '#5ec8ff';
+    s += `<rect x="${x-8}" y="40" width="14" height="80" fill="${color}" opacity="0.6" stroke="${color}" stroke-width="1"/>`;
+    if(i % 3 === 0){
+      s += `<text x="${x}" y="135" fill="${color}" font-family="ui-monospace,monospace" font-size="9" text-anchor="middle">${c.ch}</text>`;
+    }
+  }
+  s += `<text x="30" y="25" fill="#fff" font-family="ui-monospace,monospace" font-size="11">25+ non-overlapping channels in 5 GHz band (U-NII 1/2A/2C/3)</text>`;
+  s += `<text x="30" y="160" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">blue: standard channels</text>`;
+  s += `<text x="30" y="178" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="11">orange: DFS — must detect radar, may switch</text>`;
+  svg.innerHTML = s;
+}
+
+function drawOfdm(){
+  const svg = document.getElementById('ofdm');
+  let s = '';
+  const stdName = els.std.value;
+  const subcarriers = (stdName === 'ax' || stdName === 'be') ? 256 : 64;
+  const dataSubs = (stdName === 'ax' || stdName === 'be') ? 234 : 52;
+  const pilotSubs = (stdName === 'ax' || stdName === 'be') ? 8 : 4;
+  const nullSubs = subcarriers - dataSubs - pilotSubs;
+
+  s += `<text x="30" y="30" fill="#fff" font-family="ui-monospace,monospace" font-size="12">OFDM subcarriers in a 20 MHz channel (${stdName})</text>`;
+
+  // Draw the 64 or 256 subcarriers stacked horizontally
+  const drawSubs = Math.min(subcarriers, 64); // visual cap
+  const stride = subcarriers / drawSubs;
+  const startX = 40;
+  const w = 680 / drawSubs;
+  let dataCount = 0, pilotCount = 0;
+  for(let i = 0; i < drawSubs; i++){
+    const idx = Math.floor(i * stride);
+    let color;
+    let label;
+    // Roughly: null at edges + center; pilots interspersed; rest data
+    const isEdgeNull = idx < 4 || idx > subcarriers - 5;
+    const isCenterNull = idx === Math.floor(subcarriers/2);
+    const isPilot = (i % Math.floor(drawSubs / pilotSubs) === 0) && !isEdgeNull && !isCenterNull;
+    if(isEdgeNull || isCenterNull){ color = '#444'; label = 'N'; }
+    else if(isPilot && pilotCount < pilotSubs){ color = '#ffb86c'; label = 'P'; pilotCount++; }
+    else { color = '#5ec8ff'; label = 'D'; dataCount++; }
+    s += `<rect x="${startX + i*w}" y="60" width="${w-1}" height="80" fill="${color}" opacity="0.7"/>`;
+  }
+  s += `<text x="30" y="170" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">blue: data subcarriers (carry user bits) — ${dataSubs}</text>`;
+  s += `<text x="30" y="188" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="11">orange: pilot subcarriers (channel tracking) — ${pilotSubs}</text>`;
+  s += `<text x="30" y="206" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">grey: null/guard subcarriers — ${nullSubs}</text>`;
+  svg.innerHTML = s;
+}
+
+function update(){
+  const std = els.std.value;
+  const isAx = (std === 'ax' || std === 'be');
+  document.getElementById('scSpacing').textContent = isAx ? '78.125 kHz (longer symbol)' : '312.5 kHz';
+  document.getElementById('scCount').textContent = isAx ? '256' : '64';
+  document.getElementById('scData').textContent = isAx ? '234' : '52';
+  document.getElementById('scPilot').textContent = isAx ? '8' : '4';
+  document.getElementById('scNull').textContent = isAx ? '14' : '8';
+  const peak1x1 = std === 'be' ? 2400 : std === 'ax' ? 600 : std === 'ac' ? 433 : 150;
+  const peak4x4 = peak1x1 * 4;
+  document.getElementById('rate').textContent = peak1x1 + ' Mbps';
+  document.getElementById('rate4').textContent = peak4x4 + ' Mbps';
+  drawOfdm();
+}
+
+draw24Channels();
+draw5Channels();
+['band','bw','std'].forEach(k => els[k].addEventListener('change', update));
+update();
+</script></body></html>

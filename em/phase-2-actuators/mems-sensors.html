@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MEMS Sensors — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  pre{background:var(--bg-elev2);border-left:3px solid var(--accent);padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg);
+    border-radius:0 4px 4px 0;overflow-x:auto}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .tabs{display:flex;gap:2px;margin:14px 0 0;flex-wrap:wrap}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright)}
+  .tab-panel{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px}
+  .tab-panel.active{display:block}
+</style>
+</head>
+<body>
+<main>
+  <h1>MEMS Sensors — Comb Drives, Capacitive Sense, Sigma-Delta Readout</h1>
+  <p class="lede">Silicon chips with tiny moving parts: 10–100 µm springs, 1–10 µm gaps, all etched in a foundry. Accelerometers, gyros, microphones, pressure sensors — all the same building blocks: a proof mass on a spring, a comb-finger capacitor to sense motion, a sigma-delta loop to digitize it.</p>
+
+  <p>MEMS (Micro-Electro-Mechanical Systems) are integrated circuits with moving mechanical structures etched into the silicon itself. The dominant pattern: a small proof mass (10–1000 µg, suspended on cantilever or folded springs that flex by 10 nm to a few µm), with interdigitated <b>comb fingers</b> on its sides that form a variable capacitor with stationary anchor fingers. When the proof mass moves under acceleration, rotation (Coriolis), pressure, or sound, the capacitance changes by aF (attofarads). A <b>sigma-delta</b> loop continuously feeds back electrostatic force to null the motion, and the resulting bit-stream is filtered into a high-resolution digital output. Same architecture, four kinds of input → four kinds of sensor.</p>
+
+  <div class="anchors">
+    <div class="anchor"><b>Proof mass</b> ~1 µg</div>
+    <div class="anchor"><b>Spring</b> ~1 N/m</div>
+    <div class="anchor"><b>Comb gap</b> ~2 µm</div>
+    <div class="anchor"><b>ΔC per finger</b> ~0.01 fF</div>
+    <div class="anchor"><b>Resonance</b> 1–25 kHz</div>
+    <div class="anchor"><b>Die area</b> 1–4 mm²</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="comb">Comb-drive structure</div>
+    <div class="tab" data-tab="accel">Accelerometer</div>
+    <div class="tab" data-tab="gyro">Gyroscope (Coriolis)</div>
+    <div class="tab" data-tab="mic">Mic / pressure</div>
+    <div class="tab" data-tab="sd">Σ-Δ readout</div>
+  </div>
+
+  <!-- COMB -->
+  <div class="tab-panel active" data-pane="comb">
+    <h3>Interdigitated comb fingers — the universal MEMS capacitor</h3>
+    <p>Each pair of comb fingers (one fixed, one moving) forms a parallel-plate capacitor. Many fingers are arrayed in parallel to multiply the total ΔC for a given mass displacement. The capacitance depends on overlap area: C = ε₀·A_overlap/g, where g is the gap. When the proof mass moves laterally by Δx, the overlap area changes by N · h · Δx, where N is the finger count and h is the silicon thickness (typically 10–25 µm in foundry SOI processes).</p>
+
+    <div class="figure">
+      <svg viewBox="0 0 600 280">
+        <text x="300" y="20" class="label" text-anchor="middle">Comb-finger detail (top view, schematic)</text>
+        <!-- moving plate -->
+        <g transform="translate(80,60)">
+          <rect x="0" y="0" width="180" height="20" fill="var(--accent)" opacity="0.4" stroke="var(--accent)"/>
+          <text x="90" y="15" class="label" text-anchor="middle">moving plate (proof mass)</text>
+          <!-- moving fingers (down) -->
+          <rect x="10" y="20" width="6" height="50" fill="var(--accent)"/>
+          <rect x="30" y="20" width="6" height="50" fill="var(--accent)"/>
+          <rect x="50" y="20" width="6" height="50" fill="var(--accent)"/>
+          <rect x="70" y="20" width="6" height="50" fill="var(--accent)"/>
+          <rect x="90" y="20" width="6" height="50" fill="var(--accent)"/>
+          <rect x="110" y="20" width="6" height="50" fill="var(--accent)"/>
+          <rect x="130" y="20" width="6" height="50" fill="var(--accent)"/>
+          <rect x="150" y="20" width="6" height="50" fill="var(--accent)"/>
+        </g>
+        <!-- fixed -->
+        <g transform="translate(80,180)">
+          <rect x="0" y="40" width="180" height="20" fill="var(--accent2)" opacity="0.4" stroke="var(--accent2)"/>
+          <text x="90" y="55" class="label" text-anchor="middle">anchor (fixed)</text>
+          <!-- fixed fingers (up) -->
+          <rect x="20" y="-10" width="6" height="50" fill="var(--accent2)"/>
+          <rect x="40" y="-10" width="6" height="50" fill="var(--accent2)"/>
+          <rect x="60" y="-10" width="6" height="50" fill="var(--accent2)"/>
+          <rect x="80" y="-10" width="6" height="50" fill="var(--accent2)"/>
+          <rect x="100" y="-10" width="6" height="50" fill="var(--accent2)"/>
+          <rect x="120" y="-10" width="6" height="50" fill="var(--accent2)"/>
+          <rect x="140" y="-10" width="6" height="50" fill="var(--accent2)"/>
+          <rect x="160" y="-10" width="6" height="50" fill="var(--accent2)"/>
+        </g>
+        <text x="290" y="100" class="label-dim">gap g ≈ 2 µm</text>
+        <text x="290" y="120" class="label-dim">finger length L ≈ 50 µm</text>
+        <text x="290" y="140" class="label-dim">thickness h ≈ 20 µm</text>
+        <text x="290" y="160" class="label-dim">finger count N typically 40–200</text>
+        <text x="290" y="200" class="label" fill="var(--accent3)">C = 2·N · ε₀·h·L_overlap / g</text>
+        <text x="290" y="220" class="label-dim">ΔC = 2·N · ε₀·h · Δx / g per Δx motion</text>
+        <text x="290" y="240" class="label-dim">(factor 2 because each finger has two faces)</text>
+      </svg>
+    </div>
+
+    <section class="controls">
+      <div class="control"><label>Finger count N: <span class="readout" id="cbNRead">100</span></label><input id="cbN" type="range" min="10" max="500" step="10" value="100"></div>
+      <div class="control"><label>Overlap L: <span class="readout" id="cbLRead">40 µm</span></label><input id="cbL" type="range" min="10" max="100" step="2" value="40"></div>
+      <div class="control"><label>Thickness h: <span class="readout" id="cbHRead">20 µm</span></label><input id="cbH" type="range" min="2" max="50" step="2" value="20"></div>
+      <div class="control"><label>Gap g: <span class="readout" id="cbGRead">2.0 µm</span></label><input id="cbG" type="range" min="0.5" max="10" step="0.1" value="2.0"></div>
+      <div class="control"><label>Mass displacement Δx: <span class="readout" id="cbDRead">10 nm</span></label><input id="cbD" type="range" min="0" max="500" step="5" value="10"></div>
+    </section>
+
+    <div class="figure">
+      <table>
+        <tr><th>Quantity</th><th>Value</th></tr>
+        <tr><td>Static capacitance C₀</td><td id="cbC0" class="num">—</td></tr>
+        <tr><td>ΔC per Δx (sensitivity)</td><td id="cbDC" class="num">—</td></tr>
+        <tr><td>ΔC at Δx displacement</td><td id="cbDCx" class="num">—</td></tr>
+        <tr><td>ΔC as fraction of C₀</td><td id="cbFrac" class="num">—</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ACCELEROMETER -->
+  <div class="tab-panel" data-pane="accel">
+    <h3>The proof-mass accelerometer</h3>
+    <p>A small mass m suspended on a spring k inside the chip. When the package accelerates at a, the mass — by Newton's 2nd law — lags behind the package by Δx = m·a/k = a/ω₀², where ω₀ = √(k/m) is the natural resonance frequency. The comb-finger sensor reads Δx. The dominant constraints: spring softness (high sensitivity, low BW), Brownian noise floor, and over-range mechanical stops.</p>
+
+    <section class="controls">
+      <div class="control"><label>Proof mass m: <span class="readout" id="acMRead">1.0 µg</span></label><input id="acM" type="range" min="0.05" max="10" step="0.05" value="1.0"></div>
+      <div class="control"><label>Spring k: <span class="readout" id="acKRead">1.0 N/m</span></label><input id="acK" type="range" min="0.05" max="20" step="0.05" value="1.0"></div>
+      <div class="control"><label>Acceleration: <span class="readout" id="acARead">1.0 g</span></label><input id="acA" type="range" min="-16" max="16" step="0.1" value="1.0"></div>
+      <div class="control"><label>Range / FS: <span class="readout" id="acFSRead">±8 g</span></label>
+        <select id="acFS">
+          <option value="2">±2 g (smart phone)</option>
+          <option value="8" selected>±8 g (drone IMU)</option>
+          <option value="16">±16 g (sports/impact)</option>
+          <option value="200">±200 g (crash/automotive)</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="figure">
+      <svg id="acFig" viewBox="0 0 600 240"></svg>
+      <table>
+        <tr><th>Quantity</th><th>Value</th></tr>
+        <tr><td>Natural frequency ω₀/2π</td><td id="acF0" class="num">—</td></tr>
+        <tr><td>Static displacement = m·a/k</td><td id="acDx" class="num">—</td></tr>
+        <tr><td>Brownian noise floor (300 K)</td><td id="acNoise" class="num">—</td></tr>
+        <tr><td>FS displacement (at range)</td><td id="acFSx" class="num">—</td></tr>
+        <tr><td>Resolution if 16-bit, full-range</td><td id="acRes" class="num">—</td></tr>
+      </table>
+    </div>
+
+    <p>The 3-axis IMU you find in phones (LSM6DSO, BMI270) typically uses 3 separate proof masses, each measuring one axis. The full-scale displacement is on the order of 0.1–1 µm at FS, and the comb fingers turn that into ~100 fF of total capacitance change. Σ-Δ digitization gives 16-bit output at 1 kHz, ~80 µg/√Hz noise density. ODR up to 6.66 kHz on modern parts.</p>
+  </div>
+
+  <!-- GYRO -->
+  <div class="tab-panel" data-pane="gyro">
+    <h3>MEMS gyroscope — Coriolis-effect sense</h3>
+    <p>You can't directly measure angular velocity Ω with a simple proof mass — there's no static deflection from rotation. The trick: drive the proof mass into a fixed oscillation (the "drive mode") at its drive resonance frequency, ~20 kHz. When the chip rotates at Ω, the moving mass experiences a Coriolis force F_c = 2·m·v_drive × Ω perpendicular to both the drive motion and the rotation axis. This deflects the mass in a perpendicular "sense mode" by an amount proportional to Ω. A separate set of comb fingers reads the sense-mode amplitude, which is demodulated against the drive oscillation phase to recover Ω.</p>
+
+    <div class="figure">
+      <svg viewBox="0 0 600 280">
+        <text x="300" y="20" class="label" text-anchor="middle">Coriolis MEMS gyro: drive (X) + sense (Y), rotation about Z</text>
+        <g transform="translate(150,70)">
+          <!-- Frame -->
+          <rect x="0" y="0" width="280" height="160" fill="none" stroke="var(--fg-dim)" stroke-dasharray="3,3"/>
+          <text x="140" y="-10" class="label-dim" text-anchor="middle">chip package</text>
+          <!-- Proof mass -->
+          <rect x="120" y="60" width="60" height="40" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="2"/>
+          <text x="150" y="85" class="label" text-anchor="middle">m</text>
+          <!-- Drive springs (horizontal) -->
+          <path d="M 0 80 l 12 0 l 0 -6 l 12 12 l 0 -12 l 12 12 l 0 -12 l 12 12 l 0 -12 l 12 12 l 0 -12 l 12 12 l 0 -12 l 12 12 l 0 -6 l 12 0" stroke="var(--accent)" fill="none"/>
+          <path d="M 180 80 l 12 0 l 0 -6 l 12 12 l 0 -12 l 12 12 l 0 -12 l 12 12 l 0 -12 l 12 12 l 0 -12 l 12 12 l 0 -12 l 12 12 l 0 -6 l 12 0" stroke="var(--accent)" fill="none"/>
+          <text x="60" y="120" class="label-dim" text-anchor="middle">drive spring kx</text>
+          <text x="220" y="120" class="label-dim" text-anchor="middle">drive spring kx</text>
+          <!-- Drive motion -->
+          <path d="M 120 50 q -25 -10 0 -25" stroke="var(--accent2)" fill="none" marker-end="url(#g_arr)"/>
+          <path d="M 180 50 q 25 -10 0 -25" stroke="var(--accent2)" fill="none" marker-end="url(#g_arr)"/>
+          <text x="150" y="35" class="label" fill="var(--accent2)" text-anchor="middle">drive oscillation x(t)</text>
+          <!-- Coriolis sense (Y direction) -->
+          <path d="M 200 100 l 0 30" stroke="var(--accent3)" stroke-width="2" marker-end="url(#g_arr3)"/>
+          <text x="240" y="125" class="label" fill="var(--accent3)">F_c = 2mΩ·v</text>
+          <!-- Rotation -->
+          <circle cx="280" cy="50" r="15" fill="none" stroke="var(--warn)" stroke-width="2"/>
+          <path d="M 290 35 a 15 15 0 1 1 -1 -1" stroke="var(--warn)" fill="none" marker-end="url(#g_arrw)"/>
+          <text x="310" y="55" class="label" fill="var(--warn)">Ω (Z axis)</text>
+          <defs>
+            <marker id="g_arr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="var(--accent2)"/></marker>
+            <marker id="g_arr3" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="var(--accent3)"/></marker>
+            <marker id="g_arrw" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="var(--warn)"/></marker>
+          </defs>
+        </g>
+      </svg>
+    </div>
+
+    <section class="controls">
+      <div class="control"><label>Drive amplitude (peak): <span class="readout" id="gyAmpRead">5 µm</span></label><input id="gyAmp" type="range" min="0.5" max="20" step="0.5" value="5"></div>
+      <div class="control"><label>Drive frequency: <span class="readout" id="gyFRead">22 kHz</span></label><input id="gyF" type="range" min="5" max="40" step="0.5" value="22"></div>
+      <div class="control"><label>Proof mass: <span class="readout" id="gyMRead">1.0 µg</span></label><input id="gyM" type="range" min="0.1" max="10" step="0.1" value="1.0"></div>
+      <div class="control"><label>Angular rate: <span class="readout" id="gyORead">100 °/s</span></label><input id="gyO" type="range" min="0" max="2000" step="10" value="100"></div>
+      <div class="control"><label>Sense spring ky: <span class="readout" id="gyKyRead">0.5 N/m</span></label><input id="gyKy" type="range" min="0.05" max="5" step="0.05" value="0.5"></div>
+    </section>
+
+    <div class="figure">
+      <table>
+        <tr><th>Quantity</th><th>Value</th></tr>
+        <tr><td>Drive velocity (peak)</td><td id="gyVdrv" class="num">—</td></tr>
+        <tr><td>Coriolis force (peak)</td><td id="gyFc" class="num">—</td></tr>
+        <tr><td>Sense-axis deflection (peak)</td><td id="gyDy" class="num">—</td></tr>
+        <tr><td>Sense ω_y/2π (need ≈ drive)</td><td id="gyFy" class="num">—</td></tr>
+        <tr><td>Mode mismatch Δf</td><td id="gyDf" class="num">—</td></tr>
+      </table>
+    </div>
+    <p class="lede">Drive and sense modes should have similar resonant frequencies (mode-matching) for maximum sensitivity — but too close and temperature/process drift destroys stability. Most commercial gyros split Δf by 100–500 Hz; high-performance navigation gyros use closed-loop mode-matching trimmed at the factory.</p>
+  </div>
+
+  <!-- MIC -->
+  <div class="tab-panel" data-pane="mic">
+    <h3>MEMS microphone and absolute pressure</h3>
+    <p>A MEMS mic is a tiny diaphragm (~1 mm² of perforated silicon nitride or doped polysilicon) over a back-volume cavity. Sound waves push the diaphragm by ±10 nm at typical levels; the diaphragm forms one plate of a capacitor with a fixed back-plate. ΔC ~ aF, but with a high-impedance bias and a sigma-delta front-end on the same chip (or stacked die), you get 60–70 dB SNR and very low noise floor (~25 dB SPL equivalent).</p>
+
+    <p>An <b>absolute pressure</b> sensor uses the same building block but with a sealed reference cavity (often vacuum). Atmospheric pressure pushes the diaphragm in, deflecting it by amounts proportional to P − P_ref. Often paired with a piezoresistive readout instead of capacitive, because piezoresistors integrate naturally into the silicon strip.</p>
+
+    <table>
+      <tr><th>Sensor</th><th>Diaphragm</th><th>Readout</th><th>Notable parts</th></tr>
+      <tr><td>MEMS mic</td><td>~1 mm² polySi, perforated</td><td>Capacitive + Σ-Δ</td><td>Knowles SPH0645, ICS-43432</td></tr>
+      <tr><td>Absolute pressure (alt/baro)</td><td>~100 µm × 100 µm Si, vacuum back</td><td>Piezoresistive + ADC</td><td>BMP388, MS5611</td></tr>
+      <tr><td>Differential pressure</td><td>Two ports, common diaphragm</td><td>Piezoresistive</td><td>Sensirion SDP800, Honeywell ABP</td></tr>
+      <tr><td>Tire pressure (TPMS)</td><td>Si diaphragm + battery + RF</td><td>Piezo + 433 MHz transmitter</td><td>NXP MPXY8000, Infineon SP370</td></tr>
+    </table>
+  </div>
+
+  <!-- SD -->
+  <div class="tab-panel" data-pane="sd">
+    <h3>Sigma-delta capacitive readout — the killer architecture</h3>
+    <p>Direct capacitance measurement at the aF level is impossible with a standard analog front-end — parasitics and amplifier noise destroy you. The Σ-Δ trick: don't measure C; <b>force-balance</b> the proof mass to its zero position by feeding back an electrostatic force, and count the feedback bits. The bit-stream IS the digital output; a digital filter (decimator) integrates it to a high-resolution N-bit word.</p>
+
+    <div class="figure">
+      <svg viewBox="0 0 600 240">
+        <text x="300" y="20" class="label" text-anchor="middle">Σ-Δ MEMS readout loop</text>
+        <!-- mech sensor -->
+        <rect x="40" y="60" width="100" height="60" fill="var(--bg-elev2)" stroke="var(--accent)"/>
+        <text x="90" y="85" class="label" text-anchor="middle">MEMS</text>
+        <text x="90" y="105" class="label-dim" text-anchor="middle">proof mass</text>
+        <text x="90" y="55" class="label-dim">a(t) →</text>
+        <line x1="140" y1="90" x2="190" y2="90" class="wire"/>
+        <text x="160" y="80" class="label-dim">x(t)</text>
+        <!-- C/V converter -->
+        <rect x="190" y="70" width="80" height="40" fill="var(--bg-elev2)" stroke="var(--accent2)"/>
+        <text x="230" y="95" class="label" text-anchor="middle">C → V</text>
+        <line x1="270" y1="90" x2="320" y2="90" class="wire"/>
+        <!-- Quantizer (1-bit comparator) -->
+        <rect x="320" y="70" width="80" height="40" fill="var(--bg-elev2)" stroke="var(--accent3)"/>
+        <text x="360" y="95" class="label" text-anchor="middle">1-bit Q</text>
+        <line x1="400" y1="90" x2="440" y2="90" class="wire"/>
+        <text x="445" y="94" class="label-dim">bit-stream</text>
+        <line x1="440" y1="90" x2="490" y2="90" class="wire"/>
+        <!-- Decimator -->
+        <rect x="490" y="70" width="80" height="40" fill="var(--bg-elev2)" stroke="var(--accent)"/>
+        <text x="530" y="95" class="label" text-anchor="middle">decim filter</text>
+        <text x="530" y="135" class="label-dim" text-anchor="middle">16-bit output</text>
+        <!-- Feedback -->
+        <line x1="440" y1="90" x2="440" y2="180" stroke="var(--warn)"/>
+        <line x1="440" y1="180" x2="90" y2="180" stroke="var(--warn)"/>
+        <line x1="90" y1="180" x2="90" y2="120" stroke="var(--warn)" marker-end="url(#sdarr)"/>
+        <text x="250" y="170" class="label" fill="var(--warn)">electrostatic force feedback</text>
+        <defs><marker id="sdarr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="var(--warn)"/></marker></defs>
+      </svg>
+    </div>
+
+    <p>Why force balance helps: the mechanical structure stays near its rest position, so nonlinearity in the C-x relationship (which is sharp because gap-mode capacitance is 1/g) doesn't kick in. The bit-stream is dense (1's and 0's mixed in proportion to input), and a decimating low-pass filter (sinc³ typically) averages thousands of bits per output sample, raising the effective resolution to 16–24 bits.</p>
+
+    <h3>Mode-mismatched vs mode-matched gyros, ODR vs noise</h3>
+    <p>Tunable trade between effective sample rate (ODR = output data rate, 12.5 Hz to 6.66 kHz on consumer parts) and noise. Decimation ratio decides: more averaging = lower noise but lower ODR. A typical IMU has a register for "BW filter" that picks the decimator response and is interpreted as a -3 dB cutoff.</p>
+  </div>
+
+  <h2>Worked example — drone IMU dimensioning</h2>
+  <div class="worked">
+    <h3>Target</h3>
+    <p>FPV racing drone needs 3-axis gyro at ±2000 °/s with 1 kHz update rate and ≤ 0.01 °/s/√Hz noise. 3-axis accelerometer at ±16 g for crash protection. Both must fit in a 2×2 mm package and total ≤ 5 mA at 3.3 V.</p>
+
+    <h3>The candidate: ICM-42688 (TDK InvenSense)</h3>
+    <span class="eq">Gyro range: ±2000 °/s
+       Gyro noise density: 0.0028 °/s/√Hz ✓ (4× better than target)</span>
+    <span class="eq">Accel range: ±16 g
+       Accel noise density: 70 µg/√Hz</span>
+    <span class="eq">ODR up to 32 kHz (gyro), 8 kHz (accel) — gives huge filtering headroom</span>
+    <span class="eq">SPI/I²C up to 24 MHz SPI — 1 kHz read is trivial</span>
+    <span class="eq">Current: 0.6 mA gyro-on, 18 µA accel-only — well within budget</span>
+    <span class="eq">2.5×3 mm LGA package, FIFO 2 KB — buffer 200 samples at 1 kHz</span>
+
+    <h3>Why this beats discrete</h3>
+    <p>Integrated 3-axis-of-each MEMS shares the same crystal, same temperature, same calibration — making sensor fusion (Madgwick / Kalman) far more accurate than separate dies. The on-die DMP can even handle quaternion fusion without waking the main MCU. For a drone running at 8 kHz inner loop, ICM-42688's "low-noise mode" and synchronization signals are exactly what's needed.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>All four sensors are the same building block</b> — proof mass, spring, comb-capacitor, Σ-Δ readout. The difference is what excites the mass (gravity / acceleration / Coriolis / pressure / sound).</li>
+    <li><b>Static displacement is tiny</b> — at 1 g, a 1 µg/1 N·m⁻¹ mass moves 10 nm. That's how Σ-Δ + force-balance is essential.</li>
+    <li><b>Self-test is built in</b> — a test bit drives a known electrostatic force to the proof mass and reads the response. Used at factory calibration and at runtime safety-critical checks (automotive ASIL).</li>
+    <li><b>Brownian noise sets the noise floor</b> — finite-temperature random buffeting of the mass. Larger mass and stiffer spring help; both also hurt sensitivity. Always a tradeoff.</li>
+    <li><b>Frequency response is package-dependent</b> — mics have an internal helmholtz resonance from the port hole + back volume; pressure sensors have viscous damping from venting; gyros need quadrature correction. Datasheet plots are mandatory reading.</li>
+    <li><b>Cross-axis sensitivity</b> — typically &lt; 2% for production parts, but matters in high-end applications (navigation gyros, geophysical sensors).</li>
+    <li><b>Vibration rectification</b> — non-linear effects in the comb-finger sensor convert symmetric vibration into a DC offset. Mount IMUs on soft pads on a racing drone or your gyro drifts during throttle-up.</li>
+  </ul>
+
+  <h2>Where you'll see these sensors</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Phones, watches, AR/VR headsets</b> — 6-DOF IMU (accel + gyro), mic, altimeter all MEMS.</li>
+      <li><b style="color:var(--fg)">Drones and robots</b> — IMU is the inner loop's heart; without it you can't stabilize.</li>
+      <li><b style="color:var(--fg)">Automotive ABS/ESP, airbag</b> — high-g accel for crash, gyro for ESC; ASIL-rated parts (Bosch SMI230 family).</li>
+      <li><b style="color:var(--fg)">Medical / hearing aids</b> — tiny mic packages, blood-pressure cuffs, CGM patches with motion compensation.</li>
+      <li><b style="color:var(--fg)">Industrial CBM (Condition-Based Monitoring)</b> — vibration-spectrum analysis on bearings, motors, compressors.</li>
+      <li><b style="color:var(--fg)">Smart home</b> — flood sensors, glass-break detectors (high-frequency mic), bedside motion sensors.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Comb C</dt><dd><span class="eq">C = 2N·ε₀·h·L / g</span></dd>
+        <dt>Comb ΔC</dt><dd><span class="eq">ΔC = 2N·ε₀·h·Δx / g</span></dd>
+        <dt>Accel</dt><dd><span class="eq">Δx = m·a / k = a / ω₀²</span></dd>
+        <dt>Resonance</dt><dd><span class="eq">ω₀ = √(k/m)</span></dd>
+        <dt>Coriolis</dt><dd><span class="eq">F_c = 2·m·v_drv × Ω</span></dd>
+        <dt>Sense defl</dt><dd><span class="eq">Δy ≈ 2·m·v_drv·Ω / k_y</span></dd>
+        <dt>Brownian</dt><dd><span class="eq">a_noise = √(4kT·b/m²)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SHORTCUTS</h3>
+      <ul>
+        <li><b>ε₀ = 8.854 pF/m</b>; ε₀·h·L / g gives fF at MEMS scales.</li>
+        <li>1 g on 1 µg with 1 N/m gives <b>~10 nm displacement</b>.</li>
+        <li>Gyro drive at <b>~20 kHz</b>, sense slightly different.</li>
+        <li>Σ-Δ + force balance keeps the mass essentially still → linear.</li>
+        <li>FIFO buffer in modern IMUs lets you batch reads and sleep the MCU.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>PCB stress</b> — flexing the PCB applies stress through the package to the die, shifting offsets. Mount IMUs in the centroid of the board, away from connectors and large components.</li>
+        <li><b>Reflow stress</b> — first power-on after reflow has a different offset than after a few hours of operation. Always re-tare after assembly.</li>
+        <li><b>Vibration rectification</b> — high-frequency vibration becomes DC bias error. Soft-mount sensitive IMUs.</li>
+        <li><b>Forgetting temperature compensation</b> — accelerometer ZGO drifts ~5–20 mg over -40 to +85 °C without compensation.</li>
+        <li><b>Treating gyro as absolute angle</b> — gyro is rate; you must integrate, and integration accumulates drift. Always pair with accel + mag (sensor fusion).</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: EM Phase 2 — Actuators / Phase 1 — Sensors · Topic: MEMS overview ·
+    Companions: imu-overview, capacitive-touch, signal-conditioning, kalman-filter
+  </footer>
+</main>
+<script>
+  // COMB
+  const cbIds = ['cbN','cbL','cbH','cbG','cbD'];
+  const cbEls = {}; cbIds.forEach(k => cbEls[k] = document.getElementById(k));
+  function updateCb(){
+    const N = parseFloat(cbEls.cbN.value);
+    const L = parseFloat(cbEls.cbL.value) * 1e-6;
+    const h = parseFloat(cbEls.cbH.value) * 1e-6;
+    const g = parseFloat(cbEls.cbG.value) * 1e-6;
+    const dx = parseFloat(cbEls.cbD.value) * 1e-9;
+    document.getElementById('cbNRead').textContent = N.toFixed(0);
+    document.getElementById('cbLRead').textContent = (L*1e6).toFixed(0) + ' µm';
+    document.getElementById('cbHRead').textContent = (h*1e6).toFixed(0) + ' µm';
+    document.getElementById('cbGRead').textContent = (g*1e6).toFixed(1) + ' µm';
+    document.getElementById('cbDRead').textContent = (dx*1e9).toFixed(0) + ' nm';
+
+    const eps0 = 8.854e-12;
+    const C0 = 2*N * eps0 * h * L / g;
+    const dCdx = 2*N * eps0 * h / g;
+    const dC = dCdx * dx;
+    document.getElementById('cbC0').textContent = (C0*1e15).toFixed(2) + ' fF';
+    document.getElementById('cbDC').textContent = (dCdx*1e3).toFixed(3) + ' fF/µm';
+    document.getElementById('cbDCx').textContent = (dC*1e18).toFixed(2) + ' aF';
+    document.getElementById('cbFrac').textContent = (dC/C0 * 100).toFixed(4) + ' %';
+  }
+
+  // ACCEL
+  const acIds = ['acM','acK','acA','acFS'];
+  const acEls = {}; acIds.forEach(k => acEls[k] = document.getElementById(k));
+  function updateAc(){
+    const m = parseFloat(acEls.acM.value) * 1e-9; // µg → kg
+    const k = parseFloat(acEls.acK.value);
+    const a = parseFloat(acEls.acA.value) * 9.81;
+    const FS = parseFloat(acEls.acFS.value);
+    document.getElementById('acMRead').textContent = (m*1e9).toFixed(2) + ' µg';
+    document.getElementById('acKRead').textContent = k.toFixed(2) + ' N/m';
+    document.getElementById('acARead').textContent = (a/9.81).toFixed(2) + ' g';
+    document.getElementById('acFSRead').textContent = '±' + FS + ' g';
+
+    const w0 = Math.sqrt(k/m);
+    const dx = m*a/k;
+    const noise = Math.sqrt(4 * 1.38e-23 * 300 * 1e-6 / (m*m)) ; // approximate
+    const FSx = m * FS * 9.81 / k;
+    const res = (2*FSx) / 65535 * 1e9; // in nm/LSB
+    document.getElementById('acF0').textContent = (w0/(2*Math.PI)).toFixed(0) + ' Hz';
+    document.getElementById('acDx').textContent = (dx*1e9).toFixed(2) + ' nm';
+    document.getElementById('acNoise').textContent = (noise/9.81 * 1e6).toFixed(1) + ' µg/√Hz (approx)';
+    document.getElementById('acFSx').textContent = (FSx*1e6).toFixed(2) + ' µm';
+    document.getElementById('acRes').textContent = res.toFixed(2) + ' nm/LSB → ' + (res/(FSx*1e9)*FS).toFixed(4) + ' g/LSB';
+
+    // SVG
+    const svg = document.getElementById('acFig');
+    const cx = 200, cy = 120;
+    const scale = Math.min(50000, 1/Math.max(1e-9, dx*1e6) * 0.3);
+    const massOff = Math.max(-30, Math.min(30, dx * 5e8));
+    svg.innerHTML = `
+      <text x="${cx}" y="20" class="label" text-anchor="middle">Proof mass + spring (lateral comb deflection)</text>
+      <rect x="${cx-100}" y="${cy-50}" width="200" height="100" fill="none" stroke="var(--fg-dim)" stroke-dasharray="3,3"/>
+      <text x="${cx+110}" y="${cy+4}" class="label-dim">chip package</text>
+      <!-- left spring -->
+      <path d="M ${cx-100} ${cy} l 10 0 l 0 -6 l 10 12 l 0 -12 l 10 12 l 0 -12 l 10 12 l 0 -12 l 10 12 l 0 -6 l 10 0" stroke="var(--accent)" fill="none"/>
+      <!-- right spring -->
+      <path d="M ${cx+40} ${cy} l 10 0 l 0 -6 l 10 12 l 0 -12 l 10 12 l 0 -12 l 10 12 l 0 -12 l 10 12 l 0 -6 l 10 0" stroke="var(--accent)" fill="none"/>
+      <!-- mass -->
+      <rect x="${cx-20 + massOff}" y="${cy-20}" width="40" height="40" fill="var(--bg-elev2)" stroke="var(--accent3)" stroke-width="2"/>
+      <text x="${cx + massOff}" y="${cy+4}" class="label" text-anchor="middle">m</text>
+      <!-- arrow for a -->
+      ${a !== 0 ? `<line x1="${cx}" y1="${cy+60}" x2="${cx + (a>0?40:-40)}" y2="${cy+60}" stroke="var(--warn)" stroke-width="2" marker-end="url(#aarr)"/>
+                   <text x="${cx + (a>0?50:-50)}" y="${cy+64}" class="label" fill="var(--warn)">a</text>` : ''}
+      <defs><marker id="aarr" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="var(--warn)"/></marker></defs>
+      <text x="${cx}" y="${cy+90}" class="label-dim" text-anchor="middle">Δx = ${(dx*1e9).toFixed(2)} nm (exaggerated × ${Math.round(5e8*massOff/Math.max(1e-9,dx))})</text>
+    `;
+  }
+
+  // GYRO
+  const gyIds = ['gyAmp','gyF','gyM','gyO','gyKy'];
+  const gyEls = {}; gyIds.forEach(k => gyEls[k] = document.getElementById(k));
+  function updateGy(){
+    const A = parseFloat(gyEls.gyAmp.value) * 1e-6;
+    const f = parseFloat(gyEls.gyF.value) * 1e3;
+    const m = parseFloat(gyEls.gyM.value) * 1e-9;
+    const O = parseFloat(gyEls.gyO.value) * Math.PI/180;
+    const ky = parseFloat(gyEls.gyKy.value);
+    document.getElementById('gyAmpRead').textContent = (A*1e6).toFixed(1) + ' µm';
+    document.getElementById('gyFRead').textContent = (f/1000).toFixed(1) + ' kHz';
+    document.getElementById('gyMRead').textContent = (m*1e9).toFixed(1) + ' µg';
+    document.getElementById('gyORead').textContent = (O*180/Math.PI).toFixed(0) + ' °/s';
+    document.getElementById('gyKyRead').textContent = ky.toFixed(2) + ' N/m';
+
+    const vdrv = 2*Math.PI*f * A;
+    const Fc = 2*m*vdrv*O;
+    const Dy = Fc/ky;
+    const fy = (1/(2*Math.PI)) * Math.sqrt(ky/m);
+    document.getElementById('gyVdrv').textContent = (vdrv*1000).toFixed(2) + ' mm/s';
+    document.getElementById('gyFc').textContent = (Fc*1e12).toFixed(2) + ' pN';
+    document.getElementById('gyDy').textContent = (Dy*1e9).toFixed(2) + ' nm';
+    document.getElementById('gyFy').textContent = (fy/1000).toFixed(2) + ' kHz';
+    document.getElementById('gyDf').textContent = ((fy - f)/1000).toFixed(2) + ' kHz mismatch';
+  }
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.querySelector(`.tab-panel[data-pane="${t.dataset.tab}"]`).classList.add('active');
+    });
+  });
+
+  cbIds.forEach(k => cbEls[k].addEventListener('input', updateCb));
+  acIds.forEach(k => acEls[k].addEventListener('input', updateAc));
+  acIds.forEach(k => acEls[k].addEventListener('change', updateAc));
+  gyIds.forEach(k => gyEls[k].addEventListener('input', updateGy));
+  updateCb(); updateAc(); updateGy();
+</script>
+</body>
+</html>

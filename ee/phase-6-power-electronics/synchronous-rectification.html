@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Synchronous Rectification — visual</title>
+<style>
+  :root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+  .control input,.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 8px;font:13px ui-monospace,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+  .figure svg{display:block;max-width:100%;height:auto}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;font-family:ui-monospace,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright)}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,monospace;color:var(--accent2)}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv b{color:var(--fg)}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,monospace;background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2)}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>Synchronous Rectification</h1>
+  <p class="lede">Replacing the freewheel Schottky diode in a buck converter with a low-side MOSFET — turned on synchronously with the inductor current — drops the conduction loss from V_f·I (typically 0.4 V × I, large) to I²·R_DS(on) (typically 5 mΩ × I², much smaller for high I_load). Critical for efficiency above ~5 A or when running from a low-voltage rail where V_f is a big fraction of V_out. The catch: shoot-through risk if both MOSFETs are on at once. Dead-time avoidance is mandatory.</p>
+
+  <div class="anchors">
+    <span class="anchor"><b>Schottky V_f</b>: 0.3–0.5 V (typ)</span>
+    <span class="anchor"><b>MOSFET R_DS(on)</b>: 2–30 mΩ (typ logic-level)</span>
+    <span class="anchor"><b>Crossover</b>: I &gt; ~5–20 A where MOSFET wins</span>
+    <span class="anchor"><b>Dead time</b>: 5–50 ns (sets switching loss)</span>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>I_load (A): <span class="readout" id="iRead">5</span></label><input id="i" type="range" min="0.1" max="30" step="0.1" value="5"></div>
+    <div class="control"><label>V_out (V): <span class="readout" id="voRead">3.3</span></label><input id="vo" type="range" min="0.8" max="20" step="0.1" value="3.3"></div>
+    <div class="control"><label>Duty D: <span class="readout" id="dRead">0.50</span></label><input id="d" type="range" min="0.05" max="0.95" step="0.01" value="0.50"></div>
+    <div class="control"><label>Schottky V_f (V): <span class="readout" id="vfRead">0.40</span></label><input id="vf" type="range" min="0.2" max="0.8" step="0.01" value="0.40"></div>
+    <div class="control"><label>MOSFET R_DS(on) (mΩ): <span class="readout" id="rdsRead">10</span></label><input id="rds" type="range" min="1" max="100" step="1" value="10"></div>
+    <div class="control"><label>Switching freq (kHz): <span class="readout" id="fRead">500</span></label><input id="f" type="range" min="50" max="2000" step="50" value="500"></div>
+  </section>
+
+  <div class="figure">
+    <table>
+      <tr><th>Quantity</th><th>Schottky path</th><th>Sync MOSFET path</th></tr>
+      <tr><td>Conduction-loss formula</td><td><code>V_f · I · (1−D)</code></td><td><code>I² · R_DS(on) · (1−D)</code></td></tr>
+      <tr><td>Conduction loss (W)</td><td id="pSchottky" class="num">1.000</td><td id="pSync" class="num">0.125</td></tr>
+      <tr><td>Switching loss (additional)</td><td>~0 (diode)</td><td id="pSw" class="num">12 mW</td></tr>
+      <tr><td>Total loss (W)</td><td id="pTotSch" class="num">1.000</td><td id="pTotSync" class="num">0.137</td></tr>
+      <tr><td>Efficiency contribution (η drop)</td><td id="effSch" class="num">5.7 %</td><td id="effSync" class="num">0.8 %</td></tr>
+      <tr><td>Heat sink size (Θ_sa max)</td><td id="hsSch" class="num">75 °C/W → small TO-220</td><td id="hsSync" class="num">547 °C/W → no heatsink needed</td></tr>
+    </table>
+  </div>
+
+  <h2>How it works — the dual-MOSFET buck topology</h2>
+  <p>A standard buck has a high-side switch (HS, P-channel or N-channel with bootstrap) and a freewheel diode (D_FW). During the "off" portion of each cycle, when HS is open, the inductor current must continue flowing — D_FW provides the path with V_f drop.</p>
+
+  <p>Synchronous rectification replaces D_FW with a low-side N-channel MOSFET (LS). When HS turns off, LS turns on. The inductor current flows through LS's channel with R_DS(on) × I² drop instead of V_f × I drop.</p>
+
+  <div class="deriv">
+    <span class="step">Schottky loss in freewheel: <b>P_D = V_f · I_L · (1−D)</b> where (1−D) is the off-time duty fraction.</span>
+    <span class="step">Sync MOSFET loss in freewheel: <b>P_LS = I_L² · R_DS(on) · (1−D)</b></span>
+    <span class="step">Crossover current: P_D = P_LS  →  V_f = I_crossover · R_DS(on)  →  <b>I_crossover = V_f / R_DS(on)</b></span>
+    <span class="step">For V_f = 0.4 V, R_DS = 10 mΩ: I_crossover = 40 A. Below 40 A, sync wins by I²/40 factor.</span>
+    <span class="step">For V_f = 0.4 V, R_DS = 100 mΩ: I_crossover = 4 A. Below 4 A, sync barely helps; above 4 A diode wins.</span>
+  </div>
+
+  <h2>The shoot-through problem (and dead-time fix)</h2>
+  <p>Both MOSFETs cannot be on at once — that would short V_in to ground through the two channels. The gate driver must turn off the outgoing FET BEFORE turning on the incoming one. This gap is called <b>dead time</b>.</p>
+
+  <p>During dead time, the inductor current still needs a path. The LS body diode conducts (with V_f similar to a Schottky, ~0.7 V for typical Si MOSFET body diodes). After LS turns on, the channel takes over and the body diode stops conducting. The shorter the dead time, the less body-diode loss.</p>
+
+  <p><b>The tradeoff:</b> dead time too short → shoot-through, possibly catastrophic. Dead time too long → body-diode losses + reverse-recovery losses. Typical optimal: 5–50 ns depending on FET gate charge + drive current. Many modern gate drivers (LM5117, TPS51427, DRV8350) measure the drain voltage and adapt dead-time on the fly.</p>
+
+  <h2>Worked example — 5 V to 3.3 V buck @ 5 A</h2>
+  <div class="worked">
+    <h3>The numbers</h3>
+    <span class="eq">D = V_out/V_in = 3.3/5 = 0.66 → (1−D) = 0.34</span>
+    <span class="eq">Schottky path: P = 0.4 V × 5 A × 0.34 = 0.68 W</span>
+    <span class="eq">Sync MOSFET (10 mΩ): P = 25 A² × 0.010 Ω × 0.34 = 0.085 W</span>
+    <span class="eq">Sync savings: 0.68 − 0.085 = 0.60 W → 0.60 W / 16.5 W output = 3.6 % efficiency gain</span>
+    <span class="eq">For laptop / smartphone power conversion 1-5 A: 1-2 % efficiency gain matters for battery life.</span>
+
+    <h3>When NOT to bother with sync</h3>
+    <span class="eq">If I_load &lt; V_f/R_DS_on = 0.4/0.010 = 40 A, sync wins. But:</span>
+    <span class="eq">At 1 A load, sync saves only 0.4 × 1 × 0.34 − 1² × 0.010 × 0.34 = 0.133 W (out of 3.3 W) = 4 %. Marginal vs added gate-driver complexity.</span>
+    <span class="eq">Below ~0.5 A, Schottky often wins (sync MOSFET capacitive switching losses overshadow the conduction-loss win).</span>
+
+    <h3>Modern controllers</h3>
+    <span class="eq">TPS6213x / LM5117 / RT9603: all have integrated low-side FET with adaptive dead-time. Programmable I_skip to drop to Schottky-equivalent at very low loads.</span>
+  </div>
+
+  <h2>Pitfalls</h2>
+  <ul class="notice">
+    <li><b>Body-diode reverse recovery</b> — when LS turns off and HS turns on, the body diode of LS has stored charge that must be cleared. This causes a current spike through HS during the dead-edge. Use FETs with low Q_rr (e.g., GaN, modern trench MOSFETs) or schottky in parallel with body diode to bypass.</li>
+    <li><b>Bootstrap cap sizing</b> — HS gate driver needs a charged bootstrap cap. The cap recharges only when LS is on. At very high duty cycles (D &gt; 95 %), the cap may not refresh enough. Use external charge-pump driver or pulse-skip the LS for refresh.</li>
+    <li><b>Dead-time too long</b> — body-diode conduction creates 2× the Schottky loss for the dead-time interval. At 5 % of period both ways, that's significant.</li>
+    <li><b>Cross-conduction during transient</b> — fast load steps can momentarily turn on both FETs through Miller charge injection on the slow-side gate. Use gate-driver with high pull-down strength.</li>
+    <li><b>Reverse current issues</b> — sync converters can sink current (motor regen), which a diode cannot. Useful for bi-directional, but can dump unwanted current into the supply.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <ul>
+        <li>D = V_out / V_in (CCM)</li>
+        <li>P_D = V_f · I · (1−D)</li>
+        <li>P_LS = I² · R_DS(on) · (1−D)</li>
+        <li>I_crossover = V_f / R_DS(on)</li>
+        <li>P_sw = ½·C_oss·V² · f_sw (sync MOSFET adds switching loss)</li>
+        <li>P_body_diode = V_fb · I · 2·t_dead·f_sw</li>
+      </ul>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SHORTCUTS</h3>
+      <ul>
+        <li>Sync helps when <b>I &gt; V_f/R_DS</b></li>
+        <li>Below ~1 A, often skip sync (use diode)</li>
+        <li>Above ~5 A, sync usually wins</li>
+        <li>Below 0.5 A: Schottky often optimal</li>
+        <li>For ultra-low V_out (1 V or less), sync mandatory</li>
+        <li>Hi-Q FETs + adaptive dead-time → 95+ % efficiency</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li><b>Shoot-through</b> — dead time too short = catastrophic.</li>
+        <li><b>Body-diode Q_rr</b> — uses energy and reduces efficiency.</li>
+        <li><b>Bootstrap depletion</b> at high D.</li>
+        <li><b>Miller turn-on</b> — slow-side gate can sneak on.</li>
+        <li><b>Bi-directional unwanted</b> — sync can sink current motor-side.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 6 — Power Electronics</a> · Cross-links: <a href="buck-converter.html">Buck Converter</a>, <a href="gate-drivers.html">Gate Drivers</a>, <a href="boost-converter.html">Boost Converter</a>.
+  </footer>
+</main>
+<script>
+const els = ['i','vo','d','vf','rds','f'].reduce((m,k)=>{m[k]=document.getElementById(k);return m;},{});
+function update(){
+  const I = parseFloat(els.i.value);
+  const Vo = parseFloat(els.vo.value);
+  const D = parseFloat(els.d.value);
+  const Vf = parseFloat(els.vf.value);
+  const Rds = parseFloat(els.rds.value) / 1000;
+  const f = parseFloat(els.f.value) * 1000;
+
+  document.getElementById('iRead').textContent = I.toFixed(1);
+  document.getElementById('voRead').textContent = Vo.toFixed(1);
+  document.getElementById('dRead').textContent = D.toFixed(2);
+  document.getElementById('vfRead').textContent = Vf.toFixed(2);
+  document.getElementById('rdsRead').textContent = (Rds*1000).toFixed(0);
+  document.getElementById('fRead').textContent = (f/1000).toFixed(0);
+
+  const Pd_schottky = Vf * I * (1 - D);
+  const Pd_sync = I * I * Rds * (1 - D);
+  // Switching loss estimate: 0.5*Coss*V^2*f, Coss~500pF typical, V=Vo/D
+  const Vin = Vo / D;
+  const Psw = 0.5 * 500e-12 * Vin * Vin * f;
+  const Pin = I * Vo;
+  const eff_drop_schottky = Pd_schottky / Pin * 100;
+  const eff_drop_sync = (Pd_sync + Psw) / Pin * 100;
+
+  document.getElementById('pSchottky').textContent = Pd_schottky.toFixed(3) + ' W';
+  document.getElementById('pSync').textContent     = Pd_sync.toFixed(3) + ' W';
+  document.getElementById('pSw').textContent       = (Psw*1000).toFixed(1) + ' mW';
+  document.getElementById('pTotSch').textContent   = Pd_schottky.toFixed(3) + ' W';
+  document.getElementById('pTotSync').textContent  = (Pd_sync + Psw).toFixed(3) + ' W';
+  document.getElementById('effSch').textContent    = eff_drop_schottky.toFixed(1) + ' %';
+  document.getElementById('effSync').textContent   = eff_drop_sync.toFixed(1) + ' %';
+
+  // Heat sink estimate: assume Tj_max - Tamb = 75 °C available
+  const Hs_schottky = Pd_schottky > 0.05 ? (75 / Pd_schottky).toFixed(0) + ' °C/W' : 'no heatsink needed';
+  const Hs_sync = (Pd_sync + Psw) > 0.05 ? (75 / (Pd_sync + Psw)).toFixed(0) + ' °C/W' : 'no heatsink needed';
+  document.getElementById('hsSch').textContent  = Hs_schottky;
+  document.getElementById('hsSync').textContent = Hs_sync;
+}
+['i','vo','d','vf','rds','f'].forEach(k => els[k].addEventListener('input', update));
+update();
+</script>
+</body>
+</html>

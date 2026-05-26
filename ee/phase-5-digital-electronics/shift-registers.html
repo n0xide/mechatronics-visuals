@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shift Registers — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim);cursor:pointer}
+  .anchor:hover{border-color:var(--accent)}
+  .anchor.active{border-color:var(--accent);color:var(--accent)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control input[type=text]{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:4px 8px;font:13px ui-monospace,monospace}
+  .control select,.control button{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:6px 12px;
+    font:13px ui-monospace,Menlo,monospace;cursor:pointer}
+  .control button{background:var(--accent);color:var(--bg);border:none}
+  .control button.pause{background:var(--accent2)}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid{stroke:var(--grid);stroke-width:0.5}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .play-row{display:flex;gap:8px;align-items:center;margin:8px 0}
+  .reg-byte{display:grid;grid-template-columns:repeat(8, 1fr);gap:2px;margin:6px 0;font:14px ui-monospace,monospace}
+  .reg-bit{background:var(--bg-elev2);border:1px solid var(--line);padding:8px;text-align:center;border-radius:4px;color:var(--fg-bright);font-weight:600}
+  .reg-bit.high{background:var(--accent);color:var(--bg)}
+  .reg-bit.low{background:var(--bg-elev2);color:var(--fg-dim)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Shift Registers — 74HC595 &amp; 74HC165</h1>
+  <p class="lede">A shift register turns 3 pins on your MCU into 8 (or 80, or 800) addressable outputs — or 8 inputs into 3 pins back. The 74HC595 is a serial-in/parallel-out (SIPO) "output extender"; the 74HC165 is parallel-in/serial-out (PISO) "input extender." Daisy-chain them and you can drive 64 LEDs from 3 pins, read 32 buttons from 3 pins, or — combined — bridge a 7-segment display, an LED matrix, or a button bank to any MCU. Watch the data bit travel through 8 internal flip-flops on each clock pulse; tap LATCH to commit; see all the outputs change at once.</p>
+
+  <div class="anchors">
+    <button class="anchor active" data-preset="sipo"><b>74HC595 (SIPO)</b> · output extender · 1×</button>
+    <button class="anchor" data-preset="piso"><b>74HC165 (PISO)</b> · input extender · 1×</button>
+    <button class="anchor" data-preset="chain"><b>2× 74HC595 chain</b> · 16 outputs</button>
+    <button class="anchor" data-preset="combo"><b>'595 + '165 combo</b> · I/O extender</button>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>Data byte to send (binary): <span class="readout" id="dRead">10110100</span></label>
+      <input id="dbits" type="text" value="10110100" maxlength="16"></div>
+    <div class="control"><label>Animation speed (ms/clock): <span class="readout" id="spdRead">300</span></label>
+      <input id="spd" type="range" min="50" max="2000" step="10" value="300"></div>
+    <div class="control"><label>Auto / Manual</label>
+      <select id="mode"><option value="manual" selected>Manual step</option><option value="auto">Auto-clock</option></select></div>
+    <div class="control">
+      <label>Controls</label>
+      <div class="play-row">
+        <button id="clkBtn">Pulse CLK</button>
+        <button id="latchBtn" style="background:var(--accent2)">Pulse LATCH</button>
+        <button id="resetBtn" style="background:var(--bg-elev2);color:var(--fg)">Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="diag" viewBox="0 0 700 380" width="100%"></svg>
+    <h3 style="text-transform:uppercase;letter-spacing:0.04em">Internal state — left to right = Q0 to Q7</h3>
+    <div class="reg-byte" id="shiftReg">
+      <div class="reg-bit low">0</div><div class="reg-bit low">0</div><div class="reg-bit low">0</div><div class="reg-bit low">0</div>
+      <div class="reg-bit low">0</div><div class="reg-bit low">0</div><div class="reg-bit low">0</div><div class="reg-bit low">0</div>
+    </div>
+    <h3 style="text-transform:uppercase;letter-spacing:0.04em">Storage register (parallel output after latch)</h3>
+    <div class="reg-byte" id="storeReg">
+      <div class="reg-bit low">0</div><div class="reg-bit low">0</div><div class="reg-bit low">0</div><div class="reg-bit low">0</div>
+      <div class="reg-bit low">0</div><div class="reg-bit low">0</div><div class="reg-bit low">0</div><div class="reg-bit low">0</div>
+    </div>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Notes</th></tr>
+      <tr><td>Bits sent</td><td id="tBits" class="num">0 / 8</td><td>cumulative since last reset</td></tr>
+      <tr><td>Current shift register (binary)</td><td id="tShiftBin" class="num">00000000</td><td>after each CLK</td></tr>
+      <tr><td>Current storage register (binary)</td><td id="tStoreBin" class="num">00000000</td><td>parallel output Q0..Q7</td></tr>
+      <tr><td>Time per byte (typical 74HC at 5V, 25 MHz)</td><td id="tBytetime" class="num">320 ns</td><td>8 clocks × 40 ns/clock</td></tr>
+      <tr><td>Max f_clk for 74HC595 (5V)</td><td class="num">~25 MHz</td><td>datasheet typ, 50 pF load</td></tr>
+    </table>
+  </div>
+
+  <h2>How the 74HC595 works internally</h2>
+  <p>Eight D-FFs are connected in series. The first FF's D input is the chip's "SER" pin; each subsequent FF's D is the previous FF's Q. All FFs share a single clock (SRCLK / SHCP / CLK — names vary by datasheet). On each rising edge of CLK, every FF samples whatever's at its D input. So the bit at SER advances by 1 position each clock.</p>
+  <div class="deriv">
+    <span class="step">After 1 CLK: bit-0 moved from SER to FF0. FF1..FF7 still have whatever was there.</span>
+    <span class="step">After 8 CLKs: 8 new bits have entered, 8 old bits have shifted out the top (overflow to Q7' / chain).</span>
+    <span class="step">The "shift register" output (Q0..Q7) reflects the shift FFs in real-time — every clock changes the visible byte.</span>
+    <span class="step">The "storage register" (Q0..Q7 of the chip) is a separate set of 8 FFs that latch the shift register on the rising edge of RCLK (latch / STCP).</span>
+    <span class="step"><span class="arrow">→</span> This is why you shift in 8 bits with CLK ticking, then pulse LATCH once to copy them to the outputs all at once — no glitches on the visible outputs while shifting.</span>
+  </div>
+
+  <h2>How the 74HC165 works (the dual)</h2>
+  <p>Eight parallel inputs A..H feed into a row of 8 muxed FFs. When PL/SH (load) is LOW, the FFs are loaded from the parallel inputs (synchronous load). When PL is HIGH and you pulse CP (clock), the FFs shift their contents toward the QH pin (the top). You read 1 bit per clock — sample, shift, sample, shift, until you've extracted all 8.</p>
+  <div class="deriv">
+    <span class="step">PL LOW: each FF loads from its parallel input pin (overrides any previous shift state).</span>
+    <span class="step">PL HIGH, CP rises: each FF samples its previous (lower) neighbor; FF0 samples DS (serial in, or chain previous chip's QH).</span>
+    <span class="step">8 clocks: 8 bits read out at QH, MSB first.</span>
+    <span class="step"><span class="arrow">→</span> Read sequence: assert PL, pulse low, deassert; then pulse CP 8 times while reading QH each time.</span>
+  </div>
+
+  <h2>Daisy-chaining</h2>
+  <p>Both '595 and '165 have a serial output for chaining. On the '595: Q7' (also called QH'). This is the same data as Q7 but available before the latch. Wire Q7' → SER of the next '595, share CLK and LATCH between all chips. Now 16 shifts give you 16 outputs. 100 shifts give you 100 outputs. Limited only by the time you can afford and the propagation delay across the chain.</p>
+  <p>Total time for N bytes: 8N clocks · period of clock + 1 latch pulse. At 10 MHz (Pico SPI), that's 100 ns/clock × 8 bits = 800 ns per byte → 1.25 MB/s on a chain.</p>
+
+  <h2>Worked example — 16-LED display from a Pico</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>Drive 16 LEDs in a status array from a Pico's SPI peripheral. Use 2× 74HC595 chained. Pico SPI at 10 MHz, with each LED a 5 mA load through a 1 kΩ resistor.</p>
+    <h3>The wiring</h3>
+    <span class="eq">Pico SPI MOSI → '595 #1 SER</span>
+    <span class="eq">Pico SPI SCK → '595 #1 SRCLK (and '595 #2 SRCLK)</span>
+    <span class="eq">Pico GPIO (any) → '595 #1 RCLK (and '595 #2 RCLK) — the LATCH</span>
+    <span class="eq">'595 #1 Q7' → '595 #2 SER (daisy chain)</span>
+    <span class="eq">'595 #2 Q0..Q7 → LEDs 9..16; '595 #1 Q0..Q7 → LEDs 1..8</span>
+    <h3>The protocol</h3>
+    <span class="eq">Send byte 2 (LEDs 9-16): SPI write 0xAA at 10 MHz → 0.8 µs</span>
+    <span class="eq">Send byte 1 (LEDs 1-8): SPI write 0x55 → 0.8 µs</span>
+    <span class="eq">Latch: pull RCLK high then low → ~100 ns</span>
+    <span class="eq">Total update: 1.7 µs → can refresh at &gt; 580 kHz</span>
+    <h3>Why send byte 2 first?</h3>
+    <p>The first byte you send ends up in '595 #1 (closest to MCU); the second byte is pushed through to '595 #2 (farthest). So to map "LED 9" to Q0 of '595 #2, you send the byte for '595 #2 first.</p>
+  </div>
+
+  <h2>Worked example — reading 8 buttons via 74HC165</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>Game controller: 8 momentary buttons + dpad (4 more) = 12 buttons. Use 2× 74HC165 chained, polled at 200 Hz.</p>
+    <h3>The wiring</h3>
+    <span class="eq">'165 #1 parallel inputs A..H = buttons 1..8 (each with 10 kΩ pull-up; press = LOW)</span>
+    <span class="eq">'165 #2 parallel inputs A..D = dpad (with pull-ups); E..H = N/C</span>
+    <span class="eq">'165 #1 QH → '165 #2 DS (chain)</span>
+    <span class="eq">MCU SPI MISO → '165 #2 QH (read out)</span>
+    <span class="eq">MCU CLK → both chips' CP; MCU GPIO → both chips' PL (active low)</span>
+    <h3>The polling code (pseudo)</h3>
+    <pre style="background:var(--bg-elev2);padding:8px;border-radius:4px;font-size:12px">while True:
+  PL.write(0)                 # load parallel inputs
+  PL.write(1)                 # ready to shift
+  byte1 = spi.read(1)         # bits from '165 #1 (the higher chip)
+  byte2 = spi.read(1)         # bits from '165 #2
+  process_buttons(byte1, byte2)
+  delay_ms(5)                 # 200 Hz polling rate</pre>
+    <span class="eq">Each poll: 0 → 1 latch (0.1 µs) + 16 SPI clocks at 1 MHz = 16 µs total. Easily fits in 5 ms.</span>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Shift in then latch — never mid-shift.</b> If you latch while shifting, you'll get half-old-half-new outputs flickering. Always complete the byte first.</li>
+    <li><b>MSB first or LSB first?</b> 74HC595 is MSB-first by convention — the first bit sent ends up at Q7 (after 8 shifts). MCU SPI peripherals typically also do MSB first; align them.</li>
+    <li><b>SRCLR vs OE.</b> SRCLR clears the shift register (74HC595 specifically); OE (output enable) tristates the parallel outputs. Wire OE low for active outputs; use OE as a "blanking" PWM for software brightness control.</li>
+    <li><b>74HC vs 74HCT vs 74AHC.</b> HC = CMOS V_CC 2-6 V. HCT = TTL input thresholds (V_IH=2V) at 5V supply. AHC = faster, lower current. For Pico (3.3V) → ATmega (5V) cross, '74HCT595 at 5V accepts the 3.3V signal cleanly.</li>
+    <li><b>Use a small filter cap on the latch line</b> if you see glitches. 100 pF is sufficient. The cap absorbs any ringing during the rising edge.</li>
+    <li><b>Q7' delay is FF-to-FF</b>, not zero. At max clock rate on a long chain, propagation can pile up. Datasheet quotes 18 ns typical at 5V; 30 ns over 12 chips is ~360 ns extra delay.</li>
+    <li><b>74HC595 outputs ±6 mA</b> max. For LED driving at 20 mA, use a transistor or LED driver (TLC5940, MAX7219).</li>
+  </ul>
+
+  <h2>Where shift registers show up</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">LED matrices</b> — 8×8 or 16×16, driven by 2-4 daisy-chained '595s.</li>
+      <li><b style="color:var(--fg)">7-segment displays</b> — multi-digit displays: one '595 per digit + transistor drivers.</li>
+      <li><b style="color:var(--fg)">Button arrays</b> — game controllers, keyboards, key matrices, all using '165s.</li>
+      <li><b style="color:var(--fg)">Bit-banged peripherals</b> — driving relays, motors, lights from a budget MCU with only 3 free pins.</li>
+      <li><b style="color:var(--fg)">Cascade JTAG / SPI flash programmers</b> — multi-chip programming via single SPI bus.</li>
+      <li><b style="color:var(--fg)">Inside MCUs</b> — JTAG TDI/TDO is a giant shift register; UART is a SIPO buffer; SPI is a shift register.</li>
+      <li><b style="color:var(--fg)">Pseudo-random number generators</b> — LFSRs are shift registers with XOR feedback.</li>
+      <li><b style="color:var(--fg)">Industrial digital I/O modules</b> — 16-32 channel cards with '595/'165 banks + opto-isolation.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS / TIMING</h3>
+      <dl>
+        <dt>Bytes per byte</dt><dd><span class="eq">8 clocks per byte</span></dd>
+        <dt>Time per byte</dt><dd><span class="eq">8 × T_clk + 1 latch pulse</span></dd>
+        <dt>f_clk max</dt><dd><span class="eq">74HC ~25 MHz @ 5V; ~10 MHz @ 3.3V</span></dd>
+        <dt>Cascade</dt><dd><span class="eq">N chips, 8N bits</span></dd>
+        <dt>Output current</dt><dd><span class="eq">±6 mA per pin (74HC595)</span></dd>
+        <dt>Total Iout</dt><dd><span class="eq">≤ 70 mA per chip</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>PINOUT 74HC595</h3>
+      <ul>
+        <li><b>SER</b> = serial data in</li>
+        <li><b>SRCLK / SH_CP</b> = shift clock</li>
+        <li><b>RCLK / ST_CP</b> = latch (storage clock)</li>
+        <li><b>SRCLR</b> = shift register clear (active low)</li>
+        <li><b>OE</b> = output enable (active low; tristate when high)</li>
+        <li><b>Q0–Q7</b> = parallel outputs</li>
+        <li><b>Q7'</b> = serial out (chain to next SER)</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Floating OE</b> — outputs tristate; downstream sees garbage. Always tie OE low (or to a GPIO).</li>
+        <li><b>Forgetting SRCLR</b> — after power-on, shift register contains random bits; pulse SRCLR low or shift in 0s.</li>
+        <li><b>Backwards byte order in chain</b> — first byte sent ends up at LAST chip. Plan accordingly.</li>
+        <li><b>Latch glitches with mid-shift LATCH pulse</b> — never overlap LATCH with SRCLK.</li>
+        <li><b>Sourcing too much current</b> — 8 LEDs at 20 mA = 160 mA, way over the 70 mA chip max. Use transistors or specialized drivers.</li>
+        <li><b>Forgetting OE for blanking PWM</b> — using OE as PWM lets you software-dim without overhead. Don't tie it fixed low if you might want this later.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EE Phase 5 — Digital Electronics</span> ·
+    Companion: <a href="setup-hold-metastability.html">Setup &amp; Hold</a> ·
+    Forward: <a href="../phase-8-embedded-protocols/usb-enumeration.html">USB Enumeration</a> for high-level digital protocols.
+  </footer>
+</main>
+<script>
+  let state = {
+    preset:"sipo",
+    bits: "10110100",          // bit string to send
+    bitIndex: 0,                // next bit to feed in
+    shiftReg: [0,0,0,0,0,0,0,0],     // 74HC595 internal shift register
+    storeReg: [0,0,0,0,0,0,0,0],     // 74HC595 storage register (post-latch)
+    bitsClocked: 0,
+    speed: 300,
+    mode: "manual",
+    auto_timer: null,
+  };
+
+  function getInputBits(){
+    return (document.getElementById('dbits').value || "").trim().slice(0, 16);
+  }
+
+  function renderBytes(){
+    const shiftEl = document.getElementById('shiftReg');
+    const storeEl = document.getElementById('storeReg');
+    shiftEl.innerHTML = state.shiftReg.map(b =>
+      `<div class="reg-bit ${b ? 'high' : 'low'}">${b}</div>`
+    ).join('');
+    storeEl.innerHTML = state.storeReg.map(b =>
+      `<div class="reg-bit ${b ? 'high' : 'low'}">${b}</div>`
+    ).join('');
+    document.getElementById('tShiftBin').textContent = state.shiftReg.join('');
+    document.getElementById('tStoreBin').textContent = state.storeReg.join('');
+    document.getElementById('tBits').textContent = state.bitsClocked + " bits clocked";
+  }
+
+  function pulseClk(){
+    const bits = getInputBits();
+    if (state.bitIndex >= bits.length){
+      // wrap or stop
+      state.bitIndex = 0;
+    }
+    // get the next bit to feed (MSB-first)
+    const nextBit = parseInt(bits[state.bitIndex] || "0", 10);
+    // shift right (toward Q7) — equivalently, all FF[i] = FF[i-1], FF[0] = nextBit
+    for (let i = 7; i > 0; i--){
+      state.shiftReg[i] = state.shiftReg[i-1];
+    }
+    state.shiftReg[0] = nextBit;
+    state.bitIndex++;
+    state.bitsClocked++;
+    renderBytes();
+    drawDiag(nextBit);
+  }
+
+  function pulseLatch(){
+    // Copy shift register to storage register
+    state.storeReg = [...state.shiftReg];
+    renderBytes();
+    drawDiag(null);
+  }
+
+  function reset(){
+    state.shiftReg = [0,0,0,0,0,0,0,0];
+    state.storeReg = [0,0,0,0,0,0,0,0];
+    state.bitsClocked = 0;
+    state.bitIndex = 0;
+    renderBytes();
+    drawDiag(null);
+  }
+
+  function drawDiag(highlightInBit){
+    const svg = document.getElementById('diag');
+    let s = '';
+    s += `<rect x="0" y="0" width="700" height="380" fill="var(--bg-elev2)"/>`;
+    // 74HC595 box
+    s += `<rect x="50" y="40" width="600" height="260" fill="var(--bg-elev)" stroke="var(--accent2)" stroke-width="2" rx="10"/>`;
+    s += `<text x="350" y="65" class="label" text-anchor="middle" font-size="16" font-weight="600">74HC595 — Serial-In / Parallel-Out</text>`;
+
+    // SER input (left)
+    const serX = 80, serY = 130;
+    s += `<line x1="20" y1="${serY}" x2="${serX}" y2="${serY}" class="wire"/>`;
+    s += `<text x="20" y="${serY-8}" class="label">SER</text>`;
+    if (highlightInBit !== null && highlightInBit !== undefined){
+      s += `<circle cx="${serX-5}" cy="${serY}" r="5" fill="${highlightInBit ? 'var(--accent)' : 'var(--fg-dim)'}"/>`;
+    }
+
+    // CLK
+    s += `<line x1="20" y1="260" x2="${serX}" y2="260" class="wire"/>`;
+    s += `<text x="20" y="252" class="label">SRCLK</text>`;
+    // RCLK (latch)
+    s += `<line x1="20" y1="290" x2="${serX}" y2="290" class="wire"/>`;
+    s += `<text x="20" y="283" class="label-warn">RCLK (latch)</text>`;
+
+    // 8 FFs in a row
+    for (let i = 0; i < 8; i++){
+      const x = serX + 40 + i * 65;
+      const y = 120;
+      const bit = state.shiftReg[i];
+      s += `<rect x="${x}" y="${y}" width="50" height="40" fill="${bit ? 'var(--accent)' : 'var(--bg-elev2)'}" stroke="var(--accent)" stroke-width="1" rx="3"/>`;
+      s += `<text x="${x+25}" y="${y+25}" class="label" text-anchor="middle" fill="${bit ? 'var(--bg)' : 'var(--fg-dim)'}">FF${i}</text>`;
+      // connection from previous
+      if (i > 0){
+        const px = serX + 40 + (i-1) * 65 + 50;
+        s += `<line x1="${px}" y1="${y+20}" x2="${x}" y2="${y+20}" class="wire"/>`;
+      } else {
+        s += `<line x1="${serX}" y1="${serY}" x2="${x}" y2="${y+20}" class="wire"/>`;
+      }
+      // Q output to storage register below
+      s += `<line x1="${x+25}" y1="${y+40}" x2="${x+25}" y2="${y+70}" stroke="var(--fg-dim)" stroke-width="0.5"/>`;
+      s += `<rect x="${x}" y="${y+70}" width="50" height="30" fill="${state.storeReg[i] ? 'var(--accent2)' : 'var(--bg-elev2)'}" stroke="var(--accent2)" stroke-width="1" rx="3"/>`;
+      s += `<text x="${x+25}" y="${y+89}" class="label" text-anchor="middle" fill="${state.storeReg[i] ? 'var(--bg)' : 'var(--fg-dim)'}">Q${i}</text>`;
+      // External output
+      s += `<line x1="${x+25}" y1="${y+100}" x2="${x+25}" y2="${y+140}" class="wire"/>`;
+      s += `<circle cx="${x+25}" cy="${y+140}" r="3" fill="${state.storeReg[i] ? 'var(--accent2)' : 'var(--fg-dim)'}"/>`;
+    }
+
+    // Q7' chain output (from FF7's Q)
+    const lastX = serX + 40 + 7 * 65 + 50;
+    s += `<line x1="${lastX}" y1="${120+20}" x2="${lastX+30}" y2="${120+20}" stroke="var(--accent)" stroke-width="1.5"/>`;
+    s += `<text x="${lastX+35}" y="${120+25}" class="label">Q7' (chain)</text>`;
+
+    // Storage register label
+    s += `<text x="${serX+15}" y="${120+85}" class="label-dim" text-anchor="end">storage:</text>`;
+    // CLK lines down
+    s += `<text x="${serX-30}" y="260" class="label-dim" text-anchor="end">shift</text>`;
+    s += `<text x="${serX-30}" y="290" class="label-dim" text-anchor="end">latch</text>`;
+
+    svg.innerHTML = s;
+  }
+
+  // Hookup
+  document.getElementById('dbits').addEventListener('input', () => {
+    document.getElementById('dRead').textContent = getInputBits();
+  });
+  document.getElementById('spd').addEventListener('input', e => {
+    state.speed = parseInt(e.target.value);
+    document.getElementById('spdRead').textContent = state.speed;
+  });
+  document.getElementById('mode').addEventListener('change', e => {
+    state.mode = e.target.value;
+    if (state.mode === "auto"){
+      if (state.auto_timer === null){
+        state.auto_timer = setInterval(pulseClk, state.speed);
+      }
+    } else {
+      if (state.auto_timer !== null){
+        clearInterval(state.auto_timer);
+        state.auto_timer = null;
+      }
+    }
+  });
+  document.getElementById('clkBtn').addEventListener('click', pulseClk);
+  document.getElementById('latchBtn').addEventListener('click', pulseLatch);
+  document.getElementById('resetBtn').addEventListener('click', reset);
+
+  // Anchor presets just set defaults
+  document.querySelectorAll('.anchor').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.anchor').forEach(a => a.classList.remove('active'));
+      b.classList.add('active');
+      state.preset = b.dataset.preset;
+      reset();
+    });
+  });
+
+  reset();
+</script>
+</body>
+</html>

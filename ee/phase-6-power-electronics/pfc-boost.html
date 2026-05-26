@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PFC Boost Converter — visual</title>
+<style>:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 system-ui,sans-serif}
+main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright)}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+.control input,.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 8px;font:13px ui-monospace,monospace}
+.readout{color:var(--accent);font-family:ui-monospace,monospace;font-size:13px}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+.deriv b{color:var(--fg)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>PFC Boost Converter — shaping input current to look resistive</h1>
+<p class="lede">A diode-bridge + bulk-cap front-end on AC mains draws current only at the peaks of the voltage waveform, creating massive harmonic distortion and a poor power factor. A <b>Power Factor Correction</b> (PFC) boost converter sits between the bridge and the bulk cap, forcing the input current to track the input voltage sinusoidally. The output is a regulated DC rail (typically 380–400 V); the input current is a clean low-distortion sine in phase with mains voltage. Required by EN-61000-3-2 in Europe for any device above ~75 W.</p>
+
+<div class="anchors">
+<span class="anchor"><b>Input</b>: 85–265 V AC mains</span>
+<span class="anchor"><b>Output</b>: 380–400 V DC bus</span>
+<span class="anchor"><b>PF</b>: &gt; 0.95 typical, &gt; 0.99 high-end</span>
+<span class="anchor"><b>THD</b>: &lt; 5 % typical</span>
+</div>
+
+<section class="controls">
+<div class="control"><label>V_in_rms (V): <span class="readout" id="vinRead">120</span></label><input id="vin" type="range" min="85" max="265" step="5" value="120"></div>
+<div class="control"><label>V_out (V DC): <span class="readout" id="voutRead">400</span></label><input id="vout" type="range" min="200" max="450" step="10" value="400"></div>
+<div class="control"><label>P_load (W): <span class="readout" id="pRead">200</span></label><input id="p" type="range" min="20" max="2000" step="10" value="200"></div>
+<div class="control"><label>Switching freq (kHz): <span class="readout" id="fRead">100</span></label><input id="f" type="range" min="20" max="500" step="10" value="100"></div>
+<div class="control"><label>Mode</label>
+<select id="mode"><option value="ccm" selected>CCM — continuous conduction</option><option value="crm">CrM / BCM — boundary conduction</option><option value="dcm">DCM — discontinuous</option></select>
+</div>
+</section>
+
+<div class="figure">
+<svg id="iv" viewBox="0 0 720 240" width="100%"></svg>
+<table>
+<tr><th>Quantity</th><th>Value</th></tr>
+<tr><td>I_in_rms</td><td id="iIn">1.67 A</td></tr>
+<tr><td>I_in_peak</td><td id="iPk">2.36 A</td></tr>
+<tr><td>Duty at peak V_in</td><td id="dPk">0.58</td></tr>
+<tr><td>Duty at zero V_in</td><td id="dZero">1.00 (max boost)</td></tr>
+<tr><td>L value (CCM, 20% ripple)</td><td id="lVal">1.20 mH</td></tr>
+<tr><td>C_out (1% ripple)</td><td id="cVal">130 µF</td></tr>
+</table>
+</div>
+
+<h2>Why PFC is required</h2>
+<p>An uncompensated bridge + cap (common for cheap AC adapters &lt; 75W) draws current in a narrow pulse near the peak of each AC half-cycle — the cap recharges briefly when input voltage exceeds the cap's voltage. Result:</p>
+<ul class="notice">
+<li><b>Power factor ~0.5</b> — utility delivers 2× the apparent power needed for the real load.</li>
+<li><b>Harmonic distortion &gt; 80 %</b> — current waveform has huge 3rd, 5th, 7th harmonics that propagate up the distribution feeder, causing transformer heating and resonance with grid-side caps.</li>
+<li><b>Inrush problem</b> — at turn-on, cap is empty, full mains current rushes in. Limited only by trace + diode resistance.</li>
+</ul>
+
+<h2>How the PFC boost achieves PF ≈ 1</h2>
+<div class="deriv">
+<span class="step">1. After bridge, V_rectified = |V_in| (full-wave rectified sinusoid)</span>
+<span class="step">2. PFC boost steps it up to constant V_out (380-400 V).</span>
+<span class="step">3. Inductor current I_L is controlled to follow |V_in| · k(t), where k(t) is a slowly-varying constant set to deliver the required power.</span>
+<span class="step">4. Because I_L tracks |V_in|, the input current looks like a clean rectified sinusoid in phase with V_in.</span>
+<span class="step">5. Behind the bridge, the AC source sees current = sin(ωt) · k — pure sinusoid in phase with voltage. <b>PF = 1.</b></span>
+</div>
+
+<h2>Three modes of operation</h2>
+<ul class="notice">
+<li><b>CCM (Continuous Conduction Mode)</b> — inductor current never drops to zero. Smaller current ripple, larger inductor. Best for &gt;200 W. Requires average-current-mode control.</li>
+<li><b>CrM / BCM (Boundary / Critical Conduction Mode)</b> — inductor current reaches zero at the start of each switching cycle. No inductor stored energy at switch-on (zero-current switching = lower switching loss). Smaller inductor. Best for 50–200 W. Variable switching frequency, locks to "next-zero-crossing-of-inductor-current".</li>
+<li><b>DCM (Discontinuous)</b> — inductor empties before next cycle starts; current pulses with dead time. Easier to control but high RMS currents, mostly for &lt;100 W.</li>
+</ul>
+
+<h2>Worked example — 200 W server PSU PFC stage</h2>
+<table>
+<tr><th>Parameter</th><th>Value</th></tr>
+<tr><td>V_in (worst case low)</td><td>85 V_RMS</td></tr>
+<tr><td>V_out</td><td>400 V_DC</td></tr>
+<tr><td>P_load</td><td>200 W</td></tr>
+<tr><td>I_in_peak (at low line)</td><td>200 / 85 × √2 = 3.33 A</td></tr>
+<tr><td>Inductor (CCM, 20% ripple, 100 kHz)</td><td>~600 µH, 4 A sat current</td></tr>
+<tr><td>Switch (MOSFET)</td><td>600 V, ~20 mΩ R_DS(on)</td></tr>
+<tr><td>Diode (output)</td><td>SiC Schottky 600 V (no Q_rr)</td></tr>
+<tr><td>Output cap</td><td>~150 µF, 450 V (electrolytic + film)</td></tr>
+<tr><td>Controller</td><td>UCC28950 (CrM), or NCP1654 (CCM)</td></tr>
+</table>
+
+<h2>Pitfalls</h2>
+<ul class="notice">
+<li><b>Light-load efficiency</b> — at 5 % load, PFC's switching losses dominate. Modern controllers offer burst mode or skip cycles.</li>
+<li><b>Output voltage bandwidth loop</b> — voltage loop must be slow (10-20 Hz) to not modulate the input current. Setting bandwidth too high creates 2nd-harmonic input distortion.</li>
+<li><b>Inrush limiting</b> — at turn-on, output cap is empty. Use NTC inrush limiter or active relay-bypass with pre-charge resistor.</li>
+<li><b>Brownout</b> — if V_in droops mid-cycle, output sags. Need adequate output cap + brown-out detection.</li>
+<li><b>Diode reverse recovery</b> — at the high switching frequency + high voltage, Q_rr matters. Use SiC Schottky for 600 V class.</li>
+</ul>
+
+<footer>Curriculum: <a target="_top" href="../../index.html">EE Phase 6 — Power Electronics</a> · Cross-links: <a href="buck-converter.html">Buck</a>, <a href="boost-converter.html">Boost</a>, <a href="synchronous-rectification.html">Synchronous Rectification</a>.</footer>
+
+</main><script>
+const els = ['vin','vout','p','f','mode'].reduce((m,k)=>{m[k]=document.getElementById(k);return m;},{});
+
+function drawWaveform(){
+  const svg = document.getElementById('iv');
+  const W = 720, H = 240, M = 40;
+  const Vin = parseFloat(els.vin.value);
+  const Vout = parseFloat(els.vout.value);
+  const P = parseFloat(els.p.value);
+  const Iin_rms = P / Vin;
+  const Iin_pk = Iin_rms * Math.sqrt(2);
+  const Vpk = Vin * Math.sqrt(2);
+
+  let s = '';
+  s += `<line x1="${M}" y1="${H/2}" x2="${W-M}" y2="${H/2}" stroke="#8f99a8" stroke-width="0.5"/>`;
+  s += `<line x1="${M}" y1="${20}" x2="${M}" y2="${H-20}" stroke="#8f99a8" stroke-width="0.5"/>`;
+  s += `<text x="${M-10}" y="${H/2+4}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10" text-anchor="end">0</text>`;
+  s += `<text x="${W/2}" y="${H-5}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10" text-anchor="middle">Time (one AC half-cycle = 8.33 ms @ 60 Hz)</text>`;
+
+  // V_in sinusoid (positive half from bridge output)
+  let path_v = 'M ';
+  for(let i = 0; i <= 200; i++){
+    const t = i / 200;
+    const v = Math.abs(Math.sin(Math.PI * t)) * Vpk;
+    const x = M + t * (W - 2*M);
+    const y = H/2 - v / Vpk * (H/2 - 30);
+    path_v += (i ? ' L ' : '') + x.toFixed(1) + ',' + y.toFixed(1);
+  }
+  s += `<path d="${path_v}" fill="none" stroke="#ffb86c" stroke-width="1.5"/>`;
+  s += `<text x="${W-M-150}" y="${50}" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="11">orange: V_in (rectified)</text>`;
+
+  // I_in shaped by PFC: tracks |V_in|
+  let path_i = 'M ';
+  for(let i = 0; i <= 200; i++){
+    const t = i / 200;
+    const cur = Math.abs(Math.sin(Math.PI * t)) * Iin_pk;
+    const x = M + t * (W - 2*M);
+    const y = H/2 + cur / Iin_pk * (H/2 - 50);
+    path_i += (i ? ' L ' : '') + x.toFixed(1) + ',' + y.toFixed(1);
+  }
+  s += `<path d="${path_i}" fill="none" stroke="#5ec8ff" stroke-width="1.5"/>`;
+  s += `<text x="${W-M-150}" y="${H-30}" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">blue: I_in (shaped by PFC)</text>`;
+
+  // Uncompensated current (for comparison) — only peaks
+  let path_unc = 'M ';
+  for(let i = 0; i <= 200; i++){
+    const t = i / 200;
+    const v = Math.abs(Math.sin(Math.PI * t)) * Vpk;
+    const i_unc = v > 0.85 * Vpk ? (v - 0.85*Vpk)/(0.15*Vpk) * Iin_pk * 2.5 : 0;
+    const x = M + t * (W - 2*M);
+    const y = H/2 + i_unc / Iin_pk * (H/2 - 50);
+    path_unc += (i ? ' L ' : '') + x.toFixed(1) + ',' + y.toFixed(1);
+  }
+  s += `<path d="${path_unc}" fill="none" stroke="#ff7b72" stroke-width="1" stroke-dasharray="4,3" opacity="0.7"/>`;
+  s += `<text x="${W-M-220}" y="${H-15}" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="10">red dashed: uncompensated I_in (peaks only, PF~0.5)</text>`;
+
+  svg.innerHTML = s;
+}
+
+function update(){
+  const Vin = parseFloat(els.vin.value);
+  const Vout = parseFloat(els.vout.value);
+  const P = parseFloat(els.p.value);
+  const f = parseFloat(els.f.value) * 1000;
+
+  document.getElementById('vinRead').textContent = Vin;
+  document.getElementById('voutRead').textContent = Vout;
+  document.getElementById('pRead').textContent = P;
+  document.getElementById('fRead').textContent = (f/1000).toFixed(0);
+
+  const Iin_rms = P / Vin;
+  const Iin_pk = Iin_rms * Math.sqrt(2);
+  const Vpk = Vin * Math.sqrt(2);
+
+  document.getElementById('iIn').textContent = Iin_rms.toFixed(2) + ' A';
+  document.getElementById('iPk').textContent = Iin_pk.toFixed(2) + ' A';
+  document.getElementById('dPk').textContent = (1 - Vpk / Vout).toFixed(2);
+  document.getElementById('dZero').textContent = '1.00 (max boost)';
+
+  // L estimation: ΔI = 0.2 × I_pk; L = V_in_pk × D / (f × ΔI)
+  const L = Vpk * (1 - Vpk/Vout) / (f * 0.2 * Iin_pk);
+  document.getElementById('lVal').textContent = (L*1e3).toFixed(2) + ' mH';
+
+  // C_out for 1% ripple at 2*f_line = 120 Hz (full-wave): ΔV = P / (V_out × 2π × 120 × C) → C
+  const C = P / (Vout * 0.01 * 2 * Math.PI * 120);
+  document.getElementById('cVal').textContent = (C*1e6).toFixed(0) + ' µF';
+
+  drawWaveform();
+}
+
+['vin','vout','p','f'].forEach(k => els[k].addEventListener('input', update));
+els.mode.addEventListener('change', update);
+update();
+</script></body></html>

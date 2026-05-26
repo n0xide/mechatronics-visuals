@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Latch-up and ESD — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 14px}
+  .chip{background:var(--bg-elev2);border:1px solid var(--line);border-radius:999px;
+    padding:3px 10px;font:11px ui-monospace,Menlo,monospace;color:var(--fg-dim);
+    text-decoration:none}
+  .chip:hover{color:var(--accent);border-color:var(--accent)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .pill{display:inline-block;background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:4px;padding:1px 6px;font:11px ui-monospace,monospace;color:var(--fg-dim)}
+  .pill.warn{color:var(--warn);border-color:var(--warn)}
+  .pill.ok{color:var(--accent3);border-color:var(--accent3)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Latch-up &amp; ESD</h1>
+  <p class="lede">Every CMOS chip has a parasitic SCR built into the silicon — a hidden PNP+NPN pair that, if triggered, shorts V_dd to V_ss until the supply is cut. Three things wake it up: I/O pin driven below V_ss or above V_dd, a supply transient that flips the substrate bias, or an ESD strike. This visual shows the parasitic structure, the trigger conditions, and the on-chip clamps and external networks that keep the SCR asleep.</p>
+
+  <div class="chips">
+    <a class="chip" href="#parasitic">#parasitic-SCR</a>
+    <a class="chip" href="#triggers">#triggers</a>
+    <a class="chip" href="#esd-models">#ESD-models</a>
+    <a class="chip" href="#clamps">#clamp-network</a>
+    <a class="chip" href="#design-rule">#never-exceed-rail-±0.3V</a>
+    <a class="chip" href="#cheat">#cheatsheet</a>
+  </div>
+
+  <section class="controls" id="ctrls">
+    <div class="control"><label>Overshoot above V_dd: <span class="readout" id="ovRead">0.0 V</span></label>
+      <input id="ov" type="range" min="0" max="3" step="0.05" value="0"></div>
+    <div class="control"><label>Undershoot below V_ss: <span class="readout" id="unRead">0.0 V</span></label>
+      <input id="un" type="range" min="0" max="3" step="0.05" value="0"></div>
+    <div class="control"><label>External clamp diode V_f: <span class="readout" id="vfRead">0.30 V</span></label>
+      <input id="vf" type="range" min="0.2" max="0.7" step="0.01" value="0.3"></div>
+    <div class="control"><label>Series resistor R_s: <span class="readout" id="rsRead">100 Ω</span></label>
+      <input id="rs" type="range" min="0" max="1000" step="10" value="100"></div>
+    <div class="control"><label>ESD event:
+      <select id="esd">
+        <option value="none" selected>(none) — steady state</option>
+        <option value="hbm">HBM — Human Body Model, 2 kV</option>
+        <option value="cdm">CDM — Charged Device Model, 1 kV</option>
+        <option value="mm">MM — Machine Model, 200 V</option>
+      </select></label></div>
+    <div class="control"><label>V_dd: <span class="readout" id="vddRead">3.3 V</span></label>
+      <input id="vdd" type="range" min="1.2" max="5.5" step="0.1" value="3.3"></div>
+  </section>
+
+  <div class="figure" id="parasitic">
+    <svg id="scr" viewBox="0 0 720 380" width="100%"></svg>
+    <div class="vd" id="state"><b>State:</b> <span id="stateMsg">latch path quiet — overshoot/undershoot within clamp budget</span></div>
+  </div>
+
+  <h2 id="triggers">The parasitic SCR (why CMOS has a hidden latch)</h2>
+  <p>A bulk-CMOS inverter has a PMOS in an n-well sitting on a p-substrate next to an NMOS in the substrate. Four alternating doping layers (P+/N-well/P-sub/N+) form two cross-coupled BJTs: a vertical PNP (PMOS source = emitter, n-well = base, p-sub = collector) and a lateral NPN (NMOS source = emitter, p-sub = base, n-well = collector). The PNP's collector drives the NPN's base; the NPN's collector drives the PNP's base. That's an SCR.</p>
+
+  <div class="deriv">
+    <span class="step"><b>Quiet state:</b> n-well tied to V_dd, p-sub tied to V_ss → both BJT base–emitter junctions reverse-biased → leakage only (nA).</span>
+    <span class="step"><b>Trigger:</b> a current dump into the p-sub raises V_sub above V_ss by ~0.6 V → NPN turns on → its collector current pulls down the n-well → PNP turns on → its collector current pushes up the p-sub.</span>
+    <span class="step"><b>Lock:</b> loop gain &gt; 1 once both transistors conduct. Both turn each other on harder. <span class="arrow">→</span> SCR latches.</span>
+    <span class="step"><b>Hold:</b> V_dd → V_ss now sourced through the saturated PNP+NPN at ~1.5 V drop. Current ramps until package or bond wire opens (or you cycle V_dd).</span>
+  </div>
+
+  <h2 id="triggers">How the trigger fires</h2>
+  <table>
+    <tr><th>Path</th><th>Cause</th><th>Mechanism</th><th>Typical limit</th></tr>
+    <tr><td>I/O overshoot</td><td>Pin pulled above V_dd</td><td>Drain-to-n-well diode forward-biases, dumps current into n-well, drops V_well below V_dd, PNP turns on.</td><td>V_dd + 0.3 V</td></tr>
+    <tr><td>I/O undershoot</td><td>Pin pulled below V_ss</td><td>Drain-to-p-sub diode forward-biases, dumps current into p-sub, raises V_sub above V_ss, NPN turns on.</td><td>V_ss − 0.3 V</td></tr>
+    <tr><td>Supply transient</td><td>V_dd ringing on power-up</td><td>Inductive overshoot + reverse-recovery currents flip well bias.</td><td>120 % of V_dd max</td></tr>
+    <tr><td>ESD strike</td><td>Static discharge into a pin</td><td>kV impulse forces nanoamp-rated junctions into avalanche; substrate currents huge.</td><td>HBM ~2 kV / CDM ~1 kV</td></tr>
+    <tr><td>Photocurrent</td><td>Bare die exposed to high light</td><td>Hole–electron pairs in p-sub raise V_sub.</td><td>Strong sunlight on unpackaged die</td></tr>
+  </table>
+
+  <h2 id="esd-models">ESD models — three different waveshapes</h2>
+  <p>Datasheet "ESD: ±2 kV HBM" means the chip survives the Human Body Model test at 2 kV. Each model captures a different real-world failure mode; passing one is not passing the others.</p>
+
+  <div class="figure">
+    <svg id="esdWaves" viewBox="0 0 720 280" width="100%"></svg>
+  </div>
+
+  <table>
+    <tr><th>Model</th><th>Equivalent circuit</th><th>Typical spec</th><th>Peak I</th><th>Rise / decay</th><th>Captures</th></tr>
+    <tr><td><b>HBM</b> (Human Body)</td><td>100 pF charged, discharged through 1.5 kΩ</td><td>±2 kV</td><td>~1.3 A</td><td>10 ns rise, 150 ns decay</td><td>Touching a pin with a charged finger.</td></tr>
+    <tr><td><b>MM</b> (Machine)</td><td>200 pF, no series R (or ~0.5 Ω)</td><td>±200 V</td><td>~4 A</td><td>5 ns rise, ringing</td><td>Machine handler dropping charge into a pin.</td></tr>
+    <tr><td><b>CDM</b> (Charged Device)</td><td>Package self-capacitance discharged through bond wire L</td><td>±1 kV (small pkg) / ±500 V (large)</td><td>~5 A</td><td>&lt;500 ps rise, ~1 ns total</td><td>Sliding chip across a belt then grounding a pin.</td></tr>
+  </table>
+
+  <p class="lede">CDM is the meanest: peak current as high as HBM but the rise time is so fast that on-chip clamps can lag. Modern parts often spec CDM lower (±500 V) than HBM (±2 kV) and rely on careful pad-cell layout for the rest.</p>
+
+  <h2 id="clamps">Clamp diodes — the SCR's bouncer</h2>
+  <p>Every modern I/O pad has two clamp diodes: one from pin → V_dd (catches overshoot), one from V_ss → pin (catches undershoot). They are <em>not</em> for normal current — they are reverse-biased in operation, forward-biased only when the pin tries to exceed the rail. The datasheet spec usually allows ±10 mA through these clamps for short durations.</p>
+
+  <div class="figure">
+    <svg id="clamp" viewBox="0 0 720 280" width="100%"></svg>
+    <div class="vd" id="clampMsg"><b>Clamp current:</b> <span id="clampVal">0 mA</span></div>
+  </div>
+
+  <p>Adding an external Schottky (V_f ≈ 0.3 V) in parallel with the internal clamp diverts most of the surge — the internal silicon diode (V_f ≈ 0.7 V) never reaches the conduction threshold. A series resistor (typically 100–1000 Ω) between the external connector and the pin limits even a clamp-diode-protected pin to a few mA peak.</p>
+
+  <h2 id="design-rule">The hard rule</h2>
+  <div class="vd" style="border-left-color:var(--warn)">
+    <b style="color:var(--warn)">Never exceed V_ss − 0.3 V or V_dd + 0.3 V on any pin, ever — including transients.</b>
+    The 0.3 V budget is the conduction threshold of the on-chip clamp diodes. Above that, current flows through the clamp; sustained currents above ~10 mA can trigger latch-up.
+  </div>
+
+  <h3>The three lines of defense</h3>
+  <ol style="color:var(--fg-dim);padding-left:20px">
+    <li><b style="color:var(--fg)">Clamp the connector.</b> TVS diode (rated for the line's ESD environment) between every external connector pin and ground.</li>
+    <li><b style="color:var(--fg)">Limit the series current.</b> Series resistor 100 Ω – 10 kΩ between connector and chip pin. Pick the upper bound by signal bandwidth (RC formed with pin capacitance).</li>
+    <li><b style="color:var(--fg)">Backstop with the chip's own clamps.</b> The internal diodes catch what the external network missed. They are a backstop, not a primary defense.</li>
+  </ol>
+
+  <h2>Worked example — RP2350 GPIO sees a 6 kV ESD strike at 1 m cable end</h2>
+  <div class="worked">
+    <h3>The constraints</h3>
+    <p>External I/O on the fold-p4-pico cyberdeck: GPIO routed through a header to an off-board sensor PCB. RP2350 GPIO abs-max = V_ss − 0.5 V to V_dd + 0.5 V (5 ns transient, datasheet 5.1). Sustained clamp current ≤ 10 mA.</p>
+
+    <h3>The arithmetic — sized for HBM 2 kV at the chip pad</h3>
+    <span class="eq">V_HBM = 2 kV, R_HBM_source = 1500 Ω (model)</span>
+    <span class="eq">I_peak (no protection) = 2000 / 1500 = 1.33 A <span class="annot">(~130× the 10 mA budget — well into latch territory)</span></span>
+    <span class="eq">Add TVS at connector (clamp 6 V): TVS clamps to ~5.5 V above V_dd during strike</span>
+    <span class="eq">Residual into chip after TVS = ~30–50 mA <span class="annot">(TVS dynamic R + lead inductance)</span></span>
+    <span class="eq">Series R_s = 220 Ω limits clamp-diode current to 50 mA × (clamp / (clamp + 220 / I_load)) ≈ 6–8 mA <span class="annot">(within abs-max)</span></span>
+    <span class="eq">Signal-bandwidth check: R_s × C_pin = 220 × 5 pF = 1.1 ns → −3 dB at ~145 MHz. Fine for I²C/SPI/UART.</span>
+
+    <h3>The pad-cell side</h3>
+    <p style="color:var(--fg-dim);font-size:12px;margin-top:8px">For CDM (sub-nanosecond rise), the external network can't help — the strike fires before the TVS turns on. CDM survival depends on the chip's pad-cell layout: ESD diode <em>placement</em> (close to the bond pad), ESD bus routing (low-inductance V_dd-to-V_ss strap), and ballast resistance in the output driver. This is silicon design, not your problem unless you're spinning a chip — but it's why "datasheet says CDM ±500 V" is a real number you need to respect.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>The 0.3 V budget is hard.</b> Above V_dd + 0.3 V or below V_ss − 0.3 V the clamps conduct. The number isn't a margin — it's the silicon diode V_f. Don't design assuming you have more.</li>
+    <li><b>Latch-up survives power-on.</b> Once the SCR fires, only cycling V_dd resets it. Holding the offending pin away from the rail does <em>not</em> clear it. This is what makes latch-up worse than a normal abs-max violation.</li>
+    <li><b>CDM is the modern killer.</b> Hand assembly and ESD-safe stations handle HBM fine. CDM happens in automated handlers, robotic pick-and-place, or when a charged board is plugged into a grounded socket. Modern chips spec CDM separately because the protection strategies differ.</li>
+    <li><b>Series R + TVS &gt; series R alone.</b> A TVS at the connector handles the huge currents; the series resistor handles the residual. Either one alone is not enough above a few hundred volts.</li>
+    <li><b>Schottky clamps beat silicon clamps for overshoot.</b> External Schottky V_f ≈ 0.3 V conducts before the internal V_f ≈ 0.7 V clamp, diverting the surge. Pair with a low-leakage type (BAT54 family) so quiescent leakage doesn't matter.</li>
+    <li><b>"Ratings violated → bond wire opens."</b> Latch-up current is limited only by package parasitics. If your supply can deliver an amp into the SCR, the bond wire eventually opens — the chip survives as a coaster, the trace burns through, and downstream parts inherit the surge.</li>
+  </ul>
+
+  <h2>Where you'll see this</h2>
+  <div class="crosslink">
+    <h4>Real situations</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Cyberdeck external connectors</b> — anything that leaves the enclosure (USB, headers, jacks) needs TVS + series R. fold-p4-pico GPIO breakouts are the canonical case.</li>
+      <li><b style="color:var(--fg)">Hot-plug events</b> — connecting a powered cable into a grounded chassis is a worst-case CDM scenario. Capacitance on the cable side dumps through the first pin to make contact.</li>
+      <li><b style="color:var(--fg)">5 V signals into a 3.3 V part</b> — a sensor running at 5 V driving a 3.3 V GPIO through a wire is a latch-up trigger waiting for a level shift. Either level-shift or series-limit.</li>
+      <li><b style="color:var(--fg)">Inductive loads released through GPIO</b> — a relay coil or stepper winding flying back through a freewheel diode that isn't fast enough can drive a pin below V_ss. The flyback diode is the protection; pick a Schottky or an ultra-fast.</li>
+      <li><b style="color:var(--fg)">Supply rail bring-up order</b> — multi-rail parts (V_dda + V_ddc + V_io) must come up in the order the datasheet says. Bring V_io up before V_ddc and you'll forward-bias an internal diode and trigger latch.</li>
+    </ul>
+  </div>
+
+  <h2 id="cheat">Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>NUMBERS TO MEMORIZE</h3>
+      <ul>
+        <li>Clamp turn-on: <b>V_rail ± 0.3 V</b> (Si) or <b>± 0.3 V</b> (Schottky)</li>
+        <li>HBM: <b>100 pF · 1.5 kΩ · 2 kV</b> → ~1.3 A peak, 150 ns decay</li>
+        <li>MM: <b>200 pF · ~0 Ω · 200 V</b> → ~4 A peak, ringing</li>
+        <li>CDM: <b>package C · bond-L · 1 kV</b> → ~5 A peak, &lt;1 ns</li>
+        <li>Clamp diode budget: <b>±10 mA</b> typical, see datasheet abs-max</li>
+        <li>Series R: <b>100 Ω – 10 kΩ</b> outside-world to pin</li>
+      </ul>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>DESIGN RULES</h3>
+      <ul>
+        <li><b>Never</b> exceed V_ss − 0.3 V or V_dd + 0.3 V at any pin.</li>
+        <li>Power up V_io <b>last</b> unless datasheet says otherwise.</li>
+        <li>TVS + series R on every connector pin that leaves the board.</li>
+        <li>Schottky clamps for overshoot if Si is too slow / V_f too high.</li>
+        <li>Decouple every V_dd pin within ~5 mm with 100 nF + bulk.</li>
+        <li>Hand assembly: wrist strap + grounded mat. Robotic: ionizer + ESD trays.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>"It's only 5 V into a 3.3 V pin."</b> 5 − 3.3 = 1.7 V over V_dd. Clamp conducts at 0.3 V. Latch-up territory.</li>
+        <li><b>Forgetting the abs-max is transient too.</b> A ringing edge that briefly hits V_dd + 1 V at 100 MHz is just as bad as a DC violation.</li>
+        <li><b>TVS clamp voltage &gt; chip abs-max.</b> Pick a TVS whose clamp voltage at peak current is still below abs-max, not just the standoff voltage.</li>
+        <li><b>Reverse-current path during power-down.</b> If V_io stays high while V_dd drops, internal diodes power the chip backwards. Add a reverse-blocking diode or sequence rails.</li>
+        <li><b>"Hand-set parts on a wooden bench."</b> No mat, no strap — every part you touch is a CDM event in waiting.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EE Phase 4 — Semiconductors</span> ·
+    Topic: CMOS reliability / I/O protection ·
+    Related: <a href="mosfet-explorer.html">MOSFET Explorer</a>, <a href="../phase-7-signal-integrity-pcb/">Signal Integrity</a>
+  </footer>
+</main>
+<script>
+  const $ = id => document.getElementById(id);
+  const ids = ['ov','un','vf','rs','esd','vdd'];
+  const els = {}; ids.forEach(k => els[k] = $(k));
+
+  function drawSCR(triggered, ov, un){
+    const svg = $('scr');
+    const baseColor = triggered ? 'var(--warn)' : 'var(--accent)';
+    const trigGlow = triggered ? 'fill="rgba(255,123,114,0.15)"' : 'fill="var(--bg-elev2)"';
+    svg.innerHTML = `
+      <!-- V_dd rail -->
+      <line x1="40" y1="40" x2="680" y2="40" stroke="${baseColor}" stroke-width="2"/>
+      <text x="20" y="44" class="label">V_dd</text>
+
+      <!-- V_ss rail -->
+      <line x1="40" y1="340" x2="680" y2="340" stroke="var(--fg)" stroke-width="2"/>
+      <text x="20" y="346" class="label">V_ss</text>
+
+      <!-- PMOS source (P+ in n-well) → emitter of PNP -->
+      <rect x="120" y="80" width="120" height="40" ${trigGlow} stroke="${baseColor}" stroke-width="1.5"/>
+      <text x="180" y="105" class="label" text-anchor="middle">P+ (PMOS S)</text>
+
+      <!-- n-well: PNP base, NPN collector -->
+      <rect x="80" y="130" width="220" height="60" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="190" y="160" class="label-dim" text-anchor="middle">n-well — PNP base / NPN collector</text>
+      <text x="190" y="178" class="label-dim" text-anchor="middle">tied to V_dd via R_well</text>
+
+      <!-- p-substrate: PNP collector, NPN base -->
+      <rect x="40" y="200" width="640" height="60" fill="var(--bg-elev2)" stroke="var(--accent2)" stroke-width="1.5"/>
+      <text x="360" y="225" class="label-dim" text-anchor="middle">p-substrate — PNP collector / NPN base</text>
+      <text x="360" y="243" class="label-dim" text-anchor="middle">tied to V_ss via R_sub</text>
+
+      <!-- NMOS source (N+ in p-sub) → emitter of NPN -->
+      <rect x="440" y="270" width="120" height="40" ${trigGlow} stroke="${baseColor}" stroke-width="1.5"/>
+      <text x="500" y="295" class="label" text-anchor="middle">N+ (NMOS S)</text>
+
+      <!-- PNP symbol overlay -->
+      <circle cx="180" cy="155" r="22" fill="none" stroke="${baseColor}" stroke-width="1.5"/>
+      <text x="180" y="158" class="label" text-anchor="middle" fill="${baseColor}">PNP</text>
+
+      <!-- NPN symbol overlay -->
+      <circle cx="500" cy="235" r="22" fill="none" stroke="${baseColor}" stroke-width="1.5"/>
+      <text x="500" y="238" class="label" text-anchor="middle" fill="${baseColor}">NPN</text>
+
+      <!-- Cross-coupling arrows -->
+      <path d="M 200 175 Q 350 200 478 222" stroke="${baseColor}" stroke-width="1.5" fill="none" stroke-dasharray="${triggered ? '0' : '4,4'}"/>
+      <text x="335" y="195" class="label-dim" text-anchor="middle">PNP_C → NPN_B</text>
+      <path d="M 482 215 Q 340 130 200 138" stroke="${baseColor}" stroke-width="1.5" fill="none" stroke-dasharray="${triggered ? '0' : '4,4'}"/>
+      <text x="335" y="125" class="label-dim" text-anchor="middle">NPN_C → PNP_B</text>
+
+      <!-- V_dd link -->
+      <line x1="180" y1="80" x2="180" y2="40" stroke="${baseColor}" stroke-width="1.5"/>
+      <line x1="500" y1="310" x2="500" y2="340" stroke="${baseColor}" stroke-width="1.5"/>
+
+      <!-- Status banner -->
+      ${triggered ? `
+        <rect x="40" y="360" width="640" height="0" fill="${baseColor}" opacity="0.1"/>
+        <text x="360" y="362" class="label-warn" text-anchor="middle" font-weight="bold">SCR LATCHED — V_dd → V_ss short, current ramps until package opens</text>
+      ` : `
+        <text x="360" y="362" class="label-ok" text-anchor="middle">SCR off — loop gain &lt; 1, junctions reverse-biased, leakage only</text>
+      `}
+
+      <!-- Overshoot/undershoot indicators -->
+      ${ov > 0.3 ? `<text x="640" y="32" class="label-warn" text-anchor="end">+${ov.toFixed(2)} V over → P+ junction conducts!</text>` : ''}
+      ${un > 0.3 ? `<text x="640" y="358" class="label-warn" text-anchor="end">−${un.toFixed(2)} V under → N+ junction conducts!</text>` : ''}
+    `;
+  }
+
+  function drawESD(mode){
+    const svg = $('esdWaves');
+    let pts = [];
+    const W = 720, H = 280, X0 = 60, X1 = 700, Y0 = 30, Y1 = 240;
+    const tMax = mode === 'cdm' ? 5 : (mode === 'mm' ? 80 : 300); // ns
+    // sample
+    const samples = 240;
+    for (let i = 0; i <= samples; i++){
+      const t = (i / samples) * tMax;
+      let I = 0;
+      if (mode === 'hbm'){
+        // 10 ns rise, 150 ns decay exponential
+        const tr = 10, td = 150;
+        I = (1 - Math.exp(-t / tr)) * Math.exp(-(t - tr) / td);
+      } else if (mode === 'mm'){
+        // 5 ns rise, damped sine
+        const tr = 5;
+        const env = Math.exp(-t / 30);
+        const ring = Math.sin(2 * Math.PI * t / 18);
+        I = (t < tr ? t / tr : 1) * env * ring;
+      } else if (mode === 'cdm'){
+        // <500 ps rise, ~1 ns total
+        const tr = 0.4;
+        const td = 0.8;
+        I = (1 - Math.exp(-t / tr)) * Math.exp(-(t - tr) / td);
+      } else {
+        I = 0;
+      }
+      pts.push({x: X0 + (t / tMax) * (X1 - X0), y: Y1 - I * (Y1 - Y0)});
+    }
+    const path = pts.map((p,i) => (i ? 'L' : 'M') + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+    const labels = {
+      hbm: 'HBM 2 kV: 1.3 A peak, 150 ns decay',
+      cdm: 'CDM 1 kV: 5 A peak, <1 ns total',
+      mm:  'MM 200 V: 4 A peak, damped ring',
+      none: '(no event) — quiet baseline'
+    };
+    svg.innerHTML = `
+      <line x1="${X0}" y1="${Y1}" x2="${X1}" y2="${Y1}" class="axis"/>
+      <line x1="${X0}" y1="${Y0}" x2="${X0}" y2="${Y1}" class="axis"/>
+      <text x="${X1}" y="${Y1+14}" class="axis-label" text-anchor="end">t (ns), full scale ${tMax}</text>
+      <text x="${X0-6}" y="${Y0+4}" class="axis-label" text-anchor="end">I_peak</text>
+      <text x="${X0-6}" y="${Y1+4}" class="axis-label" text-anchor="end">0</text>
+      ${mode === 'none' ? '<text x="360" y="135" class="label-dim" text-anchor="middle">(select an ESD model to see its waveform)</text>'
+        : `<path d="${path}" stroke="var(--warn)" stroke-width="2" fill="none"/>`}
+      <text x="360" y="${Y0-8}" class="label" text-anchor="middle">${labels[mode] || ''}</text>
+    `;
+  }
+
+  function drawClamp(ov, un, vf, rs, vdd){
+    const svg = $('clamp');
+    // simple pin + two clamp diodes to rails + series R + external connector
+    const pinV = (ov > 0 ? vdd + ov : (un > 0 ? -un : 0));
+    const overshoots = ov > vf;
+    const undershoots = un > vf;
+    const clampI = overshoots ? Math.max(0, (ov - vf) / Math.max(0.1, rs/1000 * 1000) ) : 0;
+    // Approximation: pretend external V_strike of (vdd + ov), R_s in series, diode at V_dd + vf
+    const I_ov = overshoots ? Math.max(0, (ov - vf) / Math.max(1, rs) ) * 1000 : 0; // mA
+    const I_un = undershoots ? Math.max(0, (un - vf) / Math.max(1, rs) ) * 1000 : 0;
+    const Itot = I_ov + I_un;
+    $('clampVal').innerHTML = `I_clamp = <b style="color:${Itot > 10 ? 'var(--warn)' : 'var(--accent3)'}">${Itot.toFixed(1)} mA</b> ${Itot > 10 ? '— exceeds typical ±10 mA budget' : '— within budget'}`;
+
+    const ovColor = overshoots ? 'var(--warn)' : 'var(--fg-dim)';
+    const unColor = undershoots ? 'var(--warn)' : 'var(--fg-dim)';
+
+    svg.innerHTML = `
+      <!-- V_dd rail -->
+      <line x1="40" y1="40" x2="680" y2="40" stroke="var(--accent)" stroke-width="2"/>
+      <text x="20" y="44" class="label">V_dd</text>
+      <text x="680" y="34" class="label-dim" text-anchor="end">${vdd.toFixed(2)} V</text>
+      <!-- V_ss rail -->
+      <line x1="40" y1="240" x2="680" y2="240" stroke="var(--fg)" stroke-width="2"/>
+      <text x="20" y="244" class="label">V_ss</text>
+
+      <!-- External connector -->
+      <rect x="80" y="120" width="60" height="40" fill="var(--bg-elev2)" stroke="var(--fg)" stroke-width="1"/>
+      <text x="110" y="146" class="label" text-anchor="middle">ext pin</text>
+      <text x="110" y="170" class="label-dim" text-anchor="middle">V_pin = ${pinV >= 0 ? '+' : ''}${pinV.toFixed(2)} V</text>
+
+      <!-- Series R -->
+      <rect x="180" y="125" width="80" height="30" fill="var(--bg-elev2)" stroke="var(--accent3)" stroke-width="1.5"/>
+      <text x="220" y="145" class="label" text-anchor="middle">R_s</text>
+      <text x="220" y="170" class="label-dim" text-anchor="middle">${rs.toFixed(0)} Ω</text>
+      <line x1="140" y1="140" x2="180" y2="140" class="wire"/>
+      <line x1="260" y1="140" x2="320" y2="140" class="wire"/>
+
+      <!-- Chip pad (with internal clamps) -->
+      <rect x="320" y="115" width="160" height="50" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="400" y="135" class="label" text-anchor="middle">chip I/O pad</text>
+      <text x="400" y="153" class="label-dim" text-anchor="middle">internal logic →</text>
+
+      <!-- Upper clamp diode (pin → V_dd) -->
+      <path d="M 400 115 L 400 80 L 392 70 L 408 70 L 400 80" stroke="${ovColor}" stroke-width="1.5" fill="none"/>
+      <line x1="400" y1="70" x2="400" y2="40" stroke="${ovColor}" stroke-width="1.5"/>
+      <text x="410" y="80" class="label-dim">D_up</text>
+      ${overshoots ? `<text x="455" y="60" class="label-warn">${I_ov.toFixed(1)} mA →</text>` : ''}
+
+      <!-- Lower clamp diode (V_ss → pin) -->
+      <path d="M 400 165 L 400 200 L 408 210 L 392 210 L 400 200" stroke="${unColor}" stroke-width="1.5" fill="none"/>
+      <line x1="400" y1="210" x2="400" y2="240" stroke="${unColor}" stroke-width="1.5"/>
+      <text x="410" y="210" class="label-dim">D_dn</text>
+      ${undershoots ? `<text x="455" y="220" class="label-warn">${I_un.toFixed(1)} mA →</text>` : ''}
+
+      <!-- External clamp diode (Schottky to V_dd) -->
+      <path d="M 240 110 L 240 80 L 232 70 L 248 70 L 240 80" stroke="var(--accent2)" stroke-width="1.5" fill="none"/>
+      <line x1="240" y1="70" x2="240" y2="40" stroke="var(--accent2)" stroke-width="1.5"/>
+      <line x1="240" y1="140" x2="240" y2="110" stroke="var(--accent2)" stroke-width="1.5"/>
+      <text x="250" y="80" class="label-dim">D_ext (Schottky, V_f=${vf.toFixed(2)} V)</text>
+
+      <!-- TVS to V_ss -->
+      <line x1="110" y1="160" x2="110" y2="200" class="wire"/>
+      <rect x="100" y="200" width="20" height="20" fill="var(--bg-elev2)" stroke="var(--accent2)" stroke-width="1.5"/>
+      <text x="135" y="215" class="label-dim">TVS</text>
+      <line x1="110" y1="220" x2="110" y2="240" class="wire"/>
+    `;
+  }
+
+  function update(){
+    const ov  = parseFloat(els.ov.value);
+    const un  = parseFloat(els.un.value);
+    const vf  = parseFloat(els.vf.value);
+    const rs  = parseFloat(els.rs.value);
+    const vdd = parseFloat(els.vdd.value);
+    const esd = els.esd.value;
+
+    $('ovRead').textContent  = ov.toFixed(2) + ' V';
+    $('unRead').textContent  = un.toFixed(2) + ' V';
+    $('vfRead').textContent  = vf.toFixed(2) + ' V';
+    $('rsRead').textContent  = rs.toFixed(0) + ' Ω';
+    $('vddRead').textContent = vdd.toFixed(1) + ' V';
+
+    // SCR trigger threshold: BE junction needs ~0.6 V; with 0.3 V margin diode, anything > 0.6 V over rail is bad.
+    let triggered = (ov > 0.6) || (un > 0.6) || (esd === 'cdm') || (esd === 'mm' && vf > 0.5);
+    drawSCR(triggered, ov, un);
+    drawESD(esd);
+    drawClamp(ov, un, vf, rs, vdd);
+
+    const msg = $('stateMsg');
+    if (triggered){
+      msg.innerHTML = `<b style="color:var(--warn)">latch-up triggered</b> — overshoot/undershoot exceeded 0.6 V margin or ESD event chosen. Cycle V_dd to clear (if package survives).`;
+    } else if (ov > 0.3 || un > 0.3){
+      msg.innerHTML = `<b style="color:var(--accent2)">clamps conducting</b> — within abs-max, but design margin is tight. Add series R or TVS.`;
+    } else {
+      msg.textContent = 'latch path quiet — overshoot/undershoot within clamp budget';
+    }
+  }
+
+  ids.forEach(k => els[k].addEventListener('input', update));
+  els.esd.addEventListener('change', update);
+  update();
+</script>
+</body>
+</html>

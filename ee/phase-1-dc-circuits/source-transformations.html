@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Source Transformations — visual</title>
+<style>
+  :root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .duality{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+  .duality .col{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .duality .col h3{margin:0 0 8px;font-size:11px;text-transform:uppercase}
+  .duality .col.v h3{color:var(--accent)}
+  .duality .col.i h3{color:var(--accent2)}
+  .preset-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}
+  .preset-row button{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 10px;font:12px ui-monospace,Menlo,monospace;cursor:pointer}
+  .preset-row button:hover{border-color:var(--accent);color:var(--accent)}
+  .preset-row button.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .topo-tab{display:flex;gap:6px;margin:14px 0 8px}
+  .topo-tab button{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 14px;font:12px ui-monospace,Menlo,monospace;cursor:pointer}
+  .topo-tab button.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .equiv{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center;margin:18px 0}
+  .equiv .arrow{font-size:24px;color:var(--accent2);text-align:center}
+  @media (max-width:720px){.duality,.equiv{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Source Transformations</h1>
+  <p class="lede">A practical voltage source (Vth in series with Rth) and a practical current source (In in parallel with Rn) are <em>indistinguishable</em> from outside as long as you set <code>Vth = In · R</code> and <code>Rth = Rn</code>. Source transformation is the trick of swapping one for the other to simplify analysis: convert all voltage sources to current sources to apply nodal, or all current sources to voltage sources to apply mesh; or chain transformations to collapse a multi-source network into a single Thévenin equivalent. This is also the bridge between Thévenin and Norton.</p>
+
+  <p>Three things to take away: (1) <b>the math is just one equation</b> — V = I · R relates the two equivalent representations, with R the same on both sides; (2) <b>the inside is different — only the terminals match</b>, so the power dissipated in the internal resistor changes (Vth²/R vs In²·R, dramatically different at no-load vs short-circuit), so don't use transformations to reason about internal heating; (3) <b>chained transformations collapse complex networks</b> — turn voltage sources with series R into current sources with parallel R, combine parallels, turn back into voltage sources with series, repeat until you have one source — this is how Thévenin-equivalence is taught.</p>
+
+  <div class="topo-tab" id="topoTab">
+    <button data-topo="basic" class="active">Basic equivalence (Vth ↔ In)</button>
+    <button data-topo="chain">Chained transformation</button>
+  </div>
+
+  <section class="controls" id="ctrls">
+    <div class="control"><label>Source 1: <span class="readout" id="v1Read">12 V</span> (voltage)</label><input id="v1" type="range" min="0" max="30" step="0.5" value="12"></div>
+    <div class="control"><label>R1 (source 1 internal): <span class="readout" id="r1Read">100 Ω</span></label><input id="r1" type="range" min="1" max="1000" step="1" value="100"></div>
+    <div class="control"><label>Source 2: <span class="readout" id="v2Read">6 V</span> (voltage)</label><input id="v2" type="range" min="0" max="30" step="0.5" value="6"></div>
+    <div class="control"><label>R2 (source 2 internal): <span class="readout" id="r2Read">220 Ω</span></label><input id="r2" type="range" min="1" max="1000" step="1" value="220"></div>
+    <div class="control"><label>R_load: <span class="readout" id="rlRead">330 Ω</span></label><input id="rl" type="range" min="1" max="2000" step="1" value="330"></div>
+  </section>
+
+  <div class="preset-row" id="presets">
+    <button data-p="batt">Battery (12V, 100mΩ internal)</button>
+    <button data-p="lab">Lab supply (5V, 0.5Ω current limit)</button>
+    <button data-p="opamp">Op-amp output (close to ideal V)</button>
+    <button data-p="solar">Solar cell (current-source-like)</button>
+    <button data-p="reset">Reset</button>
+  </div>
+
+  <div class="figure">
+    <svg id="circuit" viewBox="0 0 720 360" width="100%"></svg>
+    <table id="resultsTbl">
+      <thead><tr><th>Quantity</th><th>Practical V (Thévenin)</th><th>Practical I (Norton)</th><th>Match?</th></tr></thead>
+      <tbody id="resBody"></tbody>
+    </table>
+    <div class="vd"><b>Equivalence check:</b> <span id="eqCalc">…</span></div>
+  </div>
+
+  <h2>The transformation in one equation</h2>
+  <div class="deriv">
+    <span class="step">Practical voltage source: <b>V_th</b> in series with <b>R</b>. At open-circuit V = V_th; at short-circuit I = V_th / R.</span>
+    <span class="step">Practical current source: <b>I_n</b> in parallel with <b>R</b>. At open-circuit V = I_n · R; at short-circuit I = I_n.</span>
+    <span class="step">Set them equal at the terminals: <span class="arrow">→</span> <b>V_th = I_n · R</b>, <b>R_th = R_n</b>. Then they behave identically on the outside.</span>
+    <span class="step">Both V_open · I_short = V_th · (V_th/R) = V_th²/R. The maximum power transferable is V_th² / (4·R) (at R_load = R), same number for either form.</span>
+  </div>
+
+  <h2>Why "equivalent" is only an outside view</h2>
+  <p>The two networks deliver identical voltage and current at the terminals for any external load — that's the definition of equivalence. But internally, they're profoundly different. Consider a 12 V / 1 Ω battery at <em>no load</em>:</p>
+  <div class="deriv">
+    <span class="step">Thévenin form (12 V in series with 1 Ω): no current → <b>0 W dissipated internally</b>.</span>
+    <span class="step">Norton form (12 A current source in parallel with 1 Ω): the source still pumps 12 A; with no external load, all 12 A goes through the internal R → <b>1 Ω · 12² = 144 W dissipated internally!</b></span>
+    <span class="step"><span class="arrow">⚠</span> The Norton form is an <em>analytical fiction</em>. A real 12 V battery has zero internal current at no-load. Use whichever form matches the physical device; use the other form for <em>analysis only</em>.</span>
+  </div>
+
+  <h2>Worked example — chained transformation to find V_load</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>Two practical voltage sources, V1 = 12 V with R1 = 4 Ω, V2 = 9 V with R2 = 6 Ω, both feeding a common load R_L = 3 Ω. Find V across R_L the long way (mesh), then the short way (transform + combine).</p>
+
+    <h3>Step 1 — Transform both V sources to I sources</h3>
+    <span class="eq">Source 1: 12 V / 4 Ω = <b>3 A in parallel with 4 Ω</b></span>
+    <span class="eq">Source 2: 9 V / 6 Ω = <b>1.5 A in parallel with 6 Ω</b></span>
+
+    <h3>Step 2 — Now all three (3 A, 4 Ω, 1.5 A, 6 Ω, 3 Ω) are in parallel at the load node</h3>
+    <span class="eq">Total current source: 3 + 1.5 = <b>4.5 A</b>  <span class="annot">(KCL at the node)</span></span>
+    <span class="eq">Total parallel resistance: 4 ‖ 6 ‖ 3 = 1/(1/4 + 1/6 + 1/3) = 1/0.75 = <b>1.333 Ω</b></span>
+    <span class="eq">V_load = 4.5 A · 1.333 Ω = <b>6.00 V</b></span>
+
+    <h3>Step 3 — Sanity-check with mesh analysis</h3>
+    <p>Two-mesh circuit (one loop through V1, R1, R_L; one through V2, R2, R_L). Solving the matrix gives V_load = 6.00 V exactly. The transformation route was three lines vs nine — that's the whole point.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>R doesn't change.</b> Vth/Rth and In/Rn share the same internal resistance. The transformation rotates the source, not the resistor.</li>
+    <li><b>Short circuit current is identical.</b> Short the terminals of either form → both deliver V_th/R = I_n. That's the defining test.</li>
+    <li><b>Open-circuit voltage is identical.</b> Disconnect any load → V_th in the Thévenin form, I_n · R in the Norton. Same number by definition.</li>
+    <li><b>Use Thévenin when V sources dominate</b> (most circuits) and Norton when I sources dominate (transistor models, photodiodes).</li>
+    <li><b>Chaining works when sources can be combined.</b> Voltage sources in series add (with sign). Current sources in parallel add (with sign). Use transformation to <em>get</em> to the topology where addition works.</li>
+    <li><b>Power inside the source is form-dependent.</b> A real battery is closer to Thévenin form; a real photodiode is closer to Norton. Pick the form that matches reality if you care about internal heating.</li>
+  </ul>
+
+  <h2>Practical source examples</h2>
+  <table>
+    <thead><tr><th>Device</th><th>Closer to</th><th>Typical R</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>9 V alkaline battery</td><td>Thévenin (V source)</td><td>1–2 Ω</td><td>Open-circuit V well-defined; current limited by internal R</td></tr>
+      <tr><td>Car lead-acid battery</td><td>Thévenin</td><td>5–30 mΩ</td><td>Same — very low Rth = high cranking current</td></tr>
+      <tr><td>Lab bench supply (V mode)</td><td>Thévenin</td><td>&lt; 10 mΩ</td><td>Active regulation makes Rth tiny</td></tr>
+      <tr><td>Lab bench supply (CC mode)</td><td>Norton</td><td>&gt; 10 kΩ</td><td>Active CC loop makes Rth large</td></tr>
+      <tr><td>Photodiode (reverse-biased)</td><td>Norton</td><td>tens of MΩ</td><td>Light → photocurrent; voltage barely affects it</td></tr>
+      <tr><td>BJT collector (active region)</td><td>Norton</td><td>~ V_A / I_C</td><td>I_C ≈ I_B · β; r_o is Early-voltage divided by current</td></tr>
+      <tr><td>Op-amp output (linear range)</td><td>Thévenin</td><td>tens of mΩ to a few Ω</td><td>Closed-loop output impedance = R_o_open / (1 + Aβ)</td></tr>
+      <tr><td>Switch-mode regulator output</td><td>Thévenin</td><td>tens of mΩ</td><td>Feedback enforces V; transient ESR matters</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Where you'll see this technique</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Mesh ↔ Nodal switching</b> — current sources prefer nodal; voltage sources prefer mesh. Transform first, then pick the technique.</li>
+      <li><b style="color:var(--fg)">Thévenin extraction</b> — reduce a complex sub-circuit to one V_th + R_th by repeated transform-and-combine.</li>
+      <li><b style="color:var(--fg)">Transistor small-signal</b> — collector models naturally as Norton (g_m · v_be in parallel with r_o); transform to Thévenin for output-stage analysis.</li>
+      <li><b style="color:var(--fg)">Battery modeling</b> — V_oc(SOC) in series with R_int(temperature, SOC, age). Internal R has a wider tolerance than V_oc.</li>
+      <li><b style="color:var(--fg)">Op-amp inverting input</b> — incoming signals (each via R_in) Norton-transform into the summing junction (virtual ground); the feedback resistor converts the summed I back to V.</li>
+      <li><b style="color:var(--fg)">Cross-link:</b> see <a href="thevenin-norton-explorer.html">Thévenin / Norton Explorer</a> for the equivalent-circuit framing.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>V → I</dt><dd><span class="eq">I_n = V_th / R</span></dd>
+        <dt>I → V</dt><dd><span class="eq">V_th = I_n · R</span></dd>
+        <dt>R unchanged</dt><dd><span class="eq">R_th = R_n</span></dd>
+        <dt>V_oc</dt><dd><span class="eq">= V_th  (= I_n · R)</span></dd>
+        <dt>I_sc</dt><dd><span class="eq">= I_n   (= V_th / R)</span></dd>
+        <dt>P_max</dt><dd><span class="eq">V_th² / (4R)  at R_L = R</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>WHEN TO TRANSFORM</h3>
+      <ul>
+        <li>Want to apply <b>nodal</b> — convert all V sources to I sources first.</li>
+        <li>Want to apply <b>mesh</b> — convert all I sources to V sources first.</li>
+        <li>Chasing a Thévenin — chain transforms + parallel-combine.</li>
+        <li>Sources in series with same R → combine V's, sum stays a V source.</li>
+        <li>Sources in parallel with same R → transform first, then sum I's.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li><b>Internal power isn't preserved.</b> Vth²/R ≠ I_n²·R in general dissipation accounting — they're equivalent only at the terminals.</li>
+        <li><b>Ideal sources can't be transformed.</b> An ideal V source has R = 0 → I_n = V/0 = ∞. An ideal I source has R = ∞ → V_th = ∞. Add a tiny series or shunt R first.</li>
+        <li><b>Sign of the source.</b> The arrow direction (current source) and the + terminal (voltage source) must match across the transformation.</li>
+        <li><b>Internal node disappears.</b> The series-R node in Thévenin form vanishes when you transform to Norton — sometimes that node is the one you wanted to measure.</li>
+        <li><b>Real batteries aren't quite Thévenin.</b> R_int varies with SOC, T, age. Use a lookup table or refresh R_th periodically in firmware.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 1 — DC Circuit Foundations</a> ·
+    Related: <a href="thevenin-norton-explorer.html">Thévenin / Norton</a> ·
+    <a href="mesh-analysis.html">Mesh</a> · <a href="nodal-analysis.html">Nodal</a>
+  </footer>
+</main>
+<script>
+  const els = {};
+  ['v1','r1','v2','r2','rl'].forEach(k => els[k] = document.getElementById(k));
+  let topo = 'basic';
+  function fmtV(v){
+    if(Math.abs(v) < 1e-3) return (v*1e6).toFixed(1)+' µV';
+    if(Math.abs(v) < 1)    return (v*1e3).toFixed(2)+' mV';
+    return v.toFixed(3)+' V';
+  }
+  function fmtI(i){
+    if(Math.abs(i) < 1e-3) return (i*1e6).toFixed(1)+' µA';
+    if(Math.abs(i) < 1)    return (i*1e3).toFixed(2)+' mA';
+    return i.toFixed(3)+' A';
+  }
+  function fmtR(r){
+    if(r >= 1e3) return (r/1e3).toFixed(2)+' kΩ';
+    if(r < 1)    return (r*1000).toFixed(1)+' mΩ';
+    return r.toFixed(1)+' Ω';
+  }
+  function fmtP(p){
+    if(Math.abs(p) < 1e-3) return (p*1e6).toFixed(1)+' µW';
+    if(Math.abs(p) < 1)    return (p*1e3).toFixed(2)+' mW';
+    return p.toFixed(3)+' W';
+  }
+
+  function drawBasic(V, R, R_L){
+    const svg = document.getElementById('circuit');
+    svg.setAttribute('viewBox','0 0 720 360');
+    let s = '';
+    // Left: Thévenin form
+    // Right: Norton form
+    const Lx=80, Mx=300, Rx=460, RRx=640;
+    const Ty=80, By=280;
+    // Thévenin column (left half)
+    s += `<text x="180" y="40" class="label" text-anchor="middle" fill="#5ec8ff">THÉVENIN form: V_th + R series</text>`;
+    s += `<line x1="${Lx}" y1="${Ty}" x2="${Lx}" y2="${By}" class="wire"/>`;
+    s += `<circle cx="${Lx}" cy="${(Ty+By)/2}" r="20" fill="var(--bg-elev2)" stroke="#5ec8ff"/>`;
+    s += `<text x="${Lx}" y="${(Ty+By)/2 + 4}" class="label" text-anchor="middle" fill="#5ec8ff">V</text>`;
+    s += `<text x="${Lx-30}" y="${(Ty+By)/2+4}" class="label-dim" text-anchor="end">${fmtV(V)}</text>`;
+    s += `<line x1="${Lx}" y1="${Ty}" x2="${Lx+60}" y2="${Ty}" class="wire"/>`;
+    s += `<rect x="${Lx+60}" y="${Ty-7}" width="50" height="14" fill="var(--bg-elev2)" stroke="#ffb86c" stroke-width="1.4"/>`;
+    s += `<text x="${Lx+85}" y="${Ty-12}" class="label" text-anchor="middle" fill="#ffb86c">R</text>`;
+    s += `<text x="${Lx+85}" y="${Ty+22}" class="label-dim" text-anchor="middle">${fmtR(R)}</text>`;
+    s += `<line x1="${Lx+110}" y1="${Ty}" x2="${Mx}" y2="${Ty}" class="wire"/>`;
+    s += `<line x1="${Lx}" y1="${By}" x2="${Mx}" y2="${By}" class="wire"/>`;
+    s += `<circle cx="${Mx}" cy="${Ty}" r="4" fill="#a3e635"/>`;
+    s += `<circle cx="${Mx}" cy="${By}" r="4" fill="#a3e635"/>`;
+    s += `<text x="${Mx+8}" y="${Ty - 4}" class="label" fill="#a3e635">A</text>`;
+    s += `<text x="${Mx+8}" y="${By + 14}" class="label" fill="#a3e635">B</text>`;
+    // Big ↔ arrow
+    s += `<text x="${(Mx+Rx)/2}" y="${(Ty+By)/2}" class="label" font-size="28" text-anchor="middle" fill="#ffb86c">⇌</text>`;
+    s += `<text x="${(Mx+Rx)/2}" y="${(Ty+By)/2 + 24}" class="label-dim" text-anchor="middle">equivalent</text>`;
+    // Norton column (right half)
+    s += `<text x="540" y="40" class="label" text-anchor="middle" fill="#5ec8ff">NORTON form: I_n parallel R</text>`;
+    s += `<circle cx="${Rx}" cy="${Ty}" r="4" fill="#a3e635"/>`;
+    s += `<circle cx="${Rx}" cy="${By}" r="4" fill="#a3e635"/>`;
+    s += `<text x="${Rx-12}" y="${Ty - 4}" class="label" fill="#a3e635">A</text>`;
+    s += `<text x="${Rx-12}" y="${By + 14}" class="label" fill="#a3e635">B</text>`;
+    s += `<line x1="${Rx}" y1="${Ty}" x2="${RRx}" y2="${Ty}" class="wire"/>`;
+    s += `<line x1="${Rx}" y1="${By}" x2="${RRx}" y2="${By}" class="wire"/>`;
+    // I source (Rx+60 vertical)
+    const Ix = Rx + 60;
+    s += `<line x1="${Ix}" y1="${Ty}" x2="${Ix}" y2="${(Ty+By)/2 - 20}" class="wire"/>`;
+    s += `<circle cx="${Ix}" cy="${(Ty+By)/2}" r="20" fill="var(--bg-elev2)" stroke="#ffb86c"/>`;
+    s += `<line x1="${Ix}" y1="${(Ty+By)/2 + 12}" x2="${Ix}" y2="${(Ty+By)/2 - 8}" stroke="#ffb86c" stroke-width="1.6"/>`;
+    s += `<polygon points="${Ix-4},${(Ty+By)/2 - 6} ${Ix+4},${(Ty+By)/2 - 6} ${Ix},${(Ty+By)/2 - 12}" fill="#ffb86c"/>`;
+    s += `<text x="${Ix+30}" y="${(Ty+By)/2 + 4}" class="label" fill="#ffb86c">I_n</text>`;
+    s += `<text x="${Ix+30}" y="${(Ty+By)/2 + 22}" class="label-dim">${fmtI(V/R)}</text>`;
+    s += `<line x1="${Ix}" y1="${(Ty+By)/2 + 20}" x2="${Ix}" y2="${By}" class="wire"/>`;
+    // R parallel (at Rx+160)
+    const Px = Rx + 160;
+    s += `<line x1="${Px}" y1="${Ty}" x2="${Px}" y2="${(Ty+By)/2 - 26}" class="wire"/>`;
+    s += `<rect x="${Px-7}" y="${(Ty+By)/2 - 26}" width="14" height="52" fill="var(--bg-elev2)" stroke="#ffb86c" stroke-width="1.4"/>`;
+    s += `<text x="${Px+14}" y="${(Ty+By)/2 + 4}" class="label" fill="#ffb86c">R</text>`;
+    s += `<text x="${Px+14}" y="${(Ty+By)/2 + 22}" class="label-dim">${fmtR(R)}</text>`;
+    s += `<line x1="${Px}" y1="${(Ty+By)/2 + 26}" x2="${Px}" y2="${By}" class="wire"/>`;
+    // R_load on the far right (off the AB terminals via dotted lines)
+    s += `<text x="360" y="${By + 50}" class="label-dim" text-anchor="middle">load R_L = ${fmtR(R_L)} (driven by either form, same I & V at A-B)</text>`;
+    svg.innerHTML = s;
+  }
+
+  function drawChain(V1, R1, V2, R2, R_L){
+    const svg = document.getElementById('circuit');
+    svg.setAttribute('viewBox','0 0 760 380');
+    let s = '';
+    // Show the chained: V1+R1 || V2+R2 → I1+R1 || I2+R2 → I_tot + R_par → Thévenin again
+    s += `<text x="380" y="30" class="label" text-anchor="middle" fill="#5ec8ff">Chained transformation: collapse two practical V sources into one</text>`;
+    // Box 1: original
+    s += `<rect x="40" y="60" width="220" height="180" rx="6" fill="none" stroke="var(--line)"/>`;
+    s += `<text x="150" y="80" class="label-dim" text-anchor="middle">1. Original: V1, R1 / V2, R2 / R_L</text>`;
+    s += `<text x="60" y="100" class="label" fill="#5ec8ff">V1 = ${fmtV(V1)} · R1 = ${fmtR(R1)}</text>`;
+    s += `<text x="60" y="120" class="label" fill="#ffb86c">V2 = ${fmtV(V2)} · R2 = ${fmtR(R2)}</text>`;
+    s += `<text x="60" y="140" class="label" fill="#a3e635">R_L = ${fmtR(R_L)}</text>`;
+    s += `<text x="60" y="180" class="label-dim">Mesh would need 2 KVL equations.</text>`;
+    // Box 2: transform to Norton
+    s += `<rect x="280" y="60" width="220" height="180" rx="6" fill="none" stroke="var(--line)"/>`;
+    s += `<text x="390" y="80" class="label-dim" text-anchor="middle">2. Norton-transform each V source</text>`;
+    s += `<text x="300" y="100" class="label" fill="#5ec8ff">I1 = V1/R1 = ${fmtI(V1/R1)}</text>`;
+    s += `<text x="300" y="120" class="label" fill="#ffb86c">I2 = V2/R2 = ${fmtI(V2/R2)}</text>`;
+    s += `<text x="300" y="140" class="label-dim">Now: I1 ∥ R1 ∥ I2 ∥ R2 ∥ R_L</text>`;
+    const Itot = V1/R1 + V2/R2;
+    const Rpar = 1 / (1/R1 + 1/R2 + 1/R_L);
+    s += `<text x="300" y="180" class="label" fill="#a3e635">I_tot = ${fmtI(Itot)}</text>`;
+    s += `<text x="300" y="200" class="label" fill="#a3e635">R_par = ${fmtR(Rpar)}</text>`;
+    // Box 3: final
+    s += `<rect x="520" y="60" width="220" height="180" rx="6" fill="none" stroke="var(--line)"/>`;
+    s += `<text x="630" y="80" class="label-dim" text-anchor="middle">3. Combined; solve</text>`;
+    const Vload = Itot * Rpar;
+    const Iload = Vload / R_L;
+    s += `<text x="540" y="100" class="label" fill="#a3e635">V_load = I_tot · R_par</text>`;
+    s += `<text x="540" y="120" class="label" fill="#a3e635" font-size="14">= ${fmtV(Vload)}</text>`;
+    s += `<text x="540" y="160" class="label">I_load = ${fmtI(Iload)}</text>`;
+    s += `<text x="540" y="180" class="label">P_load = ${fmtP(Vload * Iload)}</text>`;
+    // Arrows
+    s += `<text x="270" y="160" class="label" font-size="20" fill="#ffb86c">→</text>`;
+    s += `<text x="510" y="160" class="label" font-size="20" fill="#ffb86c">→</text>`;
+    // bottom: the Thévenin equivalent for completeness
+    s += `<text x="380" y="290" class="label-dim" text-anchor="middle">Thévenin of (I_tot ∥ R_par seen from R_L): V_th = I_tot · (R1 ∥ R2), R_th = R1 ∥ R2</text>`;
+    const Rth = 1/(1/R1 + 1/R2);
+    const Vth = (V1/R1 + V2/R2) * Rth;
+    s += `<text x="380" y="320" class="label" text-anchor="middle">V_th = ${fmtV(Vth)} · R_th = ${fmtR(Rth)} (drives any R_L)</text>`;
+    s += `<text x="380" y="345" class="label-dim" text-anchor="middle">Cross-check: V_load = V_th · R_L / (R_th + R_L) = ${fmtV(Vth * R_L / (Rth + R_L))}</text>`;
+    svg.innerHTML = s;
+  }
+
+  function update(){
+    const V1 = parseFloat(els.v1.value);
+    const R1 = parseFloat(els.r1.value);
+    const V2 = parseFloat(els.v2.value);
+    const R2 = parseFloat(els.r2.value);
+    const R_L = parseFloat(els.rl.value);
+    document.getElementById('v1Read').textContent = fmtV(V1);
+    document.getElementById('r1Read').textContent = fmtR(R1);
+    document.getElementById('v2Read').textContent = fmtV(V2);
+    document.getElementById('r2Read').textContent = fmtR(R2);
+    document.getElementById('rlRead').textContent = fmtR(R_L);
+
+    const body = document.getElementById('resBody');
+    const eq = document.getElementById('eqCalc');
+
+    if(topo === 'basic'){
+      // Show source 1 transformation
+      const In = V1 / R1;
+      // Quantities at terminals (no load, short, with R_L)
+      const Voc = V1;
+      const Isc = V1 / R1;
+      const VwithRL_T = V1 * R_L / (R1 + R_L);
+      const IwithRL_T = V1 / (R1 + R_L);
+      const VwithRL_N = In * (R1 * R_L) / (R1 + R_L);  // current divides via R parallel R_L
+      const IwithRL_N = VwithRL_N / R_L;
+      const matches = Math.abs(VwithRL_T - VwithRL_N) < 1e-9;
+      body.innerHTML =
+        `<tr><td>V_open (no load)</td><td class="num">${fmtV(V1)}</td><td class="num">${fmtV(In * R1)}</td><td>${(Math.abs(V1 - In*R1) < 1e-9)?'✓':'✗'}</td></tr>` +
+        `<tr><td>I_short (terminals shorted)</td><td class="num">${fmtI(V1/R1)}</td><td class="num">${fmtI(In)}</td><td>${(Math.abs(V1/R1 - In) < 1e-9)?'✓':'✗'}</td></tr>` +
+        `<tr><td>V across R_L = ${fmtR(R_L)}</td><td class="num">${fmtV(VwithRL_T)}</td><td class="num">${fmtV(VwithRL_N)}</td><td>${matches?'✓':'✗'}</td></tr>` +
+        `<tr><td>I through R_L</td><td class="num">${fmtI(IwithRL_T)}</td><td class="num">${fmtI(IwithRL_N)}</td><td>${matches?'✓':'✗'}</td></tr>` +
+        `<tr><td>P delivered to R_L</td><td class="num">${fmtP(VwithRL_T*IwithRL_T)}</td><td class="num">${fmtP(VwithRL_N*IwithRL_N)}</td><td>${matches?'✓':'✗'}</td></tr>` +
+        `<tr><td>P dissipated in internal R</td><td class="num">${fmtP(IwithRL_T*IwithRL_T*R1)}</td><td class="num">${fmtP((In-IwithRL_N)*(In-IwithRL_N)*R1)}</td><td>—</td></tr>`;
+      eq.innerHTML = `Equivalent at terminals A–B: V_th = ${fmtV(V1)} ↔ I_n = ${fmtI(In)} (both with R = ${fmtR(R1)}). They cannot be distinguished by any external measurement.`;
+      drawBasic(V1, R1, R_L);
+    } else {
+      const Rth = 1/(1/R1 + 1/R2);
+      const Itot = V1/R1 + V2/R2;
+      const Vth = Itot * Rth;
+      const Vload = Vth * R_L / (Rth + R_L);
+      body.innerHTML =
+        `<tr><td>After step 1 (Norton)</td><td colspan="2" class="num">I1 = ${fmtI(V1/R1)} ∥ R1; I2 = ${fmtI(V2/R2)} ∥ R2</td><td>—</td></tr>` +
+        `<tr><td>After step 2 (combine)</td><td colspan="2" class="num">I_tot = ${fmtI(Itot)}; R_par(no load) = ${fmtR(Rth)}</td><td>—</td></tr>` +
+        `<tr><td>Equivalent Thévenin</td><td colspan="2" class="num">V_th = ${fmtV(Vth)}; R_th = ${fmtR(Rth)}</td><td>—</td></tr>` +
+        `<tr><td>V across R_L = ${fmtR(R_L)}</td><td colspan="2" class="num">${fmtV(Vload)}</td><td>—</td></tr>` +
+        `<tr><td>I through R_L</td><td colspan="2" class="num">${fmtI(Vload/R_L)}</td><td>—</td></tr>` +
+        `<tr><td>P delivered</td><td colspan="2" class="num">${fmtP(Vload*Vload/R_L)}</td><td>—</td></tr>`;
+      eq.innerHTML = `Two practical V sources collapsed into one Thévenin: V_th = ${fmtV(Vth)}, R_th = ${fmtR(Rth)}. From here it's just a voltage-divider into R_L.`;
+      drawChain(V1, R1, V2, R2, R_L);
+    }
+  }
+
+  function applyPreset(p){
+    const cfg = {
+      batt:   {v1:12, r1:0.1, v2:0, r2:1000, rl:10, topo:'basic'},
+      lab:    {v1:5, r1:0.5, v2:0, r2:1000, rl:10, topo:'basic'},
+      opamp:  {v1:5, r1:0.05, v2:0, r2:1000, rl:1000, topo:'basic'},
+      solar:  {v1:0.6, r1:1000, v2:0, r2:1000, rl:5, topo:'basic'},
+      reset:  {v1:12, r1:100, v2:6, r2:220, rl:330, topo:'chain'}
+    }[p];
+    if(!cfg) return;
+    ['v1','r1','v2','r2','rl'].forEach(k => els[k].value = cfg[k]);
+    setTopo(cfg.topo);
+    document.querySelectorAll('#presets button').forEach(b => b.classList.toggle('active', b.dataset.p === p));
+    update();
+  }
+  function setTopo(t){
+    topo = t;
+    document.querySelectorAll('#topoTab button').forEach(b => b.classList.toggle('active', b.dataset.topo === t));
+    const show = (t === 'chain');
+    document.getElementById('v2').parentElement.style.opacity = show ? '1' : '0.35';
+    document.getElementById('r2').parentElement.style.opacity = show ? '1' : '0.35';
+  }
+  Object.values(els).forEach(el => el.addEventListener('input', update));
+  document.querySelectorAll('#topoTab button').forEach(b => b.addEventListener('click', () => { setTopo(b.dataset.topo); update(); }));
+  document.querySelectorAll('#presets button').forEach(b => b.addEventListener('click', () => applyPreset(b.dataset.p)));
+  setTopo('basic');
+  update();
+</script>
+</body>
+</html>

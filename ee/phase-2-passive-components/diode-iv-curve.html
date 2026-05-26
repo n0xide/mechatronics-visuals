@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diode I-V Curve Explorer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim);cursor:pointer}
+  .anchor:hover{border-color:var(--accent)}
+  .anchor.active{border-color:var(--accent);color:var(--accent)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:4px 8px;
+    font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid{stroke:var(--grid);stroke-width:0.5}
+  .curve{fill:none;stroke-width:2}
+  .curve.si{stroke:var(--accent)}
+  .curve.schottky{stroke:var(--accent3)}
+  .curve.led{stroke:var(--accent2)}
+  .curve.ge{stroke:var(--warn)}
+  .marker{fill:var(--accent2)}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:6px 0;font-size:12px;
+    font-family:ui-monospace,Menlo,monospace}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{display:inline-block;width:12px;height:3px}
+  .scale-toggle{display:inline-flex;background:var(--bg-elev2);border-radius:4px;
+    padding:2px;border:1px solid var(--line);gap:0}
+  .scale-toggle button{background:transparent;color:var(--fg-dim);border:none;
+    padding:4px 10px;cursor:pointer;font:12px ui-monospace,monospace}
+  .scale-toggle button.active{background:var(--accent);color:var(--bg)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Diode I-V Curve Explorer</h1>
+  <p class="lede">A diode is a one-way valve for current — but the "one-way" is gentle, exponential, and family-dependent. The Shockley equation I = Is·(exp(V/(nVT)) − 1) compresses every flavor — Si, Schottky, LED, Ge — into one shape with three knobs: Is (leakage), n (ideality), and Vbr (reverse breakdown). Slide V_D, watch the current explode; compare Si vs Schottky vs LED; pick an operating point and read off the small-signal resistance rd = nVT / ID.</p>
+
+  <div class="anchors">
+    <button class="anchor active" data-diode="si"><b>Si 1N4148</b> · Vf≈0.65 V · Is=2.5 nA · n=1.9</button>
+    <button class="anchor" data-diode="schottky"><b>Schottky 1N5817</b> · Vf≈0.32 V · Is=2 µA · n=1.05</button>
+    <button class="anchor" data-diode="led-red"><b>LED red</b> · Vf≈1.9 V · Is=10⁻²⁰ A · n=2.5</button>
+    <button class="anchor" data-diode="led-blue"><b>LED blue</b> · Vf≈3.2 V · Is=10⁻³⁰ A · n=3.0</button>
+    <button class="anchor" data-diode="ge"><b>Ge 1N34A</b> · Vf≈0.30 V · Is=1 µA · n=1.3</button>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>V_D (forward + reverse): <span class="readout" id="vRead">+0.65 V</span></label><input id="v" type="range" min="-30" max="3.5" step="0.01" value="0.65"></div>
+    <div class="control"><label>Temperature: <span class="readout" id="tRead">25 °C</span></label><input id="temp" type="range" min="-40" max="125" step="1" value="25"></div>
+    <div class="control"><label>Vertical scale</label>
+      <div class="scale-toggle">
+        <button id="scaleLin" class="active">Linear</button>
+        <button id="scaleLog">Log (decades)</button>
+      </div>
+    </div>
+    <div class="control"><label>Overlay comparison</label>
+      <select id="overlay">
+        <option value="none">just selected</option>
+        <option value="all" selected>Si · Schottky · LED · Ge</option>
+        <option value="si-sk">Si vs Schottky</option>
+        <option value="leds">red vs blue LED</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>Si 1N4148</span>
+      <span><i style="background:var(--accent3)"></i>Schottky 1N5817</span>
+      <span><i style="background:var(--accent2)"></i>LED (red/blue)</span>
+      <span><i style="background:var(--warn)"></i>Ge 1N34A</span>
+    </div>
+    <svg id="plot" viewBox="0 0 700 420" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+      <tr><td>I at V_D (operating point)</td><td id="tI" class="num">14.2 mA</td><td><code>Is·(exp(V/(nVT))−1)</code></td></tr>
+      <tr><td>V_T = kT/q</td><td id="tVT" class="num">25.7 mV</td><td><code>k·T_kelvin / q</code></td></tr>
+      <tr><td>Small-signal rd at this I</td><td id="trd" class="num">3.43 Ω</td><td><code>nVT / I</code></td></tr>
+      <tr><td>Slope: dV per decade of I</td><td id="tDec" class="num">112 mV / dec</td><td><code>nVT · ln(10)</code></td></tr>
+      <tr><td>Power dissipated</td><td id="tP" class="num">9.23 mW</td><td><code>V_D · I</code></td></tr>
+      <tr><td>Region</td><td id="tRegion" class="num" colspan="2">Forward conduction (knee crossed)</td></tr>
+    </table>
+    <div class="vd">
+      <b>Shockley equation (live):</b> I = Is·(exp(V_D / (n·V_T)) − 1) = <span id="vdCalc">…</span>
+    </div>
+  </div>
+
+  <h2>The Shockley equation, term by term</h2>
+  <p>One equation, three constants, exponential explosion. Memorize the shape, not the numbers — the numbers come from the datasheet.</p>
+  <div class="deriv">
+    <span class="step"><b>I = Is · ( exp(V_D / (n·V_T)) − 1 )</b></span>
+    <span class="step"><b>Is</b> — saturation (reverse leakage) current. Si: ~1–10 nA. Schottky: ~1–10 µA. Ge: ~1 µA. LEDs: vanishingly small (10⁻²⁰ – 10⁻³⁰ A) because of the wide bandgap.</span>
+    <span class="step"><b>n</b> — ideality factor, 1 ≤ n ≤ 2 for Si junctions, n ≈ 1.0–1.1 for Schottky, n ≈ 2–3 for LEDs because recombination dominates in the wide bandgap.</span>
+    <span class="step"><b>V_T = kT/q</b> — thermal voltage. 25.7 mV at 25 °C, ~30 mV at 75 °C, ~40 mV at 200 °C. Always temperature-dependent.</span>
+    <span class="step"><span class="arrow">→</span> The "−1" matters only near zero. Once V_D ≳ 4·V_T, the equation is just <b>I ≈ Is·exp(V_D/(nVT))</b>.</span>
+  </div>
+
+  <h2>Why the curve looks the same shape every time</h2>
+  <p>Pure exponentials look identical on a log-Y plot — they're just straight lines with different intercepts. That's why Si, Schottky, LED, Ge all look like the same curve shifted left or right. The shift is the difference in Is (and a little in n).</p>
+  <div class="deriv">
+    <span class="step">Take log of both sides: <b>ln(I) ≈ ln(Is) + V_D / (n·V_T)</b></span>
+    <span class="step">Slope on log-Y: <b>1 / (n·V_T)</b> — same for any diode with the same n, regardless of Is or material.</span>
+    <span class="step">Intercept: <b>ln(Is)</b> — sets where the line crosses 0 V.</span>
+    <span class="step">Decades per volt: <b>1 / (n·V_T · ln 10)</b>. At 25 °C and n=1: 16.9 decades/V; n=2: 8.4 decades/V.</span>
+    <span class="step"><span class="arrow">→</span> Equivalently: <b>n·V_T · ln(10) ≈ 60 mV/decade at 25 °C for n=1</b>. The famous "60 mV per decade" of BJT transconductance.</span>
+  </div>
+
+  <h2>Reverse breakdown — the cliff at the back</h2>
+  <p>The exponential is only one side of the truth. Reverse-bias a diode hard enough and avalanche/Zener breakdown takes over, slamming current up at a fixed Vbr. For ordinary rectifiers, Vbr is a destructive limit (50 V, 100 V, 600 V). For Zener and TVS diodes, Vbr is the working voltage.</p>
+  <table>
+    <tr><th>Diode</th><th>Vbr (typical)</th><th>Use</th></tr>
+    <tr><td>1N4148 small-signal</td><td class="num">100 V</td><td>fast switching; do not reverse-stress</td></tr>
+    <tr><td>1N4007 rectifier</td><td class="num">1000 V</td><td>line-power rectification</td></tr>
+    <tr><td>1N5817 Schottky</td><td class="num">20 V</td><td>OR-ing, low-drop rectification</td></tr>
+    <tr><td>BZX84C3V3 Zener 3.3 V</td><td class="num">3.3 V (controlled)</td><td>shunt regulator / clamp</td></tr>
+    <tr><td>SMAJ5.0A TVS</td><td class="num">5.0 V (clamps at ~9.2 V)</td><td>ESD / surge protection</td></tr>
+  </table>
+
+  <h2>Worked example — 5 V supply, red LED at 10 mA</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>Drive a red LED (Vf ≈ 1.9 V at 10 mA from Lite-On LTL-307 datasheet, IF_max = 25 mA) from a 5 V Pico GPIO via a series resistor. Pick the resistor.</p>
+    <h3>The arithmetic</h3>
+    <span class="eq">KVL: 5 V − I·R − V_LED = 0</span>
+    <span class="eq">R = (5 − 1.9) / 0.010 = 310 Ω <span class="annot">(exact)</span></span>
+    <span class="eq">E12 pick: R = 330 Ω <span class="annot">(closest, gives I = 9.4 mA, brightness loss ≈ −0.3 dB → eye can't tell)</span></span>
+    <span class="eq">Power in R: I²·R = (0.0094)² · 330 = 29 mW <span class="annot">(any 0805 SMD or 1/8 W through-hole is fine)</span></span>
+    <span class="eq">Power in LED: V·I = 1.9 · 0.0094 = 18 mW <span class="annot">(well under 60 mW spec)</span></span>
+    <h3>Now the gotcha</h3>
+    <p>If the GPIO drops by 0.3 V (sourcing 10 mA from a 3.3 V Pico through internal pull-up — not the same as a real 5 V supply): I drops to ~9.1 mA. If V_LED also rises 50 mV at this slightly-higher current: I drops further. Always read the diode at the actual operating point on its curve, not at the datasheet's typical.</p>
+  </div>
+
+  <h2>Worked example — small-signal rd in a clamp</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>Two Si diodes anti-parallel across an op-amp input as ESD clamps. Forward current under fault is 5 mA. What is the dynamic (small-signal) resistance the noise current sees?</p>
+    <span class="eq">rd = n·V_T / I = (1.9 · 25.7 mV) / 5 mA = 9.8 Ω <span class="annot">(at this bias)</span></span>
+    <span class="eq">At 1 mA forward: rd = 48.8 Ω <span class="annot">(soft clamp)</span></span>
+    <span class="eq">At 100 µA forward: rd = 488 Ω <span class="annot">(barely clamping)</span></span>
+    <p>This is why ESD clamps work hard only once a real fault current flows. For sub-100-µA leakage, they look high-Z — so they don't load the signal in normal operation.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Vf is not a constant.</b> "0.7 V" is shorthand for "between 0.55 and 0.85 depending on the current." A 1 mA Si diode is at ~0.58 V; a 1 A diode is at ~0.95 V. The same diode, different operating point.</li>
+    <li><b>Schottky drops half as much</b> — perfect for low-headroom rectification (battery OR-ing, polarity protection on a 3.3 V rail). The penalty: higher leakage (Is in microamps) and lower Vbr (often 20–60 V).</li>
+    <li><b>LED Vf scales with bandgap, not current</b> — IR ≈ 1.2 V, red ≈ 1.9 V, green ≈ 2.2 V, blue/white ≈ 3.2 V. The bandgap sets the photon energy AND the forward voltage.</li>
+    <li><b>Temperature shifts Vf by ≈ −2 mV/°C</b> for Si — a hot diode passes more current at the same V. This is the basis of every "diode thermometer" circuit, and also the runaway risk for paralleled diodes without ballast resistors.</li>
+    <li><b>Below the knee, current is "zero" only on linear scales.</b> Log-scale plots show that current at 0.4 V is genuinely 0.4 µA on a Si diode — small, but not zero. This matters for leaky CMOS gate protection and pico-amp instrumentation.</li>
+    <li><b>The decade slope is universal for n=1, T=25 °C: ~60 mV per decade.</b> Memorize this. Every Si junction. Every BJT V_BE. Every Schottky.</li>
+  </ul>
+
+  <h2>Where this curve shows up</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Rectification</b> — bridge rectifiers, freewheel diodes (1N4007); Schottky for low-loss rectification on switchers.</li>
+      <li><b style="color:var(--fg)">Voltage references</b> — Zener regulators, bandgap references stack diodes to cancel Vbe drift.</li>
+      <li><b style="color:var(--fg)">ESD / surge protection</b> — TVS arrays clamp transient overvoltage; Schottky steering diodes route to power rail.</li>
+      <li><b style="color:var(--fg)">Logarithmic amplifiers</b> — diode in op-amp feedback gives V_out ∝ log(I_in). Used in audio dB meters.</li>
+      <li><b style="color:var(--fg)">Temperature sensing</b> — Vbe of a forward-biased junction drops by ~2 mV/°C; the "PTAT" reference (proportional-to-absolute-temperature).</li>
+      <li><b style="color:var(--fg)">LEDs</b> — every status indicator, every IR remote, every photodiode is the same physics in reverse.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Shockley</dt><dd><span class="eq">I = Is·(exp(V/(nVT))−1)</span></dd>
+        <dt>Thermal voltage</dt><dd><span class="eq">V_T = kT/q ≈ 25.7 mV @ 25 °C</span></dd>
+        <dt>Small-signal r</dt><dd><span class="eq">rd = nVT / ID</span></dd>
+        <dt>Slope</dt><dd><span class="eq">~60 mV/decade @ 25 °C (n=1)</span></dd>
+        <dt>LED resistor</dt><dd><span class="eq">R = (V_supply − V_LED) / I_LED</span></dd>
+        <dt>TC of Vbe</dt><dd><span class="eq">∂V/∂T ≈ −2 mV/°C</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>TYPICAL Vf</h3>
+      <ul>
+        <li><b>Si small-sig (1N4148)</b> ~0.65 V @ 10 mA</li>
+        <li><b>Si rectifier (1N400x)</b> ~0.95 V @ 1 A</li>
+        <li><b>Schottky (1N5817)</b> ~0.32 V @ 1 A</li>
+        <li><b>Ge (1N34A)</b> ~0.30 V @ 1 mA</li>
+        <li><b>IR LED</b> ~1.2 V; <b>red</b> ~1.9 V; <b>green</b> ~2.2 V; <b>blue/white</b> ~3.2 V</li>
+        <li><b>Zener BZX84C5V1</b> ~5.1 V reverse</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Paralleling diodes without ballast</b> — TC of −2 mV/°C means the hotter diode hogs the current. Use ballast Rs (~0.1 Ω) or pick from same reel.</li>
+        <li><b>Reverse-stress on small-signal diodes</b> — 1N4148 dies at 100 V reverse. Use TVS or rectifier for surge paths.</li>
+        <li><b>Treating Vf as exact</b> — it's a curve. A "0.7 V" assumption mis-estimates I by ±30 % near the knee.</li>
+        <li><b>Forgetting LED self-heating</b> — at IF_max, junction can rise 30 °C; Vf drops 60 mV → I rises further → thermal runaway in unballasted strings.</li>
+        <li><b>Schottky leakage</b> — Schottky's Is is 1000× a Si's. At 85 °C, reverse leakage can be milliamps. Don't use Schottky for high-impedance reverse blocking.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EE Phase 2 — Passive Components</span> ·
+    Companion: <a href="diodes-zener-transformers.html">Diodes, Zener &amp; Transformers</a> ·
+    Forward: <a href="../phase-4-semiconductors/bjt-small-signal.html">BJT Small Signal</a> (same exponential, different junction).
+  </footer>
+</main>
+<script>
+  // Diode model presets — Is, n, Vbr (reverse breakdown V), TC of Is (doubling per ~10 °C)
+  const DIODES = {
+    si:        {label:"Si 1N4148",      Is:2.5e-9,  n:1.9, Vbr:-100, color:"var(--accent)"},
+    schottky:  {label:"Schottky 1N5817",Is:2.0e-6,  n:1.05,Vbr:-20,  color:"var(--accent3)"},
+    "led-red": {label:"LED red",        Is:1.0e-20, n:2.5, Vbr:-5,   color:"var(--accent2)"},
+    "led-blue":{label:"LED blue",       Is:1.0e-30, n:3.0, Vbr:-5,   color:"var(--accent2)", dash:"3 3"},
+    ge:        {label:"Ge 1N34A",       Is:1.0e-6,  n:1.3, Vbr:-30,  color:"var(--warn)"},
+  };
+  const q = 1.602e-19;
+  const k = 1.381e-23;
+
+  function VT(tempC){ return k * (tempC + 273.15) / q; }
+
+  function diodeI(V, model, tempC){
+    const vt = VT(tempC);
+    // Forward exponential
+    if (V > model.Vbr * 0.9) {
+      // Is doubles roughly every 10 °C
+      const Is = model.Is * Math.pow(2, (tempC - 25)/10);
+      const exponent = V / (model.n * vt);
+      if (exponent > 80) return Is * Math.exp(80); // clamp
+      return Is * (Math.exp(exponent) - 1);
+    } else {
+      // Approaching breakdown — sharp transition
+      const dV = V - model.Vbr;
+      // sharp avalanche: I goes from -Is to large negative
+      const t = Math.exp(-dV / 0.05);  // 50 mV slope into breakdown
+      return -model.Is - t * 0.01;     // ramps to 10 mA reverse at breakdown
+    }
+  }
+
+  let state = {
+    diode:"si",
+    V: 0.65,
+    temp: 25,
+    scale: "lin",
+    overlay: "all",
+  };
+
+  // ── plot dimensions ──
+  const PW = 700, PH = 420;
+  const PADL = 60, PADR = 20, PADT = 30, PADB = 40;
+  const PLOT_W = PW - PADL - PADR;
+  const PLOT_H = PH - PADT - PADB;
+
+  // ── axis ranges ──
+  function getAxes(){
+    if (state.scale === "log"){
+      return {
+        xMin: -5, xMax: 4,
+        yMin: -10, yMax: -1, // log10(I), so I from 100 pA to 100 mA
+      };
+    }
+    return {
+      xMin: -2, xMax: 3.5,
+      yMin: -0.01, yMax: 0.025,  // 25 mA
+    };
+  }
+
+  function xToPx(x, ax){ return PADL + (x - ax.xMin) / (ax.xMax - ax.xMin) * PLOT_W; }
+  function yToPx(y, ax){
+    const yClamped = Math.max(ax.yMin, Math.min(ax.yMax, y));
+    return PADT + PLOT_H - (yClamped - ax.yMin) / (ax.yMax - ax.yMin) * PLOT_H;
+  }
+
+  function curveOf(key, ax){
+    const m = DIODES[key];
+    const pts = [];
+    const N = 500;
+    for (let i=0; i<=N; i++){
+      const v = ax.xMin + (ax.xMax - ax.xMin) * (i/N);
+      let cur;
+      if (state.scale === "log"){
+        // x = V is the actual V; y = log10(|I|), but we only show forward
+        if (v < 0) continue;
+        const I = diodeI(v, m, state.temp);
+        if (I <= 0) continue;
+        const lI = Math.log10(I);
+        if (!isFinite(lI)) continue;
+        cur = lI;
+      } else {
+        cur = diodeI(v, m, state.temp);
+      }
+      pts.push([v, cur]);
+    }
+    const segs = [];
+    let cur = [];
+    for (const p of pts){
+      if (p[1] < ax.yMin - 1e-3 || p[1] > ax.yMax + 1e-3){
+        if (cur.length) { segs.push(cur); cur = []; }
+        continue;
+      }
+      cur.push(p);
+    }
+    if (cur.length) segs.push(cur);
+    return segs.map(seg => seg.map((p,i) =>
+      (i? 'L':'M') + xToPx(p[0], ax).toFixed(1) + ',' + yToPx(p[1], ax).toFixed(1)
+    ).join(' '));
+  }
+
+  function whichDiodes(){
+    if (state.overlay === "none") return [state.diode];
+    if (state.overlay === "all") return ["si","schottky","led-red","ge"];
+    if (state.overlay === "si-sk") return ["si","schottky"];
+    if (state.overlay === "leds") return ["led-red","led-blue"];
+    return [state.diode];
+  }
+
+  function drawPlot(){
+    const svg = document.getElementById('plot');
+    const ax = getAxes();
+    let s = '';
+    // background
+    s += `<rect x="${PADL}" y="${PADT}" width="${PLOT_W}" height="${PLOT_H}" fill="var(--bg-elev2)"/>`;
+    // grid
+    if (state.scale === "lin"){
+      for (let v = -2; v <= 3.5; v += 0.5){
+        const x = xToPx(v, ax);
+        s += `<line x1="${x}" y1="${PADT}" x2="${x}" y2="${PADT+PLOT_H}" class="grid"/>`;
+        s += `<text x="${x}" y="${PADT+PLOT_H+15}" class="axis-label" text-anchor="middle">${v.toFixed(1)}</text>`;
+      }
+      for (let i = -0.005; i <= 0.025; i += 0.005){
+        const y = yToPx(i, ax);
+        s += `<line x1="${PADL}" y1="${y}" x2="${PADL+PLOT_W}" y2="${y}" class="grid"/>`;
+        const lbl = i >= 0 ? (i*1000).toFixed(0)+" mA" : (i*1000).toFixed(0)+" mA";
+        s += `<text x="${PADL-6}" y="${y+3}" class="axis-label" text-anchor="end">${lbl}</text>`;
+      }
+    } else {
+      for (let v = -5; v <= 4; v += 1){
+        const x = xToPx(v, ax);
+        s += `<line x1="${x}" y1="${PADT}" x2="${x}" y2="${PADT+PLOT_H}" class="grid"/>`;
+        s += `<text x="${x}" y="${PADT+PLOT_H+15}" class="axis-label" text-anchor="middle">${v.toFixed(0)}</text>`;
+      }
+      for (let lI = -10; lI <= -1; lI += 1){
+        const y = yToPx(lI, ax);
+        s += `<line x1="${PADL}" y1="${y}" x2="${PADL+PLOT_W}" y2="${y}" class="grid"/>`;
+        const lbl = "10^"+lI+" A";
+        s += `<text x="${PADL-6}" y="${y+3}" class="axis-label" text-anchor="end">${lbl}</text>`;
+      }
+    }
+    // axes
+    s += `<line x1="${PADL}" y1="${PADT}" x2="${PADL}" y2="${PADT+PLOT_H}" class="axis"/>`;
+    s += `<line x1="${PADL}" y1="${PADT+PLOT_H}" x2="${PADL+PLOT_W}" y2="${PADT+PLOT_H}" class="axis"/>`;
+    // zero V axis
+    if (state.scale === "lin"){
+      const x0 = xToPx(0, ax);
+      s += `<line x1="${x0}" y1="${PADT}" x2="${x0}" y2="${PADT+PLOT_H}" stroke="var(--fg-dim)" stroke-width="1" stroke-dasharray="2 3"/>`;
+      const y0 = yToPx(0, ax);
+      s += `<line x1="${PADL}" y1="${y0}" x2="${PADL+PLOT_W}" y2="${y0}" stroke="var(--fg-dim)" stroke-width="1" stroke-dasharray="2 3"/>`;
+    }
+    // axis titles
+    s += `<text x="${PADL+PLOT_W/2}" y="${PADT+PLOT_H+32}" class="axis-label" text-anchor="middle">V_D (V)</text>`;
+    s += `<text x="${PADL-44}" y="${PADT+PLOT_H/2}" class="axis-label" text-anchor="middle" transform="rotate(-90,${PADL-44},${PADT+PLOT_H/2})">I_D (${state.scale==='log'?'log A':'A'})</text>`;
+
+    // curves
+    const which = whichDiodes();
+    for (const key of which){
+      const segs = curveOf(key, ax);
+      const m = DIODES[key];
+      for (const d of segs){
+        s += `<path d="${d}" class="curve" stroke="${m.color}" ${m.dash?'stroke-dasharray="'+m.dash+'"':''}/>`;
+      }
+    }
+
+    // operating point marker
+    const m = DIODES[state.diode];
+    const I = diodeI(state.V, m, state.temp);
+    let yMark;
+    if (state.scale === "log"){
+      if (I > 0 && state.V > 0){
+        yMark = yToPx(Math.log10(I), ax);
+      } else {
+        yMark = null;
+      }
+    } else {
+      yMark = yToPx(I, ax);
+    }
+    if (yMark !== null && state.V >= ax.xMin && state.V <= ax.xMax){
+      const xMark = xToPx(state.V, ax);
+      s += `<line x1="${xMark}" y1="${PADT}" x2="${xMark}" y2="${PADT+PLOT_H}" stroke="var(--accent2)" stroke-width="1" stroke-dasharray="3 3" opacity="0.4"/>`;
+      s += `<circle cx="${xMark}" cy="${yMark}" r="5" class="marker"/>`;
+      s += `<text x="${xMark+10}" y="${yMark-8}" class="label-ok">V=${state.V.toFixed(2)} V, I=${fmtI(I)}</text>`;
+    }
+
+    svg.innerHTML = s;
+  }
+
+  function fmtI(i){
+    const a = Math.abs(i);
+    if (a < 1e-12) return (i*1e15).toFixed(1)+" fA";
+    if (a < 1e-9) return (i*1e12).toFixed(1)+" pA";
+    if (a < 1e-6) return (i*1e9).toFixed(2)+" nA";
+    if (a < 1e-3) return (i*1e6).toFixed(2)+" µA";
+    if (a < 1) return (i*1e3).toFixed(2)+" mA";
+    return i.toFixed(3)+" A";
+  }
+  function fmtR(r){
+    if (r < 1) return (r*1000).toFixed(0)+" mΩ";
+    if (r < 1e3) return r.toFixed(2)+" Ω";
+    if (r < 1e6) return (r/1e3).toFixed(2)+" kΩ";
+    return (r/1e6).toFixed(2)+" MΩ";
+  }
+  function fmtP(p){
+    const a = Math.abs(p);
+    if (a < 1e-6) return (p*1e9).toFixed(1)+" nW";
+    if (a < 1e-3) return (p*1e6).toFixed(1)+" µW";
+    if (a < 1) return (p*1e3).toFixed(2)+" mW";
+    return p.toFixed(3)+" W";
+  }
+
+  function update(){
+    const m = DIODES[state.diode];
+    const vt = VT(state.temp);
+    const I = diodeI(state.V, m, state.temp);
+    document.getElementById('vRead').textContent = (state.V >= 0 ? "+" : "") + state.V.toFixed(2) + " V";
+    document.getElementById('tRead').textContent = state.temp + " °C";
+    document.getElementById('tI').textContent = fmtI(I);
+    document.getElementById('tVT').textContent = (vt*1000).toFixed(1) + " mV";
+    const rd = (I > 1e-12) ? (m.n * vt) / I : Infinity;
+    document.getElementById('trd').textContent = isFinite(rd) ? fmtR(rd) : "open (no current)";
+    document.getElementById('tDec').textContent = (m.n * vt * Math.log(10) * 1000).toFixed(0) + " mV / dec";
+    document.getElementById('tP').textContent = fmtP(state.V * I);
+
+    let region;
+    if (state.V < m.Vbr * 0.95) region = "Reverse breakdown (Vbr ≈ "+m.Vbr+" V)";
+    else if (state.V < 0) region = "Reverse-bias leakage (Is ≈ "+fmtI(m.Is)+")";
+    else if (state.V < 0.3) region = "Sub-knee (exponential growing slowly)";
+    else if (state.V < (m.label.indexOf("LED")>=0 ? 1.8 : 0.6)) region = "Approaching knee";
+    else region = "Forward conduction (knee crossed)";
+    document.getElementById('tRegion').textContent = region;
+
+    document.getElementById('vdCalc').textContent =
+      `${m.Is.toExponential(2)} · (exp(${state.V.toFixed(3)} / (${m.n} · ${(vt*1000).toFixed(1)} mV)) − 1) = ${fmtI(I)}`;
+
+    drawPlot();
+  }
+
+  // hookup
+  document.querySelectorAll('.anchor').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.anchor').forEach(a => a.classList.remove('active'));
+      b.classList.add('active');
+      state.diode = b.dataset.diode;
+      // Auto-adjust V into a sensible range for the new diode
+      const m = DIODES[state.diode];
+      const isLED = state.diode.startsWith("led");
+      const newV = isLED ? (state.diode==="led-blue" ? 3.2 : 1.9) : 0.65;
+      state.V = newV;
+      document.getElementById('v').value = newV;
+      update();
+    });
+  });
+  document.getElementById('v').addEventListener('input', e => {
+    state.V = parseFloat(e.target.value);
+    update();
+  });
+  document.getElementById('temp').addEventListener('input', e => {
+    state.temp = parseFloat(e.target.value);
+    update();
+  });
+  document.getElementById('overlay').addEventListener('change', e => {
+    state.overlay = e.target.value;
+    update();
+  });
+  document.getElementById('scaleLin').addEventListener('click', () => {
+    state.scale = "lin";
+    document.getElementById('scaleLin').classList.add('active');
+    document.getElementById('scaleLog').classList.remove('active');
+    update();
+  });
+  document.getElementById('scaleLog').addEventListener('click', () => {
+    state.scale = "log";
+    document.getElementById('scaleLog').classList.add('active');
+    document.getElementById('scaleLin').classList.remove('active');
+    update();
+  });
+
+  update();
+</script>
+</body>
+</html>

@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Op-Amp Picker Matrix — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+    /* family colors for the scatter / chips */
+    --fam-gp:#5ec8ff;
+    --fam-ln:#a3e635;
+    --fam-hs:#ff7b72;
+    --fam-pr:#ffb86c;
+    --fam-jf:#c084fc;
+    --fam-ia:#f59f00;
+    --fam-cs:#9aa3b2;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:1100px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);
+     margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:30px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;
+     text-transform:uppercase;letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  table{border-collapse:collapse;width:100%;font-size:12px;margin:10px 0}
+  th,td{padding:5px 8px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600;
+     cursor:pointer;user-select:none;position:sticky;top:0;z-index:1}
+  th.sortable:hover{background:var(--line)}
+  th.sorted-asc::after{content:" \25B2";color:var(--accent);font-size:10px}
+  th.sorted-desc::after{content:" \25BC";color:var(--accent);font-size:10px}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+
+  .tabs{display:flex;gap:0;border-bottom:1px solid var(--line);
+    margin-bottom:18px;overflow-x:auto;white-space:nowrap}
+  .tab{background:transparent;color:var(--fg-dim);border:none;
+    padding:10px 16px;font:13px ui-monospace,Menlo,monospace;cursor:pointer;
+    border-bottom:2px solid transparent;white-space:nowrap}
+  .tab:hover{color:var(--fg)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .pane{display:none}
+  .pane.active{display:block}
+
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:14px 16px;margin:18px 0;
+    display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number],.control input[type=text]{
+    background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:5px 8px;
+    font:13px ui-monospace,Menlo,monospace}
+  .checks{display:flex;flex-wrap:wrap;gap:6px 10px;font:12px ui-monospace,Menlo,monospace;
+    color:var(--fg)}
+  .checks label{color:var(--fg-dim);display:inline-flex;align-items:center;gap:4px;
+    cursor:pointer;white-space:nowrap}
+  .checks input{accent-color:var(--accent);margin:0}
+  .checks label.on{color:var(--fg-bright)}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto;margin:0 auto}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px;font-family:ui-monospace,Menlo,monospace}
+  .legend-dot{display:inline-block;width:10px;height:10px;border-radius:50%;
+    vertical-align:middle;margin-right:5px}
+
+  /* List of filtered op-amps in pane 1 */
+  .result-grid{display:grid;gap:10px;
+    grid-template-columns:repeat(auto-fill,minmax(280px,1fr));margin-top:14px}
+  .result-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:6px;
+    padding:10px 12px;font-size:12px;font-family:ui-monospace,Menlo,monospace}
+  .result-card .part{color:var(--fg-bright);font-size:14px;font-weight:600;
+    display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .result-card .fam{display:inline-block;padding:1px 6px;border-radius:3px;
+    font-size:10px;color:var(--bg);font-weight:600;letter-spacing:0.04em;
+    text-transform:uppercase;flex-shrink:0}
+  .result-card dl{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;
+    margin:6px 0 0;font-size:11px;color:var(--fg-dim)}
+  .result-card dt{white-space:nowrap}
+  .result-card dd{margin:0;color:var(--fg);text-align:right}
+  .result-card .blurb{margin-top:6px;color:var(--fg-dim);font-size:11px;
+    font-family:-apple-system,sans-serif;line-height:1.4}
+  .result-empty{padding:20px;text-align:center;color:var(--fg-dim);
+    font:13px ui-monospace,Menlo,monospace;border:1px dashed var(--line);
+    border-radius:8px;margin-top:14px}
+  .count-line{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace;margin-top:6px}
+  .count-line b{color:var(--accent3)}
+
+  /* Use-case picker */
+  .usecase-grid{display:grid;gap:10px;
+    grid-template-columns:repeat(auto-fit,minmax(240px,1fr));margin:16px 0}
+  .usecase-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:12px 14px;cursor:pointer;transition:border-color 120ms}
+  .usecase-card:hover{border-color:var(--accent)}
+  .usecase-card h3{margin:0 0 4px;color:var(--accent2);font-size:12px}
+  .usecase-card p{margin:0;font-size:12px;color:var(--fg-dim)}
+  .usecase-card .specs{margin-top:6px;font-size:11px;color:var(--accent);
+    font-family:ui-monospace,Menlo,monospace}
+  .usecase-card.fake{border-style:dashed;border-color:var(--warn)}
+  .usecase-card.fake h3{color:var(--warn)}
+
+  /* Scrollable table wrapper */
+  .table-wrap{max-height:560px;overflow:auto;border:1px solid var(--line);
+    border-radius:6px;background:var(--bg-elev)}
+  .table-wrap table{margin:0}
+  .table-wrap td.part{color:var(--fg-bright);font-weight:600}
+  .table-wrap td.fam{font-size:10px;text-transform:uppercase;letter-spacing:0.04em;
+    color:var(--bg);font-weight:600}
+
+  /* Cheat-sheet cards (matches opamp-fundamentals) */
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card.usecase h3{color:var(--accent2)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+
+  /* "Op-amps to know" writeups */
+  .known-grid{display:grid;gap:14px;
+    grid-template-columns:repeat(auto-fit,minmax(320px,1fr));margin:14px 0}
+  .known-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:14px 16px}
+  .known-card h3{margin:0 0 6px;color:var(--fg-bright);font-size:13px;
+    border-bottom:none;padding:0}
+  .known-card .tagline{color:var(--accent2);font:12px ui-monospace,Menlo,monospace;
+    margin-bottom:6px}
+  .known-card p{margin:6px 0;font-size:12px;color:var(--fg-dim)}
+  .known-card p b{color:var(--fg)}
+  .known-card .specrow{font:11px ui-monospace,Menlo,monospace;color:var(--accent);
+    margin-top:6px;line-height:1.7}
+
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:5px 0}
+  ul.notice b{color:var(--fg)}
+
+  /* Worked example block */
+  .worked{background:var(--bg-elev);border:1px solid var(--accent2);border-radius:8px;
+    padding:14px 16px;margin:14px 0;font-size:13px}
+  .worked h3{color:var(--accent2);margin-top:0}
+  .worked .step{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;
+    margin:4px 0;font:12px ui-monospace,Menlo,monospace}
+  .worked .step dt{color:var(--fg-bright);white-space:nowrap}
+  .worked .step dd{margin:0;color:var(--fg-dim)}
+  .worked .conclusion{margin-top:8px;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;border-top:1px dashed var(--line);
+    padding-top:8px}
+
+  .footer-note{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .footer-note a{color:var(--accent);text-decoration:none}
+
+  /* Scatter point hover tooltip */
+  .scatter-pt{cursor:pointer;transition:opacity 100ms}
+  .scatter-pt:hover{opacity:1 !important}
+  #scatter-tip{position:absolute;background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:4px;padding:6px 9px;font:12px ui-monospace,Menlo,monospace;
+    color:var(--fg);pointer-events:none;display:none;z-index:10;
+    box-shadow:0 4px 14px rgba(0,0,0,0.4);max-width:240px;line-height:1.5}
+  #scatter-tip .tname{color:var(--fg-bright);font-weight:600}
+  #scatter-tip .tspec{color:var(--fg-dim);font-size:11px;display:block;margin-top:2px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Op-Amp Picker Matrix</h1>
+  <p class="lede">Op-amp selection is a 7-dimensional problem (GBW, slew, V<sub>os</sub>, I<sub>ib</sub>, noise, supply, RR I/O) where datasheets all look the same. This picker filters ~20 representative parts on real specs, plots the GBW-vs-noise tradeoff with cost as bubble size, and maps common use cases ("photodiode TIA," "audio preamp") onto pre-set filters. Master the four-spec shortcut per use case and you will pick the right part in 30 seconds instead of 30 minutes.</p>
+
+  <div class="anchors">
+    <span class="anchor"><b>LM358</b> GBW = 1 MHz</span>
+    <span class="anchor"><b>OPA1656</b> GBW = 53 MHz, 2.9 nV/&radic;Hz</span>
+    <span class="anchor"><b>AD8551</b> V<sub>os</sub> = 1 &micro;V (auto-zero)</span>
+    <span class="anchor"><b>OPA350</b> RRIO single-supply</span>
+    <span class="anchor"><b>TL072</b> JFET, I<sub>ib</sub> = 30 pA</span>
+    <span class="anchor"><b>LM6171</b> SR = 3600 V/&micro;s</span>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="filter">Filter view</button>
+    <button class="tab" data-tab="specs">Specs table</button>
+    <button class="tab" data-tab="tradeoff">Tradeoff scatter</button>
+    <button class="tab" data-tab="usecase">Use cases</button>
+    <button class="tab" data-tab="known">Op-amps to know</button>
+    <button class="tab" data-tab="cheats">Cheat sheet</button>
+  </div>
+
+  <!-- =================================================================== -->
+  <!-- FILTER VIEW -->
+  <!-- =================================================================== -->
+  <section class="pane active" id="pane-filter">
+    <h2>Filter by spec</h2>
+    <p>Set the <em>minimum</em> spec your design requires; the picker shows op-amps that meet or exceed it on every dimension. "Required" means: GBW &ge; threshold, slew &ge; threshold, V<sub>os</sub> &le; threshold, I<sub>ib</sub> &le; threshold, noise &le; threshold. Cost is a maximum.</p>
+
+    <section class="controls" id="filter-controls">
+      <div class="control">
+        <label>Min GBW required: <span class="readout" id="rd-gbw">0.1 MHz</span></label>
+        <input id="f-gbw" type="range" min="-1" max="3" step="0.05" value="-1">
+        <small style="color:var(--fg-dim);font-size:11px">log 100 kHz to 1 GHz</small>
+      </div>
+      <div class="control">
+        <label>Min slew rate required: <span class="readout" id="rd-sr">0.1 V/&micro;s</span></label>
+        <input id="f-sr" type="range" min="-1" max="4" step="0.05" value="-1">
+        <small style="color:var(--fg-dim);font-size:11px">log 0.1 to 10000 V/&micro;s</small>
+      </div>
+      <div class="control">
+        <label>Max input offset V<sub>os</sub>: <span class="readout" id="rd-vos">10 mV</span></label>
+        <input id="f-vos" type="range" min="-3" max="1" step="0.05" value="1">
+        <small style="color:var(--fg-dim);font-size:11px">log 1 &micro;V to 10 mV</small>
+      </div>
+      <div class="control">
+        <label>Max input bias I<sub>ib</sub>: <span class="readout" id="rd-iib">1 &micro;A</span></label>
+        <input id="f-iib" type="range" min="0" max="6" step="0.05" value="6">
+        <small style="color:var(--fg-dim);font-size:11px">log 1 pA to 1 &micro;A</small>
+      </div>
+      <div class="control">
+        <label>Max input noise: <span class="readout" id="rd-en">100 nV/&radic;Hz</span></label>
+        <input id="f-en" type="range" min="0" max="2" step="0.02" value="2">
+        <small style="color:var(--fg-dim);font-size:11px">log 1 to 100 nV/&radic;Hz</small>
+      </div>
+      <div class="control">
+        <label>Max unit cost: <span class="readout" id="rd-cost">$20.00</span></label>
+        <input id="f-cost" type="range" min="0.1" max="20" step="0.1" value="20">
+      </div>
+      <div class="control">
+        <label>Supply Vs (single-supply rail) ok at: <span class="readout" id="rd-vs">5 V</span></label>
+        <input id="f-vs" type="range" min="1.8" max="36" step="0.1" value="5">
+        <small style="color:var(--fg-dim);font-size:11px">part's V<sub>s,min</sub> &le; this &le; V<sub>s,max</sub></small>
+      </div>
+      <div class="control">
+        <label>Rail-to-rail requirement</label>
+        <select id="f-rr">
+          <option value="any" selected>Any (don't care)</option>
+          <option value="rri">Rail-to-rail input</option>
+          <option value="rro">Rail-to-rail output</option>
+          <option value="rrio">Rail-to-rail both</option>
+        </select>
+      </div>
+      <div class="control" style="grid-column:1/-1">
+        <label>Families (uncheck to exclude)</label>
+        <div class="checks" id="f-fams">
+          <label class="on"><input type="checkbox" data-fam="gp" checked> General-purpose</label>
+          <label class="on"><input type="checkbox" data-fam="ln" checked> Low-noise</label>
+          <label class="on"><input type="checkbox" data-fam="hs" checked> High-speed</label>
+          <label class="on"><input type="checkbox" data-fam="pr" checked> Precision</label>
+          <label class="on"><input type="checkbox" data-fam="jf" checked> JFET-input</label>
+          <label class="on"><input type="checkbox" data-fam="ia" checked> Instrumentation</label>
+          <label class="on"><input type="checkbox" data-fam="cs" checked> Specialty / charge-pump</label>
+        </div>
+      </div>
+      <div class="control" style="grid-column:1/-1">
+        <label>Package (uncheck to exclude)</label>
+        <div class="checks" id="f-pkgs">
+          <label class="on"><input type="checkbox" data-pkg="DIP-8" checked> DIP-8</label>
+          <label class="on"><input type="checkbox" data-pkg="DIP-14" checked> DIP-14</label>
+          <label class="on"><input type="checkbox" data-pkg="SOIC-8" checked> SOIC-8</label>
+          <label class="on"><input type="checkbox" data-pkg="SOIC-14" checked> SOIC-14</label>
+          <label class="on"><input type="checkbox" data-pkg="SOT-23-5" checked> SOT-23-5</label>
+          <label class="on"><input type="checkbox" data-pkg="SOT-23-6" checked> SOT-23-6</label>
+          <label class="on"><input type="checkbox" data-pkg="MSOP-8" checked> MSOP-8</label>
+          <label class="on"><input type="checkbox" data-pkg="MSOP-10" checked> MSOP-10</label>
+        </div>
+      </div>
+    </section>
+
+    <p class="count-line">Showing <b id="filter-count">0</b> of <span id="filter-total">0</span> parts. Click a card to see it highlighted in the scatter tab.</p>
+    <div class="result-grid" id="result-grid"></div>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- SPECS TABLE -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-specs">
+    <h2>Full specs &mdash; click a column header to sort</h2>
+    <p>All ~20 parts side by side. Numeric columns are tabular-numeric for visual alignment. Cost is mid-quantity Digi-Key 1-up (USD, 2025-ish &mdash; treat as ratio-correct, not pricing-spec).</p>
+    <div class="table-wrap">
+      <table id="specs-table">
+        <thead><tr id="specs-head"></tr></thead>
+        <tbody id="specs-body"></tbody>
+      </table>
+    </div>
+    <p style="color:var(--fg-dim);font-size:11px;margin-top:6px">
+      <b>Legend:</b> CMOS = CMOS input (zero bias); BJT = bipolar (highest bias, highest current density); JFET = junction-FET (very low bias, low noise voltage but high noise current); auto-zero = chopper-stabilized for &micro;V offsets.
+    </p>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- TRADEOFF SCATTER -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-tradeoff">
+    <h2>The GBW &times; noise &times; cost tradeoff</h2>
+    <p>X-axis = log GBW (faster &rarr; right). Y-axis = log noise density (quieter &rarr; up; inverted from the raw value so the corner you want is top-right). Bubble area &prop; cost. Color = family. The "ideal" op-amp lives top-right with a small bubble &mdash; if you find one, hold on to that part number.</p>
+
+    <div class="figure" id="scatter-wrap">
+      <svg id="scatter-svg" viewBox="0 0 720 460" width="100%"></svg>
+      <div id="scatter-tip"></div>
+      <div class="legend">
+        <span><span class="legend-dot" style="background:var(--fam-gp)"></span>General-purpose</span>
+        <span><span class="legend-dot" style="background:var(--fam-ln)"></span>Low-noise</span>
+        <span><span class="legend-dot" style="background:var(--fam-hs)"></span>High-speed</span>
+        <span><span class="legend-dot" style="background:var(--fam-pr)"></span>Precision (auto-zero / &micro;V offset)</span>
+        <span><span class="legend-dot" style="background:var(--fam-jf)"></span>JFET / CMOS input (low bias)</span>
+        <span><span class="legend-dot" style="background:var(--fam-ia)"></span>Instrumentation amplifier</span>
+        <span><span class="legend-dot" style="background:var(--fam-cs)"></span>Specialty / charge-pump</span>
+      </div>
+    </div>
+
+    <p style="color:var(--fg-dim);font-size:12px">
+      Hover any bubble for full specs. The diagonal "value frontier" (top-right to bottom-left) is where the price-performance optima cluster &mdash; parts far below the frontier are over-priced for what they deliver. The cluster at GBW = 1 MHz, noise = 30+ nV/&radic;Hz, $0.10 is the jellybean zone (LM358, MCP6001, LMV324); the cluster at GBW = 50+ MHz, noise = 3 nV/&radic;Hz is where you start paying $5+ for genuine performance.
+    </p>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- USE CASES -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-usecase">
+    <h2>"I need to do X" &rarr; pre-set the filter</h2>
+    <p>Each card encodes the four specs that actually matter for that application, plus the safe-default family. Click a card to apply those filters to the picker and jump to the filter view.</p>
+
+    <div class="usecase-grid" id="usecase-grid"></div>
+
+    <h2>Worked example &mdash; photodiode TIA selection</h2>
+    <div class="worked">
+      <h3>Selecting an op-amp for a 100 kHz photodiode transimpedance amplifier (TIA)</h3>
+      <p>Photodiode is reverse-biased; its photocurrent I<sub>pd</sub> = 0&ndash;10 &micro;A; want V<sub>out</sub> = 0&ndash;2 V across 0&ndash;100 kHz bandwidth. R<sub>f</sub> = 200 k&Omega;. Photodiode capacitance C<sub>pd</sub> = 50 pF. Stable TIA requires GBW &raquo; signal bandwidth (industry rule: 100&times;), low input bias (else V<sub>os</sub>-like errors), and very low input current noise (else you build a current-noise amplifier).</p>
+      <dl class="step">
+        <dt>1. GBW required</dt><dd>100&times; signal BW = 100&times; 100 kHz = <b>10 MHz minimum</b></dd>
+        <dt>2. Stability pole</dt><dd>f<sub>z</sub> = 1/(2&pi;&middot;R<sub>f</sub>&middot;C<sub>pd</sub>) = 1/(2&pi; &middot; 200k &middot; 50pF) = 15.9 kHz. Need f<sub>p</sub> from C<sub>f</sub> at &radic;(f<sub>z</sub>&middot;GBW); GBW = 10 MHz &rArr; C<sub>f</sub> &asymp; 0.4 pF.</dd>
+        <dt>3. Input bias</dt><dd>10 &micro;A signal &raquo; bias error. Want I<sub>ib</sub> &lt; 1 nA &mdash; rules out BJT-input (LM358 has 250 nA, fatal here). JFET or CMOS required.</dd>
+        <dt>4. Voltage offset</dt><dd>V<sub>os</sub> = 200 k&Omega; &middot; (DC-bias-current-difference) + V<sub>os,intrinsic</sub>. Want &lt;5 mV total &rarr; V<sub>os,intrinsic</sub> &lt; 5 mV is fine. (Bigger concern is bias-current symmetry.)</dd>
+        <dt>5. Noise</dt><dd>Total output noise =  e<sub>n</sub>(1+R<sub>f</sub>/R<sub>s</sub>) + i<sub>n</sub>&middot;R<sub>f</sub>. JFET-input has tiny i<sub>n</sub> &mdash; the right pick for R<sub>f</sub>=200k.</dd>
+      </dl>
+      <p class="conclusion">&rArr; Filter: GBW &ge; 10 MHz, I<sub>ib</sub> &le; 1 nA, family = JFET-input. Candidates: <b>OPA1656</b> (premium, $4&ndash;6), <b>OPA350</b> (CMOS RRIO, $2&ndash;3), <b>LMC662</b> (vintage CMOS, $2). Click the "Photodiode TIA" card above to pre-apply these filters.</p>
+    </div>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- OP-AMPS TO KNOW -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-known">
+    <h2>Iconic op-amps &mdash; the parts an engineer recognizes by part number</h2>
+    <p>Cultural literacy in analog. These are the parts the appears in stack-overflow answers, IEEE papers from the 90s, and every hobby project that ever existed. Knowing what they're <em>not</em> good at is as valuable as knowing what they're good for.</p>
+    <div class="known-grid" id="known-grid"></div>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- CHEAT SHEET -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-cheats">
+    <h2>The four critical specs &mdash; per use case</h2>
+    <p>For each application, only 3&ndash;4 of the 7 dimensions matter. Memorize this table; the rest of the datasheet is decoration.</p>
+    <section class="cheatsheet">
+      <div class="cheat-card usecase">
+        <h3>AUDIO PREAMP / LINE BUFFER</h3>
+        <dl>
+          <dt>Noise e<sub>n</sub></dt><dd>&lt; 5 nV/&radic;Hz at 1 kHz</dd>
+          <dt>THD</dt><dd>&lt; 0.001 % @ 1 kHz, 5 V<sub>rms</sub></dd>
+          <dt>GBW</dt><dd>&ge; 5 MHz for 20 kHz &times; gain 100</dd>
+          <dt>SR</dt><dd>&ge; 10 V/&micro;s</dd>
+          <dt>Family</dt><dd>JFET (TL072) or BiFET (OPA1656, NE5532)</dd>
+        </dl>
+      </div>
+      <div class="cheat-card usecase">
+        <h3>PHOTODIODE TIA</h3>
+        <dl>
+          <dt>GBW</dt><dd>&ge; 100&times; signal bandwidth</dd>
+          <dt>I<sub>ib</sub></dt><dd>&le; signal current/100; JFET/CMOS</dd>
+          <dt>i<sub>n</sub> (current noise)</dt><dd>&le; 1 fA/&radic;Hz</dd>
+          <dt>V<sub>os</sub> drift</dt><dd>&le; 5 &micro;V/&deg;C if DC-coupled</dd>
+        </dl>
+      </div>
+      <div class="cheat-card usecase">
+        <h3>INSTRUMENTATION FRONT-END</h3>
+        <dl>
+          <dt>V<sub>os</sub></dt><dd>&le; 100 &micro;V (use auto-zero for &lt; 10 &micro;V)</dd>
+          <dt>V<sub>os</sub> drift</dt><dd>&le; 1 &micro;V/&deg;C</dd>
+          <dt>CMRR</dt><dd>&ge; 100 dB</dd>
+          <dt>I<sub>ib</sub></dt><dd>&le; 1 nA &mdash; CMOS / JFET</dd>
+          <dt>Family</dt><dd>Precision (OP07, AD8551) or in-amp (INA826)</dd>
+        </dl>
+      </div>
+      <div class="cheat-card usecase">
+        <h3>ADC SAMPLE-HOLD BUFFER</h3>
+        <dl>
+          <dt>SR</dt><dd>&ge; 5 &times; (FS / settling time)</dd>
+          <dt>Settling</dt><dd>0.01 % to &le; 1 LSB in T<sub>s</sub>/2</dd>
+          <dt>R<sub>out</sub> at f<sub>s</sub></dt><dd>low &mdash; needs &raquo; bandwidth headroom</dd>
+          <dt>RRO</dt><dd>required to use full ADC range</dd>
+          <dt>Family</dt><dd>High-speed (LM6171, OPA350)</dd>
+        </dl>
+      </div>
+      <div class="cheat-card usecase">
+        <h3>SINGLE-SUPPLY GENERAL PURPOSE</h3>
+        <dl>
+          <dt>V<sub>s,min</sub></dt><dd>&le; design rail (3.3 / 5 V)</dd>
+          <dt>RRI &amp; RRO</dt><dd>both, to use full range</dd>
+          <dt>Cost</dt><dd>&lt; $1; jellybean (MCP6001, AD8541)</dd>
+          <dt>Skip</dt><dd>LM358 &mdash; crossover distortion at low output</dd>
+        </dl>
+      </div>
+      <div class="cheat-card usecase">
+        <h3>CURRENT SENSE / SHUNT</h3>
+        <dl>
+          <dt>V<sub>os</sub></dt><dd>&le; 100 &micro;V (else divides by gain &raquo; 1 % error)</dd>
+          <dt>CMVR</dt><dd>extends below GND if low-side; bidirectional</dd>
+          <dt>Bandwidth</dt><dd>application-specific</dd>
+          <dt>Family</dt><dd>Dedicated current-sense (INA181, INA240)</dd>
+        </dl>
+      </div>
+    </section>
+
+    <h2>Common pitfalls</h2>
+    <ul class="notice">
+      <li><b>LM358 has crossover distortion</b> &mdash; the class-AB output stage handles off near 0.6 V. Output settles to dead-zone around the crossover point on low-side single-supply use. Symptom: a sine wave with a flat spot every cycle. Fix: pull-down resistor (10 k&Omega; to V<sub>EE</sub>) on the output or use AD8541/MCP6001.</li>
+      <li><b>RRIO vs RRI vs RRO</b> &mdash; RRIO means rail-to-rail input <em>and</em> output. RRO alone is common (output swings to within 50&ndash;200 mV of rails); RRI alone is rare. Common cap: input can swing from V<sub>EE</sub>-0.3 V (BJT-input "rail-to-rail" via PNP-input stage) but not over V<sub>CC</sub>-2 V. Read the input-CM-range curve, not the marketing line.</li>
+      <li><b>I<sub>ib</sub> &times; R<sub>source</sub> &raquo; V<sub>os</sub></b> &mdash; bias-current-induced voltage offset can dwarf intrinsic V<sub>os</sub>. With LM358 (250 nA typ I<sub>ib</sub>), a 100 k&Omega; source impedance creates 25 mV of "offset" before you've even measured V<sub>os</sub>. Match impedance on V+ and V&minus; pins to cancel bias-current effects (works only when I<sub>ib+</sub> &asymp; I<sub>ib&minus;</sub>, which is true for BJT-input but NOT for JFET-input).</li>
+      <li><b>Don't use an op-amp as a comparator</b> &mdash; op-amps' output saturates rather than recovers cleanly when their inputs differ by &gt; the input-stage range. Slew-to-rail can be a 100&times; slower than a real comparator. Use LM393, TLV3201, or LMV7271.</li>
+      <li><b>JFET-input has high i<sub>n</sub>, low e<sub>n</sub></b>; BJT-input has low i<sub>n</sub>, low e<sub>n</sub> but high I<sub>ib</sub>; CMOS has zero I<sub>ib</sub> but moderate-to-high e<sub>n</sub>. For high source impedance (&gt; 10 k&Omega;), JFET wins. For low source impedance (&lt; 1 k&Omega;), BJT wins. The crossover impedance R<sub>crit</sub> &asymp; e<sub>n</sub>/i<sub>n</sub>; for LT1028 (BJT) it's &asymp; 30 k&Omega;, above which JFET noise is lower.</li>
+      <li><b>GBW is for unity-gain-stable parts only</b> &mdash; "decompensated" op-amps (LT1028, OPA637) have higher GBW but require G &ge; 5 for stability. Reading the datasheet's minimum stable gain is essential.</li>
+      <li><b>V<sub>os</sub> drift dwarfs initial V<sub>os</sub> in real installations</b> &mdash; OP07 has 75 &micro;V initial offset and 1.3 &micro;V/&deg;C drift &rarr; 130 &micro;V over a 100 &deg;C range. Use auto-zero parts (AD8551 has 0.005 &micro;V/&deg;C) for thermal-stable instrumentation.</li>
+    </ul>
+  </section>
+
+  <footer class="footer-note">
+    Topic: op-amp selection cheat sheet &middot;
+    Cross-links: <a href="../ee/phase-4-semiconductors/opamp-fundamentals.html">EE 4 &mdash; Op-Amp Fundamentals</a> (the golden rules and gain-bandwidth) &middot;
+    <a href="../ee/phase-4-semiconductors/opamp-configurations.html">Op-Amp Configurations</a> (inverting / non-inverting / TIA / instrumentation) &middot;
+    <a href="component-picker.html">Universal Component Picker</a>
+  </footer>
+</main>
+
+<script>
+/* ====================================================================
+   OP-AMP DATABASE
+   Specs sourced from datasheets (typical, 25 C, mid supply).
+   GBW in MHz; slew in V/us; Vos in mV (max); Iib (typ); en in nV/sqrt(Hz)
+   Cost in USD 1-up (Digi-Key order of magnitude, 2025-ish).
+==================================================================== */
+const OPAMPS = [
+  // --- General-purpose BJT-input ---
+  {p:'LM358',     fam:'gp', input:'BJT',     gbw:1.0,   sr:0.5,   vos:7.0,    iib:2.5e-7,    en:40,    vsMin:3.0, vsMax:32, rri:false, rro:false, pkg:['DIP-8','SOIC-8','MSOP-8'], cost:0.18, channels:2,
+    note:'Cheap single-supply jellybean. Crossover distortion near 0 V output.'},
+  {p:'LM324',     fam:'gp', input:'BJT',     gbw:1.0,   sr:0.5,   vos:7.0,    iib:2.5e-7,    en:40,    vsMin:3.0, vsMax:32, rri:false, rro:false, pkg:['DIP-14','SOIC-14'], cost:0.22, channels:4,
+    note:'Quad LM358. Same gotchas, more channels per chip.'},
+  {p:'LMV324',    fam:'gp', input:'CMOS',    gbw:1.0,   sr:1.0,   vos:7.0,    iib:1e-8,      en:39,    vsMin:2.7, vsMax:5.5, rri:true,  rro:true,  pkg:['SOIC-14','MSOP-10'], cost:0.45, channels:4,
+    note:'Single-supply RRIO quad. Modern replacement for LM324 on 3.3/5 V rails.'},
+  {p:'MCP6001',   fam:'gp', input:'CMOS',    gbw:1.0,   sr:0.6,   vos:4.5,    iib:1e-12,     en:25,    vsMin:1.8, vsMax:6.0, rri:true,  rro:true,  pkg:['SOT-23-5','SOIC-8'], cost:0.40, channels:1,
+    note:'Microchip jellybean RRIO. The default cheap general-purpose op-amp for 3.3 V designs.'},
+  {p:'MCP6022',   fam:'gp', input:'CMOS',    gbw:10.0,  sr:7.0,   vos:0.5,    iib:1e-12,     en:8.7,   vsMin:2.5, vsMax:5.5, rri:true,  rro:true,  pkg:['SOIC-8','MSOP-8'], cost:1.25, channels:2,
+    note:'Higher-bandwidth MCP. Useful for audio/sensor where MCP6001 is too slow.'},
+  {p:'AD8541',    fam:'gp', input:'CMOS',    gbw:1.0,   sr:0.92,  vos:6.0,    iib:1e-12,     en:23,    vsMin:2.7, vsMax:5.5, rri:true,  rro:true,  pkg:['SOT-23-5','SOIC-8'], cost:1.85, channels:1,
+    note:'ADI single-supply RRIO. Premium MCP6001 alternative; sometimes lower offset.'},
+
+  // --- JFET-input ---
+  {p:'TL072',     fam:'jf', input:'JFET',    gbw:3.0,   sr:13.0,  vos:3.0,    iib:3e-11,     en:18,    vsMin:7.0, vsMax:36, rri:false, rro:false, pkg:['DIP-8','SOIC-8'], cost:0.55, channels:2,
+    note:'Classic JFET dual. Audio workhorse for 30+ years. High input impedance, low noise voltage.'},
+  {p:'TL082',     fam:'jf', input:'JFET',    gbw:4.0,   sr:13.0,  vos:5.0,    iib:5e-11,     en:18,    vsMin:7.0, vsMax:36, rri:false, rro:false, pkg:['DIP-8','SOIC-8'], cost:0.60, channels:2,
+    note:'TL072 sibling, slightly noisier. Often used interchangeably.'},
+  {p:'LMC662',    fam:'jf', input:'CMOS',    gbw:1.4,   sr:1.1,   vos:6.0,    iib:2e-15,     en:22,    vsMin:5.0, vsMax:15.5, rri:false, rro:true,  pkg:['DIP-8','SOIC-8'], cost:2.20, channels:2,
+    note:'CMOS with 2 fA bias current. Photodiode TIAs and pH meter applications.'},
+
+  // --- Low-noise audio ---
+  {p:'NE5532',    fam:'ln', input:'BJT',     gbw:10.0,  sr:9.0,   vos:0.5,    iib:2e-7,      en:5.0,   vsMin:6.0, vsMax:44, rri:false, rro:false, pkg:['DIP-8','SOIC-8'], cost:0.50, channels:2,
+    note:'Bipolar low-noise audio standard since 1979. Cheap, ubiquitous, decent THD.'},
+  {p:'OPA2134',   fam:'ln', input:'JFET',    gbw:8.0,   sr:20.0,  vos:2.0,    iib:5e-12,     en:8.0,   vsMin:5.0, vsMax:36, rri:false, rro:false, pkg:['DIP-8','SOIC-8'], cost:3.95, channels:2,
+    note:'Audiophile JFET op-amp. Used in DACs, headphone amps, hi-fi pre-amps.'},
+  {p:'OPA1656',   fam:'ln', input:'CMOS',    gbw:53.0,  sr:24.0,  vos:0.25,   iib:1e-11,     en:2.9,   vsMin:4.5, vsMax:36, rri:false, rro:true,  pkg:['SOIC-8','MSOP-8'], cost:4.85, channels:2,
+    note:'TI modern reference op-amp. 2.9 nV/√Hz CMOS, low THD, high GBW. Replaces NE5532/OPA2134.'},
+
+  // --- High-speed / video ---
+  {p:'LM6171',    fam:'hs', input:'BJT',     gbw:100.0, sr:3600.0,vos:1.5,    iib:2e-6,      en:12,    vsMin:5.0, vsMax:36, rri:false, rro:false, pkg:['SOIC-8'], cost:5.75, channels:1,
+    note:'Voltage-feedback high-speed; 3600 V/μs slew. Video, fast pulse, ADC drive.'},
+  {p:'THS3091',   fam:'hs', input:'BJT',     gbw:235.0, sr:7300.0,vos:5.0,    iib:6e-6,      en:2.0,   vsMin:10.0,vsMax:33, rri:false, rro:false, pkg:['SOIC-8'], cost:6.40, channels:1,
+    note:'Current-feedback line driver; 250 mA output current. ADSL, DC motor drive.'},
+  {p:'OPA350',    fam:'hs', input:'CMOS',    gbw:38.0,  sr:22.0,  vos:0.5,    iib:5e-13,     en:7.5,   vsMin:2.5, vsMax:5.5, rri:true,  rro:true,  pkg:['SOIC-8','SOT-23-5','MSOP-8'], cost:5.25, channels:1,
+    note:'Fast CMOS RRIO for single-supply 5 V. ADC driver, photodiode TIA on 5 V rail.'},
+
+  // --- Precision / auto-zero ---
+  {p:'OP07',      fam:'pr', input:'BJT',     gbw:0.6,   sr:0.3,   vos:0.075,  iib:1.8e-9,    en:9.8,   vsMin:6.0, vsMax:36, rri:false, rro:false, pkg:['DIP-8','SOIC-8'], cost:1.55, channels:1,
+    note:'Classic precision bipolar. 75 μV offset, low drift; the AD/Analog Devices flagship for 40+ years.'},
+  {p:'AD8551',    fam:'pr', input:'CMOS',    gbw:1.5,   sr:0.4,   vos:0.005,  iib:2e-11,     en:42,    vsMin:2.7, vsMax:5.5, rri:true,  rro:true,  pkg:['SOIC-8','MSOP-8'], cost:5.85, channels:1,
+    note:'Auto-zero (chopper-stabilized). 1 μV Vos, 5 nV/°C drift. Strain gauge, thermocouple, instrumentation.'},
+
+  // --- Specialized ---
+  {p:'AD8232',    fam:'cs', input:'CMOS',    gbw:0.1,   sr:0.05,  vos:0.4,    iib:5e-10,     en:50,    vsMin:2.0, vsMax:3.5, rri:true,  rro:true,  pkg:['SOIC-14'], cost:8.50, channels:1,
+    note:'ECG / biopotential signal-conditioning IC. Includes integrated filters; not a general op-amp.'},
+  {p:'INA181',    fam:'cs', input:'BJT',     gbw:0.35,  sr:1.0,   vos:0.025,  iib:5e-8,      en:25,    vsMin:2.7, vsMax:26, rri:false, rro:true,  pkg:['SOT-23-6','MSOP-8'], cost:1.65, channels:1,
+    note:'Current-sense amp with internal precision resistors (fixed gain 20/50/100/200 V/V). Bidirectional, -0.2 to +26 V CMVR.'},
+  {p:'INA122',    fam:'ia', input:'BJT',     gbw:0.12,  sr:0.08,  vos:0.25,   iib:2.5e-8,    en:60,    vsMin:2.2, vsMax:36, rri:false, rro:true,  pkg:['DIP-8','SOIC-8','MSOP-8'], cost:5.20, channels:1,
+    note:'Single-supply instrumentation amplifier; G = 5 + 200k/Rg. Bridge sensor front-ends, thermocouple cold-junction.'},
+  {p:'INA826',    fam:'ia', input:'BJT',     gbw:1.0,   sr:0.6,   vos:0.04,   iib:5e-10,     en:18,    vsMin:2.7, vsMax:36, rri:false, rro:true,  pkg:['SOIC-8','MSOP-8'], cost:7.10, channels:1,
+    note:'Precision instrumentation amp; CMRR 104 dB @ G=1. Strain gauge bridges, RTDs, thermocouples.'},
+];
+
+/* Family display labels and colors */
+const FAM_INFO = {
+  gp: {label:'GP',   color:'var(--fam-gp)', name:'General-purpose'},
+  ln: {label:'L-N',  color:'var(--fam-ln)', name:'Low-noise'},
+  hs: {label:'H-S',  color:'var(--fam-hs)', name:'High-speed'},
+  pr: {label:'PREC', color:'var(--fam-pr)', name:'Precision'},
+  jf: {label:'JFET', color:'var(--fam-jf)', name:'JFET / CMOS input'},
+  ia: {label:'IA',   color:'var(--fam-ia)', name:'Instrumentation amp'},
+  cs: {label:'SPEC', color:'var(--fam-cs)', name:'Specialty'},
+};
+const FAM_HEX = {
+  gp:'#5ec8ff', ln:'#a3e635', hs:'#ff7b72', pr:'#ffb86c',
+  jf:'#c084fc', ia:'#f59f00', cs:'#9aa3b2'
+};
+
+/* ====================================================================
+   FORMAT HELPERS
+==================================================================== */
+function fmtFreq(mhz){
+  // mhz is in MHz
+  const hz = mhz * 1e6;
+  if(hz >= 1e9) return (hz/1e9).toFixed(2)+' GHz';
+  if(hz >= 1e6) return (hz/1e6).toFixed(hz/1e6 >= 10 ? 0 : 1)+' MHz';
+  if(hz >= 1e3) return (hz/1e3).toFixed(0)+' kHz';
+  return hz.toFixed(0)+' Hz';
+}
+function fmtSlew(v){
+  if(v >= 1000) return (v/1000).toFixed(2)+' kV/µs';
+  if(v >= 1)    return v.toFixed(v >= 10 ? 0 : 1)+' V/µs';
+  return (v*1000).toFixed(0)+' mV/µs';
+}
+function fmtVos(mv){
+  if(mv < 0.001) return (mv*1e6).toFixed(0)+' nV';
+  if(mv < 1)     return (mv*1000).toFixed(mv*1000 >= 100 ? 0 : 1)+' µV';
+  return mv.toFixed(mv >= 10 ? 0 : 2)+' mV';
+}
+function fmtIib(A){
+  if(A < 1e-12) return (A*1e15).toFixed(0)+' fA';
+  if(A < 1e-9)  return (A*1e12).toFixed(A*1e12 >= 100 ? 0 : 0)+' pA';
+  if(A < 1e-6)  return (A*1e9).toFixed(A*1e9 >= 100 ? 0 : 1)+' nA';
+  if(A < 1e-3)  return (A*1e6).toFixed(A*1e6 >= 100 ? 0 : 1)+' µA';
+  return (A*1000).toFixed(2)+' mA';
+}
+function fmtNoise(en){
+  return en.toFixed(en >= 10 ? 0 : 1)+' nV/√Hz';
+}
+function fmtVs(min,max){
+  return min.toFixed(1)+'-'+max.toFixed(0)+' V';
+}
+function fmtCost(c){
+  if(c < 1)  return '$'+c.toFixed(2);
+  if(c < 10) return '$'+c.toFixed(2);
+  return '$'+c.toFixed(0);
+}
+function rrLabel(r){
+  if(r.rri && r.rro) return 'RRIO';
+  if(r.rro)          return 'RRO';
+  if(r.rri)          return 'RRI';
+  return '—';
+}
+
+/* ====================================================================
+   TAB SWITCHING
+==================================================================== */
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(x => x.classList.remove('active'));
+  document.querySelector('.tab[data-tab="'+name+'"]').classList.add('active');
+  document.getElementById('pane-'+name).classList.add('active');
+  // re-render scatter on tab switch so SVG isn't sized to 0 by hidden display
+  if(name === 'tradeoff') drawScatter();
+}
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => switchTab(t.dataset.tab));
+});
+
+/* ====================================================================
+   FILTER VIEW
+==================================================================== */
+const F = {
+  gbwMin: 0.1,  // MHz
+  srMin:  0.1,  // V/us
+  vosMax: 10.0, // mV
+  iibMax: 1e-6, // A
+  enMax:  100,  // nV/sqrt(Hz)
+  costMax:20.0, // USD
+  vs:     5.0,  // V (single-supply target)
+  rr:     'any',
+  fams:   new Set(['gp','ln','hs','pr','jf','ia','cs']),
+  pkgs:   new Set(['DIP-8','DIP-14','SOIC-8','SOIC-14','SOT-23-5','SOT-23-6','MSOP-8','MSOP-10']),
+};
+
+function updateFilterReadouts(){
+  document.getElementById('rd-gbw').textContent = fmtFreq(F.gbwMin);
+  document.getElementById('rd-sr').textContent  = fmtSlew(F.srMin);
+  document.getElementById('rd-vos').textContent = fmtVos(F.vosMax);
+  document.getElementById('rd-iib').textContent = fmtIib(F.iibMax);
+  document.getElementById('rd-en').textContent  = fmtNoise(F.enMax);
+  document.getElementById('rd-cost').textContent= '$'+F.costMax.toFixed(2);
+  document.getElementById('rd-vs').textContent  = F.vs.toFixed(1)+' V';
+}
+
+function passes(o){
+  if(o.gbw   <  F.gbwMin)  return false;
+  if(o.sr    <  F.srMin)   return false;
+  if(o.vos   >  F.vosMax)  return false;
+  if(o.iib   >  F.iibMax)  return false;
+  if(o.en    >  F.enMax)   return false;
+  if(o.cost  >  F.costMax) return false;
+  if(F.vs < o.vsMin || F.vs > o.vsMax) return false;
+  if(F.rr === 'rri'  && !o.rri) return false;
+  if(F.rr === 'rro'  && !o.rro) return false;
+  if(F.rr === 'rrio' && !(o.rri && o.rro)) return false;
+  if(!F.fams.has(o.fam)) return false;
+  if(!o.pkg.some(p => F.pkgs.has(p))) return false;
+  return true;
+}
+
+function renderResults(){
+  const grid = document.getElementById('result-grid');
+  const list = OPAMPS.filter(passes);
+  document.getElementById('filter-count').textContent = list.length;
+  document.getElementById('filter-total').textContent = OPAMPS.length;
+  if(list.length === 0){
+    grid.innerHTML = '<div class="result-empty">No op-amp meets all filters. Relax a constraint &mdash; usually noise, GBW, or supply range is the binding one.</div>';
+    return;
+  }
+  // sort: cost asc, then GBW desc
+  list.sort((a,b) => a.cost - b.cost || b.gbw - a.gbw);
+  grid.innerHTML = list.map(o => `
+    <div class="result-card" data-part="${o.p}">
+      <div class="part">${o.p}<span class="fam" style="background:${FAM_HEX[o.fam]}">${FAM_INFO[o.fam].label}</span></div>
+      <dl>
+        <dt>GBW</dt><dd>${fmtFreq(o.gbw)}</dd>
+        <dt>SR</dt><dd>${fmtSlew(o.sr)}</dd>
+        <dt>V<sub>os</sub></dt><dd>${fmtVos(o.vos)}</dd>
+        <dt>I<sub>ib</sub></dt><dd>${fmtIib(o.iib)}</dd>
+        <dt>e<sub>n</sub></dt><dd>${fmtNoise(o.en)}</dd>
+        <dt>V<sub>s</sub></dt><dd>${fmtVs(o.vsMin,o.vsMax)} ${rrLabel(o)}</dd>
+        <dt>Pkg</dt><dd>${o.pkg.join(', ')}</dd>
+        <dt>Cost</dt><dd>${fmtCost(o.cost)} &middot; ${o.channels}ch</dd>
+      </dl>
+      <div class="blurb">${o.note}</div>
+    </div>
+  `).join('');
+}
+
+/* Wire range sliders (log) */
+function bindLog(id, key){
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => {
+    F[key] = Math.pow(10, parseFloat(el.value));
+    updateFilterReadouts();
+    renderResults();
+  });
+}
+bindLog('f-gbw','gbwMin');
+bindLog('f-sr', 'srMin');
+bindLog('f-vos','vosMax');
+bindLog('f-en', 'enMax');
+
+// Iib slider: index in [0..6] -> 1 pA..1 uA in log
+document.getElementById('f-iib').addEventListener('input', e => {
+  // 0 -> 1pA = 1e-12; 6 -> 1uA = 1e-6
+  F.iibMax = Math.pow(10, -12 + parseFloat(e.target.value));
+  updateFilterReadouts();
+  renderResults();
+});
+
+document.getElementById('f-cost').addEventListener('input', e => {
+  F.costMax = parseFloat(e.target.value);
+  updateFilterReadouts();
+  renderResults();
+});
+
+document.getElementById('f-vs').addEventListener('input', e => {
+  F.vs = parseFloat(e.target.value);
+  updateFilterReadouts();
+  renderResults();
+});
+
+document.getElementById('f-rr').addEventListener('change', e => {
+  F.rr = e.target.value;
+  renderResults();
+});
+
+document.querySelectorAll('#f-fams input').forEach(cb => {
+  cb.addEventListener('change', () => {
+    const fam = cb.dataset.fam;
+    if(cb.checked) F.fams.add(fam); else F.fams.delete(fam);
+    cb.parentElement.classList.toggle('on', cb.checked);
+    renderResults();
+  });
+});
+
+document.querySelectorAll('#f-pkgs input').forEach(cb => {
+  cb.addEventListener('change', () => {
+    const pkg = cb.dataset.pkg;
+    if(cb.checked) F.pkgs.add(pkg); else F.pkgs.delete(pkg);
+    cb.parentElement.classList.toggle('on', cb.checked);
+    renderResults();
+  });
+});
+
+updateFilterReadouts();
+renderResults();
+
+/* ====================================================================
+   SPECS TABLE (sortable)
+==================================================================== */
+const SPEC_COLS = [
+  {key:'p',       label:'Part',       num:false},
+  {key:'fam',     label:'Family',     num:false},
+  {key:'input',   label:'Input',      num:false},
+  {key:'gbw',     label:'GBW',        num:true, fmt:fmtFreq},
+  {key:'sr',      label:'SR',         num:true, fmt:fmtSlew},
+  {key:'vos',     label:'V_os',       num:true, fmt:fmtVos},
+  {key:'iib',     label:'I_ib',       num:true, fmt:fmtIib},
+  {key:'en',      label:'e_n',        num:true, fmt:fmtNoise},
+  {key:'vs',      label:'V_s range',  num:false, get:o=>fmtVs(o.vsMin,o.vsMax)},
+  {key:'rr',      label:'RR I/O',     num:false, get:rrLabel},
+  {key:'pkg',     label:'Package',    num:false, get:o=>o.pkg.join(', ')},
+  {key:'cost',    label:'Cost (USD)', num:true, fmt:c=>fmtCost(c)},
+  {key:'channels',label:'Ch',         num:true, fmt:n=>n+''},
+];
+
+let sortKey = 'p';
+let sortAsc = true;
+
+function renderSpecs(){
+  const head = document.getElementById('specs-head');
+  head.innerHTML = SPEC_COLS.map(c => {
+    const dir = c.key === sortKey ? (sortAsc ? ' sorted-asc' : ' sorted-desc') : '';
+    return `<th class="sortable${dir}" data-key="${c.key}">${c.label}</th>`;
+  }).join('');
+  head.querySelectorAll('th').forEach(th => {
+    th.addEventListener('click', () => {
+      const k = th.dataset.key;
+      if(sortKey === k) sortAsc = !sortAsc; else { sortKey = k; sortAsc = true; }
+      renderSpecs();
+    });
+  });
+
+  const list = [...OPAMPS];
+  const col = SPEC_COLS.find(c => c.key === sortKey);
+  list.sort((a,b) => {
+    let av = col.get ? col.get(a) : a[sortKey];
+    let bv = col.get ? col.get(b) : b[sortKey];
+    if(typeof av === 'number' && typeof bv === 'number'){
+      return sortAsc ? av - bv : bv - av;
+    }
+    av = String(av); bv = String(bv);
+    return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+
+  const body = document.getElementById('specs-body');
+  body.innerHTML = list.map(o => {
+    return '<tr>' + SPEC_COLS.map(c => {
+      let v;
+      if(c.get)      v = c.get(o);
+      else if(c.fmt) v = c.fmt(o[c.key]);
+      else           v = o[c.key];
+      if(c.key === 'p')   return `<td class="part">${v}</td>`;
+      if(c.key === 'fam') return `<td class="fam" style="background:${FAM_HEX[o.fam]}">${FAM_INFO[o.fam].label}</td>`;
+      if(c.num)           return `<td class="num">${v}</td>`;
+      return `<td>${v}</td>`;
+    }).join('') + '</tr>';
+  }).join('');
+}
+renderSpecs();
+
+/* ====================================================================
+   TRADEOFF SCATTER
+   X = log(GBW), Y = -log(noise) so quieter is up.
+   bubble radius proportional to sqrt(cost).
+==================================================================== */
+function drawScatter(){
+  const svg = document.getElementById('scatter-svg');
+  const W = 720, H = 460, mL = 56, mR = 24, mT = 24, mB = 56;
+  const xs = OPAMPS.map(o => Math.log10(o.gbw));
+  const ys = OPAMPS.map(o => Math.log10(o.en));
+  const xMin = Math.min(...xs) - 0.3, xMax = Math.max(...xs) + 0.3;
+  const yMin = Math.min(...ys) - 0.15, yMax = Math.max(...ys) + 0.15;
+  const xOf = lx => mL + (lx - xMin) / (xMax - xMin) * (W - mL - mR);
+  // y inverted: quieter (smaller en) -> higher up
+  const yOf = ly => mT + (ly - yMin) / (yMax - yMin) * (H - mT - mB);
+
+  let s = '';
+  // grid
+  for(let x = Math.ceil(xMin); x <= Math.floor(xMax); x++){
+    const px = xOf(x);
+    s += `<line x1="${px}" y1="${mT}" x2="${px}" y2="${H-mB}" class="grid-line"/>`;
+    s += `<text x="${px}" y="${H-mB+18}" class="axis-label" text-anchor="middle">${fmtFreq(Math.pow(10,x))}</text>`;
+  }
+  for(let y = Math.ceil(yMin); y <= Math.floor(yMax); y++){
+    const py = yOf(y);
+    s += `<line x1="${mL}" y1="${py}" x2="${W-mR}" y2="${py}" class="grid-line"/>`;
+    s += `<text x="${mL-8}" y="${py+4}" class="axis-label" text-anchor="end">${Math.pow(10,y).toFixed(0)}</text>`;
+  }
+  // axes
+  s += `<line x1="${mL}" y1="${mT}" x2="${mL}" y2="${H-mB}" class="axis"/>`;
+  s += `<line x1="${mL}" y1="${H-mB}" x2="${W-mR}" y2="${H-mB}" class="axis"/>`;
+  // axis labels
+  s += `<text x="${(W-mR+mL)/2}" y="${H-12}" class="axis-label" text-anchor="middle">GBW (Hz, log) &mdash; faster →</text>`;
+  s += `<text x="14" y="${(H-mB+mT)/2}" class="axis-label" text-anchor="middle" transform="rotate(-90 14 ${(H-mB+mT)/2})">e_n (nV/√Hz, inverted log) &mdash; quieter ↑</text>`;
+
+  // points
+  const minCost = Math.min(...OPAMPS.map(o => o.cost));
+  const maxCost = Math.max(...OPAMPS.map(o => o.cost));
+  const rOf = c => {
+    // r in [6 .. 28]
+    const t = (Math.log10(c) - Math.log10(minCost)) / (Math.log10(maxCost) - Math.log10(minCost));
+    return 6 + 22 * t;
+  };
+  OPAMPS.forEach((o, i) => {
+    const lx = Math.log10(o.gbw);
+    const ly = Math.log10(o.en);
+    const cx = xOf(lx).toFixed(1);
+    const cy = (H - mB - (yOf(ly) - mT)).toFixed(1); // INVERT y so up = quieter
+    const r = rOf(o.cost).toFixed(1);
+    const col = FAM_HEX[o.fam];
+    s += `<circle class="scatter-pt" data-i="${i}" cx="${cx}" cy="${cy}" r="${r}" fill="${col}" fill-opacity="0.55" stroke="${col}" stroke-width="1.5" opacity="0.85"/>`;
+    // small text label (only if not too crowded; show all but with smaller font)
+    s += `<text class="axis-label" x="${cx}" y="${parseFloat(cy)-parseFloat(r)-4}" text-anchor="middle" fill="${col}" font-size="10">${o.p}</text>`;
+  });
+
+  svg.innerHTML = s;
+
+  // hover tooltip
+  const tip = document.getElementById('scatter-tip');
+  const wrap = document.getElementById('scatter-wrap');
+  svg.querySelectorAll('.scatter-pt').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      const o = OPAMPS[parseInt(el.dataset.i)];
+      tip.innerHTML = `<div class="tname">${o.p}</div>
+        <span class="tspec">GBW ${fmtFreq(o.gbw)}, SR ${fmtSlew(o.sr)}, e_n ${fmtNoise(o.en)}</span>
+        <span class="tspec">V_os ${fmtVos(o.vos)}, I_ib ${fmtIib(o.iib)}, ${fmtCost(o.cost)}</span>
+        <span class="tspec">${o.note}</span>`;
+      tip.style.display = 'block';
+    });
+    el.addEventListener('mousemove', evt => {
+      const wrapRect = wrap.getBoundingClientRect();
+      let x = evt.clientX - wrapRect.left + 14;
+      let y = evt.clientY - wrapRect.top + 14;
+      // keep on screen
+      if(x > wrap.clientWidth - 260) x = wrap.clientWidth - 260;
+      tip.style.left = x + 'px';
+      tip.style.top  = y + 'px';
+    });
+    el.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+  });
+}
+drawScatter();
+// redraw on window resize
+window.addEventListener('resize', () => {
+  if(document.getElementById('pane-tradeoff').classList.contains('active')) drawScatter();
+});
+
+/* ====================================================================
+   USE CASES
+==================================================================== */
+const USECASES = [
+  {
+    id:'audio-preamp',
+    title:'Audio preamp / line buffer',
+    desc:'Low noise, 20 Hz–20 kHz, gain 10–40. Want < 5 nV/√Hz, GBW &ge; 5 MHz.',
+    specs:'e_n &lt; 5 nV/√Hz, GBW &ge; 5 MHz, SR &ge; 10 V/µs',
+    apply:{gbwMin:5, srMin:10, enMax:5, vosMax:5, iibMax:1e-6, costMax:10, rr:'any', fams:['ln','jf']}
+  },
+  {
+    id:'tia',
+    title:'Photodiode TIA',
+    desc:'High R_f, fast pole; needs JFET/CMOS input and high GBW. Worked example above.',
+    specs:'GBW &ge; 10 MHz, I_ib &le; 1 nA, JFET/CMOS',
+    apply:{gbwMin:10, srMin:1, vosMax:5, iibMax:1e-9, enMax:30, costMax:10, rr:'any', fams:['jf','ln','hs']}
+  },
+  {
+    id:'inst',
+    title:'Instrumentation front-end (bridge / strain)',
+    desc:'Tiny DC signals from a resistive bridge; offset and drift dominate over noise.',
+    specs:'V_os &le; 100 µV, CMRR &ge; 100 dB',
+    apply:{gbwMin:0.1, srMin:0.1, vosMax:0.1, iibMax:1e-7, enMax:50, costMax:10, rr:'any', fams:['pr','ia']}
+  },
+  {
+    id:'adc-buffer',
+    title:'Buffer for ADC sample-hold',
+    desc:'Drives switched-capacitor ADC input. Needs fast settling and RRO to use full ADC range.',
+    specs:'GBW &ge; 20 MHz, SR &ge; 10 V/µs, RRO',
+    apply:{gbwMin:20, srMin:10, vosMax:5, iibMax:1e-6, enMax:20, costMax:10, rr:'rro', fams:['hs','jf']}
+  },
+  {
+    id:'singlesupply',
+    title:'Generic single-supply 3.3 V signal conditioning',
+    desc:'Modern micro / sensor world: 3.3 V rail, no negative supply, RRIO.',
+    specs:'V_s,min &le; 3.3, RRIO, cheap',
+    apply:{gbwMin:0.5, srMin:0.5, vosMax:10, iibMax:1e-6, enMax:50, costMax:2, vs:3.3, rr:'rrio', fams:['gp','jf']}
+  },
+  {
+    id:'current-sense',
+    title:'Current-sense / shunt-monitor',
+    desc:'Measures voltage across a low-side or high-side shunt. Use a dedicated current-sense IC.',
+    specs:'V_os &le; 100 µV, integrated gain',
+    apply:{gbwMin:0.1, srMin:0.1, vosMax:0.1, iibMax:1e-6, enMax:50, costMax:10, rr:'any', fams:['cs','ia','pr']}
+  },
+  {
+    id:'precision',
+    title:'Precision DC reference / thermocouple',
+    desc:'Microvolt offsets, sub-µV/°C drift. Auto-zero is the magic word.',
+    specs:'V_os &le; 10 µV, drift &le; 0.1 µV/°C',
+    apply:{gbwMin:0.1, srMin:0.1, vosMax:0.01, iibMax:1e-7, enMax:50, costMax:10, rr:'any', fams:['pr','ia']}
+  },
+  {
+    id:'comparator',
+    title:'Comparator',
+    desc:'STOP. Use a real comparator (LM393, TLV3201), not an op-amp. Op-amps slew slowly and overshoot.',
+    specs:'(this card is a warning)',
+    fake:true
+  },
+];
+
+function renderUsecases(){
+  const grid = document.getElementById('usecase-grid');
+  grid.innerHTML = USECASES.map(u => `
+    <div class="usecase-card ${u.fake?'fake':''}" data-id="${u.id}">
+      <h3>${u.title}</h3>
+      <p>${u.desc}</p>
+      ${u.specs?`<div class="specs">${u.specs}</div>`:''}
+    </div>
+  `).join('');
+  grid.querySelectorAll('.usecase-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const u = USECASES.find(x => x.id === card.dataset.id);
+      if(u.fake){
+        alert('That’s the punchline! An op-amp open-loop is sluggish, may oscillate near the threshold, and can latch up. Use LM393, TLV3201, LMV7271 — dedicated comparators have <100 ns propagation delays. (Or, if you really must, add hysteresis with positive feedback and keep the input bounded.)');
+        return;
+      }
+      applyUseCase(u.apply);
+      switchTab('filter');
+    });
+  });
+}
+renderUsecases();
+
+function applyUseCase(p){
+  // log-scale sliders
+  if('gbwMin'  in p){ F.gbwMin = p.gbwMin;  document.getElementById('f-gbw').value = Math.log10(F.gbwMin); }
+  if('srMin'   in p){ F.srMin  = p.srMin;   document.getElementById('f-sr').value  = Math.log10(F.srMin); }
+  if('vosMax'  in p){ F.vosMax = p.vosMax;  document.getElementById('f-vos').value = Math.log10(F.vosMax); }
+  if('iibMax'  in p){ F.iibMax = p.iibMax;  document.getElementById('f-iib').value = Math.log10(F.iibMax) + 12; }
+  if('enMax'   in p){ F.enMax  = p.enMax;   document.getElementById('f-en').value  = Math.log10(F.enMax); }
+  if('costMax' in p){ F.costMax= p.costMax; document.getElementById('f-cost').value= F.costMax; }
+  if('vs'      in p){ F.vs     = p.vs;      document.getElementById('f-vs').value  = F.vs; }
+  if('rr'      in p){ F.rr     = p.rr;      document.getElementById('f-rr').value  = F.rr; }
+  if(p.fams){
+    F.fams = new Set(p.fams);
+    document.querySelectorAll('#f-fams input').forEach(cb => {
+      cb.checked = F.fams.has(cb.dataset.fam);
+      cb.parentElement.classList.toggle('on', cb.checked);
+    });
+  }
+  // packages always reset to all
+  F.pkgs = new Set(['DIP-8','DIP-14','SOIC-8','SOIC-14','SOT-23-5','SOT-23-6','MSOP-8','MSOP-10']);
+  document.querySelectorAll('#f-pkgs input').forEach(cb => {
+    cb.checked = true;
+    cb.parentElement.classList.add('on');
+  });
+  updateFilterReadouts();
+  renderResults();
+}
+
+/* ====================================================================
+   OP-AMPS TO KNOW
+==================================================================== */
+const KNOWN = [
+  {p:'LM358',     tag:'The $0.15 jellybean (and its trap)',
+    body:'Dual single-supply BJT op-amp; everywhere from microwave controls to dollar-store toys. Operates from a single 3–32 V rail — magical in 1980. But the output stage is class-AB with a <b>crossover-distortion dead-zone near 0 V</b>: as the output approaches V_EE under light load, the sourcing and sinking transistors both shut off and the output stalls. Symptom: a sine through a non-inverting gain of 10 looks like a sine with a flat spot every cycle if you let it swing near ground. Workarounds: tie the output through 10 kΩ to V_EE so a sinking current flows, or use AD8541 / MCP6001 / LMV324 instead.',
+    specs:'GBW 1 MHz • SR 0.5 V/µs • V_os 7 mV • I_ib 250 nA • $0.18'},
+  {p:'TL072 / TL082', tag:'The audio JFET workhorse',
+    body:'1978 Texas Instruments JFET dual; the default high-impedance audio op-amp for two generations. <b>Input bias current 30 pA</b> (not nA) makes it suitable for guitar pedals, electret mic preamps, anything with high source impedance. Voltage noise is fine (18 nV/√Hz), but slew rate (13 V/µs) and GBW (3 MHz) are modest by modern standards. TL082 is a binned version with slightly higher offset. Symmetric supplies (±15 V audio) are typical. Stays in production because vintage analog cred is real.',
+    specs:'GBW 3 MHz • SR 13 V/µs • V_os 3 mV • I_ib 30 pA • $0.55'},
+  {p:'NE5532',    tag:'The pro-audio bipolar standard',
+    body:'Signetics 1979; still made by everybody. Bipolar low-noise (5 nV/√Hz) dual at ±18 V supply. <b>The default audio op-amp from 1980 to 2010</b> in mixing consoles, CD players, monitor speakers — anywhere e_n &lt; 8 nV/√Hz was needed and JFETs were too noisy. Higher input bias (200 nA) than TL072 — keep source impedance low. THD is around 0.002% at 1 kHz. Modern parts like OPA1656 beat it on every spec, but at 10× the price.',
+    specs:'GBW 10 MHz • SR 9 V/µs • V_os 0.5 mV • I_ib 200 nA • $0.50'},
+  {p:'OPA2134',   tag:'The audiophile JFET',
+    body:'Burr-Brown / TI premium audio dual. JFET-input (5 pA), low-noise (8 nV/√Hz), 20 V/µs slew — the parts you find in $300 headphone amps and reasonable DAC output stages. Higher quiescent current than TL072 but lower distortion. Still considered the reference audio op-amp until OPA1656 arrived.',
+    specs:'GBW 8 MHz • SR 20 V/µs • V_os 2 mV • I_ib 5 pA • $3.95'},
+  {p:'OPA1656',   tag:'The 2020s modern reference',
+    body:'TI 2018 CMOS-input audio op-amp: <b>2.9 nV/√Hz noise, 53 MHz GBW, 0.000035% THD</b>. Beats NE5532 and OPA2134 on every audio spec. Single-ended bias current is &lt; 10 pA. The new default for high-end audio when you can afford $5/op-amp. Common in 2020s DAC reference designs.',
+    specs:'GBW 53 MHz • SR 24 V/µs • V_os 0.25 mV • I_ib &lt; 10 pA • $4.85'},
+  {p:'AD8541',    tag:'The RRIO single-supply workhorse',
+    body:'Analog Devices 1999. CMOS RRIO single op-amp from 2.7 V. Replaces LM358 for any modern 3.3/5 V job where the LM358 crossover-distortion or high I_ib would hurt. Lower-cost siblings (AD8531, AD8542 dual, AD8544 quad) compete with MCP6001 family. Sold in SOT-23-5 for small designs.',
+    specs:'GBW 1 MHz • SR 0.92 V/µs • V_os 6 mV • I_ib 1 pA • $1.85'},
+  {p:'MCP6001',   tag:'The 3.3 V jellybean',
+    body:'Microchip RRIO single. <b>The default cheap op-amp for any micro-driven 3.3 V or 5 V signal-conditioning application</b>. Bias current 1 pA; rails of 1.8–6 V; SOT-23-5 package. Pairs naturally with PIC/STM32 designs. MCP6002/4 are dual/quad variants. Not low-noise (25 nV/√Hz) but you weren’t expecting that at $0.40.',
+    specs:'GBW 1 MHz • SR 0.6 V/µs • V_os 4.5 mV • I_ib 1 pA • $0.40'},
+  {p:'OP07',      tag:'Vintage precision bipolar',
+    body:'Analog Devices, late 1970s. 75 µV max offset, low drift, low noise (10 nV/√Hz). <b>The standard precision op-amp before auto-zero parts existed</b>. Still relevant for ±15 V instrumentation where 75 µV is good enough and you want a known, well-characterized part.',
+    specs:'GBW 0.6 MHz • SR 0.3 V/µs • V_os 75 µV • I_ib 1.8 nA • $1.55'},
+  {p:'AD8551',    tag:'Auto-zero precision (1 µV offset)',
+    body:'Chopper-stabilized CMOS op-amp; the input offset is continuously nulled by an internal switching scheme. <b>V_os = 1 µV max, drift = 0.005 µV/°C</b>. Perfect for strain gauges, thermocouples, current-shunt amplification — anywhere you’d otherwise see DC errors from V_os drift. Penalty: switching artifacts at the chopper frequency, modest GBW (1.5 MHz). Don’t use for audio; the chopper noise is in-band.',
+    specs:'GBW 1.5 MHz • SR 0.4 V/µs • V_os 5 µV • I_ib 20 pA • $5.85'},
+  {p:'LM6171',    tag:'High-speed voltage-feedback',
+    body:'National (now TI) high-speed voltage-feedback op-amp. <b>SR = 3600 V/µs</b> in a single SOIC-8. Used in video pipelines, fast ADC drives, oscilloscope front-ends, pulse circuits. GBW 100 MHz — fast enough for HD video, slow enough to still be stable in conventional non-inverting topologies. Modern CFAs go faster but require careful PCB layout; LM6171 is the friendly fast op-amp.',
+    specs:'GBW 100 MHz • SR 3600 V/µs • V_os 1.5 mV • I_ib 2 µA • $5.75'},
+  {p:'OPA350',    tag:'Fast single-supply RRIO',
+    body:'Burr-Brown / TI 38 MHz CMOS RRIO. Single-supply 2.5–5.5 V. Common in <b>photodiode TIA, ADC driver, single-supply audio</b>. CMOS input (0.5 pA bias) so good for high-Z sensors. Output drives 30 mA. Pricey for what looks like a generic part but irreplaceable when you need GBW &raquo; 10 MHz on a single 5 V rail.',
+    specs:'GBW 38 MHz • SR 22 V/µs • V_os 0.5 mV • I_ib 0.5 pA • $5.25'},
+  {p:'LMV324',    tag:'The single-supply general quad',
+    body:'TI / National CMOS quad RRIO. <b>Modern LM324 replacement for 3.3 V / 5 V designs</b>. Inputs work to either rail, output swings within ~30 mV of either rail under light load. Slightly higher V_os (7 mV) and noise (39 nV/√Hz) but no crossover distortion. SOIC-14 / TSSOP-14 / MSOP-10. Use it in place of LM324 for any new design.',
+    specs:'GBW 1 MHz • SR 1 V/µs • V_os 7 mV • I_ib 10 nA • $0.45'},
+  {p:'INA181',    tag:'Bidirectional current sense (with the resistors inside)',
+    body:'TI current-sense amp with <b>internal precision gain-setting resistors</b>. Available in fixed gain 20/50/100/200 V/V. Bidirectional output handles current in either direction. Common-mode input range −0.2 V to +26 V so it works on low-side OR high-side shunts up to 26 V. V_os 25 µV. Drop-in for battery-current monitoring, motor-current sensing.',
+    specs:'BW 350 kHz • V_os 25 µV • CMR −0.2–26 V • G 20/50/100/200 • $1.65'},
+  {p:'INA826',    tag:'Real instrumentation amp (G_RG)',
+    body:'TI precision instrumentation amplifier. Three-op-amp topology integrated, gain set by single external R_G: <b>G = 1 + 49.4 kΩ / R_G</b>. CMRR 104 dB at G=1, drift 0.4 µV/°C, V_os 40 µV. Perfect for <b>strain gauge bridges, RTDs, biopotentials</b>. Compare INA126 (lower-cost) and AD8221 (premium).',
+    specs:'GBW depends on G • V_os 40 µV • CMRR 104 dB • G = 1–1000 • $7.10'},
+  {p:'ICL7660',   tag:'The “not an op-amp” bonus',
+    body:'Charge-pump voltage inverter; <b>not actually an op-amp</b> but lives in the same drawer. Generates −V_in from +V_in with two external capacitors. Used to make ±12 V audio rails from a single 12 V supply, or −5 V analog from +5 V. Switching frequency ~10 kHz — the output ripple is the killer; use an LDO downstream if you need clean. Modern alternatives: LM27761 (low-noise charge pump), TPS6735x (inductor-based).',
+    specs:'V_in 1.5–10 V • I_out 20 mA • f_sw 10 kHz • efficiency ~95% • $1.10'},
+];
+
+function renderKnown(){
+  const grid = document.getElementById('known-grid');
+  grid.innerHTML = KNOWN.map(k => `
+    <div class="known-card">
+      <h3>${k.p}</h3>
+      <div class="tagline">${k.tag}</div>
+      <p>${k.body}</p>
+      <div class="specrow">${k.specs}</div>
+    </div>
+  `).join('');
+}
+renderKnown();
+</script>
+</body>
+</html>

@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Integrator &amp; Differentiator — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim);cursor:pointer}
+  .anchor:hover{border-color:var(--accent)}
+  .anchor.active{border-color:var(--accent);color:var(--accent)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:4px 8px;
+    font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid{stroke:var(--grid);stroke-width:0.5}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .duality{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+  .col{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;padding:12px 14px}
+  .col h3{margin-top:0;color:var(--accent3)}
+  .col.warn{border-color:var(--warn)}
+  .col.warn h3{color:var(--warn)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Op-amp Integrator &amp; Differentiator</h1>
+  <p class="lede">Swap a resistor and a capacitor in the feedback loop and an op-amp becomes either a calculus engine or its inverse. <b>Integrator</b>: C in feedback, R at input → V_out = −(1/RC)·∫V_in dt. <b>Differentiator</b>: R in feedback, C at input → V_out = −RC·dV_in/dt. Slide RC and watch the input/output traces; flip the input waveform from step → sine → square and see ramp/cosine/spike. Then turn on the real-world fix (the bias resistor for the integrator, the series-R for the differentiator) and watch DC drift / HF gain peaking disappear.</p>
+
+  <div class="anchors">
+    <button class="anchor active" data-mode="int"><b>Integrator</b> · C in feedback</button>
+    <button class="anchor" data-mode="diff"><b>Differentiator</b> · R in feedback</button>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>R (kΩ): <span class="readout" id="rRead">10 kΩ</span></label><input id="r" type="range" min="0.1" max="100" step="0.1" value="10"></div>
+    <div class="control"><label>C (nF): <span class="readout" id="cRead">100 nF</span></label><input id="c" type="range" min="1" max="10000" step="1" value="100"></div>
+    <div class="control"><label>Input waveform</label>
+      <select id="wave">
+        <option value="step">Step</option>
+        <option value="sine" selected>Sine</option>
+        <option value="square">Square</option>
+        <option value="triangle">Triangle</option>
+      </select>
+    </div>
+    <div class="control"><label>Input frequency: <span class="readout" id="fRead">1.0 kHz</span></label><input id="freq" type="range" min="10" max="100000" step="10" value="1000"></div>
+    <div class="control"><label>Input amplitude: <span class="readout" id="ampRead">1.0 V</span></label><input id="amp" type="range" min="0.05" max="5" step="0.05" value="1"></div>
+    <div class="control"><label>Real-world fix</label>
+      <select id="fix">
+        <option value="off" selected>Off (ideal — show the gotcha)</option>
+        <option value="on">On (bias R / series R applied)</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="schem" viewBox="0 0 700 280" width="100%"></svg>
+    <svg id="plot" viewBox="0 0 700 320" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+      <tr><td>τ = RC</td><td id="tTau" class="num">1.00 ms</td><td><code>R · C</code></td></tr>
+      <tr><td>f_corner = 1/(2πRC)</td><td id="tFc" class="num">159.2 Hz</td><td><code>integrator: above f_c; diff: below f_c</code></td></tr>
+      <tr><td>Gain at input freq</td><td id="tGain" class="num">0.159</td><td><code>integ: 1/(2πfRC); diff: 2πfRC</code></td></tr>
+      <tr><td>Phase shift</td><td id="tPhase" class="num">−90°</td><td><code>integ: −90°; diff: +90°</code></td></tr>
+      <tr><td>V_out peak (computed)</td><td id="tVo" class="num">0.159 V</td><td><code>amp · gain</code></td></tr>
+      <tr><td>Status / failure mode</td><td id="tStatus" class="num" colspan="2">Healthy operation.</td></tr>
+    </table>
+    <div class="vd" id="vdBox"><b>Live transfer:</b> <span id="vdCalc">V_out(t) = −(1/RC)·∫V_in(t) dt</span></div>
+  </div>
+
+  <h2>How the equations fall out (Ohm + KCL at the inverting input)</h2>
+  <p>For an ideal op-amp with negative feedback, the inverting input is a virtual ground: V_- = V_+ = 0, and no current flows in. KCL says the current through R must equal the current through the feedback element (charges have to go somewhere).</p>
+  <div class="duality">
+    <div class="col">
+      <h3>Integrator (C in feedback)</h3>
+      <div class="deriv">
+        <span class="step">Current through R: <b>i_R = V_in / R</b></span>
+        <span class="step">Current through C: <b>i_C = C · d(V_- − V_out)/dt = −C·dV_out/dt</b></span>
+        <span class="step">KCL at virtual ground: <b>i_R = i_C</b></span>
+        <span class="step">→ <b>V_in / R = −C · dV_out/dt</b></span>
+        <span class="step"><span class="arrow">→</span> <b>V_out = −(1/RC) · ∫V_in dt</b></span>
+      </div>
+    </div>
+    <div class="col">
+      <h3>Differentiator (R in feedback)</h3>
+      <div class="deriv">
+        <span class="step">Current through C: <b>i_C = C · d(V_in − V_-)/dt = C·dV_in/dt</b></span>
+        <span class="step">Current through R: <b>i_R = (V_- − V_out) / R = −V_out / R</b></span>
+        <span class="step">KCL: <b>i_C = i_R</b></span>
+        <span class="step">→ <b>C·dV_in/dt = −V_out / R</b></span>
+        <span class="step"><span class="arrow">→</span> <b>V_out = −RC · dV_in/dt</b></span>
+      </div>
+    </div>
+  </div>
+
+  <h2>The gotchas: DC drift &amp; HF noise gain</h2>
+  <div class="duality">
+    <div class="col warn">
+      <h3>Integrator drift</h3>
+      <p>The integrator <em>integrates everything</em>, including DC offset of the op-amp (~1 mV) and bias-current charge (~50 nA). Over seconds, the capacitor charges to the rail and the integrator saturates. The fix: <b>parallel a large resistor R_f (10×–100× R) across C</b>. This sets a DC gain limit at R_f / R and a low-frequency rolloff at 1/(2π·R_f·C). Below that frequency it's an inverting amplifier; above, an integrator.</p>
+    </div>
+    <div class="col warn">
+      <h3>Differentiator noise gain</h3>
+      <p>The differentiator gain rises with frequency: gain ∝ f. High-frequency noise gets amplified by the gain at <em>that</em> frequency — potentially huge. The fix: <b>add a small series resistor R_s with C</b> (typically R/10). This sets a corner frequency at 1/(2π·R_s·C) above which gain stops rising. Below: differentiator; above: flat (or rolled off if you add a feedback cap).</p>
+    </div>
+  </div>
+
+  <h2>Frequency response intuition</h2>
+  <p>Both circuits implement a frequency-dependent transfer function. Plot |H| vs frequency on log-log axes and they're straight lines:</p>
+  <div class="deriv">
+    <span class="step">Integrator: <b>|H(f)| = 1/(2π·f·RC)</b> → −20 dB/decade. Gain = 1 at f = 1/(2πRC).</span>
+    <span class="step">Differentiator: <b>|H(f)| = 2π·f·RC</b> → +20 dB/decade. Gain = 1 at the same f.</span>
+    <span class="step"><span class="arrow">→</span> They're reflections of each other across the unity-gain crossover frequency 1/(2πRC). One slope falls −1, the other rises +1.</span>
+    <span class="step">Real op-amp adds finite GBW (say 1 MHz for a 741). Above GBW: the op-amp can't follow, gain rolls off naturally.</span>
+  </div>
+
+  <h2>Worked example — analog PID controller (integral term)</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>Feedback loop for a heater: error signal goes to a PID network. Integral term has time constant Ti = 100 ms. Pick R, C.</p>
+    <span class="eq">Choose R = 100 kΩ (easy E96 value)</span>
+    <span class="eq">C = Ti / R = 0.1 / 100 000 = 1 µF <span class="annot">(use NP0 or film for stability — electrolytic drifts)</span></span>
+    <span class="eq">Anti-windup R_f = 10 MΩ (1000× R) → DC gain = 100, low-freq corner = 0.016 Hz</span>
+    <span class="eq">Op-amp choice: TLC2272 (rail-to-rail, low Ib = 1 pA) → DC drift &lt; 1 mV over hours.</span>
+    <h3>The math during a 10°C error</h3>
+    <span class="eq">Error V_e = 10 mV (after sensor scaling)</span>
+    <span class="eq">After 1 s of constant error: V_int = −(1/0.1)·∫(10 mV) dt = −100 mV</span>
+    <span class="eq">After 10 s: V_int = −1 V (and growing, until external clamp engages)</span>
+  </div>
+
+  <h2>Worked example — square-wave to pulse train (differentiator)</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>5 V CMOS digital signal (1 kHz square) into a differentiator with R = 10 kΩ, C = 1 nF. What's V_out?</p>
+    <span class="eq">τ = RC = 10 µs; f_corner = 15.9 kHz <span class="annot">(input is well below)</span></span>
+    <span class="eq">dV/dt during rising edge: 5 V in (say) 20 ns transition → 250 V/µs</span>
+    <span class="eq">V_out at the spike = −RC·dV/dt = −10e-6 · 250e6 = −2500 V <span class="annot">(but rail-clamped to ±15 V)</span></span>
+    <span class="eq">Pulse width ≈ transition time × (R_s + R)·C ratio — wider than the input transition</span>
+    <h3>With the fix</h3>
+    <p>Add R_s = 1 kΩ in series with C. New corner at 1/(2π·1k·1n) = 159 kHz. Below 159 kHz it differentiates; above, it stops amplifying noise and just buffers. The output pulse is now finite, useful for edge detection in counters.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Step in → ramp out</b> (integrator). The slope of the ramp is −V_in / RC. This is exactly how a sawtooth generator works.</li>
+    <li><b>Sine in → cosine out</b> (both circuits, with different sign and gain). The integrator delays by 90°; the differentiator advances by 90°.</li>
+    <li><b>Square in → spike out</b> (differentiator). dV/dt is huge during transitions, zero between them, so the output is a positive spike + negative spike train.</li>
+    <li><b>Triangle in → square out</b> (differentiator). dV/dt is constant during each ramp, sign-flipped between them.</li>
+    <li><b>The corner frequency 1/(2πRC) is the same for both</b> — but on opposite sides: integrator works <em>above</em> the corner, differentiator <em>below</em>.</li>
+    <li><b>Ideal integrator has infinite DC gain.</b> Any DC offset on the input — even microvolts of op-amp offset — eventually saturates the output. <em>Always</em> add an anti-windup resistor in production designs.</li>
+    <li><b>Ideal differentiator has infinite HF gain.</b> Any HF noise — even thermal noise of the input resistor — becomes huge at the output. <em>Always</em> add a series resistor in real designs.</li>
+  </ul>
+
+  <h2>Where these circuits show up</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">PID controllers</b> — integral (I) term uses an integrator; derivative (D) term uses a differentiator.</li>
+      <li><b style="color:var(--fg)">Sawtooth generators</b> — integrate a constant current to ramp a voltage; reset with a switch.</li>
+      <li><b style="color:var(--fg)">Charge amplifiers</b> — pyroelectric IR motion sensors, piezo accelerometers; integrate a current pulse into a voltage.</li>
+      <li><b style="color:var(--fg)">Edge detectors</b> — high-pass differentiator picks transitions out of slowly-varying signals.</li>
+      <li><b style="color:var(--fg)">Active filters</b> — Butterworth, Chebyshev, etc. are cascades of integrators (in state-variable topology).</li>
+      <li><b style="color:var(--fg)">ΣΔ ADCs</b> — modulator is an integrator inside a feedback loop.</li>
+      <li><b style="color:var(--fg)">Crowbar / overvoltage protection</b> — differentiate the input to catch sudden voltage spikes that aren't seen by an over-voltage threshold detector alone.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Integrator</dt><dd><span class="eq">V_out = −(1/RC)·∫V_in dt</span></dd>
+        <dt>Differentiator</dt><dd><span class="eq">V_out = −RC·dV_in/dt</span></dd>
+        <dt>|H|_integ</dt><dd><span class="eq">1/(2π·f·RC)</span></dd>
+        <dt>|H|_diff</dt><dd><span class="eq">2π·f·RC</span></dd>
+        <dt>f_corner</dt><dd><span class="eq">1/(2π·RC)</span></dd>
+        <dt>Anti-windup R_f</dt><dd><span class="eq">10R-100R parallel C</span></dd>
+        <dt>HF protection R_s</dt><dd><span class="eq">R/10 series C</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>WAVEFORM RULES</h3>
+      <ul>
+        <li><b>Integrator:</b> step → ramp; sine → −cosine; square → triangle; triangle → parabola.</li>
+        <li><b>Differentiator:</b> ramp → step; cosine → −sine; triangle → square; square → spikes.</li>
+        <li>Both: phase shift ±90° (integ −90°, diff +90°).</li>
+        <li>Slope: integ −20 dB/dec; diff +20 dB/dec; cross at 1/(2πRC).</li>
+        <li>Always inverting; add a unity-gain stage if you want positive sign.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>No R_f on integrator</b> → DC offset of op-amp drifts to rail in seconds.</li>
+        <li><b>No R_s on differentiator</b> → HF noise dominates; output is unusable.</li>
+        <li><b>Electrolytic C in integrator</b> → leakage current adds to drift; use NP0/C0G ceramic or film.</li>
+        <li><b>Sloppy reset</b> in pulsed integrators — switch must short C cleanly between cycles. Use FET (CD4066) or SPDT switch.</li>
+        <li><b>Forgetting bias current</b> for differential bias matching — add R = R1‖R2 in series with non-inverting input.</li>
+        <li><b>Treating an OPA at HF as ideal</b> — finite GBW puts a hard ceiling on the bandwidth of the differentiator.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EE Phase 4 — Semiconductors</span> ·
+    Companion: <a href="../phase-2-passive-components/rc-rl-time-constant.html">RC/RL Time Constant</a> ·
+    Forward: <a href="bjt-small-signal.html">BJT Small Signal</a> for active-amp basics.
+  </footer>
+</main>
+<script>
+  let state = {
+    mode:"int", R:10000, C:100e-9, freq:1000, wave:"sine", amp:1.0, fix:"off",
+  };
+
+  function fmtR(r){
+    if (r >= 1e6) return (r/1e6).toFixed(2) + " MΩ";
+    if (r >= 1e3) return (r/1e3).toFixed(1) + " kΩ";
+    return r.toFixed(0) + " Ω";
+  }
+  function fmtC(c){
+    if (c >= 1e-3) return (c*1e3).toFixed(1) + " mF";
+    if (c >= 1e-6) return (c*1e6).toFixed(1) + " µF";
+    if (c >= 1e-9) return (c*1e9).toFixed(0) + " nF";
+    return (c*1e12).toFixed(0) + " pF";
+  }
+  function fmtTau(t){
+    if (t >= 1) return t.toFixed(2) + " s";
+    if (t >= 1e-3) return (t*1e3).toFixed(2) + " ms";
+    if (t >= 1e-6) return (t*1e6).toFixed(2) + " µs";
+    return (t*1e9).toFixed(0) + " ns";
+  }
+  function fmtF(f){
+    if (f >= 1e6) return (f/1e6).toFixed(2) + " MHz";
+    if (f >= 1e3) return (f/1e3).toFixed(2) + " kHz";
+    return f.toFixed(1) + " Hz";
+  }
+
+  // signal generators
+  function inputSignal(t, T_period){
+    const phase = (t % T_period) / T_period;
+    switch (state.wave){
+      case "step": return phase < 0.5 ? state.amp : 0;
+      case "sine": return state.amp * Math.sin(2*Math.PI*phase);
+      case "square": return phase < 0.5 ? state.amp : -state.amp;
+      case "triangle": return phase < 0.5 ? state.amp*(-1 + 4*phase) : state.amp*(3 - 4*phase);
+    }
+    return 0;
+  }
+
+  function outputSignal(t, T_period, dt){
+    const Vin = inputSignal(t, T_period);
+    if (state.mode === "int"){
+      // Numerical integral: V_out += -(1/RC) * V_in * dt
+      // need stateful integration; we accumulate in a closure
+      return -1; // placeholder, computed by trace builder
+    } else {
+      // differentiator: V_out = -RC * dV/dt
+      const Vnext = inputSignal(t + dt, T_period);
+      const dvdt = (Vnext - Vin) / dt;
+      return -state.R * state.C * dvdt;
+    }
+  }
+
+  function buildTraces(){
+    const T_period = 1 / state.freq;
+    const T_show = 3 * T_period;
+    const N = 600;
+    const dt = T_show / N;
+    const inputPts = [];
+    const outputPts = [];
+    let Vint = 0; // integrator accumulator (DC drift mode)
+    let Vint_anti = 0; // with anti-windup
+    const Rf_anti = 100 * state.R; // anti-windup resistor 100× R
+    for (let i=0; i<=N; i++){
+      const t = i * dt;
+      const Vin = inputSignal(t, T_period);
+      inputPts.push([t, Vin]);
+      let Vout;
+      if (state.mode === "int"){
+        if (state.fix === "off"){
+          // ideal: just integrate (DC offset will drift)
+          Vint += -(Vin / (state.R * state.C)) * dt;
+          // add small effective DC offset (1 mV ~ 0.001 V) to mimic real-world drift
+          Vint += -(0.001 / (state.R * state.C)) * dt;
+          // clip at rails for display
+          Vout = Math.max(-15, Math.min(15, Vint));
+        } else {
+          // with anti-windup: integrator with parallel R_f
+          // dVc/dt = (Vin - Vint)/(R*C) + ... actually I = Vin/R + Vint/Rf (leakage)
+          // RC integrator with leakage: dVo/dt = -Vin/(RC) - Vo/(Rf*C)
+          const dVo = (-Vin / (state.R * state.C) - Vint_anti / (Rf_anti * state.C)) * dt;
+          Vint_anti += dVo;
+          Vout = Math.max(-15, Math.min(15, Vint_anti));
+        }
+      } else {
+        // differentiator
+        const Vnext = inputSignal(t + dt, T_period);
+        const dvdt = (Vnext - Vin) / dt;
+        if (state.fix === "off"){
+          // ideal: full gain
+          Vout = -state.R * state.C * dvdt;
+        } else {
+          // with R_s in series with C, gain limited
+          // Cutoff at 1/(2π·R_s·C); above, gain levels off
+          const Rs_diff = state.R / 10;
+          // Filter: damped d/dt via 1st-order Pade approx
+          // For a square: this turns spike into a finite peak
+          const tau_s = Rs_diff * state.C;
+          // Approximate: limit dV/dt magnitude
+          const maxRate = state.amp / tau_s;
+          const clipped = Math.max(-maxRate, Math.min(maxRate, dvdt));
+          Vout = -state.R * state.C * clipped;
+        }
+        Vout = Math.max(-15, Math.min(15, Vout));
+      }
+      outputPts.push([t, Vout]);
+    }
+    return {inputPts, outputPts, T_show, T_period, Vint, Vint_anti};
+  }
+
+  function drawSchem(){
+    const svg = document.getElementById('schem');
+    let s = '';
+    s += `<rect x="0" y="0" width="700" height="280" fill="var(--bg-elev2)"/>`;
+    const oxy = {x:380, y:130, w:80, h:60};
+    // Op-amp triangle
+    s += `<polygon points="${oxy.x},${oxy.y-30} ${oxy.x+oxy.w},${oxy.y} ${oxy.x},${oxy.y+30}" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1.5"/>`;
+    // inputs
+    s += `<text x="${oxy.x+8}" y="${oxy.y-13}" class="label">−</text>`;
+    s += `<text x="${oxy.x+8}" y="${oxy.y+17}" class="label">+</text>`;
+    // ground +
+    s += `<line x1="${oxy.x-30}" y1="${oxy.y+10}" x2="${oxy.x}" y2="${oxy.y+10}" class="wire"/>`;
+    s += `<line x1="${oxy.x-30}" y1="${oxy.y+10}" x2="${oxy.x-30}" y2="${oxy.y+30}" class="wire"/>`;
+    s += `<line x1="${oxy.x-40}" y1="${oxy.y+30}" x2="${oxy.x-20}" y2="${oxy.y+30}" stroke="var(--fg)" stroke-width="1.5"/>`;
+    s += `<line x1="${oxy.x-36}" y1="${oxy.y+34}" x2="${oxy.x-24}" y2="${oxy.y+34}" stroke="var(--fg)" stroke-width="1"/>`;
+    s += `<line x1="${oxy.x-32}" y1="${oxy.y+38}" x2="${oxy.x-28}" y2="${oxy.y+38}" stroke="var(--fg)" stroke-width="1"/>`;
+    // output wire
+    s += `<line x1="${oxy.x+oxy.w}" y1="${oxy.y}" x2="${oxy.x+oxy.w+50}" y2="${oxy.y}" class="wire"/>`;
+    s += `<text x="${oxy.x+oxy.w+55}" y="${oxy.y-5}" class="label-ok">V_out</text>`;
+
+    // Input network
+    if (state.mode === "int"){
+      // R at input
+      s += `<text x="60" y="${oxy.y-15}" class="label">V_in</text>`;
+      s += `<line x1="60" y1="${oxy.y-10}" x2="60" y2="${oxy.y-10}" class="wire"/>`;
+      s += `<line x1="80" y1="${oxy.y-10}" x2="180" y2="${oxy.y-10}" class="wire"/>`;
+      s += `<rect x="180" y="${oxy.y-17}" width="40" height="14" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1.5"/>`;
+      s += `<text x="200" y="${oxy.y-25}" class="label" text-anchor="middle">R = ${fmtR(state.R)}</text>`;
+      s += `<line x1="220" y1="${oxy.y-10}" x2="${oxy.x}" y2="${oxy.y-10}" class="wire"/>`;
+      // Feedback C
+      s += `<line x1="320" y1="${oxy.y-10}" x2="320" y2="${oxy.y-60}" class="wire"/>`;
+      s += `<line x1="320" y1="${oxy.y-60}" x2="${oxy.x+oxy.w+30}" y2="${oxy.y-60}" class="wire"/>`;
+      // capacitor plates
+      s += `<line x1="${oxy.x+40-10}" y1="${oxy.y-60-8}" x2="${oxy.x+40-10}" y2="${oxy.y-60+8}" stroke="var(--accent2)" stroke-width="2"/>`;
+      s += `<line x1="${oxy.x+40-6}" y1="${oxy.y-60-8}" x2="${oxy.x+40-6}" y2="${oxy.y-60+8}" stroke="var(--accent2)" stroke-width="2"/>`;
+      s += `<text x="${oxy.x+40}" y="${oxy.y-66}" class="label" text-anchor="middle">C = ${fmtC(state.C)}</text>`;
+      s += `<line x1="${oxy.x+oxy.w+30}" y1="${oxy.y-60}" x2="${oxy.x+oxy.w+30}" y2="${oxy.y}" class="wire"/>`;
+      s += `<line x1="${oxy.x+oxy.w}" y1="${oxy.y}" x2="${oxy.x+oxy.w+30}" y2="${oxy.y}" class="wire"/>`;
+
+      if (state.fix === "on"){
+        // Anti-windup R_f in parallel with C
+        s += `<line x1="280" y1="${oxy.y-10}" x2="280" y2="${oxy.y-90}" stroke="var(--accent3)" stroke-width="1.5"/>`;
+        s += `<line x1="280" y1="${oxy.y-90}" x2="${oxy.x+oxy.w+50}" y2="${oxy.y-90}" stroke="var(--accent3)" stroke-width="1.5"/>`;
+        s += `<rect x="${oxy.x+10}" y="${oxy.y-95}" width="40" height="10" fill="var(--bg-elev)" stroke="var(--accent3)" stroke-width="1"/>`;
+        s += `<text x="${oxy.x+30}" y="${oxy.y-100}" class="label-ok" text-anchor="middle">R_f ≈ 100R (anti-windup)</text>`;
+        s += `<line x1="${oxy.x+oxy.w+50}" y1="${oxy.y-90}" x2="${oxy.x+oxy.w+50}" y2="${oxy.y}" stroke="var(--accent3)" stroke-width="1.5"/>`;
+      }
+    } else {
+      // Differentiator: C at input, R in feedback
+      s += `<text x="60" y="${oxy.y-15}" class="label">V_in</text>`;
+      s += `<line x1="80" y1="${oxy.y-10}" x2="170" y2="${oxy.y-10}" class="wire"/>`;
+      // Capacitor at input
+      s += `<line x1="170" y1="${oxy.y-18}" x2="170" y2="${oxy.y-2}" stroke="var(--accent2)" stroke-width="2"/>`;
+      s += `<line x1="174" y1="${oxy.y-18}" x2="174" y2="${oxy.y-2}" stroke="var(--accent2)" stroke-width="2"/>`;
+      s += `<text x="172" y="${oxy.y-25}" class="label" text-anchor="middle">C = ${fmtC(state.C)}</text>`;
+      if (state.fix === "on"){
+        // Series Rs in front of C
+        s += `<rect x="190" y="${oxy.y-17}" width="40" height="14" fill="var(--bg-elev)" stroke="var(--accent3)" stroke-width="1.5"/>`;
+        s += `<text x="210" y="${oxy.y+8}" class="label-ok" text-anchor="middle">Rs ≈ R/10 (HF protect)</text>`;
+        s += `<line x1="174" y1="${oxy.y-10}" x2="190" y2="${oxy.y-10}" class="wire"/>`;
+        s += `<line x1="230" y1="${oxy.y-10}" x2="${oxy.x}" y2="${oxy.y-10}" class="wire"/>`;
+      } else {
+        s += `<line x1="174" y1="${oxy.y-10}" x2="${oxy.x}" y2="${oxy.y-10}" class="wire"/>`;
+      }
+      // Feedback R from output back to inverting input
+      s += `<line x1="320" y1="${oxy.y-10}" x2="320" y2="${oxy.y-50}" class="wire"/>`;
+      s += `<line x1="320" y1="${oxy.y-50}" x2="${oxy.x+oxy.w+30}" y2="${oxy.y-50}" class="wire"/>`;
+      s += `<rect x="${oxy.x+20}" y="${oxy.y-57}" width="40" height="14" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1.5"/>`;
+      s += `<text x="${oxy.x+40}" y="${oxy.y-63}" class="label" text-anchor="middle">R = ${fmtR(state.R)}</text>`;
+      s += `<line x1="${oxy.x+oxy.w+30}" y1="${oxy.y-50}" x2="${oxy.x+oxy.w+30}" y2="${oxy.y}" class="wire"/>`;
+    }
+
+    // Label modes
+    s += `<text x="350" y="240" class="label-dim" text-anchor="middle">${state.mode === "int" ? "INTEGRATOR — C in feedback" : "DIFFERENTIATOR — R in feedback"}</text>`;
+    s += `<text x="350" y="260" class="label-dim" text-anchor="middle">τ = RC = ${fmtTau(state.R*state.C)} · corner f = ${fmtF(1/(2*Math.PI*state.R*state.C))}</text>`;
+
+    svg.innerHTML = s;
+  }
+
+  function drawPlot(){
+    const svg = document.getElementById('plot');
+    let s = '';
+    const tr = buildTraces();
+    const PW = 700, PH = 320;
+    const PADL = 60, PADR = 20, PADT = 30, PADB = 40;
+    const PLOT_W = PW - PADL - PADR;
+    const PLOT_H = PH - PADT - PADB;
+    s += `<rect x="${PADL}" y="${PADT}" width="${PLOT_W}" height="${PLOT_H}" fill="var(--bg-elev2)"/>`;
+    // Y range based on signals
+    const allY = [...tr.inputPts.map(p=>p[1]), ...tr.outputPts.map(p=>p[1])];
+    let yMax = Math.max(0.1, ...allY.map(Math.abs));
+    yMax = Math.ceil(yMax * 2) / 2;
+    const xMax = tr.T_show;
+    function xToPx(t){ return PADL + (t/xMax)*PLOT_W; }
+    function yToPx(v){ return PADT + PLOT_H/2 - (v/yMax) * (PLOT_H/2 - 5); }
+
+    // grid
+    for (let i=0;i<=6;i++){
+      const x = PADL + i*PLOT_W/6;
+      s += `<line x1="${x}" y1="${PADT}" x2="${x}" y2="${PADT+PLOT_H}" class="grid"/>`;
+    }
+    for (let i=-4; i<=4; i++){
+      const v = i*yMax/4;
+      const y = yToPx(v);
+      s += `<line x1="${PADL}" y1="${y}" x2="${PADL+PLOT_W}" y2="${y}" class="grid"/>`;
+      s += `<text x="${PADL-6}" y="${y+3}" class="axis-label" text-anchor="end">${v.toFixed(2)} V</text>`;
+    }
+    s += `<line x1="${PADL}" y1="${PADT+PLOT_H/2}" x2="${PADL+PLOT_W}" y2="${PADT+PLOT_H/2}" class="axis"/>`;
+    s += `<line x1="${PADL}" y1="${PADT}" x2="${PADL}" y2="${PADT+PLOT_H}" class="axis"/>`;
+    // time labels
+    for (let i=0;i<=3;i++){
+      const t = i*xMax/3;
+      const x = xToPx(t);
+      s += `<text x="${x}" y="${PADT+PLOT_H+15}" class="axis-label" text-anchor="middle">${fmtTau(t)}</text>`;
+    }
+    s += `<text x="${PADL+PLOT_W/2}" y="${PADT+PLOT_H+30}" class="axis-label" text-anchor="middle">time</text>`;
+
+    // Input trace
+    const inPath = tr.inputPts.map((p,i) => (i?'L':'M')+xToPx(p[0]).toFixed(1)+','+yToPx(p[1]).toFixed(1)).join(' ');
+    s += `<path d="${inPath}" stroke="var(--accent)" stroke-width="1.5" fill="none"/>`;
+    const outPath = tr.outputPts.map((p,i) => (i?'L':'M')+xToPx(p[0]).toFixed(1)+','+yToPx(p[1]).toFixed(1)).join(' ');
+    s += `<path d="${outPath}" stroke="var(--accent2)" stroke-width="2" fill="none"/>`;
+
+    // legend
+    s += `<rect x="${PADL+10}" y="${PADT+5}" width="170" height="32" fill="var(--bg-elev)" opacity="0.95" rx="3"/>`;
+    s += `<line x1="${PADL+18}" y1="${PADT+15}" x2="${PADL+38}" y2="${PADT+15}" stroke="var(--accent)" stroke-width="1.5"/>`;
+    s += `<text x="${PADL+44}" y="${PADT+18}" class="label">V_in</text>`;
+    s += `<line x1="${PADL+18}" y1="${PADT+28}" x2="${PADL+38}" y2="${PADT+28}" stroke="var(--accent2)" stroke-width="2"/>`;
+    s += `<text x="${PADL+44}" y="${PADT+31}" class="label">V_out</text>`;
+
+    svg.innerHTML = s;
+  }
+
+  function update(){
+    document.getElementById('rRead').textContent = fmtR(state.R);
+    document.getElementById('cRead').textContent = fmtC(state.C);
+    document.getElementById('fRead').textContent = fmtF(state.freq);
+    document.getElementById('ampRead').textContent = state.amp.toFixed(2) + " V";
+
+    const tau = state.R * state.C;
+    const fc = 1 / (2*Math.PI*tau);
+    document.getElementById('tTau').textContent = fmtTau(tau);
+    document.getElementById('tFc').textContent = fmtF(fc);
+    const w = 2*Math.PI*state.freq;
+    let gain, phase, vdEq, statusMsg;
+    if (state.mode === "int"){
+      gain = 1/(w*tau);
+      phase = "−90°";
+      vdEq = `V_out = −(1/${fmtR(state.R)}·${fmtC(state.C)}) · ∫V_in dt`;
+      if (state.fix === "off" && state.freq < fc/2){
+        statusMsg = "Drifting toward rail — turn 'real-world fix' ON";
+      } else if (state.fix === "off" && state.freq < fc){
+        statusMsg = "Below corner — gain > 1, getting close to saturation";
+      } else {
+        statusMsg = state.fix === "on" ? "Healthy — anti-windup active." : "Healthy — input above f_c.";
+      }
+    } else {
+      gain = w*tau;
+      phase = "+90°";
+      vdEq = `V_out = −(${fmtR(state.R)}·${fmtC(state.C)}) · dV_in/dt`;
+      if (state.fix === "off" && state.freq > fc*2){
+        statusMsg = "HF noise gain exploding — turn 'real-world fix' ON";
+      } else if (gain > 50){
+        statusMsg = "Gain >> 50 — clipping at rails likely";
+      } else {
+        statusMsg = state.fix === "on" ? "Healthy — Rs limits HF gain." : "Healthy — input below corner.";
+      }
+    }
+    document.getElementById('tGain').textContent = gain >= 100 ? gain.toExponential(2) : gain.toFixed(3);
+    document.getElementById('tPhase').textContent = phase;
+    document.getElementById('tVo').textContent = (state.amp * gain).toFixed(3) + " V" + (state.amp*gain > 15 ? " (clip!)" : "");
+    document.getElementById('tStatus').textContent = statusMsg;
+    document.getElementById('vdCalc').textContent = vdEq;
+
+    drawSchem();
+    drawPlot();
+  }
+
+  document.getElementById('r').addEventListener('input', e => { state.R = parseFloat(e.target.value)*1000; update(); });
+  document.getElementById('c').addEventListener('input', e => { state.C = parseFloat(e.target.value)*1e-9; update(); });
+  document.getElementById('freq').addEventListener('input', e => { state.freq = parseFloat(e.target.value); update(); });
+  document.getElementById('amp').addEventListener('input', e => { state.amp = parseFloat(e.target.value); update(); });
+  document.getElementById('wave').addEventListener('change', e => { state.wave = e.target.value; update(); });
+  document.getElementById('fix').addEventListener('change', e => { state.fix = e.target.value; update(); });
+
+  document.querySelectorAll('.anchor').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.anchor').forEach(a => a.classList.remove('active'));
+      b.classList.add('active');
+      state.mode = b.dataset.mode;
+      update();
+    });
+  });
+
+  update();
+</script>
+</body>
+</html>

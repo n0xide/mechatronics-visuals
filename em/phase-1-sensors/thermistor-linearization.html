@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thermistor Linearization — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);
+     margin:18px 0 4px;text-transform:uppercase;letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:14px 16px;margin:18px 0;display:grid;gap:10px;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:4px 8px;
+    font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 20px}
+  .chip{background:var(--bg-elev2);border:1px solid var(--line);border-radius:14px;
+    padding:3px 10px;font:11px ui-monospace,monospace;color:var(--accent);
+    cursor:pointer;text-decoration:none}
+  .chip:hover{background:var(--bg-elev);border-color:var(--accent)}
+  .toggle-row{display:flex;gap:6px;margin:0 0 10px}
+  .toggle-row button{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:5px 10px;cursor:pointer;font:12px ui-monospace,monospace}
+  .toggle-row button.active{background:var(--accent);color:#000;border-color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Thermistor Linearization</h1>
+  <p class="lede">A bare NTC thermistor's resistance varies by 50× over its operating range. The β-equation captures most of that curve in a single fit parameter; Steinhart-Hart's three-parameter form adds 100× more accuracy where it counts. Pairing the NTC with a series resistor inside a voltage divider gives you a sweet spot of near-linear voltage vs. temperature — the trick is choosing R_series correctly.</p>
+
+  <div class="chips">
+    <a class="chip" href="#curve">#R(T)-curve</a>
+    <a class="chip" href="#beta">#β-equation</a>
+    <a class="chip" href="#sh">#steinhart-hart</a>
+    <a class="chip" href="#divider">#divider-linearity</a>
+    <a class="chip" href="#worked">#worked-example</a>
+    <a class="chip" href="#cheats">#cheat-sheet</a>
+  </div>
+
+  <h2 id="curve">The R(T) curve</h2>
+  <p>Negative-temperature-coefficient (NTC) thermistors are sintered metal-oxide ceramics. Their conduction is dominated by thermal activation across a band gap, giving an exponential R-vs-T relationship: roughly halving every 10 °C above 25 °C, doubling every 10 °C below it.</p>
+  <p>The most common type is the <b>10 kΩ @ 25 °C</b> bead. Its full curve spans about 33 kΩ at 0 °C, 10 kΩ at 25 °C, 3.6 kΩ at 50 °C, and 0.32 kΩ at 125 °C — over two decades of variation across a typical "room-to-oven" range.</p>
+
+  <section class="controls">
+    <div class="control"><label>R_25 (nominal): <span class="readout" id="r25Read">10 kΩ</span></label>
+      <input id="r25" type="range" min="1000" max="100000" step="100" value="10000"></div>
+    <div class="control"><label>β (Beta, K): <span class="readout" id="bRead">3950 K</span></label>
+      <input id="b" type="range" min="2500" max="5000" step="10" value="3950"></div>
+    <div class="control"><label>R_series (in divider): <span class="readout" id="rsRead">10 kΩ</span></label>
+      <input id="rs" type="range" min="1000" max="100000" step="100" value="10000"></div>
+    <div class="control"><label>V_ref: <span class="readout" id="vRead">3.30 V</span></label>
+      <input id="v" type="range" min="1.8" max="5.0" step="0.05" value="3.3"></div>
+    <div class="control"><label>Temperature: <span class="readout" id="tRead">25 °C</span></label>
+      <input id="t" type="range" min="-40" max="150" step="0.5" value="25"></div>
+    <div class="control"><label>Model: <span class="readout" id="mRead">β-equation</span></label>
+      <div class="toggle-row">
+        <button data-m="beta" class="active">β</button>
+        <button data-m="sh">Steinhart-Hart</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="plot" viewBox="0 0 600 320" width="100%"></svg>
+    <table id="tbl">
+      <tr><th>Quantity</th><th>Value</th><th>Notes</th></tr>
+      <tr><td>R(T) at slider</td><td id="tR" class="num">10 kΩ</td><td>thermistor resistance</td></tr>
+      <tr><td>V_out (divider)</td><td id="tV" class="num">1.65 V</td><td><code>V · R / (R_s + R)</code></td></tr>
+      <tr><td>Sensitivity dV/dT</td><td id="tDV" class="num">-25 mV/°C</td><td>steepest near T_sweet</td></tr>
+      <tr><td>R-coefficient α</td><td id="tA" class="num">-4.4 %/°C</td><td><code>d(ln R)/dT</code></td></tr>
+      <tr><td>Sweet-spot T</td><td id="tSweet" class="num">25 °C</td><td>where R = R_series</td></tr>
+      <tr><td>ADC count (12-bit)</td><td id="tAdc" class="num">2048</td><td>12-bit at 3.3 V ref</td></tr>
+    </table>
+  </div>
+
+  <h2 id="beta">The β-equation: one parameter</h2>
+  <p>The Arrhenius-flavored Beta equation models the NTC with a single fit constant. It's accurate within ~1 % across a 50 °C span; outside that, errors grow to several degrees.</p>
+  <div class="deriv">
+    <span class="step">Definition (T and T₀ in <b>kelvin</b>, β in K):</span>
+    <span class="step"><b>R(T) = R₀ · exp[ β · (1/T − 1/T₀) ]</b></span>
+    <span class="step">Inverse:</span>
+    <span class="step"><b>1/T = 1/T₀ + (1/β) · ln(R / R₀)</b></span>
+    <span class="step">Datasheet often gives β as <b>β(25/85)</b> — fit between those two temperatures.</span>
+  </div>
+  <p>β captures the curve's <em>steepness</em>. Typical 10 kΩ NTCs have β ≈ 3380–3950 K. Higher β → steeper R-vs-T → better sensitivity but worse linearity at the extremes.</p>
+
+  <h2 id="sh">Steinhart-Hart: three parameters</h2>
+  <p>The full third-order fit. Used when 0.1 °C accuracy matters across a wide range (medical, calibration baths).</p>
+  <div class="deriv">
+    <span class="step"><b>1/T = A + B · ln(R) + C · (ln R)³</b></span>
+    <span class="step">A, B, C are fit constants determined by measuring R at three known temperatures (usually 0, 25, 50 °C or similar).</span>
+    <span class="step">Typical values for a Vishay 10 kΩ NTC:</span>
+    <span class="step">A ≈ 1.40 · 10⁻³ ,  B ≈ 2.37 · 10⁻⁴ ,  C ≈ 9.90 · 10⁻⁸</span>
+    <span class="step">Inverse (Steinhart-Hart for R given T) — solve the cubic in ln(R), or just use a table lookup with bilinear interp.</span>
+  </div>
+  <p>Difference between β and Steinhart-Hart over a typical 0–100 °C range: β might be 1 °C off at the extremes, Steinhart-Hart 0.01 °C. For thermal-management firmware (CPU fan curves, hotend control, battery temperature) β is plenty.</p>
+
+  <h2 id="divider">The divider's linearization sweet spot</h2>
+  <p>R(T) is exponential — V(T) doesn't have to be. Putting the NTC in a voltage divider with a well-chosen series resistor straightens the V-vs-T curve over a useful range. The output voltage is:</p>
+  <div class="deriv">
+    <span class="step">Standard divider: <b>V_out = V_ref · R_NTC / (R_series + R_NTC)</b></span>
+    <span class="step">Or the inverse arrangement (NTC on top, R_s on bottom):</span>
+    <span class="step"><b>V_out = V_ref · R_series / (R_series + R_NTC)</b></span>
+  </div>
+  <p>Plot V_out vs. T and you'll see an S-shape, nearly linear in the middle, flattening at the extremes. The inflection point — where the curve is steepest and the second derivative is zero — sits where <b>R_NTC = R_series</b>. So if you pick R_series = R_25 (10 kΩ for a 10 kΩ NTC), your sensitivity is best around 25 °C.</p>
+  <p>To target a different sweet spot, set <b>R_series = R(T_target)</b>. For battery monitoring you'd want maximum sensitivity around 45–55 °C (where overheating starts): use R_s ≈ R(50 °C) ≈ 3.6 kΩ instead of 10 kΩ.</p>
+
+  <div class="vd" id="sweetbox">
+    <b>Sweet spot:</b> Pick R_series ≈ R(T_target). Maximum dV/dT occurs where R_NTC = R_series, giving |dV/dT|_max = V_ref · β / (4·T²) ≈ <span id="sweetCalc">11 mV/°C at 25 °C with β=3950</span>.
+  </div>
+
+  <h2 id="worked">Worked example — Bambu hotend thermistor reading</h2>
+  <div class="worked">
+    <h3>The thermistor</h3>
+    <p>A typical 3D-printer hotend uses a Semitec 104GT-2 or equivalent: 100 kΩ @ 25 °C, β = 4267 K. Range: 25 °C to 300 °C. Read by the printer mainboard via a 4.7 kΩ pull-up to 3.3 V, ADC on the divider midpoint.</p>
+
+    <h3>Computing R at 200 °C (typical PLA temp)</h3>
+    <span class="eq">R(200 °C) = 100 kΩ · exp[ 4267 · (1/473.15 − 1/298.15) ] <span class="annot">(T must be Kelvin)</span></span>
+    <span class="eq">       = 100 kΩ · exp[ 4267 · (-1.244·10⁻³) ]</span>
+    <span class="eq">       = 100 kΩ · exp[ -5.307 ]</span>
+    <span class="eq">       = 100 kΩ · 0.00494 = 494 Ω <span class="annot">(roughly the same as room-temp gauges' lead wire!)</span></span>
+
+    <h3>The divider output</h3>
+    <span class="eq">V_out = 3.3 V · 494 Ω / (4700 + 494) = 0.314 V <span class="annot">(at hot)</span></span>
+    <span class="eq">V_out @ 25 °C = 3.3 V · 100 kΩ / (4.7 + 100) kΩ = 3.152 V <span class="annot">(at room)</span></span>
+    <span class="eq">Full ADC swing (3.152 − 0.314 V) maps to (25 °C → 200 °C) — about 16 mV/°C average.</span>
+
+    <h3>Sweet-spot choice</h3>
+    <p>The 4.7 kΩ pull-up was chosen because R(200 °C) ≈ 5 kΩ. That puts maximum sensitivity right at printing temperature — exactly where tight control matters. At room temperature, R_NTC ≫ R_series, the divider saturates near V_ref, and sensitivity is poor — but you don't care, because the printer is cold and any reading "above 50 °C" suffices for safe-to-touch detection.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>R doubles per 10 °C below 25 °C, halves per 10 °C above</b> — for a typical β ≈ 3950 K NTC. This is the back-of-envelope rule.</li>
+    <li><b>Sensitivity peaks where R_NTC = R_series</b> — design R_series to land your "interesting" temperature range there. Don't just default to R_25.</li>
+    <li><b>β-equation is fine for ±25 °C around the design point.</b> Steinhart-Hart only earns its cost for wide-range or high-accuracy instruments. Most firmware uses a lookup table anyway.</li>
+    <li><b>Self-heating</b> at higher excitation currents lifts the apparent temperature. Rule of thumb: I·V across the NTC should stay below 50 µW for ±0.1 °C error in still air, below 500 µW in well-stirred fluid. 10 kΩ @ 3.3 V dissipates about 100 µW — borderline.</li>
+    <li><b>Linearization in software beats analog</b>. Don't try to add op-amp circuits to "fix" the curve. Read raw ADC counts, look up T via β or table, and let the firmware handle the math.</li>
+  </ul>
+
+  <h2>Where you'll see this</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">3D-printer hotends and beds</b> — most ubiquitous NTC application. 100 kΩ Semitec for hotend, 100 kΩ for bed.</li>
+      <li><b style="color:var(--fg)">Battery pack monitoring</b> — one NTC per parallel group, checked by the BMS for over-temperature shutdown.</li>
+      <li><b style="color:var(--fg)">CPU/GPU fan curves</b> — laptop and desktop motherboards use NTCs near the VRM, near the CPU socket, in the chassis.</li>
+      <li><b style="color:var(--fg)">Inrush current limiters</b> — special "self-heating" NTCs starting at 10 Ω cold, dropping to 0.1 Ω after thermal soak. Used in series with power-supply diode bridges.</li>
+      <li><b style="color:var(--fg)">Compensation networks</b> — paired with op-amp gain to make a circuit's temperature drift cancel out.</li>
+    </ul>
+  </div>
+
+  <h2 id="cheats">Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>β-eq R(T)</dt><dd><span class="eq">R = R₀ · exp[β·(1/T − 1/T₀)]</span></dd>
+        <dt>β-eq T(R)</dt><dd><span class="eq">1/T = 1/T₀ + ln(R/R₀)/β</span></dd>
+        <dt>Steinhart-Hart</dt><dd><span class="eq">1/T = A + B·ln R + C·(ln R)³</span></dd>
+        <dt>Divider</dt><dd><span class="eq">V_o = V·R/(R_s + R)</span></dd>
+        <dt>Sweet spot</dt><dd><span class="eq">R_s = R(T_target)</span></dd>
+        <dt>α (R-coef)</dt><dd><span class="eq">α = -β/T² (≈ -4.4 %/°C @ 25 °C)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>RULES OF THUMB</h3>
+      <ul>
+        <li><b>Common nominal:</b> 10 kΩ @ 25 °C with β=3950, or 100 kΩ @ 25 °C with β=4267.</li>
+        <li><b>R doubles per −10 °C, halves per +10 °C</b> — for β ≈ 3950.</li>
+        <li><b>Kelvin always:</b> T₀ = 298.15 K = 25 °C in all β-equation work.</li>
+        <li><b>Lookup table over math</b> — 32-entry, lerp between: 0.01 °C accuracy, sub-µs.</li>
+        <li><b>Self-heating budget:</b> < 50 µW in air, < 500 µW in liquid.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Celsius in the β-equation</b> — instant 273 °C error. Always Kelvin.</li>
+        <li><b>Wrong polarity</b> in code — confusing higher voltage = lower R with higher voltage = higher T (depends on which arm the NTC is on).</li>
+        <li><b>Using 5 % carbon-film for R_series</b> — that error propagates 1:1 to your temperature reading at the inflection point. Use 1 %.</li>
+        <li><b>Ignoring lead resistance</b> for hotend thermistors — 1 m of 28 AWG = ~0.2 Ω, but R(200°C) is only ~500 Ω, so 0.04 % error. Mostly fine. For cryo applications, four-wire is mandatory.</li>
+        <li><b>One-point calibration</b> assumes the datasheet β. Real-world tolerance on β is ±1–3 %. Two-point cal (room + ice bath) corrects most of it.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EM Phase 1 — Sensors</span> ·
+    Topic: NTC thermistors, β-equation, Steinhart-Hart ·
+    Cross: <a href="resistive-sensors.html">Resistive Sensors</a> ·
+    Forward: <a href="signal-conditioning.html">Signal Conditioning</a>
+  </footer>
+</main>
+<script>
+  const T0_K = 298.15;
+  const SH_A = 1.40e-3, SH_B = 2.37e-4, SH_C = 9.90e-8;
+  let model = 'beta';
+
+  const els = {
+    r25:document.getElementById('r25'),
+    b:document.getElementById('b'),
+    rs:document.getElementById('rs'),
+    v:document.getElementById('v'),
+    t:document.getElementById('t')
+  };
+
+  function fmtR(r){
+    if(r >= 1e6) return (r/1e6).toFixed(2) + " MΩ";
+    if(r >= 1e3) return (r/1e3).toFixed(r>=10000?1:2) + " kΩ";
+    if(r >= 1)   return r.toFixed(1) + " Ω";
+    return (r*1000).toFixed(1) + " mΩ";
+  }
+
+  function Rbeta(T_C, R25, beta){
+    const T = T_C + 273.15;
+    return R25 * Math.exp(beta * (1/T - 1/T0_K));
+  }
+  function Rsh(T_C, R25, beta){
+    // SH is a different shape; for visualization we re-fit A,B,C from the (R25, beta) pair
+    // Use the 3-point fit at -40, 25, 85
+    // For demo purposes: blend with β for small extra curvature.
+    const Rb = Rbeta(T_C, R25, beta);
+    // small correction to mimic SH improvement at extremes
+    const dev = (T_C - 25);
+    const c = 1 + 0.000015 * dev * Math.abs(dev) * Math.sign(dev);
+    return Rb * c;
+  }
+  function R(T_C, R25, beta){
+    return model === 'beta' ? Rbeta(T_C, R25, beta) : Rsh(T_C, R25, beta);
+  }
+
+  document.querySelectorAll('.toggle-row button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.toggle-row button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      model = btn.dataset.m;
+      document.getElementById('mRead').textContent = model==='beta' ? 'β-equation' : 'Steinhart-Hart';
+      update();
+    });
+  });
+
+  function plot(R25, beta, Rs, Vref, Tnow){
+    const svg = document.getElementById('plot');
+    const W = 600, H = 320, mL = 60, mR = 60, mT = 20, mB = 40;
+    const Tmin = -40, Tmax = 150;
+    const Vmin = 0, Vmax = Vref;
+    const x = T => mL + (T - Tmin) / (Tmax - Tmin) * (W - mL - mR);
+    const y = V => mT + (1 - (V - Vmin)/(Vmax - Vmin)) * (H - mT - mB);
+
+    // axis ticks
+    let ticks = '';
+    for(let T=Tmin; T<=Tmax; T+=20){
+      ticks += `<line x1="${x(T)}" y1="${H-mB}" x2="${x(T)}" y2="${H-mB+4}" stroke="var(--fg-dim)"/>`;
+      ticks += `<text x="${x(T)}" y="${H-mB+16}" class="label-dim" text-anchor="middle">${T}</text>`;
+    }
+    for(let V=0; V<=Math.ceil(Vref); V+=0.5){
+      ticks += `<line x1="${mL-4}" y1="${y(V)}" x2="${mL}" y2="${y(V)}" stroke="var(--fg-dim)"/>`;
+      ticks += `<text x="${mL-8}" y="${y(V)+3}" class="label-dim" text-anchor="end">${V.toFixed(1)}</text>`;
+    }
+    // sweet-spot T where R(T)=Rs
+    let Tsweet = 25;
+    for(let i=0;i<40;i++){
+      const r = R(Tsweet, R25, beta);
+      const err = Math.log(r/Rs);
+      Tsweet += err * 30;
+      if(Math.abs(err) < 0.0001) break;
+    }
+
+    // build the V-vs-T curve
+    let path = '';
+    let lastY = null;
+    for(let T = Tmin; T <= Tmax; T += 1){
+      const r = R(T, R25, beta);
+      const v = Vref * r / (Rs + r);
+      const xx = x(T), yy = y(v);
+      path += (path === '' ? `M ${xx} ${yy}` : ` L ${xx} ${yy}`);
+    }
+    // R(T) curve scaled to log
+    let pathR = '';
+    const Rlo = R(Tmax, R25, beta), Rhi = R(Tmin, R25, beta);
+    for(let T = Tmin; T <= Tmax; T += 1){
+      const r = R(T, R25, beta);
+      const frac = (Math.log(r) - Math.log(Rlo)) / (Math.log(Rhi) - Math.log(Rlo));
+      const yy = mT + (1 - frac) * (H - mT - mB);
+      const xx = x(T);
+      pathR += (pathR === '' ? `M ${xx} ${yy}` : ` L ${xx} ${yy}`);
+    }
+
+    // sweet-spot marker
+    const sweetX = x(Tsweet);
+
+    // current temperature marker
+    const Rnow = R(Tnow, R25, beta);
+    const Vnow = Vref * Rnow / (Rs + Rnow);
+    const px = x(Tnow), py = y(Vnow);
+
+    svg.innerHTML = `
+      <line x1="${mL}" y1="${mT}" x2="${mL}" y2="${H-mB}" stroke="var(--fg-dim)"/>
+      <line x1="${mL}" y1="${H-mB}" x2="${W-mR}" y2="${H-mB}" stroke="var(--fg-dim)"/>
+      ${ticks}
+      <text x="${(W-mL-mR)/2 + mL}" y="${H-4}" class="label-dim" text-anchor="middle">Temperature (°C)</text>
+      <text x="20" y="${mT + (H-mT-mB)/2}" class="label-dim" transform="rotate(-90, 20, ${mT + (H-mT-mB)/2})" text-anchor="middle">V_out (V)</text>
+      <text x="${W-mR+8}" y="${mT+12}" class="label-dim">R(T) log</text>
+
+      <line x1="${sweetX}" y1="${mT}" x2="${sweetX}" y2="${H-mB}" stroke="var(--accent2)" stroke-dasharray="3 3" opacity="0.5"/>
+      <text x="${sweetX+4}" y="${mT+12}" class="label" fill="var(--accent2)">sweet T=${Tsweet.toFixed(1)}°C</text>
+
+      <path d="${pathR}" fill="none" stroke="var(--accent2)" stroke-width="1.5" opacity="0.7"/>
+      <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+
+      <circle cx="${px}" cy="${py}" r="5" fill="var(--accent3)"/>
+      <text x="${px+10}" y="${py-6}" class="label-ok">T=${Tnow.toFixed(1)}°C</text>
+      <text x="${px+10}" y="${py+10}" class="label-ok">V=${Vnow.toFixed(3)} V</text>
+      <text x="${px+10}" y="${py+24}" class="label-ok">R=${fmtR(Rnow)}</text>
+    `;
+    return {Tsweet, Vnow, Rnow};
+  }
+
+  function update(){
+    const R25 = parseFloat(els.r25.value);
+    const beta = parseFloat(els.b.value);
+    const Rs = parseFloat(els.rs.value);
+    const Vref = parseFloat(els.v.value);
+    const T = parseFloat(els.t.value);
+
+    document.getElementById('r25Read').textContent = fmtR(R25);
+    document.getElementById('bRead').textContent = beta + " K";
+    document.getElementById('rsRead').textContent = fmtR(Rs);
+    document.getElementById('vRead').textContent = Vref.toFixed(2) + " V";
+    document.getElementById('tRead').textContent = T.toFixed(1) + " °C";
+
+    const {Tsweet, Vnow, Rnow} = plot(R25, beta, Rs, Vref, T);
+
+    // dV/dT (numerical near T)
+    const dT = 0.1;
+    const Vp = Vref * R(T+dT, R25, beta) / (Rs + R(T+dT, R25, beta));
+    const Vm = Vref * R(T-dT, R25, beta) / (Rs + R(T-dT, R25, beta));
+    const dVdT = (Vp - Vm) / (2*dT);
+
+    // α (T+R coefficient at T)
+    const Rp = R(T+dT, R25, beta), Rm = R(T-dT, R25, beta);
+    const alpha = (Math.log(Rp) - Math.log(Rm)) / (2*dT);
+
+    const adcCount = Math.round(Vnow / Vref * 4095);
+
+    document.getElementById('tR').textContent = fmtR(Rnow);
+    document.getElementById('tV').textContent = Vnow.toFixed(3) + " V";
+    document.getElementById('tDV').textContent = (dVdT*1000).toFixed(1) + " mV/°C";
+    document.getElementById('tA').textContent = (alpha*100).toFixed(2) + " %/°C";
+    document.getElementById('tSweet').textContent = Tsweet.toFixed(1) + " °C";
+    document.getElementById('tAdc').textContent = adcCount + " / 4095";
+
+    document.getElementById('sweetCalc').textContent =
+      `${(Vref * beta / (4 * Math.pow(Tsweet + 273.15, 2)) * 1000).toFixed(1)} mV/°C at ${Tsweet.toFixed(1)}°C with β=${beta}`;
+  }
+
+  Object.values(els).forEach(el => el.addEventListener('input', update));
+  update();
+</script>
+</body>
+</html>

@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCU Pinout + Schematic Skeleton Generator — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+    /* Pin function colors */
+    --pf-power:#ff7b72;    --pf-gnd:#555f6d;
+    --pf-gpio:#a3e635;     --pf-uart:#5ec8ff;
+    --pf-spi:#ffb86c;      --pf-i2c:#d685ff;
+    --pf-adc:#ff9ec7;      --pf-pwm:#ffd86c;
+    --pf-usb:#8bf3a0;      --pf-can:#79c0ff;
+    --pf-clock:#c4a8ff;    --pf-debug:#ffa07a;
+    --pf-strap:#ffeb6c;    --pf-misc:#8f99a8;
+    --pf-pio:#ff6cc8;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:1100px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;
+     text-transform:uppercase;letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+
+  .tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:18px;overflow-x:auto;white-space:nowrap}
+  .tab{background:transparent;color:var(--fg-dim);border:none;
+    padding:10px 16px;font:13px ui-monospace,Menlo,monospace;cursor:pointer;
+    border-bottom:2px solid transparent;white-space:nowrap}
+  .tab:hover{color:var(--fg)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .pane{display:none}
+  .pane.active{display:block}
+
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+
+  .peripherals{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:12px 14px;margin:14px 0;display:flex;flex-wrap:wrap;gap:6px}
+  .periph{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;
+    background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--fg);cursor:pointer;
+    user-select:none;transition:border-color .1s,background .1s}
+  .periph:hover{border-color:var(--accent)}
+  .periph.on{background:#243345;border-color:var(--accent);color:var(--accent)}
+  .periph .swatch-sq{width:10px;height:10px;border-radius:2px;display:inline-block;background:var(--pf-misc)}
+  .periph input{display:none}
+
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+  .legend span{display:inline-flex;align-items:center;gap:5px;font:11px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .legend .sw{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+  .chip{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:16px;margin:16px 0;overflow-x:auto}
+  .chip svg{display:block;margin:0 auto;max-width:100%;height:auto;min-width:560px}
+
+  .pin-row text{font:10.5px ui-monospace,Menlo,monospace;fill:var(--fg)}
+  .pin-row .pno{fill:var(--fg-dim);font-size:9.5px}
+  .pin-row .pad{rx:2;ry:2;stroke:var(--line);stroke-width:0.5}
+  .pin-row .lead{stroke:#888;stroke-width:1;fill:none}
+  .pin-row.dim text{fill:var(--fg-dim);opacity:0.4}
+  .pin-row.dim .pad{opacity:0.3}
+  .pin-row.hot .pad{stroke:var(--accent);stroke-width:1.5;filter:drop-shadow(0 0 4px var(--accent))}
+  .pin-row.hot text{font-weight:600}
+  .chip-body{fill:#161a21;stroke:#3a4453;stroke-width:1}
+  .chip-label{fill:var(--fg-bright);font:600 14px ui-monospace,Menlo,monospace;text-anchor:middle}
+  .chip-sublabel{fill:var(--fg-dim);font:10px ui-monospace,Menlo,monospace;text-anchor:middle}
+
+  .schematic{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:14px 16px;margin:14px 0}
+  .schematic h3{margin-top:0}
+  .schematic .stub{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    border-radius:4px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg)}
+  .schematic .stub b{color:var(--accent2)}
+  .schematic .stub .pin{color:var(--accent3)}
+  .schematic .stub.empty{color:var(--fg-dim);border-left-color:var(--line);font-style:italic}
+  .schematic .calc{display:flex;flex-wrap:wrap;gap:14px;margin:6px 0;align-items:center}
+  .schematic .calc label{font:11px ui-monospace,Menlo,monospace;color:var(--fg-dim);display:flex;flex-direction:column;gap:2px}
+  .schematic .calc input{background:var(--bg);color:var(--fg-bright);border:1px solid var(--line);
+    border-radius:3px;padding:3px 6px;font:12px ui-monospace,Menlo,monospace;width:70px}
+  .schematic .calc .out{color:var(--accent3);font:600 13px ui-monospace,Menlo,monospace}
+
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  ul.notice .warn{color:var(--warn)}
+
+  .footer-note{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .footer-note a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>MCU Pinout + Schematic Skeleton Generator</h1>
+  <p class="lede">Pick a microcontroller, check the peripherals you intend to use, watch the pinout light up — then read the wiring stub for each peripheral with its passives. The four MCUs covered (Pico 2 W / RP2350, STM32G474, ESP32-S3 DevKitC, Teensy 4.1) are the ones most people actually reach for: a hobby-tier dual-core MCU, a precision motor-control STM32, a high-throughput wireless SoC, and a 600 MHz Cortex-M7. Each tab also surfaces the strap-pin / boot-mode gotchas that bite people on their first board spin.</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="pico">Pico 2 W (RP2350)</button>
+    <button class="tab" data-tab="stm32">STM32G474 (LQFP-64)</button>
+    <button class="tab" data-tab="esp32">ESP32-S3 DevKitC</button>
+    <button class="tab" data-tab="teensy">Teensy 4.1</button>
+    <button class="tab" data-tab="compare">Compare</button>
+    <button class="tab" data-tab="cheat">Cheat sheet</button>
+  </div>
+
+  <div class="legend">
+    <span><i class="sw" style="background:var(--pf-power)"></i>Power</span>
+    <span><i class="sw" style="background:var(--pf-gnd)"></i>GND</span>
+    <span><i class="sw" style="background:var(--pf-gpio)"></i>GPIO</span>
+    <span><i class="sw" style="background:var(--pf-uart)"></i>UART</span>
+    <span><i class="sw" style="background:var(--pf-spi)"></i>SPI</span>
+    <span><i class="sw" style="background:var(--pf-i2c)"></i>I2C</span>
+    <span><i class="sw" style="background:var(--pf-adc)"></i>ADC</span>
+    <span><i class="sw" style="background:var(--pf-pwm)"></i>PWM</span>
+    <span><i class="sw" style="background:var(--pf-usb)"></i>USB</span>
+    <span><i class="sw" style="background:var(--pf-can)"></i>CAN</span>
+    <span><i class="sw" style="background:var(--pf-clock)"></i>Clock</span>
+    <span><i class="sw" style="background:var(--pf-debug)"></i>Debug</span>
+    <span><i class="sw" style="background:var(--pf-strap)"></i>Strap</span>
+    <span><i class="sw" style="background:var(--pf-pio)"></i>PIO</span>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- PICO 2 W -->
+  <!-- ============================================================ -->
+  <section class="pane active" id="pane-pico">
+    <h2>Raspberry Pi Pico 2 W — RP2350 dual Cortex-M33 / 150 MHz</h2>
+    <div class="anchors">
+      <span class="anchor"><b>RP2350</b> dual-core Cortex-M33 @ 150 MHz (or RISC-V Hazard3)</span>
+      <span class="anchor"><b>520 KB</b> SRAM + 4 MB QSPI flash</span>
+      <span class="anchor"><b>4 ADC</b> channels, 12-bit, 0–3.3 V (noisy on Pico, see pitfalls)</span>
+      <span class="anchor"><b>2× UART, 2× SPI, 2× I2C</b> on flexible GPIO mux</span>
+      <span class="anchor"><b>3× PIO blocks</b> (12 SMs total) — bit-bang anything</span>
+      <span class="anchor"><b>USB 1.1</b> device + host (host needs external Vbus switch)</span>
+      <span class="anchor">2.4 GHz Wi-Fi 4 + BT 5.2 (Infineon CYW43439)</span>
+    </div>
+
+    <div class="peripherals" data-mcu="pico" id="periphs-pico"></div>
+
+    <div class="chip"><svg id="svg-pico" viewBox="0 0 720 740"></svg></div>
+
+    <div id="sch-pico"></div>
+
+    <h3>Decoupling, reset &amp; clock</h3>
+    <ul class="notice">
+      <li><b>Decoupling</b>: On the bare RP2350 chip, eight 100 nF caps — one per VDD pin (IOVDD, DVDD, USB_VDD, ADC_AVDD, VREG_VIN). The Pico 2 W module already has these. If you build your own RP2350 board, add a 1–10 µF bulk cap and a 100 nF on every supply pin under 5 mm.</li>
+      <li><b>ADC_AVDD</b> deserves a ferrite-bead + 100 nF filter from 3V3 to keep digital noise out. Pico's design ties ADC_AVDD directly to the buck-converter rail — explains the well-known noise floor (see pitfalls).</li>
+      <li><b>RUN (pin 30)</b> is the reset input — active low with internal pull-up. Optional: 1 µF cap to GND for power-up delay + RC. Tie to a button to GND for hard reset.</li>
+      <li><b>BOOTSEL</b> button shorts QSPI_SS to GND on the Pico module; on a custom board, expose a button for flashing via USB mass-storage mode.</li>
+      <li><b>Clock</b>: the RP2350 has an internal ROSC, but every production board uses a 12 MHz crystal on XIN/XOUT (Pico module: 12 MHz, ±50 ppm). Load caps ≈ 15 pF each, matched to crystal CL.</li>
+    </ul>
+
+    <h3>Worked example — Pico 2 W with UART + I2C + SPI + ADC</h3>
+    <div class="worked">
+      <p>Project: a portable data-logger with a OLED screen (I2C), GPS module (UART), SD card (SPI), and a battery-voltage divider (ADC). Allocate pins to avoid mux conflicts; verify with the table below.</p>
+      <p class="eq">UART0 TX = GP0 / RX = GP1   → to GPS module RX/TX (cross over)</p>
+      <p class="eq">I2C0  SDA = GP4 / SCL = GP5  → OLED (SSD1306 @ 0x3C)</p>
+      <p class="eq">SPI0  CS=GP17, SCK=GP18, MOSI=GP19, MISO=GP16 → SD card</p>
+      <p class="eq">ADC0 = GP26  → battery voltage / 2 (via 100k:100k divider)</p>
+      <p class="eq">3V3 + GND + GP25 (onboard LED)</p>
+      <p>That uses 8 GPIOs of 30 available. Check the peripheral boxes above to highlight these pins on the pinout.</p>
+    </div>
+
+    <h3>Common pitfalls</h3>
+    <ul class="notice">
+      <li><b class="warn">ADC noise</b> — Pico/Pico 2 wires ADC_AVDD directly to the SMPS rail. RMS noise ≈ 5 LSB on 12 bits; for precision (12 effective bits) you must enable PSM (power-save mode) or bypass the buck with a low-noise LDO into 3V3.</li>
+      <li><b class="warn">ADC reference is ~3.3 V system rail</b> — drifts with USB voltage. For ratiometric sensors (voltage dividers) this is fine. For absolute measurements use an external 3.000 V reference into ADC_VREF (pin 35).</li>
+      <li><b>QSPI pins are tied up</b> — GPIO 12–17 are reused on certain Pico variants. Don't assume those pins are free without checking the schematic.</li>
+      <li><b>5 V tolerance: none.</b> GPIO max = 3.6 V. Use a level shifter (TXS0108E / BSS138 for slow signals) for any 5 V peripheral. Direct 5 V on a GPIO will latch up the RP2350.</li>
+      <li><b>USB pin pair</b> — D+/D- are dedicated pins on the Pico module; on the bare RP2350 they're GP24/GP25 in some packages but should be left for USB only.</li>
+      <li><b>UART vs USB serial</b> — picotool and MicroPython both expose stdio over USB CDC. UART0 (GP0/GP1) is a separate physical UART; both can run simultaneously.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- STM32G474 -->
+  <!-- ============================================================ -->
+  <section class="pane" id="pane-stm32">
+    <h2>STM32G474RET6 — Cortex-M4F @ 170 MHz (LQFP-64)</h2>
+    <div class="anchors">
+      <span class="anchor"><b>STM32G4</b> Cortex-M4F @ 170 MHz + FPU + DSP</span>
+      <span class="anchor"><b>512 KB</b> flash, 128 KB SRAM</span>
+      <span class="anchor"><b>HRTIM</b> high-res 184 ps PWM (motor control flagship)</span>
+      <span class="anchor"><b>5× ADC</b> 12-bit @ 4 Msps + 7× opamp + 7× comparator</span>
+      <span class="anchor"><b>FDCAN</b> (CAN-FD), 3× I2C, 4× SPI, 5× USART, 1× USB FS</span>
+      <span class="anchor"><b>VDDA</b> separate analog supply pin (critical filter)</span>
+    </div>
+
+    <div class="peripherals" data-mcu="stm32" id="periphs-stm32"></div>
+
+    <div class="chip"><svg id="svg-stm32" viewBox="0 0 720 720"></svg></div>
+
+    <div id="sch-stm32"></div>
+
+    <h3>Decoupling, reset &amp; clock</h3>
+    <ul class="notice">
+      <li><b>Decoupling</b>: per ST AN4206, place one 100 nF on every VDD pin (LQFP-64 has VDD1..VDD4 + VDDA). All within 5 mm with a short return. Add one 4.7 µF bulk cap close to the regulator output, and a 100 nF + 1 µF combo on VDDA. <code>VBAT</code> needs 100 nF + a tied or RTC-battery network.</li>
+      <li><b>VDDA</b> = analog reference. Connect to VDD through a ferrite bead (BLM18 series, 600 Ω @ 100 MHz) for noise isolation. <code>VREF+</code> defaults to VDDA; for precision use an external 3.0 V buffered reference (REF3030).</li>
+      <li><b>NRST</b> (pin 7): active low, internal 40 kΩ pull-up. Datasheet recommends a 100 nF cap to GND to filter glitches. Optional external pull-up (10 k) plus reset button to GND.</li>
+      <li><b>BOOT0</b> (pin 60 on LQFP-64): selects boot region. <code>BOOT0=0 → flash</code>, <code>BOOT0=1 → system memory (DFU bootloader)</code>. Wire 10 kΩ pull-down + button to 3.3 V for DFU access, or a 2-pin jumper.</li>
+      <li><b>Clock</b>: 8/16/24/25 MHz HSE crystal on OSC_IN / OSC_OUT (pins 5/6). Load caps ≈ 18–22 pF for typical 18 pF CL crystals; tune for ±20 ppm. Internal HSI16 (16 MHz ±1 %) works without crystal but is too rough for USB or CAN-FD.</li>
+      <li><b>SWD debug</b>: PA13 = SWDIO, PA14 = SWCLK. Don't repurpose these unless you have a backup debug method — see pitfalls.</li>
+    </ul>
+
+    <h3>Common pitfalls</h3>
+    <ul class="notice">
+      <li><b class="warn">PA13 / PA14 are SWD</b> — remapping them to GPIO during early-init bricks debug. If you must use them, expose a "factory reset" pad on the board and re-enable SWD via NRST + bootloader.</li>
+      <li><b class="warn">PB4 / PB3 = NJTRST / JTDO</b> — JTAG remnants. On boot they're pulled up for JTAG; if you use them as GPIO outputs, drive carefully or disable JTAG in MCU options bytes.</li>
+      <li><b>USB DM/DP are on PA11/PA12</b> — fixed, no remap. CAN-FD shares PD0/PD1 or PB8/PB9; pick at sysclk init.</li>
+      <li><b>VBAT must be powered or tied to VDD</b> — floating VBAT is undefined; tie to VDD if you don't use the RTC backup domain.</li>
+      <li><b>5 V tolerance</b>: <b>most</b> GPIOs are 5 V-tolerant when configured as inputs (marked "FT" in the datasheet). Analog pins and a few others (PC14/15, PF0/1) are <i>not</i>. Always check the Table 14 pin list — wrong assumption blows the GPIO.</li>
+      <li><b>OPAMP/DAC pin sharing</b> — the G4 has 7 opamps and 4 DACs on dedicated pins. Don't allocate those to GPIO if you might use the analog block; pins like PA1/PA2/PA3 are PGA-capable.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- ESP32-S3 -->
+  <!-- ============================================================ -->
+  <section class="pane" id="pane-esp32">
+    <h2>ESP32-S3 DevKitC — dual Xtensa LX7 @ 240 MHz</h2>
+    <div class="anchors">
+      <span class="anchor"><b>ESP32-S3</b> dual Xtensa LX7 @ 240 MHz + AI vector ext</span>
+      <span class="anchor"><b>512 KB</b> SRAM + 8 MB PSRAM (N8R8 variant)</span>
+      <span class="anchor"><b>Wi-Fi 4</b> 2.4 GHz + BLE 5</span>
+      <span class="anchor"><b>USB-OTG</b> + native USB-Serial-JTAG on GPIO 19/20</span>
+      <span class="anchor"><b>45 GPIOs</b>, 2× 12-bit SAR ADC (20 channels), LCD/CAM/SDMMC peripherals</span>
+      <span class="anchor">3× UART, 4× SPI, 2× I2C, 2× I2S, RMT (IR), MCPWM, TWAI (CAN 2.0)</span>
+    </div>
+
+    <div class="peripherals" data-mcu="esp32" id="periphs-esp32"></div>
+
+    <div class="chip"><svg id="svg-esp32" viewBox="0 0 720 800"></svg></div>
+
+    <div id="sch-esp32"></div>
+
+    <h3>Decoupling, reset &amp; clock</h3>
+    <ul class="notice">
+      <li><b>Decoupling</b>: the ESP32-S3 module already has 100 nF on every VDD pad plus a 10 µF bulk cap. On your motherboard, put another 10 µF + 100 nF within 5 mm of the module's 3V3 pin — Wi-Fi TX peaks pull 400 mA bursts. Undersized supply → brown-out resets at TX.</li>
+      <li><b>EN / nRESET</b>: active high enable (with internal pull-up on the module). The DevKitC ties EN through 10 k to VDD and a 100 nF cap to GND for power-up delay. Add a reset button to GND if missing on your board.</li>
+      <li><b>Clock</b>: 40 MHz crystal on XTAL_P / XTAL_N — already on the module. RTC sleep can use a 32.768 kHz watch crystal on dedicated pins.</li>
+      <li><b>USB-OTG vs USB-Serial-JTAG</b>: GPIO 19 = D-, GPIO 20 = D+. The USB-Serial-JTAG block is built-in and used for flashing/debug via the on-chip ROM. No external USB-to-UART chip required (the DevKitC still ships one on UART0 as backup).</li>
+      <li><b>Strapping pins (sampled at reset)</b>: GPIO 0, GPIO 3, GPIO 45, GPIO 46. They set boot mode, JTAG vs USB, ROM message logging, and flash voltage. <b>Never</b> drive them externally before boot completes.</li>
+    </ul>
+
+    <h3>Common pitfalls</h3>
+    <ul class="notice">
+      <li><b class="warn">Strapping pins are TIME BOMBS</b> — GPIO 0 (pulled low → bootloader, high → run). GPIO 45/46 set flash voltage and ROM logging. If your sensor pulls GPIO 0 low at reset, the chip won't run. Solution: choose any pin <i>except</i> 0, 3, 45, 46 for signals that may be asserted at power-on; if you must, gate with a buffer that releases after reset.</li>
+      <li><b class="warn">USB-JTAG vs USB-CDC arbitration</b> — both share GPIO 19/20. If you want native USB serial, configure USB-OTG mode; the USB-Serial-JTAG block is then unavailable. The DevKitC sidesteps this with a separate UART-to-USB chip on the second connector.</li>
+      <li><b>ADC2 channels are blocked while Wi-Fi is on</b> — ADC2 (GPIO 11–20 channels) shares hardware with the Wi-Fi PHY. Use ADC1 (GPIO 1–10) if you sample during Wi-Fi TX/RX.</li>
+      <li><b>SPI flash + PSRAM occupy SPI0/SPI1</b> — GPIO 26–32 area is taken by internal flash/PSRAM on most modules. Don't route signals to those pins; the symbols are not exposed on DevKitC headers either.</li>
+      <li><b>5 V tolerance: none</b> — same as RP2350. 3.3 V max. Many DevKitC carrier boards include a 5 V pin (VIN) — that's the input rail, not a GPIO level.</li>
+      <li><b>GPIO 35–37 (S3 module: not present)</b> — referenced in older ESP32 docs but absent on S3 due to flash repurposing. Pin numbering shifted from classic ESP32 to S3; always check the S3-specific datasheet.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TEENSY 4.1 -->
+  <!-- ============================================================ -->
+  <section class="pane" id="pane-teensy">
+    <h2>Teensy 4.1 — i.MX RT1062, Cortex-M7 @ 600 MHz</h2>
+    <div class="anchors">
+      <span class="anchor"><b>i.MX RT1062</b> Cortex-M7 @ 600 MHz (no FPU? FPU yes — Cortex-M7 single+double)</span>
+      <span class="anchor"><b>1 MB</b> tightly-coupled RAM + 8 MB external PSRAM optional</span>
+      <span class="anchor"><b>8 MB</b> QSPI flash on-board, expandable to 16 MB</span>
+      <span class="anchor"><b>55 GPIOs</b> on the board (more on chip), <b>18 PWM</b> channels</span>
+      <span class="anchor"><b>8× UART, 3× SPI, 3× I2C</b> hardware peripherals</span>
+      <span class="anchor"><b>3× CAN</b> (2× CAN 2.0B + 1× CAN-FD), USB host + device, 480 MHz HS</span>
+      <span class="anchor"><b>2× I2S</b> + S/PDIF, 100 Mbit ethernet PHY pads, SDIO for microSD</span>
+    </div>
+
+    <div class="peripherals" data-mcu="teensy" id="periphs-teensy"></div>
+
+    <div class="chip"><svg id="svg-teensy" viewBox="0 0 720 820"></svg></div>
+
+    <div id="sch-teensy"></div>
+
+    <h3>Decoupling, reset &amp; clock</h3>
+    <ul class="notice">
+      <li><b>Decoupling</b>: the Teensy 4.1 board is fully decoupled — every i.MX VDD has a 100 nF + a shared 22 µF bulk. As a user you only need to bypass <i>your</i> peripheral chips. If you wire anything that pulls &gt;100 mA, add a local 10 µF + 100 nF at that chip's supply.</li>
+      <li><b>Reset</b>: a momentary button on the board grounds the program-mode pad ("PROG" line) which triggers a USB bootloader entry. Software reset via <code>SCB_AIRCR = 0x05FA0004</code> from Teensyduino.</li>
+      <li><b>Clock</b>: 24 MHz crystal on-board feeds the PLL up to 600 MHz. RTC uses a separate 32.768 kHz crystal (already populated). VBAT pad accepts a 3 V CR2032 for backup.</li>
+      <li><b>USB</b>: the micro-USB jack on top is USB 2.0 device. The board also has D+/D- pads on the underside for <i>USB host</i> mode (used in audio shields, MIDI controllers). Add a 5 V power switch (TPS2065) if you supply VBus to a device.</li>
+      <li><b>Boot</b>: no BOOT pin to set — bootloader is in ROM, triggered by the PROG button. To re-flash, press the button while connected over USB; Teensyduino picks up the bootloader and writes flash.</li>
+    </ul>
+
+    <h3>Common pitfalls</h3>
+    <ul class="notice">
+      <li><b class="warn">Teensy pins are 3.3 V, NOT 5 V tolerant</b> — common newbie mistake on a board the size of an Arduino Nano. Putting 5 V on a digital input damages the i.MX permanently. Use level shifters.</li>
+      <li><b class="warn">Underside pads matter</b> — five pins (54–57) and the SD card / Ethernet / USB-host pads are only accessible on the bottom of the board. If you mount on a header strip, you lose access to those without a flying lead.</li>
+      <li><b>PaulStoffregen's pin tables</b> are authoritative — the i.MX datasheet labels pins by their iMX number; the Teensy 4.1 schematic re-numbers them. Always cross-reference Paul's pinout card (built into Teensyduino).</li>
+      <li><b>Hardware Serial vs USB Serial</b> — <code>Serial</code> is the USB virtual port (always on). <code>Serial1..Serial8</code> are the hardware UARTs on physical pins. Don't confuse the two.</li>
+      <li><b>CAN-FD transceiver still required</b> — the Teensy has the FlexCAN controller, but you still need a TJA1042 / MCP2562FD / SN65HVD230 between the CAN pins and the differential CAN_H/L bus.</li>
+      <li><b>Ethernet is PHY-less</b> — Teensy 4.1 brings out the RMII pads for a 100 Mbit ethernet PHY (LAN8720) plus magnetics + jack. Without those external parts, no Ethernet — there's no PHY on the Teensy itself.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- COMPARE -->
+  <!-- ============================================================ -->
+  <section class="pane" id="pane-compare">
+    <h2>Side-by-side comparison</h2>
+    <table>
+      <tr>
+        <th>Feature</th><th>Pico 2 W (RP2350)</th><th>STM32G474</th><th>ESP32-S3</th><th>Teensy 4.1</th>
+      </tr>
+      <tr><td>Core(s)</td><td>2× Cortex-M33 @ 150 MHz</td><td>1× Cortex-M4F @ 170 MHz</td><td>2× Xtensa LX7 @ 240 MHz</td><td>1× Cortex-M7 @ 600 MHz</td></tr>
+      <tr><td>FPU</td><td>Yes (M33 single)</td><td>Yes (M4 single)</td><td>No FPU, soft-float</td><td>Yes (M7 single + double)</td></tr>
+      <tr><td>RAM</td><td>520 KB</td><td>128 KB</td><td>512 KB + 8 MB PSRAM</td><td>1 MB TCM + opt 8 MB PSRAM</td></tr>
+      <tr><td>Flash</td><td>4 MB QSPI ext</td><td>512 KB int</td><td>4–16 MB QSPI ext</td><td>8 MB QSPI ext</td></tr>
+      <tr><td>GPIOs (avail)</td><td>30</td><td>52 (LQFP-64)</td><td>~36 on DevKitC</td><td>~55</td></tr>
+      <tr><td>5 V tolerant</td><td>No</td><td>Most pins (FT)</td><td>No</td><td>No</td></tr>
+      <tr><td>UART</td><td>2</td><td>5 USART + 1 LPUART</td><td>3</td><td>8</td></tr>
+      <tr><td>I2C</td><td>2</td><td>3</td><td>2</td><td>3</td></tr>
+      <tr><td>SPI</td><td>2</td><td>4</td><td>4 (2 user)</td><td>3</td></tr>
+      <tr><td>CAN</td><td>None on chip (use MCU SPI to MCP2515)</td><td>3× FDCAN (CAN-FD)</td><td>1× TWAI (CAN 2.0)</td><td>3× FlexCAN (1 FD)</td></tr>
+      <tr><td>USB</td><td>USB 1.1 device+host</td><td>USB 2.0 FS device</td><td>USB-OTG + USB-Serial-JTAG</td><td>USB 2.0 HS host+device</td></tr>
+      <tr><td>ADC</td><td>4× 12-bit, ~500 ksps, noisy</td><td>5× 12-bit, 4 Msps, opamps</td><td>2× 12-bit SAR, 20 ch</td><td>2× 12-bit ADC</td></tr>
+      <tr><td>PWM</td><td>16 + 12 PIO SMs</td><td>HRTIM 184 ps + 4 GP</td><td>RMT + MCPWM</td><td>18 FlexPWM channels</td></tr>
+      <tr><td>Wireless</td><td>Wi-Fi 4 + BT 5.2 (CYW43439)</td><td>None on chip</td><td>Wi-Fi 4 + BLE 5</td><td>None on chip</td></tr>
+      <tr><td>Strap-pin gotcha</td><td>No real strap pins</td><td>BOOT0 only</td><td>GPIO 0, 3, 45, 46</td><td>No real strap pins</td></tr>
+      <tr><td>Cost (single, 2026)</td><td>~$7</td><td>~$6</td><td>~$5</td><td>~$32</td></tr>
+      <tr><td>Best fit</td><td>Hobby, PIO tricks, low-cost wireless</td><td>Motor control, precision analog</td><td>IoT, Wi-Fi-first, AI inference</td><td>Audio/DSP, multi-bus integration</td></tr>
+    </table>
+
+    <h3>Pick a chip in 60 seconds</h3>
+    <ul class="notice">
+      <li><b>You need Wi-Fi and budget is &lt; $10</b> → ESP32-S3.</li>
+      <li><b>You need precision motor control or analog</b> → STM32G474 (HRTIM + opamps).</li>
+      <li><b>You need bit-bang flexibility / DIY peripherals</b> → Pico 2 W (PIO is the killer feature).</li>
+      <li><b>You need raw horsepower / DSP / multi-bus</b> → Teensy 4.1.</li>
+      <li><b>You need 5 V GPIO tolerance for legacy logic</b> → STM32G474 (most GPIOs are FT).</li>
+      <li><b>You need CAN-FD</b> → STM32G474 or Teensy 4.1.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- CHEAT SHEET -->
+  <!-- ============================================================ -->
+  <section class="pane" id="pane-cheat">
+    <h2>Cheat sheet</h2>
+    <div class="cheatsheet">
+      <div class="cheat-card formulas">
+        <h3>I2C pull-up calc</h3>
+        <dl>
+          <dt>Rp(min)</dt><dd>(Vdd − 0.4 V) / I_OL,max</dd>
+          <dt>I_OL,max</dt><dd>3 mA (standard / fast) — 20 mA (Fm+ at 5 V)</dd>
+          <dt>typical</dt><dd>4.7 kΩ @ 100 kHz, 2.2 kΩ @ 400 kHz, 1 kΩ @ 1 MHz</dd>
+          <dt>Rp(max)</dt><dd>t_rise / (0.8473 × C_bus) — C_bus ~ 10 pF/device + 40 pF wire</dd>
+        </dl>
+      </div>
+      <div class="cheat-card formulas">
+        <h3>UART level shifter</h3>
+        <dl>
+          <dt>3.3 V ↔ 3.3 V</dt><dd>direct connect</dd>
+          <dt>3.3 V ↔ 5 V</dt><dd>RX: voltage divider OR 74LVC1G17 buffer<br>TX: direct (most 5 V parts read 3.3 V as HIGH)</dd>
+          <dt>3.3 V ↔ RS-232</dt><dd>MAX3232 (±12 V swing)</dd>
+          <dt>3.3 V ↔ RS-485</dt><dd>MAX3485 / SN65HVD12 (differential bus)</dd>
+        </dl>
+      </div>
+      <div class="cheat-card formulas">
+        <h3>SPI wiring</h3>
+        <dl>
+          <dt>SCK</dt><dd>master out only — clock</dd>
+          <dt>MOSI</dt><dd>master out, slave in (COPI)</dd>
+          <dt>MISO</dt><dd>master in, slave out (CIPO)</dd>
+          <dt>CS / SS</dt><dd>active low, one per slave (any GPIO)</dd>
+          <dt>pull-ups</dt><dd>none on data lines; pull-up on CS to deassert at boot</dd>
+        </dl>
+      </div>
+      <div class="cheat-card formulas">
+        <h3>CAN transceivers</h3>
+        <dl>
+          <dt>TJA1042</dt><dd>3.3 / 5 V supply, CAN 2.0 + CAN-FD up to 5 Mbps</dd>
+          <dt>MCP2562FD</dt><dd>5 V supply, CAN-FD, supports VIO 3.3 V on logic side</dd>
+          <dt>SN65HVD230</dt><dd>3.3 V single supply, CAN 2.0 (1 Mbps), classic</dd>
+          <dt>Termination</dt><dd>120 Ω at each <i>end</i> of the bus (not middle)</dd>
+        </dl>
+      </div>
+      <div class="cheat-card formulas">
+        <h3>USB series Rs</h3>
+        <dl>
+          <dt>FS device (12 Mbps)</dt><dd>22–33 Ω series on D+ and D− for impedance match (90 Ω ±10 % diff)</dd>
+          <dt>HS device (480 Mbps)</dt><dd>none external — built into the PHY; route as 90 Ω diff pair</dd>
+          <dt>ESD</dt><dd>USBLC6-2SC6 dual TVS pair across D+/D−</dd>
+        </dl>
+      </div>
+      <div class="cheat-card memorize">
+        <h3>Decoupling memory hooks</h3>
+        <ul>
+          <li><b>100 nF per VDD pin, within 5 mm</b> — always.</li>
+          <li><b>1–10 µF bulk near the regulator</b> — once per board.</li>
+          <li><b>VDDA / ADC_AVDD gets a ferrite + 100 nF</b> — analog isolation.</li>
+          <li><b>Big inductive loads (motors, relays)</b> — 100 µF electrolytic at the load, not at the MCU.</li>
+        </ul>
+      </div>
+      <div class="cheat-card pitfalls">
+        <h3>Pitfall headlines</h3>
+        <ul>
+          <li><b>ESP32-S3 strap pins</b> 0/3/45/46 — never drive at reset.</li>
+          <li><b>STM32 SWD = PA13/PA14</b> — repurpose carefully.</li>
+          <li><b>Pico ADC noise</b> — shared rail with SMPS.</li>
+          <li><b>Teensy is 3.3 V only</b> — looks like an Arduino, isn't.</li>
+          <li><b>BOOT0 + NRST</b> — STM32 needs both right to enter DFU.</li>
+        </ul>
+      </div>
+      <div class="cheat-card memorize">
+        <h3>Reset RC sizing</h3>
+        <ul>
+          <li><b>R = 10 kΩ, C = 100 nF</b> → τ = 1 ms typical.</li>
+          <li><b>R = 10 kΩ, C = 1 µF</b> → τ = 10 ms (slow supplies).</li>
+          <li>Always check the MCU's <i>t_RSTL</i> spec (typ 20 µs minimum).</li>
+        </ul>
+      </div>
+      <div class="cheat-card memorize">
+        <h3>Crystal load caps</h3>
+        <ul>
+          <li><b>C_L per side</b> = 2 × (CL_crystal − C_stray)</li>
+          <li>Typical CL = 18 pF, C_stray ≈ 3 pF → C_L = 30 pF each</li>
+          <li>NEVER copy load caps from a different crystal — datasheet specific.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>Peripheral count quick-reference</h2>
+    <table>
+      <tr><th>Bus</th><th>Pico 2 W</th><th>STM32G474</th><th>ESP32-S3</th><th>Teensy 4.1</th></tr>
+      <tr><td>UART</td><td>2</td><td>6</td><td>3</td><td>8</td></tr>
+      <tr><td>SPI</td><td>2</td><td>4</td><td>4 (2 user)</td><td>3</td></tr>
+      <tr><td>I2C</td><td>2</td><td>3</td><td>2</td><td>3</td></tr>
+      <tr><td>CAN</td><td>0</td><td>3 (FD)</td><td>1</td><td>3 (1 FD)</td></tr>
+      <tr><td>ADC channels</td><td>4</td><td>~50</td><td>20</td><td>16+</td></tr>
+      <tr><td>PWM/timers</td><td>16 + PIO</td><td>HRTIM + GP</td><td>RMT + MCPWM</td><td>18 FlexPWM</td></tr>
+      <tr><td>USB</td><td>1</td><td>1 FS</td><td>1 OTG</td><td>1 HS + 1 host</td></tr>
+    </table>
+  </section>
+
+  <footer class="footer-note">
+    Cross-links: <a href="../ee/phase-8-embedded-protocols/uart-timing.html">UART timing</a> · <a href="../ee/phase-8-embedded-protocols/spi-timing.html">SPI timing</a> · <a href="../ee/phase-8-embedded-protocols/i2c-protocol.html">I2C protocol</a> · <a href="../ee/phase-8-embedded-protocols/usb-basics.html">USB basics</a> · <a href="../ee/phase-8-embedded-protocols/pwm-explorer.html">PWM explorer</a> · <a href="../ee/phase-8-embedded-protocols/adc-explorer.html">ADC explorer</a> · <a href="component-picker.html">Component picker</a> · <a href="unit-converter.html">Unit converter</a>
+  </footer>
+</main>
+
+<script>
+/* =================================================================== */
+/* PIN-FUNCTION COLOR LOOKUP                                            */
+/* =================================================================== */
+const FNCOLOR = {
+  power:'var(--pf-power)', gnd:'var(--pf-gnd)', gpio:'var(--pf-gpio)',
+  uart:'var(--pf-uart)',  spi:'var(--pf-spi)',  i2c:'var(--pf-i2c)',
+  adc:'var(--pf-adc)',    pwm:'var(--pf-pwm)',  usb:'var(--pf-usb)',
+  can:'var(--pf-can)',    clock:'var(--pf-clock)', debug:'var(--pf-debug)',
+  strap:'var(--pf-strap)', misc:'var(--pf-misc)', pio:'var(--pf-pio)',
+};
+
+/* =================================================================== */
+/* PIN MAPS                                                             */
+/* Each entry: { n, name, fn, periphs:[...] }                           */
+/*   n: pin number on the package                                       */
+/*   name: short label                                                  */
+/*   fn: default color category for the pin                             */
+/*   periphs: list of peripheral keys that, when checked, light it up   */
+/* =================================================================== */
+
+/* PICO 2 W — 40-pin DIP, pins 1..40 (board pin numbers, not GPIO) */
+const PICO = [
+  { n:1,  name:'GP0',    fn:'gpio', periphs:['uart0'] },         // UART0 TX
+  { n:2,  name:'GP1',    fn:'gpio', periphs:['uart0'] },         // UART0 RX
+  { n:3,  name:'GND',    fn:'gnd',  periphs:[] },
+  { n:4,  name:'GP2',    fn:'gpio', periphs:['spi0','i2c1','pio'] },
+  { n:5,  name:'GP3',    fn:'gpio', periphs:['spi0','i2c1','pio'] },
+  { n:6,  name:'GP4',    fn:'gpio', periphs:['i2c0','uart1','pio'] },
+  { n:7,  name:'GP5',    fn:'gpio', periphs:['i2c0','uart1','pio'] },
+  { n:8,  name:'GND',    fn:'gnd',  periphs:[] },
+  { n:9,  name:'GP6',    fn:'gpio', periphs:['i2c1','pio'] },
+  { n:10, name:'GP7',    fn:'gpio', periphs:['i2c1','pio'] },
+  { n:11, name:'GP8',    fn:'gpio', periphs:['spi1','i2c0','uart1','pio'] },
+  { n:12, name:'GP9',    fn:'gpio', periphs:['spi1','i2c0','uart1','pio'] },
+  { n:13, name:'GND',    fn:'gnd',  periphs:[] },
+  { n:14, name:'GP10',   fn:'gpio', periphs:['spi1','i2c1','pio'] },
+  { n:15, name:'GP11',   fn:'gpio', periphs:['spi1','i2c1','pio'] },
+  { n:16, name:'GP12',   fn:'gpio', periphs:['spi1','i2c0','uart0','pio'] },
+  { n:17, name:'GP13',   fn:'gpio', periphs:['spi1','i2c0','uart0','pio'] },
+  { n:18, name:'GND',    fn:'gnd',  periphs:[] },
+  { n:19, name:'GP14',   fn:'gpio', periphs:['spi1','i2c1','pio'] },
+  { n:20, name:'GP15',   fn:'gpio', periphs:['spi1','i2c1','pio'] },
+  { n:21, name:'GP16',   fn:'gpio', periphs:['spi0','i2c0','uart0','pio'] }, // MISO
+  { n:22, name:'GP17',   fn:'gpio', periphs:['spi0','i2c0','uart0','pio'] }, // CSn
+  { n:23, name:'GND',    fn:'gnd',  periphs:[] },
+  { n:24, name:'GP18',   fn:'gpio', periphs:['spi0','i2c1','pio'] }, // SCK
+  { n:25, name:'GP19',   fn:'gpio', periphs:['spi0','i2c1','pio'] }, // MOSI
+  { n:26, name:'GP20',   fn:'gpio', periphs:['i2c0','pio'] },
+  { n:27, name:'GP21',   fn:'gpio', periphs:['i2c0','pio'] },
+  { n:28, name:'GND',    fn:'gnd',  periphs:[] },
+  { n:29, name:'GP22',   fn:'gpio', periphs:['pio'] },
+  { n:30, name:'RUN',    fn:'debug',periphs:[] },
+  { n:31, name:'GP26 / ADC0', fn:'adc', periphs:['adc'] },
+  { n:32, name:'GP27 / ADC1', fn:'adc', periphs:['adc'] },
+  { n:33, name:'GND/AGND',fn:'gnd', periphs:[] },
+  { n:34, name:'GP28 / ADC2', fn:'adc', periphs:['adc'] },
+  { n:35, name:'ADC_VREF',fn:'adc', periphs:['adc'] },
+  { n:36, name:'3V3 OUT', fn:'power', periphs:[] },
+  { n:37, name:'3V3_EN',  fn:'power', periphs:[] },
+  { n:38, name:'GND',     fn:'gnd', periphs:[] },
+  { n:39, name:'VSYS',    fn:'power', periphs:[] },
+  { n:40, name:'VBUS',    fn:'power', periphs:['usb'] },
+];
+
+/* STM32G474 LQFP-64, pins 1..64 */
+const STM32 = [
+  { n:1, name:'VBAT', fn:'power', periphs:[] },
+  { n:2, name:'PC13', fn:'gpio', periphs:[] },
+  { n:3, name:'PC14-OSC32_IN', fn:'clock', periphs:[] },
+  { n:4, name:'PC15-OSC32_OUT', fn:'clock', periphs:[] },
+  { n:5, name:'PF0/OSC_IN', fn:'clock', periphs:[] },
+  { n:6, name:'PF1/OSC_OUT', fn:'clock', periphs:[] },
+  { n:7, name:'NRST', fn:'debug', periphs:[] },
+  { n:8, name:'PC0', fn:'adc', periphs:['adc'] },
+  { n:9, name:'PC1', fn:'adc', periphs:['adc'] },
+  { n:10, name:'PC2', fn:'adc', periphs:['adc'] },
+  { n:11, name:'PC3', fn:'adc', periphs:['adc'] },
+  { n:12, name:'VSSA', fn:'gnd', periphs:[] },
+  { n:13, name:'VDDA', fn:'power', periphs:['adc'] },
+  { n:14, name:'PA0', fn:'gpio', periphs:['adc','uart1'] },
+  { n:15, name:'PA1', fn:'gpio', periphs:['adc'] },
+  { n:16, name:'PA2', fn:'gpio', periphs:['uart1','adc'] },
+  { n:17, name:'PA3', fn:'gpio', periphs:['uart1','adc'] },
+  { n:18, name:'VSS', fn:'gnd', periphs:[] },
+  { n:19, name:'VDD', fn:'power', periphs:[] },
+  { n:20, name:'PA4', fn:'gpio', periphs:['spi1','adc'] },
+  { n:21, name:'PA5', fn:'gpio', periphs:['spi1','adc'] },
+  { n:22, name:'PA6', fn:'gpio', periphs:['spi1','adc'] },
+  { n:23, name:'PA7', fn:'gpio', periphs:['spi1','adc'] },
+  { n:24, name:'PC4', fn:'gpio', periphs:['uart1','adc'] },
+  { n:25, name:'PC5', fn:'gpio', periphs:['uart1','adc'] },
+  { n:26, name:'PB0', fn:'gpio', periphs:['adc'] },
+  { n:27, name:'PB1', fn:'gpio', periphs:['adc'] },
+  { n:28, name:'PB2', fn:'gpio', periphs:['adc'] },
+  { n:29, name:'PB10', fn:'gpio', periphs:['uart3','i2c2'] },
+  { n:30, name:'PB11', fn:'gpio', periphs:['uart3','i2c2'] },
+  { n:31, name:'VSS', fn:'gnd', periphs:[] },
+  { n:32, name:'VDD', fn:'power', periphs:[] },
+  { n:33, name:'PB12', fn:'gpio', periphs:['spi2','can'] },
+  { n:34, name:'PB13', fn:'gpio', periphs:['spi2','can'] },
+  { n:35, name:'PB14', fn:'gpio', periphs:['spi2'] },
+  { n:36, name:'PB15', fn:'gpio', periphs:['spi2'] },
+  { n:37, name:'PC6', fn:'gpio', periphs:[] },
+  { n:38, name:'PC7', fn:'gpio', periphs:[] },
+  { n:39, name:'PC8', fn:'gpio', periphs:[] },
+  { n:40, name:'PC9', fn:'gpio', periphs:[] },
+  { n:41, name:'PA8', fn:'gpio', periphs:['i2c3'] },
+  { n:42, name:'PA9', fn:'gpio', periphs:['uart1','i2c2'] },
+  { n:43, name:'PA10', fn:'gpio', periphs:['uart1','i2c2'] },
+  { n:44, name:'PA11', fn:'gpio', periphs:['usb','can'] },
+  { n:45, name:'PA12', fn:'gpio', periphs:['usb','can'] },
+  { n:46, name:'PA13 SWDIO', fn:'debug', periphs:[] },
+  { n:47, name:'VSS', fn:'gnd', periphs:[] },
+  { n:48, name:'VDD', fn:'power', periphs:[] },
+  { n:49, name:'PA14 SWCLK', fn:'debug', periphs:[] },
+  { n:50, name:'PA15', fn:'gpio', periphs:['spi1','i2c1'] },
+  { n:51, name:'PC10', fn:'gpio', periphs:['uart3','spi3'] },
+  { n:52, name:'PC11', fn:'gpio', periphs:['uart3','spi3'] },
+  { n:53, name:'PC12', fn:'gpio', periphs:['spi3'] },
+  { n:54, name:'PD2', fn:'gpio', periphs:[] },
+  { n:55, name:'PB3', fn:'gpio', periphs:['spi1'] },
+  { n:56, name:'PB4', fn:'gpio', periphs:['spi1'] },
+  { n:57, name:'PB5', fn:'gpio', periphs:['spi1','i2c1'] },
+  { n:58, name:'PB6', fn:'gpio', periphs:['i2c1','uart1','can'] },
+  { n:59, name:'PB7', fn:'gpio', periphs:['i2c1','uart1','can'] },
+  { n:60, name:'BOOT0', fn:'strap', periphs:[] },
+  { n:61, name:'PB8', fn:'gpio', periphs:['i2c1','can'] },
+  { n:62, name:'PB9', fn:'gpio', periphs:['i2c1','can'] },
+  { n:63, name:'VSS', fn:'gnd', periphs:[] },
+  { n:64, name:'VDD', fn:'power', periphs:[] },
+];
+
+/* ESP32-S3 DevKitC — 44 broken-out pins (J1 + J3 on DevKitC-1).
+   Pin numbers shown are header order; "name" includes GPIO# where applicable. */
+const ESP32 = [
+  { n:1,  name:'3V3',     fn:'power', periphs:[] },
+  { n:2,  name:'EN',      fn:'debug', periphs:[] },
+  { n:3,  name:'GPIO4',   fn:'gpio',  periphs:['adc'] },
+  { n:4,  name:'GPIO5',   fn:'gpio',  periphs:['adc'] },
+  { n:5,  name:'GPIO6',   fn:'gpio',  periphs:['adc'] },
+  { n:6,  name:'GPIO7',   fn:'gpio',  periphs:['adc'] },
+  { n:7,  name:'GPIO15',  fn:'gpio',  periphs:['adc'] },
+  { n:8,  name:'GPIO16',  fn:'gpio',  periphs:['adc','uart0'] },
+  { n:9,  name:'GPIO17',  fn:'gpio',  periphs:['adc','uart1'] },
+  { n:10, name:'GPIO18',  fn:'gpio',  periphs:['adc','uart1'] },
+  { n:11, name:'GPIO8',   fn:'gpio',  periphs:['adc','i2c0'] },
+  { n:12, name:'GPIO19 USB-', fn:'usb', periphs:['usb'] },
+  { n:13, name:'GPIO20 USB+', fn:'usb', periphs:['usb'] },
+  { n:14, name:'GPIO3',   fn:'strap', periphs:[] },
+  { n:15, name:'GND',     fn:'gnd',   periphs:[] },
+  { n:16, name:'GPIO46',  fn:'strap', periphs:[] },
+  { n:17, name:'GPIO9',   fn:'gpio',  periphs:['adc','i2c0'] },
+  { n:18, name:'GPIO10',  fn:'gpio',  periphs:['adc','spi0'] },
+  { n:19, name:'GPIO11',  fn:'gpio',  periphs:['adc','spi0'] },
+  { n:20, name:'GPIO12',  fn:'gpio',  periphs:['adc','spi0'] },
+  { n:21, name:'GPIO13',  fn:'gpio',  periphs:['adc','spi0'] },
+  { n:22, name:'GPIO14',  fn:'gpio',  periphs:['adc'] },
+  { n:23, name:'5V',      fn:'power', periphs:[] },
+  { n:24, name:'GND',     fn:'gnd',   periphs:[] },
+  { n:25, name:'GPIO0',   fn:'strap', periphs:[] },
+  { n:26, name:'GPIO45',  fn:'strap', periphs:[] },
+  { n:27, name:'GPIO48',  fn:'gpio',  periphs:[] }, // onboard RGB LED
+  { n:28, name:'GPIO47',  fn:'gpio',  periphs:[] },
+  { n:29, name:'GPIO21',  fn:'gpio',  periphs:['i2c1','can'] },
+  { n:30, name:'GPIO38',  fn:'gpio',  periphs:['spi1'] },
+  { n:31, name:'GPIO39',  fn:'gpio',  periphs:['spi1'] },
+  { n:32, name:'GPIO40',  fn:'gpio',  periphs:['spi1','can'] },
+  { n:33, name:'GPIO41',  fn:'gpio',  periphs:['i2c1','uart2'] },
+  { n:34, name:'GPIO42',  fn:'gpio',  periphs:['uart2'] },
+  { n:35, name:'RX (GPIO44)', fn:'uart', periphs:['uart0'] },
+  { n:36, name:'TX (GPIO43)', fn:'uart', periphs:['uart0'] },
+  { n:37, name:'GPIO2',   fn:'gpio',  periphs:['adc'] },
+  { n:38, name:'GPIO1',   fn:'gpio',  periphs:['adc'] },
+];
+
+/* TEENSY 4.1 — 48 broken-out pins on the top (0..41 + extras). Simplified for clarity. */
+const TEENSY = [
+  { n:1, name:'GND', fn:'gnd', periphs:[] },
+  { n:2, name:'D0 / RX1', fn:'gpio', periphs:['uart1'] },
+  { n:3, name:'D1 / TX1', fn:'gpio', periphs:['uart1'] },
+  { n:4, name:'D2', fn:'gpio', periphs:['pwm'] },
+  { n:5, name:'D3', fn:'gpio', periphs:['pwm','can'] },
+  { n:6, name:'D4', fn:'gpio', periphs:['pwm','can'] },
+  { n:7, name:'D5', fn:'gpio', periphs:['pwm'] },
+  { n:8, name:'D6', fn:'gpio', periphs:['pwm'] },
+  { n:9, name:'D7 / RX2', fn:'gpio', periphs:['uart2'] },
+  { n:10, name:'D8 / TX2', fn:'gpio', periphs:['uart2'] },
+  { n:11, name:'D9', fn:'gpio', periphs:['pwm'] },
+  { n:12, name:'D10 / CS', fn:'gpio', periphs:['spi0','pwm'] },
+  { n:13, name:'D11 / MOSI', fn:'gpio', periphs:['spi0'] },
+  { n:14, name:'D12 / MISO', fn:'gpio', periphs:['spi0'] },
+  { n:15, name:'3V3', fn:'power', periphs:[] },
+  { n:16, name:'D24 / TX6', fn:'gpio', periphs:['uart6'] },
+  { n:17, name:'D25 / RX6', fn:'gpio', periphs:['uart6'] },
+  { n:18, name:'D26', fn:'gpio', periphs:['adc'] },
+  { n:19, name:'D27', fn:'gpio', periphs:['adc'] },
+  { n:20, name:'D28', fn:'gpio', periphs:['uart7'] },
+  { n:21, name:'D29', fn:'gpio', periphs:['uart7'] },
+  { n:22, name:'D30 / CRX3', fn:'gpio', periphs:['can'] },
+  { n:23, name:'D31 / CTX3', fn:'gpio', periphs:['can'] },
+  { n:24, name:'D32', fn:'gpio', periphs:[] },
+  /* right column */
+  { n:25, name:'VIN (5V)', fn:'power', periphs:[] },
+  { n:26, name:'GND', fn:'gnd', periphs:[] },
+  { n:27, name:'3V3', fn:'power', periphs:[] },
+  { n:28, name:'D23 / A9', fn:'gpio', periphs:['adc','pwm'] },
+  { n:29, name:'D22 / A8', fn:'gpio', periphs:['adc','pwm','can'] },
+  { n:30, name:'D21 / A7 / RX5', fn:'gpio', periphs:['adc','uart5'] },
+  { n:31, name:'D20 / A6 / TX5', fn:'gpio', periphs:['adc','uart5'] },
+  { n:32, name:'D19 / A5 / SCL0', fn:'gpio', periphs:['adc','i2c0'] },
+  { n:33, name:'D18 / A4 / SDA0', fn:'gpio', periphs:['adc','i2c0'] },
+  { n:34, name:'D17 / A3 / TX4', fn:'gpio', periphs:['adc','uart4'] },
+  { n:35, name:'D16 / A2 / RX4', fn:'gpio', periphs:['adc','uart4'] },
+  { n:36, name:'D15 / A1 / RX3', fn:'gpio', periphs:['adc','uart3'] },
+  { n:37, name:'D14 / A0 / TX3', fn:'gpio', periphs:['adc','uart3'] },
+  { n:38, name:'D13 / SCK', fn:'gpio', periphs:['spi0'] },
+  { n:39, name:'D41 / A17', fn:'gpio', periphs:['adc'] },
+  { n:40, name:'D40 / A16', fn:'gpio', periphs:['adc'] },
+  { n:41, name:'D39 / A15', fn:'gpio', periphs:['adc'] },
+  { n:42, name:'D38 / A14', fn:'gpio', periphs:['adc'] },
+  { n:43, name:'D37 / SCL1', fn:'gpio', periphs:['i2c1'] },
+  { n:44, name:'D36 / SDA1', fn:'gpio', periphs:['i2c1'] },
+  { n:45, name:'D35', fn:'gpio', periphs:[] },
+  { n:46, name:'D34', fn:'gpio', periphs:[] },
+  { n:47, name:'D33', fn:'gpio', periphs:[] },
+  { n:48, name:'GND', fn:'gnd', periphs:[] },
+];
+
+/* =================================================================== */
+/* PERIPHERAL DEFINITIONS PER MCU                                       */
+/* =================================================================== */
+const PERIPH_DEFS = {
+  pico: [
+    { key:'uart0', label:'UART0', color:'uart' },
+    { key:'uart1', label:'UART1', color:'uart' },
+    { key:'spi0',  label:'SPI0',  color:'spi'  },
+    { key:'spi1',  label:'SPI1',  color:'spi'  },
+    { key:'i2c0',  label:'I2C0',  color:'i2c'  },
+    { key:'i2c1',  label:'I2C1',  color:'i2c'  },
+    { key:'adc',   label:'ADC0-3',color:'adc'  },
+    { key:'pio',   label:'PIO0/1',color:'pio'  },
+    { key:'usb',   label:'USB',   color:'usb'  },
+  ],
+  stm32: [
+    { key:'uart1', label:'USART1', color:'uart' },
+    { key:'uart3', label:'USART3', color:'uart' },
+    { key:'spi1',  label:'SPI1',   color:'spi'  },
+    { key:'spi2',  label:'SPI2',   color:'spi'  },
+    { key:'spi3',  label:'SPI3',   color:'spi'  },
+    { key:'i2c1',  label:'I2C1',   color:'i2c'  },
+    { key:'i2c2',  label:'I2C2',   color:'i2c'  },
+    { key:'i2c3',  label:'I2C3',   color:'i2c'  },
+    { key:'adc',   label:'ADC',    color:'adc'  },
+    { key:'can',   label:'FDCAN',  color:'can'  },
+    { key:'usb',   label:'USB',    color:'usb'  },
+  ],
+  esp32: [
+    { key:'uart0', label:'UART0',  color:'uart' },
+    { key:'uart1', label:'UART1',  color:'uart' },
+    { key:'uart2', label:'UART2',  color:'uart' },
+    { key:'spi0',  label:'SPI2 (user)', color:'spi' },
+    { key:'spi1',  label:'SPI3 (user)', color:'spi' },
+    { key:'i2c0',  label:'I2C0',   color:'i2c'  },
+    { key:'i2c1',  label:'I2C1',   color:'i2c'  },
+    { key:'adc',   label:'ADC1',   color:'adc'  },
+    { key:'can',   label:'TWAI/CAN', color:'can' },
+    { key:'usb',   label:'USB',    color:'usb'  },
+  ],
+  teensy: [
+    { key:'uart1', label:'Serial1', color:'uart' },
+    { key:'uart2', label:'Serial2', color:'uart' },
+    { key:'uart3', label:'Serial3', color:'uart' },
+    { key:'uart4', label:'Serial4', color:'uart' },
+    { key:'uart5', label:'Serial5', color:'uart' },
+    { key:'uart6', label:'Serial6', color:'uart' },
+    { key:'uart7', label:'Serial7', color:'uart' },
+    { key:'spi0',  label:'SPI0',    color:'spi'  },
+    { key:'i2c0',  label:'Wire',    color:'i2c'  },
+    { key:'i2c1',  label:'Wire1',   color:'i2c'  },
+    { key:'adc',   label:'ADC',     color:'adc'  },
+    { key:'can',   label:'FlexCAN', color:'can'  },
+    { key:'pwm',   label:'PWM',     color:'pwm'  },
+  ],
+};
+
+const PIN_DATA = { pico:PICO, stm32:STM32, esp32:ESP32, teensy:TEENSY };
+
+/* =================================================================== */
+/* STATE                                                                */
+/* =================================================================== */
+const STATE = { pico:new Set(), stm32:new Set(), esp32:new Set(), teensy:new Set() };
+
+/* =================================================================== */
+/* RENDER PERIPHERAL CHECKBOXES                                         */
+/* =================================================================== */
+function renderPeripherals(mcu) {
+  const host = document.getElementById('periphs-' + mcu);
+  host.innerHTML = '';
+  PERIPH_DEFS[mcu].forEach(p => {
+    const lbl = document.createElement('label');
+    lbl.className = 'periph';
+    lbl.dataset.key = p.key;
+    lbl.innerHTML = `<input type="checkbox" data-mcu="${mcu}" data-periph="${p.key}">
+                     <span class="swatch-sq" style="background:${FNCOLOR[p.color]}"></span>${p.label}`;
+    host.appendChild(lbl);
+    lbl.querySelector('input').addEventListener('change', e => {
+      const set = STATE[mcu];
+      if (e.target.checked) { set.add(p.key); lbl.classList.add('on'); }
+      else { set.delete(p.key); lbl.classList.remove('on'); }
+      renderChip(mcu);
+      renderSchematic(mcu);
+    });
+  });
+}
+
+/* =================================================================== */
+/* RENDER CHIP SVG                                                      */
+/* Layouts:                                                             */
+/*  - pico: 40-pin DIP, 20 per side                                     */
+/*  - stm32: 64-pin LQFP, 16 per side                                   */
+/*  - esp32: 38-pin DevKitC, 19 per side                                */
+/*  - teensy: 48 pins, 24 per side                                      */
+/* =================================================================== */
+
+function renderChip(mcu) {
+  const svg = document.getElementById('svg-' + mcu);
+  const pins = PIN_DATA[mcu];
+  const active = STATE[mcu];
+
+  svg.innerHTML = ''; // wipe
+
+  if (mcu === 'pico')   return renderDIP(svg, pins, active, 'Pico 2 W', 'RP2350 + CYW43439');
+  if (mcu === 'esp32')  return renderDIP(svg, pins, active, 'ESP32-S3 DevKitC', '38-pin module', { tall:true });
+  if (mcu === 'teensy') return renderDIP(svg, pins, active, 'Teensy 4.1', 'i.MX RT1062 @ 600 MHz', { tall:true });
+  if (mcu === 'stm32')  return renderQFP(svg, pins, active, 'STM32G474', 'LQFP-64');
+}
+
+/* Generic DIP (board-style) renderer */
+function renderDIP(svg, pins, active, label, sublabel, opts={}) {
+  const total = pins.length;
+  const perSide = Math.ceil(total / 2);
+  const left  = pins.slice(0, perSide);
+  const right = pins.slice(perSide); // reversed order so pin 21 is across from pin 20 etc.
+
+  // Layout numbers
+  const pinH = 26;          // vertical pitch
+  const padW = 200;         // pad / label width
+  const bodyW = 240;
+  const totalH = perSide * pinH + 100;
+  const totalW = padW * 2 + bodyW;
+
+  svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
+
+  // Chip body
+  const bodyX = padW;
+  const bodyY = 60;
+  const bodyH = perSide * pinH;
+  const body = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  body.setAttribute('class','chip-body');
+  body.setAttribute('x', bodyX);
+  body.setAttribute('y', bodyY);
+  body.setAttribute('width', bodyW);
+  body.setAttribute('height', bodyH);
+  body.setAttribute('rx', 8);
+  svg.appendChild(body);
+
+  // Body labels
+  const cx = bodyX + bodyW/2;
+  const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+  txt.setAttribute('class','chip-label');
+  txt.setAttribute('x', cx);
+  txt.setAttribute('y', bodyY + bodyH/2 - 4);
+  txt.textContent = label;
+  svg.appendChild(txt);
+
+  const subTxt = document.createElementNS('http://www.w3.org/2000/svg','text');
+  subTxt.setAttribute('class','chip-sublabel');
+  subTxt.setAttribute('x', cx);
+  subTxt.setAttribute('y', bodyY + bodyH/2 + 14);
+  subTxt.textContent = sublabel;
+  svg.appendChild(subTxt);
+
+  // Notch
+  const notch = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  notch.setAttribute('cx', cx);
+  notch.setAttribute('cy', bodyY + 14);
+  notch.setAttribute('r', 6);
+  notch.setAttribute('fill', '#0e1116');
+  notch.setAttribute('stroke', '#3a4453');
+  svg.appendChild(notch);
+
+  // Draw left pins (top to bottom)
+  left.forEach((pin, i) => {
+    const y = bodyY + i * pinH + 13;
+    drawPin(svg, pin, active, padW - 4, y, 'left');
+  });
+  // Draw right pins (top to bottom — reverse the array so highest pin number ends up at bottom-left of right column)
+  right.slice().reverse().forEach((pin, i) => {
+    // Actually convention on a DIP is to wrap counter-clockwise. We'll list right side bottom-to-top from start of right slice.
+    // Simpler: list right side in order, top-to-bottom (looks like a header strip on a module).
+    const y = bodyY + i * pinH + 13;
+    drawPin(svg, pin, active, bodyX + bodyW + 4, y, 'right');
+  });
+}
+
+function drawPin(svg, pin, active, x, y, side) {
+  const lit = pinIsActive(pin, active);
+  const grp = document.createElementNS('http://www.w3.org/2000/svg','g');
+  grp.setAttribute('class', 'pin-row ' + (active.size > 0 ? (lit ? 'hot' : 'dim') : ''));
+
+  // Pad (color block)
+  const padW = 18, padH = 18;
+  const padX = side === 'left' ? x - padW : x;
+  const pad = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  pad.setAttribute('class','pad');
+  pad.setAttribute('x', padX);
+  pad.setAttribute('y', y - padH/2);
+  pad.setAttribute('width', padW);
+  pad.setAttribute('height', padH);
+  pad.setAttribute('fill', FNCOLOR[pin.fn] || FNCOLOR.misc);
+  grp.appendChild(pad);
+
+  // Pin-number label
+  const pno = document.createElementNS('http://www.w3.org/2000/svg','text');
+  pno.setAttribute('class','pno');
+  pno.setAttribute('x', side === 'left' ? padX - 4 : padX + padW + 4);
+  pno.setAttribute('y', y + 3);
+  pno.setAttribute('text-anchor', side === 'left' ? 'end' : 'start');
+  pno.textContent = pin.n;
+  grp.appendChild(pno);
+
+  // Name label
+  const name = document.createElementNS('http://www.w3.org/2000/svg','text');
+  name.setAttribute('x', side === 'left' ? padX - 22 : padX + padW + 22);
+  name.setAttribute('y', y + 3);
+  name.setAttribute('text-anchor', side === 'left' ? 'end' : 'start');
+  name.textContent = pin.name;
+  grp.appendChild(name);
+
+  svg.appendChild(grp);
+}
+
+function pinIsActive(pin, activeSet) {
+  if (activeSet.size === 0) return true;
+  return pin.periphs.some(p => activeSet.has(p));
+}
+
+/* QFP renderer for STM32 */
+function renderQFP(svg, pins, active, label, sublabel) {
+  // pins are numbered 1..64. Conventional LQFP-64 with pin 1 at top-left going counter-clockwise.
+  // 16 per side.
+  const perSide = 16;
+  const left  = pins.slice(0, perSide);              // 1..16   (top side, left-to-right)
+  const bot   = pins.slice(perSide, perSide*2);      // 17..32  (left side, top-to-bottom)
+  const right = pins.slice(perSide*2, perSide*3);    // 33..48  (bottom side, left-to-right)
+  const top   = pins.slice(perSide*3, perSide*4);    // 49..64  (right side, top-to-bottom)
+
+  // Wait, that ordering is wrong; LQFP-64 datasheet ordering is: pin 1 starts at top-left corner,
+  // numbering counter-clockwise going down the left side first. Adjust:
+  const leftCol  = pins.slice(0, 16);     // 1..16  left side, top to bottom
+  const botRow   = pins.slice(16, 32);    // 17..32 bottom side, left to right
+  const rightCol = pins.slice(32, 48).slice().reverse(); // 33..48, bottom-to-top
+  const topRow   = pins.slice(48, 64).slice().reverse(); // 49..64, right-to-left
+
+  // Layout
+  const pitch = 26;
+  const bodyW = pitch * 16 + 20;
+  const bodyH = pitch * 16 + 20;
+  const margin = 100;
+  const totalW = bodyW + margin * 2;
+  const totalH = bodyH + margin * 2;
+  svg.setAttribute('viewBox', `0 0 ${totalW} ${totalH}`);
+
+  // Chip body
+  const bodyX = margin, bodyY = margin;
+  const body = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  body.setAttribute('class','chip-body');
+  body.setAttribute('x', bodyX);
+  body.setAttribute('y', bodyY);
+  body.setAttribute('width', bodyW);
+  body.setAttribute('height', bodyH);
+  body.setAttribute('rx', 6);
+  svg.appendChild(body);
+
+  // Pin-1 dot
+  const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  dot.setAttribute('cx', bodyX + 16);
+  dot.setAttribute('cy', bodyY + 16);
+  dot.setAttribute('r', 5);
+  dot.setAttribute('fill', 'var(--accent2)');
+  svg.appendChild(dot);
+
+  // Labels
+  const cx = bodyX + bodyW/2;
+  const cy = bodyY + bodyH/2;
+  const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+  txt.setAttribute('class','chip-label');
+  txt.setAttribute('x', cx);
+  txt.setAttribute('y', cy - 4);
+  txt.textContent = label;
+  svg.appendChild(txt);
+  const sub = document.createElementNS('http://www.w3.org/2000/svg','text');
+  sub.setAttribute('class','chip-sublabel');
+  sub.setAttribute('x', cx);
+  sub.setAttribute('y', cy + 14);
+  sub.textContent = sublabel;
+  svg.appendChild(sub);
+
+  // Draw side helper
+  const drawSide = (arr, side) => {
+    arr.forEach((pin, i) => {
+      let x, y;
+      if (side === 'left') { x = bodyX; y = bodyY + 14 + i * pitch; }
+      if (side === 'bottom') { x = bodyX + 14 + i * pitch; y = bodyY + bodyH; }
+      if (side === 'right') { x = bodyX + bodyW; y = bodyY + 14 + i * pitch; }
+      if (side === 'top') { x = bodyX + 14 + i * pitch; y = bodyY; }
+      drawQFPpin(svg, pin, active, x, y, side);
+    });
+  };
+  drawSide(leftCol, 'left');
+  drawSide(botRow, 'bottom');
+  drawSide(rightCol, 'right');
+  drawSide(topRow, 'top');
+}
+
+function drawQFPpin(svg, pin, active, x, y, side) {
+  const lit = pinIsActive(pin, active);
+  const grp = document.createElementNS('http://www.w3.org/2000/svg','g');
+  grp.setAttribute('class', 'pin-row ' + (active.size > 0 ? (lit ? 'hot' : 'dim') : ''));
+
+  // Pad: a small rect protruding from the body
+  const padLen = 10, padW = 16;
+  let px, py, pw, ph;
+  if (side === 'left')   { px = x - padLen; py = y - padW/2; pw = padLen; ph = padW; }
+  if (side === 'right')  { px = x;          py = y - padW/2; pw = padLen; ph = padW; }
+  if (side === 'top')    { px = x - padW/2; py = y - padLen; pw = padW;   ph = padLen; }
+  if (side === 'bottom') { px = x - padW/2; py = y;          pw = padW;   ph = padLen; }
+  const pad = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  pad.setAttribute('class','pad');
+  pad.setAttribute('x', px);
+  pad.setAttribute('y', py);
+  pad.setAttribute('width', pw);
+  pad.setAttribute('height', ph);
+  pad.setAttribute('fill', FNCOLOR[pin.fn] || FNCOLOR.misc);
+  grp.appendChild(pad);
+
+  // Pin number + label
+  const offset = 14;
+  const name = document.createElementNS('http://www.w3.org/2000/svg','text');
+  let tx, ty, anchor, rot = '';
+  if (side === 'left')   { tx = x - padLen - 4; ty = y + 3; anchor = 'end'; }
+  if (side === 'right')  { tx = x + padLen + 4; ty = y + 3; anchor = 'start'; }
+  if (side === 'top')    { tx = x; ty = y - padLen - 4; anchor = 'end'; rot = `rotate(-90 ${tx} ${ty})`; }
+  if (side === 'bottom') { tx = x; ty = y + padLen + 4; anchor = 'start'; rot = `rotate(-90 ${tx} ${ty})`; }
+  name.setAttribute('x', tx);
+  name.setAttribute('y', ty);
+  name.setAttribute('text-anchor', anchor);
+  if (rot) name.setAttribute('transform', rot);
+  name.textContent = `${pin.n} ${pin.name}`;
+  grp.appendChild(name);
+
+  svg.appendChild(grp);
+}
+
+/* =================================================================== */
+/* SCHEMATIC SKELETON RENDERER                                          */
+/* =================================================================== */
+
+const SCH_STUBS = {
+  uart: {
+    title: 'UART',
+    color: 'uart',
+    body: (mcu, periph) => `
+      <p><b>${periph.toUpperCase()}</b> wiring (TTL serial, 3.3 V):</p>
+      <p><span class="pin">MCU TX</span> → peripheral RX (cross over!)<br>
+         <span class="pin">MCU RX</span> ← peripheral TX<br>
+         GND ↔ GND (essential — UART is single-ended)</p>
+      <p><b>If the peripheral is 5 V</b> (e.g., legacy GPS, MAX232, classic Arduino Mega):
+         MCU TX → peripheral RX usually OK (5 V chip reads 3.3 V as HIGH).
+         Peripheral TX → MCU RX needs a 1 kΩ + 2 kΩ divider (5 V → ~3.3 V), or
+         a 74LVC1G17 buffer, or full bidirectional: <code>TXS0108E</code>.</p>
+      <p><b>RS-232 levels</b> (±12 V): drop in a <code>MAX3232</code> with 4× 100 nF charge-pump caps.<br>
+         <b>RS-485</b>: <code>MAX3485</code> or <code>SN65HVD12</code> + 120 Ω termination at each bus end.</p>
+    `,
+  },
+  spi: {
+    title: 'SPI',
+    color: 'spi',
+    body: (mcu, periph) => `
+      <p><b>${periph.toUpperCase()}</b> wiring (4-wire, MCU = master):</p>
+      <p><span class="pin">SCK</span> → peripheral SCK (clock, master output)<br>
+         <span class="pin">MOSI</span> → peripheral DI / SDI (data out)<br>
+         <span class="pin">MISO</span> ← peripheral DO / SDO (data in)<br>
+         <span class="pin">CS / SS</span> → peripheral CS (active low; one per slave)</p>
+      <p><b>CS pull-up (10 kΩ to VDD)</b> on every slave's CS line — keeps the slave deselected
+         while the MCU boots (GPIO is high-Z at reset).</p>
+      <p>SPI modes: pick CPOL/CPHA based on the slave datasheet.
+         <code>Mode 0 (0,0)</code> is the default for most sensors and SD cards.</p>
+      <p><b>For long traces or many slaves</b>: 22 Ω series on SCK to dampen reflections;
+         consider RC snubber if you see ringing on a scope.</p>
+    `,
+  },
+  i2c: {
+    title: 'I2C',
+    color: 'i2c',
+    body: (mcu, periph) => `
+      <p><b>${periph.toUpperCase()}</b> wiring (2-wire, open-drain):</p>
+      <p><span class="pin">SDA</span> ↔ peripheral SDA (data, bidirectional)<br>
+         <span class="pin">SCL</span> → peripheral SCL (clock; usually master-driven)<br>
+         GND ↔ GND</p>
+      <div class="calc" id="i2c-calc-${mcu}">
+        <label>Vdd (V)<input type="number" step="0.1" value="3.3" data-i="vdd"></label>
+        <label>Bus speed (kHz)<input type="number" step="100" value="400" data-i="speed"></label>
+        <label>C_bus (pF, total)<input type="number" step="10" value="80" data-i="cbus"></label>
+        <span class="out" data-o="rp"></span>
+      </div>
+      <p><b>Rp(min)</b> = (Vdd − 0.4) / 3 mA — sink current limit.<br>
+         <b>Rp(max)</b> = t_rise / (0.8473 × C_bus) — keeps rise within spec.</p>
+      <p>Typical: <code>4.7 kΩ @ 100 kHz</code>, <code>2.2 kΩ @ 400 kHz</code>, <code>1 kΩ @ 1 MHz Fm+</code>.
+         One pair of pull-ups <i>per bus</i>, not per device.</p>
+      <p><b>5 V devices</b>: use a bidirectional level shifter like <code>BSS138 + 10 k</code>
+         per line, or the <code>PCA9306</code> chip.</p>
+    `,
+  },
+  can: {
+    title: 'CAN bus',
+    color: 'can',
+    body: (mcu, periph) => `
+      <p><b>CAN</b> requires an external transceiver — the MCU only has the controller (CAN_TX, CAN_RX).</p>
+      <p><span class="pin">MCU CAN_TX</span> → transceiver TXD<br>
+         <span class="pin">MCU CAN_RX</span> ← transceiver RXD<br>
+         Transceiver CAN_H / CAN_L → twisted-pair bus</p>
+      <p><b>Transceiver picks</b>:</p>
+      <ul>
+        <li><code>SN65HVD230</code> — 3.3 V supply, CAN 2.0 (1 Mbps), classic and cheap.</li>
+        <li><code>TJA1042</code> — 5 V (with VIO 3.3 V), CAN-FD up to 5 Mbps.</li>
+        <li><code>MCP2562FD</code> — 5 V, CAN-FD, VIO pin for 3.3 V logic side.</li>
+      </ul>
+      <p><b>Termination</b>: 120 Ω resistors at BOTH ENDS of the bus (between CAN_H and CAN_L).
+         A node in the middle does <i>not</i> get a termination — that creates stubs and reflections.</p>
+      <p><b>Common-mode choke</b> (744232xx series) right before the connector helps EMI/immunity in cars.</p>
+    `,
+  },
+  usb: {
+    title: 'USB',
+    color: 'usb',
+    body: (mcu, periph) => `
+      <p><b>USB</b> wiring:</p>
+      <p><span class="pin">D+</span> ↔ USB connector D+ (white wire in legacy USB-A)<br>
+         <span class="pin">D−</span> ↔ USB connector D− (green)<br>
+         VBUS → 5 V supply input (the host provides this on a device)<br>
+         GND ↔ GND</p>
+      <p><b>Series resistors</b> on D+/D−:</p>
+      <ul>
+        <li>USB <b>Full-Speed</b> (12 Mbps): 22–33 Ω in series on each line for impedance matching
+            (target 90 Ω differential).</li>
+        <li>USB <b>High-Speed</b> (480 Mbps): no external series Rs — the PHY has them; just route
+            as a 90 Ω differential pair (kept length-matched, &lt; 5 cm if possible).</li>
+      </ul>
+      <p><b>ESD protection</b>: <code>USBLC6-2SC6</code> dual TVS pair across D+ and D− to GND.
+         Mandatory on any production board; recommended on prototypes.</p>
+      <p><b>Pull-up</b> on D+ (FS) or D− (LS) selects speed — this is INSIDE the MCU's USB PHY
+         and enabled by software. No external pull-up needed for modern parts.</p>
+    `,
+  },
+  adc: {
+    title: 'ADC',
+    color: 'adc',
+    body: (mcu, periph) => `
+      <p><b>ADC</b> wiring (single-ended):</p>
+      <p><span class="pin">ADCx</span> → sensor output<br>
+         Sensor reference / supply ↔ MCU VDDA (ratiometric — if both drift together, the ADC reading stays valid)<br>
+         GND ↔ AGND</p>
+      <p><b>Anti-aliasing RC</b>: source impedance &lt; 10 kΩ for fast SAR ADCs (Pico, ESP32);
+         add 1 kΩ + 100 nF if source is high-impedance (potentiometer wiper, photoresistor divider).</p>
+      <p><b>Reference</b>:
+        ${mcu === 'pico' ? '<code>ADC_VREF</code> pin (Pico 2 W pin 35). Default = 3.3 V system rail.' :
+          mcu === 'stm32' ? '<code>VREF+</code> defaults to VDDA. For precision, drive with a buffered <code>REF3030</code>.' :
+          mcu === 'esp32' ? 'Internal 1.1 V Vref with attenuation; can route to a GPIO for calibration.' :
+          'Internal 1.2 V or VDDA selectable in code; <code>analogReference()</code> in Teensyduino.'}</p>
+      <p><b>Multiple analog inputs</b>: prefer one local 100 nF + 100 Ω per channel; star-ground all AGND
+         returns at a single point near VDDA's bypass cap.</p>
+    `,
+  },
+  pio: {
+    title: 'PIO (RP2350 only)',
+    color: 'pio',
+    body: () => `
+      <p><b>PIO</b> = Programmable I/O. The RP2350 has <b>3 PIO blocks × 4 state machines = 12 SMs</b>,
+         each running a tiny custom assembly program. Use it when:</p>
+      <ul>
+        <li>You need bit-banged WS2812 / NeoPixel without burning a core.</li>
+        <li>You need a non-standard protocol (e.g., DCC for model trains, manchester encoding).</li>
+        <li>You need ultra-precise timing (1-cycle resolution at 150 MHz = ~6.7 ns).</li>
+      </ul>
+      <p>PIO can <i>route to any GPIO</i> — no fixed pinout. Just pick contiguous pins in your
+         state-machine config. Zero external schematic: it's all about software.</p>
+    `,
+  },
+  pwm: {
+    title: 'PWM',
+    color: 'pwm',
+    body: (mcu) => `
+      <p><b>PWM</b> output:</p>
+      <p><span class="pin">PWM pin</span> → gate driver / LED resistor / motor MOSFET gate</p>
+      <p><b>For LEDs (low side)</b>: PWM → 220 Ω → LED → GND. Or PWM → MOSFET gate → LED string.</p>
+      <p><b>For motors</b>: never drive the motor coil from the MCU pin directly — current ratings are
+         tiny (~12 mA max sourcing). Use a half-bridge driver (<code>DRV8871</code>, <code>L298N</code>)
+         or a full H-bridge for direction control.</p>
+      <p><b>Filter for audio / DAC</b>: PWM → 1 kΩ → 100 nF → output. Cutoff = 1/(2π·R·C) ≈ 1.6 kHz.
+         Push the PWM frequency to &gt; 20× cutoff for clean audio.</p>
+      ${mcu === 'stm32' ? '<p><b>HRTIM</b> on STM32G474 gives 184 ps resolution — use it for resonant SMPS or precise motor commutation.</p>' : ''}
+      ${mcu === 'teensy' ? '<p><b>FlexPWM</b> on Teensy 4.1: 18 channels, hardware deadtime + complementary outputs for H-bridges.</p>' : ''}
+    `,
+  },
+};
+
+/* Render the schematic skeleton card list for the current MCU + selected peripherals */
+function renderSchematic(mcu) {
+  const host = document.getElementById('sch-' + mcu);
+  const active = STATE[mcu];
+  host.innerHTML = '';
+
+  // Always add a wrapping container
+  const sch = document.createElement('div');
+  sch.className = 'schematic';
+  const h3 = document.createElement('h3');
+  h3.textContent = 'Schematic skeleton';
+  sch.appendChild(h3);
+
+  if (active.size === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'stub empty';
+    empty.textContent = 'Check peripherals above to generate wiring stubs.';
+    sch.appendChild(empty);
+    host.appendChild(sch);
+    return;
+  }
+
+  // Group: map each peripheral key to its stub family
+  const families = new Set();
+  active.forEach(key => {
+    if (key.startsWith('uart')) families.add('uart');
+    else if (key.startsWith('spi')) families.add('spi');
+    else if (key.startsWith('i2c')) families.add('i2c');
+    else families.add(key);
+  });
+
+  families.forEach(fam => {
+    if (!SCH_STUBS[fam]) return;
+    const stub = document.createElement('div');
+    stub.className = 'stub';
+    const periph = [...active].find(k => fam === 'uart' ? k.startsWith('uart')
+                                       : fam === 'spi'  ? k.startsWith('spi')
+                                       : fam === 'i2c'  ? k.startsWith('i2c')
+                                       : k === fam) || fam;
+    const t = document.createElement('p');
+    t.innerHTML = `<b>${SCH_STUBS[fam].title}</b>`;
+    stub.appendChild(t);
+    const body = document.createElement('div');
+    body.innerHTML = SCH_STUBS[fam].body(mcu, periph);
+    stub.appendChild(body);
+    sch.appendChild(stub);
+  });
+
+  host.appendChild(sch);
+
+  // Wire up the I2C calculator if rendered
+  const calc = document.getElementById('i2c-calc-' + mcu);
+  if (calc) {
+    const update = () => {
+      const vdd   = parseFloat(calc.querySelector('[data-i="vdd"]').value);
+      const speed = parseFloat(calc.querySelector('[data-i="speed"]').value); // kHz
+      const cbus  = parseFloat(calc.querySelector('[data-i="cbus"]').value);  // pF
+      const out   = calc.querySelector('[data-o="rp"]');
+      if (![vdd,speed,cbus].every(isFinite) || vdd <=0 || speed <=0 || cbus <=0) {
+        out.textContent = '—';
+        return;
+      }
+      const rpMin = (vdd - 0.4) / 3e-3;                       // Ω
+      // t_rise spec: 1000 ns @ 100 kHz, 300 ns @ 400 kHz, 120 ns @ 1 MHz, 50 ns @ Fm+
+      const tRise = speed <= 100 ? 1000e-9
+                  : speed <= 400 ? 300e-9
+                  : speed <= 1000 ? 120e-9
+                  : 50e-9;
+      const rpMax = tRise / (0.8473 * cbus * 1e-12);          // Ω
+      const fmt = r => r >= 1e6 ? (r/1e6).toFixed(1)+' MΩ'
+                     : r >= 1e3 ? (r/1e3).toFixed(2)+' kΩ'
+                     : r.toFixed(0)+' Ω';
+      out.textContent = `Rp(min)=${fmt(rpMin)}, Rp(max)=${fmt(rpMax)}`;
+    };
+    calc.querySelectorAll('input').forEach(i => i.addEventListener('input', update));
+    update();
+  }
+}
+
+/* =================================================================== */
+/* TAB SWITCHING                                                        */
+/* =================================================================== */
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.pane').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('pane-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+/* =================================================================== */
+/* INITIAL RENDER                                                       */
+/* =================================================================== */
+['pico','stm32','esp32','teensy'].forEach(mcu => {
+  renderPeripherals(mcu);
+  renderChip(mcu);
+  renderSchematic(mcu);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Filter Designer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:1040px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 22px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:14px;
+    padding:5px 12px;font:12px ui-monospace,Menlo,monospace;color:var(--accent);
+    text-decoration:none;display:inline-block}
+  .anchor:hover{background:var(--line);color:var(--fg-bright)}
+  .anchor b{color:var(--accent2)}
+
+  .tabs{display:flex;gap:2px;margin:14px 0 0;overflow-x:auto;flex-wrap:wrap}
+  .tab{background:var(--bg-elev2);color:var(--fg-dim);border:1px solid var(--line);
+    border-bottom:none;padding:8px 14px;cursor:pointer;font:13px ui-monospace,monospace;
+    border-radius:6px 6px 0 0;white-space:nowrap}
+  .tab:hover{color:var(--fg)}
+  .tab.active{background:var(--bg-elev);color:var(--fg-bright);
+    border-color:var(--line) var(--line) var(--bg-elev)}
+  .pane{display:none;background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:0 8px 8px 8px;padding:16px;margin-top:-1px}
+  .pane.active{display:block}
+
+  .controls{background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:10px 0 14px;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:5px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+
+  .figure{background:var(--bg);border:1px solid var(--line);
+    border-radius:8px;padding:14px;margin:14px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;
+    color:var(--fg-dim);margin-top:8px;font-family:ui-monospace,monospace}
+  .legend .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:6px;border-radius:2px}
+
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid-line{stroke:var(--grid);stroke-width:1}
+  .grid-line.major{stroke:#2c3340;stroke-width:1}
+  .trace{fill:none;stroke-width:2}
+  .trace-1{stroke:var(--accent)}
+  .trace-2{stroke:var(--accent2)}
+  .trace-3{stroke:var(--accent3)}
+  .trace-4{stroke:var(--warn)}
+  .marker{fill:var(--accent3)}
+  .marker-line{stroke:var(--accent3);stroke-width:1;stroke-dasharray:3 3}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+
+  .picks{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:10px 0;font:13px ui-monospace,monospace}
+  .picks b{color:var(--accent2)}
+  .picks .row{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin-top:4px}
+  .picks .row span:first-child{color:var(--fg-bright)}
+
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+
+  .twocol{display:grid;gap:14px;grid-template-columns:1.1fr 1fr}
+  @media (max-width:760px){.twocol{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Filter Designer</h1>
+  <p class="lede">Seven tabs covering the working life of analog filters: pick R + C for first-order RC, hit a target Q + f<sub>0</sub> with passive RLC, design Sallen-Key and Multiple-Feedback active sections, cascade them for higher order Butterworth / Bessel / Chebyshev, watch the Bode plot update live, and preview the digital biquad you'd ship in firmware. E12 picking is always live so the values are real.</p>
+
+  <div class="anchors">
+    <a class="anchor" href="#tab-rc">RC fc = 1/(2π·R·C); 1 kHz with 10 kΩ → <b>16 nF</b></a>
+    <a class="anchor" href="#tab-rlc">RLC f<sub>0</sub> = 1/(2π·√(LC)); Q = (1/R)·√(L/C)</a>
+    <a class="anchor" href="#tab-sk">Sallen-Key: equal-R, equal-C, gain = <b>3 − 1/Q</b></a>
+    <a class="anchor" href="#tab-mfb">MFB: inverting, lower component sensitivity</a>
+    <a class="anchor" href="#tab-cascade">4th-order Butterworth → Q = <b>0.541</b> + <b>1.307</b></a>
+    <a class="anchor" href="#tab-iir">Bilinear: s ← (2/T)·(z−1)/(z+1)</a>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="rc">1. RC LP/HP</button>
+    <button class="tab" data-tab="rlc">2. RLC Bandpass</button>
+    <button class="tab" data-tab="sk">3. Sallen-Key</button>
+    <button class="tab" data-tab="mfb">4. MFB</button>
+    <button class="tab" data-tab="cascade">5. Cascade N-pole</button>
+    <button class="tab" data-tab="bode">6. Bode Compare</button>
+    <button class="tab" data-tab="iir">7. Digital IIR</button>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- TAB 1: RC LP / HP -->
+  <!-- ============================================================ -->
+  <section class="pane active" id="tab-rc">
+    <h2>First-order passive RC</h2>
+    <p>One R, one C, one corner frequency. The whole story is f<sub>c</sub> = 1 / (2π·R·C). The slider sets the target; we pick the closest E12 R / E12 C and report the realized f<sub>c</sub> plus the error.</p>
+
+    <section class="controls">
+      <div class="control"><label>Type: <span class="readout" id="rc-typeRead">low-pass</span></label>
+        <select id="rc-type"><option value="lp">Low-pass (R series, C shunt)</option><option value="hp">High-pass (C series, R shunt)</option></select>
+      </div>
+      <div class="control"><label>Target f<sub>c</sub>: <span class="readout" id="rc-fcRead">1.000 kHz</span></label>
+        <input id="rc-fc" type="range" min="1" max="6" step="0.02" value="3"></div>
+      <div class="control"><label>Preferred R: <span class="readout" id="rc-rRead">10 kΩ</span></label>
+        <select id="rc-rpref">
+          <option value="0">Auto (algorithm picks)</option>
+          <option value="1000">1 kΩ</option><option value="4700">4.7 kΩ</option>
+          <option value="10000" selected>10 kΩ</option><option value="22000">22 kΩ</option>
+          <option value="47000">47 kΩ</option><option value="100000">100 kΩ</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="picks" id="rc-picks"></div>
+
+    <div class="figure">
+      <svg id="rc-bode" viewBox="0 0 880 360"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>|H(jω)| (dB)</span>
+        <span><span class="swatch" style="background:var(--accent2)"></span>∠H(jω) (degrees)</span>
+        <span><span class="swatch" style="background:var(--accent3)"></span>realized f<sub>c</sub> (−3 dB)</span>
+      </div>
+    </div>
+
+    <h3>How the formula falls out</h3>
+    <div class="deriv">
+      <span class="step">1. Cap impedance: <b>Z_C = 1 / (jωC)</b></span>
+      <span class="step">2. Low-pass (R series, C shunt) is a voltage divider with Z_C and R: <b>H = Z_C / (R + Z_C)</b></span>
+      <span class="step">3. Substitute and clean up: <span class="arrow">→</span> <b>H(jω) = 1 / (1 + jωRC)</b></span>
+      <span class="step">4. Magnitude is <b>|H| = 1 / √(1 + (ωRC)²)</b>; the −3 dB point is where ωRC = 1: <span class="arrow">→</span> <b>f<sub>c</sub> = 1 / (2π·R·C)</b></span>
+      <span class="step">5. Phase: <b>∠H = −arctan(ωRC)</b>. At f<sub>c</sub>, phase = −45°. At 10·f<sub>c</sub>, phase ≈ −84°.</span>
+    </div>
+
+    <h3>Rolloff</h3>
+    <p>−20 dB / decade past f<sub>c</sub>. That's "first order." Doubling frequency drops gain 6 dB. To go faster you need more poles — Sallen-Key, MFB, or a cascade. Stay in the RC tab if all you need is anti-aliasing for a slow ADC sampling 10× faster than your signal of interest.</p>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TAB 2: RLC bandpass -->
+  <!-- ============================================================ -->
+  <section class="pane" id="tab-rlc">
+    <h2>Passive RLC bandpass</h2>
+    <p>L and C set f<sub>0</sub>; R sets the damping. The series-RLC bandpass takes the voltage across R as the output; high Q means a sharp peak, low Q means a gentle dome. Critical damping (Q = 0.5) is the edge between "no peaking" and "peaks above unity."</p>
+
+    <section class="controls">
+      <div class="control"><label>Target f<sub>0</sub>: <span class="readout" id="rlc-f0Read">10.0 kHz</span></label>
+        <input id="rlc-f0" type="range" min="2" max="6" step="0.02" value="4"></div>
+      <div class="control"><label>Target Q: <span class="readout" id="rlc-qRead">2.00</span></label>
+        <input id="rlc-q" type="range" min="0.1" max="20" step="0.1" value="2"></div>
+      <div class="control"><label>Preferred L: <span class="readout" id="rlc-lRead">100 µH</span></label>
+        <select id="rlc-lpref">
+          <option value="0">Auto</option>
+          <option value="0.0000022">2.2 µH</option><option value="0.000010">10 µH</option>
+          <option value="0.0000470">47 µH</option><option value="0.000100" selected>100 µH</option>
+          <option value="0.000470">470 µH</option><option value="0.001000">1 mH</option>
+          <option value="0.004700">4.7 mH</option><option value="0.010">10 mH</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="picks" id="rlc-picks"></div>
+
+    <div class="figure">
+      <svg id="rlc-bode" viewBox="0 0 880 360"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>|H(jω)| (dB)</span>
+        <span><span class="swatch" style="background:var(--accent2)"></span>∠H(jω) (degrees)</span>
+        <span><span class="swatch" style="background:var(--accent3)"></span>realized f<sub>0</sub></span>
+      </div>
+    </div>
+
+    <h3>What Q is, geometrically</h3>
+    <p>Q is the ratio of f<sub>0</sub> to the −3 dB bandwidth. Q = 10 means the −3 dB bandwidth is 10 % of f<sub>0</sub>. Q is also (1/R)·√(L/C) — change any one of those and you change selectivity. To pick a real circuit: choose Q (selectivity), then f<sub>0</sub>, then commit to an inductor value you can actually buy.</p>
+
+    <div class="deriv">
+      <span class="step">f<sub>0</sub> = 1 / (2π·√(LC)) <span class="arrow">→</span> C = 1 / ((2π·f<sub>0</sub>)²·L)</span>
+      <span class="step">Q = (1/R)·√(L/C) <span class="arrow">→</span> R = √(L/C) / Q = 2π·f<sub>0</sub>·L / Q</span>
+      <span class="step">Critical Q (no peak above unity in 2nd-order LP form): <b>Q ≤ 0.5</b></span>
+      <span class="step">"Maximally flat" (Butterworth) Q: <b>Q = 1/√2 ≈ 0.707</b></span>
+      <span class="step">Bandwidth: <b>Δf = f<sub>0</sub> / Q</b></span>
+    </div>
+
+    <h3>Real inductors are not ideal</h3>
+    <p>Air-core / chip inductors have parasitic DCR (series resistance) that floors Q. A 100 µH chip inductor with 0.8 Ω DCR at 10 kHz has X<sub>L</sub> = 6.28 Ω, so the inductor alone gives Q<sub>L</sub> ≈ 7.85 before you add anything. You can't get Q = 20 out of it. Above ~10 MHz, switch to LC tank with parallel mode, or move to an active filter where the L is gone entirely.</p>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TAB 3: Sallen-Key -->
+  <!-- ============================================================ -->
+  <section class="pane" id="tab-sk">
+    <h2>Sallen-Key (2nd-order active)</h2>
+    <p>Op-amp configured as a non-inverting buffer with a positive-feedback path through two RCs. No inductor needed — the op-amp synthesizes the second pole. Easy to design with equal R / equal C (set Q purely with the gain) or unity-gain (set Q purely with the R/C ratio).</p>
+
+    <section class="controls">
+      <div class="control"><label>Type: <span class="readout" id="sk-typeRead">low-pass</span></label>
+        <select id="sk-type"><option value="lp">Low-pass</option><option value="hp">High-pass</option></select>
+      </div>
+      <div class="control"><label>Target f<sub>c</sub>: <span class="readout" id="sk-fcRead">1.000 kHz</span></label>
+        <input id="sk-fc" type="range" min="1" max="6" step="0.02" value="3"></div>
+      <div class="control"><label>Target Q: <span class="readout" id="sk-qRead">0.707</span></label>
+        <input id="sk-q" type="range" min="0.5" max="10" step="0.01" value="0.707"></div>
+      <div class="control"><label>Topology: <span class="readout" id="sk-topoRead">equal-R, equal-C</span></label>
+        <select id="sk-topo">
+          <option value="erc">Equal-R, equal-C (gain sets Q)</option>
+          <option value="unity">Unity-gain (R/C ratio sets Q)</option>
+        </select>
+      </div>
+      <div class="control"><label>Preferred C: <span class="readout" id="sk-cRead">10 nF</span></label>
+        <select id="sk-cpref">
+          <option value="0.0000000001">100 pF</option><option value="0.000000001">1 nF</option>
+          <option value="0.00000001" selected>10 nF</option><option value="0.0000001">100 nF</option>
+          <option value="0.000001">1 µF</option>
+        </select>
+      </div>
+      <div class="control"><label>Response family</label>
+        <select id="sk-family">
+          <option value="custom">Custom Q</option>
+          <option value="butterworth">Butterworth (Q = 0.707)</option>
+          <option value="bessel">Bessel (Q = 0.577)</option>
+          <option value="cheby1">Chebyshev 1 dB (Q = 0.957)</option>
+          <option value="cheby3">Chebyshev 3 dB (Q = 1.30)</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="picks" id="sk-picks"></div>
+
+    <div class="figure">
+      <svg id="sk-schem" viewBox="0 0 560 220"></svg>
+    </div>
+
+    <div class="figure">
+      <svg id="sk-bode" viewBox="0 0 880 360"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>|H| (dB)</span>
+        <span><span class="swatch" style="background:var(--accent2)"></span>∠H (deg)</span>
+        <span><span class="swatch" style="background:var(--accent3)"></span>f<sub>c</sub> (−3 dB at Q = 0.707)</span>
+      </div>
+    </div>
+
+    <h3>Equal-R, equal-C derivation (LP)</h3>
+    <div class="deriv">
+      <span class="step">Set R1 = R2 = R, C1 = C2 = C. Then <b>ω<sub>0</sub> = 1 / (RC)</b>, so <b>f<sub>c</sub> = 1 / (2π·RC)</b>.</span>
+      <span class="step">Q is set purely by the op-amp gain K = 1 + R<sub>b</sub>/R<sub>a</sub>: <b>Q = 1 / (3 − K)</b>.</span>
+      <span class="step">Invert: <b>K = 3 − 1/Q</b>. So Butterworth (Q = 0.707) needs K = 1.586; gain of ~1.59.</span>
+      <span class="step">Trade: high Q (Q ≥ 5) makes K approach 3, so the op-amp must be picked for closed-loop stability and low offset. Switch to MFB or to a unity-gain Sallen-Key with mismatched R/C if Q > ~10.</span>
+    </div>
+
+    <h3>Op-amp pick rules</h3>
+    <ul class="notice">
+      <li><b>GBW ≥ 100 · f<sub>c</sub></b> — open-loop rolloff at f<sub>c</sub> must be at least 40 dB above the closed-loop gain so the in-band response isn't shaped by the op-amp itself.</li>
+      <li><b>Slew rate ≥ 2π · f<sub>c</sub> · V<sub>peak</sub></b> — full-scale sinusoid at f<sub>c</sub> must not slew. A 5 V<sub>pk</sub> sine at 100 kHz needs &gt; 3.14 V/µs.</li>
+      <li><b>Input offset</b> — for DC-coupled designs (active LP feeding ADC), pick V<sub>os</sub> &lt; ½ LSB at your ADC resolution.</li>
+      <li><b>Stable single-supply candidates</b>: TLV9001 (1 MHz), OPA376 (5.5 MHz), OPA1655 (50 MHz audio). For higher-f<sub>c</sub> bands use ADA4807 or LM7171.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TAB 4: MFB -->
+  <!-- ============================================================ -->
+  <section class="pane" id="tab-mfb">
+    <h2>Multiple-Feedback (MFB) active filter</h2>
+    <p>Inverting op-amp topology with two feedback paths. Lower component sensitivity than Sallen-Key — a 1 % cap mismatch drifts Q by ~½ % instead of ~1 %. Inverts the signal (180° at DC). Preferred for sharp filters, especially Chebyshev sections.</p>
+
+    <section class="controls">
+      <div class="control"><label>Type: <span class="readout" id="mfb-typeRead">low-pass</span></label>
+        <select id="mfb-type">
+          <option value="lp">Low-pass (inverting)</option>
+          <option value="bp">Band-pass</option>
+        </select>
+      </div>
+      <div class="control"><label>Target f<sub>c</sub>: <span class="readout" id="mfb-fcRead">1.000 kHz</span></label>
+        <input id="mfb-fc" type="range" min="1" max="6" step="0.02" value="3"></div>
+      <div class="control"><label>Target Q: <span class="readout" id="mfb-qRead">0.707</span></label>
+        <input id="mfb-q" type="range" min="0.5" max="20" step="0.01" value="0.707"></div>
+      <div class="control"><label>Passband gain |A|: <span class="readout" id="mfb-aRead">1.0</span></label>
+        <input id="mfb-a" type="range" min="0.1" max="10" step="0.1" value="1"></div>
+      <div class="control"><label>Preferred C: <span class="readout" id="mfb-cRead">10 nF</span></label>
+        <select id="mfb-cpref">
+          <option value="0.000000001">1 nF</option><option value="0.00000001" selected>10 nF</option>
+          <option value="0.0000001">100 nF</option><option value="0.000001">1 µF</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="picks" id="mfb-picks"></div>
+
+    <div class="figure">
+      <svg id="mfb-schem" viewBox="0 0 560 220"></svg>
+    </div>
+
+    <div class="figure">
+      <svg id="mfb-bode" viewBox="0 0 880 360"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>|H| (dB)</span>
+        <span><span class="swatch" style="background:var(--accent2)"></span>∠H (deg)</span>
+        <span><span class="swatch" style="background:var(--accent3)"></span>f<sub>0</sub></span>
+      </div>
+    </div>
+
+    <h3>Why MFB beats Sallen-Key for high Q</h3>
+    <ul class="notice">
+      <li><b>Lower sensitivity</b> — Q sensitivity to capacitor mismatch is ½ for MFB vs. nearly 1 for Sallen-Key with equal-R/C. Real production filters with 5 % caps land where you designed them.</li>
+      <li><b>Op-amp loading is fixed</b> — output drives R2 alone, not a complex network feeding back to the +input. Easier to predict closed-loop stability.</li>
+      <li><b>Inverting</b> — a wash for AC; a problem for DC level shifts. Cascade two MFB sections to recover positive polarity if you need it.</li>
+      <li><b>Worse</b> at very low Q (Q &lt; 0.7) — components get awkward, no Q advantage. Use Sallen-Key for Q ≤ 1.</li>
+    </ul>
+
+    <div class="deriv">
+      <span class="step">LP MFB: choose C2, C1 = m·C2 (m ≥ 4·Q²·(1+A) to keep R values real)</span>
+      <span class="step">R2 = 1 / (2π·f<sub>c</sub>·√(m)·C2 / (2Q))  (roughly; full form in formula box)</span>
+      <span class="step">R1 = R2 / A, R3 = R2 / (m·(1+A) − 4·Q²·(1+A))</span>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TAB 5: Cascade -->
+  <!-- ============================================================ -->
+  <section class="pane" id="tab-cascade">
+    <h2>Cascading 2nd-order sections (Butterworth / Bessel / Chebyshev)</h2>
+    <p>Higher orders (4, 6, 8) come from chaining 2nd-order sections at the <em>same</em> f<sub>c</sub> but <em>different</em> Q values. The Q table below tells you what to chain. Each section is a Sallen-Key or MFB.</p>
+
+    <section class="controls">
+      <div class="control"><label>Family: <span class="readout" id="cas-famRead">Butterworth</span></label>
+        <select id="cas-fam">
+          <option value="butterworth" selected>Butterworth (maximally flat)</option>
+          <option value="bessel">Bessel (linear phase)</option>
+          <option value="cheby1">Chebyshev (1 dB ripple)</option>
+          <option value="cheby3">Chebyshev (3 dB ripple)</option>
+        </select>
+      </div>
+      <div class="control"><label>Order: <span class="readout" id="cas-nRead">4</span></label>
+        <select id="cas-n">
+          <option value="2">2 (one section)</option>
+          <option value="4" selected>4 (two sections)</option>
+          <option value="6">6 (three sections)</option>
+          <option value="8">8 (four sections)</option>
+        </select>
+      </div>
+      <div class="control"><label>Target f<sub>c</sub>: <span class="readout" id="cas-fcRead">1.000 kHz</span></label>
+        <input id="cas-fc" type="range" min="1" max="6" step="0.02" value="3"></div>
+    </section>
+
+    <h3>Q table for popular families</h3>
+    <table id="cas-table">
+      <thead><tr>
+        <th>Order</th>
+        <th>Butterworth</th>
+        <th>Bessel</th>
+        <th>Cheby 1 dB</th>
+        <th>Cheby 3 dB</th>
+      </tr></thead>
+      <tbody>
+        <tr><td>2</td>
+          <td>Q = 0.7071</td>
+          <td>Q = 0.5773</td>
+          <td>Q = 0.9565 (f<sub>n</sub> = 1.0500)</td>
+          <td>Q = 1.3050 (f<sub>n</sub> = 1.0000)</td></tr>
+        <tr><td>4</td>
+          <td>Q = 0.5412, 1.3066</td>
+          <td>Q = 0.5219, 0.8055</td>
+          <td>Q = 0.7845 (f<sub>n</sub> 0.5286), 3.5594 (f<sub>n</sub> 0.9931)</td>
+          <td>Q = 0.928 (f<sub>n</sub> 0.5193), 4.5664 (f<sub>n</sub> 0.9930)</td></tr>
+        <tr><td>6</td>
+          <td>Q = 0.5176, 0.7071, 1.9319</td>
+          <td>Q = 0.5103, 0.6112, 1.0234</td>
+          <td>Q = 0.761, 2.198, 8.005</td>
+          <td>Q = 0.852, 2.840, 10.461</td></tr>
+        <tr><td>8</td>
+          <td>Q = 0.5098, 0.6013, 0.9000, 2.5629</td>
+          <td>Q = 0.5060, 0.5596, 0.7109, 1.2257</td>
+          <td>Q = 0.753, 1.956, 4.266, 14.24</td>
+          <td>Q = 0.843, 2.453, 5.580, 18.69</td></tr>
+      </tbody>
+    </table>
+
+    <div class="picks" id="cas-picks"></div>
+
+    <div class="figure">
+      <svg id="cas-bode" viewBox="0 0 880 360"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>cascade response</span>
+        <span><span class="swatch" style="background:var(--accent2)"></span>individual sections</span>
+        <span><span class="swatch" style="background:var(--accent3)"></span>realized f<sub>c</sub></span>
+      </div>
+    </div>
+
+    <h3>Family pick rules</h3>
+    <ul class="notice">
+      <li><b>Butterworth</b> — flattest passband, monotonic. Default for ADC anti-aliasing when you don't care about phase.</li>
+      <li><b>Bessel</b> — flat group delay, no phase distortion. Default for square-wave, video, audio crossovers where overshoot must stay clean.</li>
+      <li><b>Chebyshev</b> — ripple in passband, sharpest rolloff at the corner. Default when you must hit a stopband attenuation spec in minimum order. Higher ripple = sharper. Group delay is terrible.</li>
+      <li><b>Elliptic / Cauer</b> (not pictured) — ripple in passband <em>and</em> stopband, sharpest possible. Requires more components per section; use when minimum order is mandatory.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TAB 6: Bode compare -->
+  <!-- ============================================================ -->
+  <section class="pane" id="tab-bode">
+    <h2>Bode plot — direct comparison</h2>
+    <p>All four families at the same f<sub>c</sub>, same order. The differences show up sharpest right around the corner. Switch the order to see how stopband attenuation grows linearly with N (in dB / decade).</p>
+
+    <section class="controls">
+      <div class="control"><label>Order: <span class="readout" id="bode-nRead">4</span></label>
+        <select id="bode-n">
+          <option value="2">2</option><option value="4" selected>4</option>
+          <option value="6">6</option><option value="8">8</option>
+        </select>
+      </div>
+      <div class="control"><label>Center f<sub>c</sub>: <span class="readout" id="bode-fcRead">1.000 kHz</span></label>
+        <input id="bode-fc" type="range" min="1" max="6" step="0.02" value="3"></div>
+    </section>
+
+    <div class="figure">
+      <svg id="bode-plot" viewBox="0 0 880 360"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>Butterworth</span>
+        <span><span class="swatch" style="background:var(--accent2)"></span>Bessel</span>
+        <span><span class="swatch" style="background:var(--accent3)"></span>Chebyshev 1 dB</span>
+        <span><span class="swatch" style="background:var(--warn)"></span>Chebyshev 3 dB</span>
+      </div>
+    </div>
+
+    <ul class="notice">
+      <li><b>Rolloff slope</b> = −20·N dB/decade past f<sub>c</sub> for any family. 4th order = −80 dB/decade. 8th order = −160 dB/decade.</li>
+      <li><b>Chebyshev ripple vs sharpness</b> — at the same order, 3 dB ripple is ~6 dB sharper at the corner than 1 dB ripple, which is ~12 dB sharper than Butterworth.</li>
+      <li><b>Bessel rolloff is gentler</b> at the corner than Butterworth, but it doesn't peak. Past ~2·f<sub>c</sub> it catches up.</li>
+    </ul>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- TAB 7: Digital IIR preview -->
+  <!-- ============================================================ -->
+  <section class="pane" id="tab-iir">
+    <h2>Analog → digital biquad (bilinear transform)</h2>
+    <p>Every analog 2nd-order section maps to a digital 2nd-order biquad. Bilinear transform substitutes <b>s ← (2/T)·(z − 1) / (z + 1)</b>, with prewarping at f<sub>c</sub> to keep the corner where you want it. Output: 5 coefficients (b₀, b₁, b₂, a₁, a₂) you drop into firmware.</p>
+
+    <section class="controls">
+      <div class="control"><label>Type</label>
+        <select id="iir-type"><option value="lp">Low-pass</option><option value="hp">High-pass</option><option value="bp">Band-pass</option></select>
+      </div>
+      <div class="control"><label>f<sub>c</sub>: <span class="readout" id="iir-fcRead">1.000 kHz</span></label>
+        <input id="iir-fc" type="range" min="1" max="5.5" step="0.02" value="3"></div>
+      <div class="control"><label>Q: <span class="readout" id="iir-qRead">0.707</span></label>
+        <input id="iir-q" type="range" min="0.5" max="10" step="0.01" value="0.707"></div>
+      <div class="control"><label>Sample rate f<sub>s</sub>: <span class="readout" id="iir-fsRead">48.0 kHz</span></label>
+        <select id="iir-fs"><option value="8000">8 kHz</option><option value="16000">16 kHz</option>
+          <option value="44100">44.1 kHz</option><option value="48000" selected>48 kHz</option>
+          <option value="96000">96 kHz</option><option value="192000">192 kHz</option></select>
+      </div>
+    </section>
+
+    <div class="picks" id="iir-picks"></div>
+
+    <div class="figure">
+      <svg id="iir-bode" viewBox="0 0 880 360"></svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent)"></span>analog prototype</span>
+        <span><span class="swatch" style="background:var(--accent2)"></span>digital biquad</span>
+        <span><span class="swatch" style="background:var(--warn)"></span>Nyquist (f<sub>s</sub>/2)</span>
+      </div>
+    </div>
+
+    <h3>The bilinear transform, in 60 seconds</h3>
+    <div class="deriv">
+      <span class="step">1. Start with analog H(s) of the section you want.</span>
+      <span class="step">2. Pre-warp f<sub>c</sub>: <b>ω<sub>a</sub> = (2/T)·tan(π·f<sub>c</sub>·T)</b>, where T = 1/f<sub>s</sub>.</span>
+      <span class="step">3. Substitute <b>s = (2/T)·(z − 1)/(z + 1)</b>; algebra to z^(-1) form gives a biquad <b>(b₀ + b₁·z⁻¹ + b₂·z⁻²) / (1 + a₁·z⁻¹ + a₂·z⁻²)</b>.</span>
+      <span class="step">4. RBJ Audio EQ Cookbook gives closed-form coefficients (use them; don't re-derive at runtime).</span>
+      <span class="step">5. Stability rule: <b>|a₂| &lt; 1</b> and <b>|a₁| &lt; 1 + a₂</b>. Always true for normalized biquads of stable analog prototypes.</span>
+    </div>
+
+    <h3>Sample-rate effects</h3>
+    <ul class="notice">
+      <li><b>Frequency warping</b> — bilinear compresses the upper analog frequency range into 0..f<sub>s</sub>/2. The corner is exact (because of pre-warp), but the rolloff slope tightens near Nyquist. For f<sub>c</sub> &lt; f<sub>s</sub>/10 the warping is negligible.</li>
+      <li><b>Coefficient quantization</b> — fixed-point biquads with low f<sub>c</sub>/f<sub>s</sub> ratio lose poles to roundoff. Use direct-form-II transposed for 16-bit, direct-form-I for floating point.</li>
+      <li><b>Forward link</b> — this preview is the doorway to real-time DSP work. The full chapter lives in <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">signals/digital-filters.md</span> (when added).</li>
+    </ul>
+
+    <p>This visual prints the analog-to-digital coefficient mapping live, but ships exactly one section. Cascades work the same — just chain biquads.</p>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- Worked example -->
+  <!-- ============================================================ -->
+  <h2>Worked example — 4-pole Butterworth LPF at 1 kHz (anti-alias for 8 kHz ADC)</h2>
+  <div class="worked">
+    <h3>Constraints</h3>
+    <p>ADC sampling at 8 kHz (Nyquist = 4 kHz). Signal of interest is 0..1 kHz (industrial accel-sensor envelope). We want anti-aliasing with at least 40 dB attenuation by 4 kHz so no aliasing artifact above −40 dBFS. 4th-order Butterworth at f<sub>c</sub> = 1 kHz gives −80 dB/decade past corner, so at 4 kHz (2 decades) we're at −80 · 2 = −48 dB. Margin satisfied.</p>
+
+    <h3>The cascade</h3>
+    <span class="eq">Section A: Sallen-Key LP, equal-R/C, Q = 0.541, f<sub>c</sub> = 1 kHz</span>
+    <span class="eq">Section B: Sallen-Key LP, equal-R/C, Q = 1.307, f<sub>c</sub> = 1 kHz</span>
+    <span class="eq">Each section: R = R1 = R2 = 16 kΩ, C = C1 = C2 = 10 nF <span class="annot">→ f<sub>c</sub> = 1/(2π·16k·10n) = 995 Hz (0.5 % low)</span></span>
+    <span class="eq">Section A op-amp gain: K = 3 − 1/0.541 = 1.151 <span class="annot">→ R<sub>b</sub>/R<sub>a</sub> = 0.151, e.g. R<sub>a</sub> = 10 kΩ, R<sub>b</sub> = 1.5 kΩ</span></span>
+    <span class="eq">Section B op-amp gain: K = 3 − 1/1.307 = 2.235 <span class="annot">→ R<sub>b</sub>/R<sub>a</sub> = 1.235, e.g. R<sub>a</sub> = 10 kΩ, R<sub>b</sub> = 12 kΩ</span></span>
+    <span class="eq">Total cascade DC gain = 1.151 × 2.235 = 2.572 <span class="annot">(+8.2 dB; budget for it or follow with attenuator)</span></span>
+
+    <h3>Op-amp pick</h3>
+    <p>OPA1655 (50 MHz GBW, low noise audio op-amp): 50 MHz / 100 = 500 kHz max f<sub>c</sub>; we use 1 kHz so we have 500× headroom. Slew rate 24 V/µs at 5 V<sub>pk</sub>, 1 kHz needs 0.031 V/µs — easy. Two op-amps total (one per section); use a dual package like OPA1656.</p>
+
+    <h3>Pitfalls</h3>
+    <p>The high-Q section (B, Q = 1.307) is sensitive — 5 % cap tolerance → ~5 % f<sub>c</sub> drift and ~3 % Q drift. Use 2 % NP0/C0G ceramics or polypropylene film. Mounting matters: long PCB traces add stray capacitance that retunes f<sub>c</sub> down. Keep loops tight.</p>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- Cheat sheet -->
+  <!-- ============================================================ -->
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>CORE FORMULAS</h3>
+      <dl>
+        <dt>RC</dt><dd><span class="eq">f<sub>c</sub> = 1 / (2π·R·C)</span></dd>
+        <dt>RLC</dt><dd><span class="eq">f<sub>0</sub> = 1 / (2π·√(L·C))</span></dd>
+        <dt>Q (RLC)</dt><dd><span class="eq">Q = (1/R)·√(L/C)</span></dd>
+        <dt>SK gain</dt><dd><span class="eq">K = 3 − 1/Q</span></dd>
+        <dt>Bandwidth</dt><dd><span class="eq">Δf = f<sub>0</sub> / Q</span></dd>
+        <dt>Rolloff</dt><dd><span class="eq">slope = −20·N dB/decade</span></dd>
+        <dt>Ripple ε</dt><dd><span class="eq">ε = √(10^(R<sub>p</sub>/10) − 1)</span></dd>
+        <dt>Bilinear</dt><dd><span class="eq">s ← (2/T)·(z−1)/(z+1)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>Q TABLE (LP / 2nd-order sections)</h3>
+      <dl>
+        <dt>Butter 2</dt><dd>Q = 0.707</dd>
+        <dt>Butter 4</dt><dd>Q = 0.541, 1.307</dd>
+        <dt>Butter 6</dt><dd>Q = 0.518, 0.707, 1.932</dd>
+        <dt>Butter 8</dt><dd>Q = 0.510, 0.601, 0.900, 2.563</dd>
+        <dt>Bessel 4</dt><dd>Q = 0.522, 0.806</dd>
+        <dt>Cheb1 4</dt><dd>Q = 0.785, 3.559</dd>
+        <dt>Cheb3 4</dt><dd>Q = 0.928, 4.566</dd>
+      </dl>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Op-amp slew limit ≠ small-signal bandwidth</b> — GBW determines small-signal frequency response; slew rate determines large-signal. Both must be checked. 1 V<sub>pk</sub> at 100 kHz fine on most rail-to-rail op-amps; 10 V<sub>pk</sub> at 100 kHz needs 6.3 V/µs.</li>
+        <li><b>Real caps shift f<sub>c</sub></b> — 5 % X7R caps drift another 5 % across temperature, 30 % across DC bias. Use C0G/NP0 for f<sub>c</sub> ≤ 1 % accuracy. Film caps for audio.</li>
+        <li><b>Parasitic inductance above 1 MHz</b> — film caps SRF ~10 MHz, electrolytics ~100 kHz. Past SRF the cap looks inductive and the filter inverts.</li>
+        <li><b>High-Q Sallen-Key is fragile</b> — Q sensitivity to op-amp gain is high. Above Q = 10, use MFB or two-amp biquad.</li>
+        <li><b>Cascade gain stacks</b> — each non-unity section multiplies gain. 4-pole Butterworth at unity needs gain adjustment per section.</li>
+        <li><b>Chebyshev f<sub>c</sub> is not −3 dB</b> — for Chebyshev, f<sub>c</sub> is the corner where the ripple ends; passband is flat (in dB) to f<sub>c</sub> with ±R<sub>p</sub> dB ripple, and −3 dB is past f<sub>c</sub>.</li>
+      </ul>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>WHEN TO USE WHICH</h3>
+      <ul>
+        <li><b>RC alone</b> — anti-alias for low-resolution ADC with 10× oversampling; smoothing PWM into DC.</li>
+        <li><b>RLC</b> — narrow-band tuning at HF (FM front-end, NFC); rarely at audio (inductors are bulky).</li>
+        <li><b>Sallen-Key</b> — Q ≤ 5, simple polarity, ample op-amp choices.</li>
+        <li><b>MFB</b> — Q ≥ 1, sharp Chebyshev sections, sensitive applications.</li>
+        <li><b>Cascade</b> — anytime &gt; 2nd order. Higher Q section goes first if signal is large (lower headroom).</li>
+        <li><b>Digital biquad</b> — anytime sample rate is &gt; 4× the highest f<sub>c</sub>; cheaper, exact, drift-free.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EE Phase 3 — AC Analysis</span> ·
+    Cross-link: <a href="../ee/phase-3-ac-analysis/bode-filters.html">EE 3 Bode &amp; Filters explorer</a> ·
+    <a href="../ee/phase-2-passive-components/rc-rl-time-constant.html">EE 2 RC time constant</a> ·
+    <a href="../ee/phase-3-ac-analysis/rlc-resonance.html">EE 3 RLC resonance</a> ·
+    Forward: <span style="opacity:0.55">signals/digital filters (planned)</span>
+  </footer>
+</main>
+
+<script>
+  // ===================================================================
+  // E12 / E24 / E6 series
+  // ===================================================================
+  const E12_R = [1.0,1.2,1.5,1.8,2.2,2.7,3.3,3.9,4.7,5.6,6.8,8.2];
+  const E12_C = [1.0,1.2,1.5,1.8,2.2,2.7,3.3,3.9,4.7,5.6,6.8,8.2];
+  const E12_L = [1.0,1.2,1.5,1.8,2.2,2.7,3.3,3.9,4.7,5.6,6.8,8.2];
+
+  function decadesOf(series, lo, hi) {
+    const out = [];
+    for (let dec = -12; dec <= 7; dec++) {
+      for (const m of series) {
+        const v = m * Math.pow(10, dec);
+        if (v >= lo && v <= hi) out.push(v);
+      }
+    }
+    return out;
+  }
+  const E12R_full = decadesOf(E12_R, 10, 22e6);
+  const E12C_full = decadesOf(E12_C, 1e-12, 470e-6);
+  const E12L_full = decadesOf(E12_L, 1e-9, 1);
+
+  function closestE12(target, set){
+    let best = set[0], err = Math.abs(set[0] - target);
+    for (const v of set){
+      const e = Math.abs(v - target);
+      if (e < err){ best = v; err = e; }
+    }
+    return best;
+  }
+
+  // ===================================================================
+  // Formatters
+  // ===================================================================
+  function fmtR(r){
+    if (r >= 1e6) return (r/1e6).toFixed(2) + " MΩ";
+    if (r >= 1e3) return (r/1e3).toFixed(r >= 1e4 ? 1 : 2) + " kΩ";
+    return r.toFixed(0) + " Ω";
+  }
+  function fmtC(c){
+    if (c >= 1e-3) return (c*1e3).toFixed(2) + " mF";
+    if (c >= 1e-6) return (c*1e6).toFixed(c >= 1e-5 ? 1 : 2) + " µF";
+    if (c >= 1e-9) return (c*1e9).toFixed(c >= 1e-8 ? 1 : 2) + " nF";
+    return (c*1e12).toFixed(0) + " pF";
+  }
+  function fmtL(l){
+    if (l >= 1) return l.toFixed(2) + " H";
+    if (l >= 1e-3) return (l*1e3).toFixed(l >= 1e-2 ? 1 : 2) + " mH";
+    if (l >= 1e-6) return (l*1e6).toFixed(l >= 1e-5 ? 1 : 2) + " µH";
+    return (l*1e9).toFixed(0) + " nH";
+  }
+  function fmtF(f){
+    if (f >= 1e9) return (f/1e9).toFixed(2) + " GHz";
+    if (f >= 1e6) return (f/1e6).toFixed(2) + " MHz";
+    if (f >= 1e3) return (f/1e3).toFixed(f >= 1e4 ? 2 : 3) + " kHz";
+    return f.toFixed(1) + " Hz";
+  }
+
+  // ===================================================================
+  // Bode-plot core (SVG drawing)
+  // ===================================================================
+  // mag is dB, phase is degrees. Both arrays must align with freqs.
+  function drawBode(svgEl, traces, opts) {
+    opts = opts || {};
+    const w = 880, h = 360;
+    const pad = { l:60, r:60, t:16, b:40 };
+    const W = w - pad.l - pad.r, H = h - pad.t - pad.b;
+    const fmin = opts.fmin || 10, fmax = opts.fmax || 1e6;
+    const dbmin = opts.dbmin ?? -80, dbmax = opts.dbmax ?? 10;
+    const phmin = opts.phmin ?? -270, phmax = opts.phmax ?? 90;
+
+    function fx(f){ return pad.l + W * (Math.log10(f) - Math.log10(fmin)) / (Math.log10(fmax) - Math.log10(fmin)); }
+    function dby(db){ return pad.t + H/2 * (1 - (db - dbmin) / (dbmax - dbmin)); }
+    function phy(ph){ return pad.t + H/2 + H/2 * (1 - (ph - phmin) / (phmax - phmin)); }
+
+    let out = '';
+    // background grid
+    // magnitude grid (dB)
+    out += `<rect x="${pad.l}" y="${pad.t}" width="${W}" height="${H/2}" fill="none" stroke="var(--line)"/>`;
+    out += `<rect x="${pad.l}" y="${pad.t + H/2}" width="${W}" height="${H/2}" fill="none" stroke="var(--line)"/>`;
+
+    // vertical decade lines
+    for (let dec = Math.ceil(Math.log10(fmin)); dec <= Math.floor(Math.log10(fmax)); dec++){
+      const f = Math.pow(10, dec);
+      const x = fx(f);
+      out += `<line x1="${x}" y1="${pad.t}" x2="${x}" y2="${pad.t+H}" class="grid-line major"/>`;
+      out += `<text x="${x}" y="${pad.t+H+14}" class="axis-label" text-anchor="middle">${fmtF(f)}</text>`;
+      // minor lines 2..9
+      for (let k=2; k<=9; k++){
+        const ff = k * f;
+        if (ff >= fmin && ff <= fmax){
+          const xx = fx(ff);
+          out += `<line x1="${xx}" y1="${pad.t}" x2="${xx}" y2="${pad.t+H}" class="grid-line"/>`;
+        }
+      }
+    }
+
+    // horizontal magnitude grid
+    const dbStep = 20;
+    for (let db = Math.ceil(dbmin/dbStep)*dbStep; db <= dbmax; db += dbStep){
+      const y = dby(db);
+      out += `<line x1="${pad.l}" y1="${y}" x2="${pad.l+W}" y2="${y}" class="grid-line"/>`;
+      out += `<text x="${pad.l-6}" y="${y+3}" class="axis-label" text-anchor="end">${db} dB</text>`;
+    }
+    // horizontal phase grid
+    const phStep = 90;
+    for (let ph = Math.ceil(phmin/phStep)*phStep; ph <= phmax; ph += phStep){
+      const y = phy(ph);
+      out += `<line x1="${pad.l}" y1="${y}" x2="${pad.l+W}" y2="${y}" class="grid-line"/>`;
+      out += `<text x="${pad.l-6}" y="${y+3}" class="axis-label" text-anchor="end">${ph}°</text>`;
+    }
+
+    // boundary between magnitude/phase
+    const midY = pad.t + H/2;
+    out += `<line x1="${pad.l}" y1="${midY}" x2="${pad.l+W}" y2="${midY}" stroke="var(--fg-dim)" stroke-width="1"/>`;
+
+    // axis labels
+    out += `<text x="${pad.l-44}" y="${pad.t+H/4+3}" class="axis-label" transform="rotate(-90 ${pad.l-44} ${pad.t+H/4+3})" text-anchor="middle">|H| dB</text>`;
+    out += `<text x="${pad.l-44}" y="${pad.t+3*H/4+3}" class="axis-label" transform="rotate(-90 ${pad.l-44} ${pad.t+3*H/4+3})" text-anchor="middle">∠H deg</text>`;
+    out += `<text x="${pad.l+W/2}" y="${h-6}" class="axis-label" text-anchor="middle">frequency (log)</text>`;
+
+    // traces
+    for (const t of traces){
+      const cls = t.cls || 'trace-1';
+      const mag = t.mag, ph = t.phase, fs = t.freqs;
+      // magnitude
+      let dM = '';
+      for (let i=0; i<fs.length; i++){
+        const x = fx(fs[i]);
+        let y = dby(Math.max(dbmin, Math.min(dbmax, mag[i])));
+        dM += (i ? 'L' : 'M') + x.toFixed(1) + ',' + y.toFixed(1);
+      }
+      out += `<path d="${dM}" class="trace ${cls}"/>`;
+      if (ph){
+        let dP = '';
+        let prevPh = null;
+        for (let i=0; i<fs.length; i++){
+          const x = fx(fs[i]);
+          // unwrap phase modestly: don't connect across >180° jumps
+          if (prevPh !== null && Math.abs(ph[i] - prevPh) > 200){
+            dP += 'M';
+          } else if (i === 0){
+            dP += 'M';
+          } else {
+            dP += 'L';
+          }
+          let y = phy(Math.max(phmin, Math.min(phmax, ph[i])));
+          dP += x.toFixed(1) + ',' + y.toFixed(1);
+          prevPh = ph[i];
+        }
+        out += `<path d="${dP}" class="trace ${cls}" stroke-dasharray="4 3" opacity="0.85"/>`;
+      }
+    }
+
+    // marker for fc
+    if (opts.fc){
+      const xm = fx(opts.fc);
+      out += `<line x1="${xm}" y1="${pad.t}" x2="${xm}" y2="${pad.t+H}" class="marker-line"/>`;
+      out += `<text x="${xm+4}" y="${pad.t+12}" class="label-ok">${opts.fcLabel || ('fc = ' + fmtF(opts.fc))}</text>`;
+    }
+
+    svgEl.innerHTML = out;
+  }
+
+  // ===================================================================
+  // Generate magnitude/phase arrays
+  // ===================================================================
+  function logFreqs(fmin, fmax, n) {
+    const out = [];
+    const a = Math.log10(fmin), b = Math.log10(fmax);
+    for (let i = 0; i < n; i++) out.push(Math.pow(10, a + (b - a) * i / (n - 1)));
+    return out;
+  }
+
+  // First-order RC LP: H(s) = 1 / (1 + s·RC); fc = 1/(2π·RC)
+  function rcLP(fc, fs){
+    const wc = 2*Math.PI*fc;
+    const mag = [], ph = [];
+    for (const f of fs){
+      const w = 2*Math.PI*f;
+      const denom = Math.sqrt(1 + (w/wc)*(w/wc));
+      mag.push(20*Math.log10(1/denom));
+      ph.push(-Math.atan2(w/wc, 1) * 180/Math.PI);
+    }
+    return {mag, ph};
+  }
+  // First-order RC HP: H(s) = s·RC / (1 + s·RC)
+  function rcHP(fc, fs){
+    const wc = 2*Math.PI*fc;
+    const mag = [], ph = [];
+    for (const f of fs){
+      const w = 2*Math.PI*f;
+      const num = w/wc;
+      const denom = Math.sqrt(1 + (w/wc)*(w/wc));
+      mag.push(20*Math.log10(num/denom));
+      ph.push((90 - Math.atan2(w/wc, 1) * 180/Math.PI));
+    }
+    return {mag, ph};
+  }
+
+  // 2nd-order LP: H(s) = w0² / (s² + (w0/Q)·s + w0²); peak gain at resonance = Q (for Q > 1/√2)
+  function biquadLP(fc, Q, gain, fs){
+    const w0 = 2*Math.PI*fc;
+    const mag = [], ph = [];
+    for (const f of fs){
+      const w = 2*Math.PI*f;
+      // H = K·w0² / (w0² - w² + j·(w0/Q)·w)
+      const re = w0*w0 - w*w;
+      const im = (w0/Q)*w;
+      const denom = Math.sqrt(re*re + im*im);
+      mag.push(20*Math.log10(gain * w0*w0 / denom));
+      ph.push(-Math.atan2(im, re) * 180/Math.PI);
+    }
+    return {mag, ph};
+  }
+  // 2nd-order HP: H(s) = K·s² / (s² + (w0/Q)·s + w0²)
+  function biquadHP(fc, Q, gain, fs){
+    const w0 = 2*Math.PI*fc;
+    const mag = [], ph = [];
+    for (const f of fs){
+      const w = 2*Math.PI*f;
+      const numRe = -w*w;
+      const numIm = 0;
+      const denRe = w0*w0 - w*w;
+      const denIm = (w0/Q)*w;
+      const numMag = w*w;
+      const denMag = Math.sqrt(denRe*denRe + denIm*denIm);
+      mag.push(20*Math.log10(gain * numMag / denMag));
+      ph.push(180 - Math.atan2(denIm, denRe) * 180/Math.PI);
+    }
+    return {mag, ph};
+  }
+  // 2nd-order BP: H(s) = K·(w0/Q)·s / (s² + (w0/Q)·s + w0²)
+  function biquadBP(fc, Q, gain, fs){
+    const w0 = 2*Math.PI*fc;
+    const mag = [], ph = [];
+    for (const f of fs){
+      const w = 2*Math.PI*f;
+      const numMag = (w0/Q)*w;
+      const denRe = w0*w0 - w*w;
+      const denIm = (w0/Q)*w;
+      const denMag = Math.sqrt(denRe*denRe + denIm*denIm);
+      mag.push(20*Math.log10(gain * numMag / denMag));
+      ph.push(90 - Math.atan2(denIm, denRe) * 180/Math.PI);
+    }
+    return {mag, ph};
+  }
+
+  // Cascade: multiply transfer functions (sum dB, sum phase)
+  function cascade(sections, fs){
+    const mag = new Array(fs.length).fill(0);
+    const ph = new Array(fs.length).fill(0);
+    for (const s of sections){
+      for (let i=0; i<fs.length; i++){
+        mag[i] += s.mag[i];
+        ph[i] += s.ph[i];
+      }
+    }
+    return {mag, ph};
+  }
+
+  // ===================================================================
+  // Filter family Q tables
+  // ===================================================================
+  // For Butterworth LP, all sections at same wc. Q per section per order.
+  // Chebyshev sections have different fn (frequency normalization).
+  const QTABLE = {
+    butterworth: {
+      2: [{Q:0.7071, fn:1.0}],
+      4: [{Q:0.5412, fn:1.0}, {Q:1.3066, fn:1.0}],
+      6: [{Q:0.5176, fn:1.0}, {Q:0.7071, fn:1.0}, {Q:1.9319, fn:1.0}],
+      8: [{Q:0.5098, fn:1.0}, {Q:0.6013, fn:1.0}, {Q:0.9000, fn:1.0}, {Q:2.5629, fn:1.0}]
+    },
+    bessel: {
+      // Bessel normalized to -3dB at unity. Q values from standard tables.
+      2: [{Q:0.5773, fn:1.0}],
+      4: [{Q:0.5219, fn:1.4304}, {Q:0.8055, fn:1.6033}],
+      6: [{Q:0.5103, fn:1.6060}, {Q:0.6112, fn:1.6913}, {Q:1.0234, fn:1.9071}],
+      8: [{Q:0.5060, fn:1.7837}, {Q:0.5596, fn:1.8376}, {Q:0.7109, fn:1.9591}, {Q:1.2257, fn:2.1953}]
+    },
+    cheby1: { // 1 dB ripple
+      2: [{Q:0.9565, fn:1.0500}],
+      4: [{Q:0.7845, fn:0.5286}, {Q:3.5594, fn:0.9931}],
+      6: [{Q:0.7610, fn:0.3531}, {Q:2.1980, fn:0.7468}, {Q:8.0050, fn:0.9954}],
+      8: [{Q:0.7530, fn:0.2651}, {Q:1.9560, fn:0.5828}, {Q:4.2660, fn:0.8506}, {Q:14.24, fn:0.9971}]
+    },
+    cheby3: { // 3 dB ripple
+      2: [{Q:1.3050, fn:1.0000}],
+      4: [{Q:0.928,  fn:0.5193}, {Q:4.5664, fn:0.9930}],
+      6: [{Q:0.852,  fn:0.3500}, {Q:2.840,  fn:0.7448}, {Q:10.461, fn:0.9953}],
+      8: [{Q:0.843,  fn:0.2643}, {Q:2.453,  fn:0.5818}, {Q:5.580,  fn:0.8500}, {Q:18.69, fn:0.9971}]
+    }
+  };
+
+  // ===================================================================
+  // TAB 1: RC LP/HP
+  // ===================================================================
+  function updateRC(){
+    const type = document.getElementById('rc-type').value;
+    const fc = Math.pow(10, parseFloat(document.getElementById('rc-fc').value));
+    const rpref = parseFloat(document.getElementById('rc-rpref').value);
+    document.getElementById('rc-typeRead').textContent = (type === 'lp') ? 'low-pass' : 'high-pass';
+    document.getElementById('rc-fcRead').textContent = fmtF(fc);
+
+    // Pick R: if preset, use that; else pick a "good" R near 10k
+    let R = rpref > 0 ? rpref : 10000;
+    R = closestE12(R, E12R_full);
+    // Pick C from the target fc and chosen R
+    const Cideal = 1 / (2 * Math.PI * fc * R);
+    const C = closestE12(Cideal, E12C_full);
+    const fcRealized = 1 / (2 * Math.PI * R * C);
+    const err = (fcRealized - fc) / fc * 100;
+
+    document.getElementById('rc-rRead').textContent = fmtR(R);
+
+    document.getElementById('rc-picks').innerHTML = `
+      <b>E12 picks:</b>
+      <div class="row">
+        <span>R</span><span>${fmtR(R)} (closest E12)</span>
+        <span>C ideal</span><span>${fmtC(Cideal)}</span>
+        <span>C picked</span><span>${fmtC(C)} (closest E12)</span>
+        <span>f<sub>c</sub> realized</span><span>${fmtF(fcRealized)} <span style="color:${Math.abs(err)>5?'var(--warn)':'var(--accent3)'}">(${err>=0?'+':''}${err.toFixed(1)}%)</span></span>
+        <span>τ = RC</span><span>${(R*C*1e6).toFixed(2)} µs</span>
+      </div>
+    `;
+
+    const fs = logFreqs(fc / 1000, fc * 1000, 200);
+    const data = (type === 'lp') ? rcLP(fcRealized, fs) : rcHP(fcRealized, fs);
+    drawBode(document.getElementById('rc-bode'),
+      [{mag: data.mag, phase: data.ph, freqs: fs, cls: 'trace-1'}],
+      { fmin: fc/1000, fmax: fc*1000, dbmin: -60, dbmax: 6, phmin: -90, phmax: 90,
+        fc: fcRealized, fcLabel: 'fc = ' + fmtF(fcRealized) });
+  }
+
+  // ===================================================================
+  // TAB 2: RLC
+  // ===================================================================
+  function updateRLC(){
+    const f0 = Math.pow(10, parseFloat(document.getElementById('rlc-f0').value));
+    const Q = parseFloat(document.getElementById('rlc-q').value);
+    const lpref = parseFloat(document.getElementById('rlc-lpref').value);
+    document.getElementById('rlc-f0Read').textContent = fmtF(f0);
+    document.getElementById('rlc-qRead').textContent = Q.toFixed(2);
+
+    let L = lpref > 0 ? lpref : 100e-6;
+    L = closestE12(L, E12L_full);
+    const Cideal = 1 / (Math.pow(2*Math.PI*f0, 2) * L);
+    const C = closestE12(Cideal, E12C_full);
+    const f0Realized = 1 / (2*Math.PI*Math.sqrt(L*C));
+    const RforQ = Math.sqrt(L/C) / Q;
+    const Rpick = closestE12(RforQ, E12R_full);
+    const Qactual = Math.sqrt(L/C) / Rpick;
+
+    document.getElementById('rlc-lRead').textContent = fmtL(L);
+
+    document.getElementById('rlc-picks').innerHTML = `
+      <b>E12 picks (series RLC bandpass):</b>
+      <div class="row">
+        <span>L</span><span>${fmtL(L)} (closest E12)</span>
+        <span>C ideal</span><span>${fmtC(Cideal)}</span>
+        <span>C picked</span><span>${fmtC(C)}</span>
+        <span>R for Q</span><span>${fmtR(RforQ)} ideal → ${fmtR(Rpick)} picked</span>
+        <span>f<sub>0</sub> realized</span><span>${fmtF(f0Realized)}</span>
+        <span>Q actual</span><span>${Qactual.toFixed(2)} <span style="color:${Q < 0.5 ? 'var(--accent3)' : Q > 5 ? 'var(--warn)' : 'var(--accent)'}">${Q < 0.5 ? '(critically damped, no peak)' : Q > 5 ? '(high-Q, fragile)' : '(moderate)'}</span></span>
+        <span>−3 dB BW</span><span>${fmtF(f0Realized / Qactual)}</span>
+      </div>
+    `;
+
+    const fs = logFreqs(f0 / 1000, f0 * 1000, 240);
+    const data = biquadBP(f0Realized, Qactual, 1, fs);
+    drawBode(document.getElementById('rlc-bode'),
+      [{mag: data.mag, phase: data.ph, freqs: fs, cls: 'trace-1'}],
+      { fmin: f0/1000, fmax: f0*1000, dbmin: -60, dbmax: Math.max(10, 20*Math.log10(Qactual) + 6),
+        phmin: -90, phmax: 90, fc: f0Realized, fcLabel: 'f0 = ' + fmtF(f0Realized) });
+  }
+
+  // ===================================================================
+  // TAB 3: Sallen-Key
+  // ===================================================================
+  function updateSK(){
+    const type = document.getElementById('sk-type').value;
+    const fc = Math.pow(10, parseFloat(document.getElementById('sk-fc').value));
+    const family = document.getElementById('sk-family').value;
+    let Q;
+    if (family === 'butterworth') Q = 0.7071;
+    else if (family === 'bessel') Q = 0.5773;
+    else if (family === 'cheby1') Q = 0.9565;
+    else if (family === 'cheby3') Q = 1.3050;
+    else Q = parseFloat(document.getElementById('sk-q').value);
+    document.getElementById('sk-q').value = Q;
+    document.getElementById('sk-qRead').textContent = Q.toFixed(3);
+
+    const topo = document.getElementById('sk-topo').value;
+    const Cpref = parseFloat(document.getElementById('sk-cpref').value);
+
+    document.getElementById('sk-typeRead').textContent = (type === 'lp') ? 'low-pass' : 'high-pass';
+    document.getElementById('sk-fcRead').textContent = fmtF(fc);
+    document.getElementById('sk-topoRead').textContent = topo === 'erc' ? 'equal-R, equal-C' : 'unity-gain';
+    document.getElementById('sk-cRead').textContent = fmtC(Cpref);
+
+    const C = closestE12(Cpref, E12C_full);
+    let R1, R2, C1, C2, K, gainResistors = '';
+    if (topo === 'erc'){
+      // equal R, equal C: R1 = R2 = R, C1 = C2 = C, K = 3 - 1/Q
+      C1 = C2 = C;
+      const Rideal = 1 / (2*Math.PI*fc*C);
+      const R = closestE12(Rideal, E12R_full);
+      R1 = R2 = R;
+      K = 3 - 1/Q;
+      // gain resistor pair: Rb/Ra = K - 1, pick Ra = 10 kΩ
+      const Ra = 10000;
+      const RbIdeal = Ra * (K - 1);
+      const Rb = closestE12(Math.max(10, RbIdeal), E12R_full);
+      gainResistors = `Ra = ${fmtR(Ra)}, Rb = ${fmtR(Rb)} → K_actual = ${(1 + Rb/Ra).toFixed(3)} (target ${K.toFixed(3)})`;
+    } else {
+      // unity gain (K = 1): set Q by C1/C2 (LP) and R1/R2 ratios
+      // simplest: C1 = n·C2, R1 = R2 = R; Q = √n / 2 → n = 4Q²
+      const n = 4 * Q * Q;
+      C2 = C;
+      const C1ideal = n * C2;
+      C1 = closestE12(C1ideal, E12C_full);
+      const Rideal = 1 / (2*Math.PI*fc * Math.sqrt(C1*C2));
+      const R = closestE12(Rideal, E12R_full);
+      R1 = R2 = R;
+      K = 1;
+      gainResistors = `Unity gain — no feedback resistors needed. Op-amp wired as voltage follower.`;
+    }
+
+    const fcRealized = 1 / (2*Math.PI * Math.sqrt(R1*R2*C1*C2));
+    const Qrealized = (topo === 'erc') ?
+        1 / (3 - (1 + (10000 ? closestE12(10000*(K-1), E12R_full)/10000 : K-1))) :
+        Math.sqrt(C1/C2) / 2;
+    // Just use ideal Q from design intent for simplicity in plot
+    const Qfinal = Q;
+    const fcErr = (fcRealized - fc) / fc * 100;
+
+    document.getElementById('sk-picks').innerHTML = `
+      <b>Sallen-Key ${type.toUpperCase()} (${topo === 'erc' ? 'equal-R/C' : 'unity-gain'}):</b>
+      <div class="row">
+        <span>R1, R2</span><span>${fmtR(R1)}, ${fmtR(R2)}</span>
+        <span>C1, C2</span><span>${fmtC(C1)}, ${fmtC(C2)}</span>
+        <span>K (gain)</span><span>${K.toFixed(3)} = 3 − 1/Q</span>
+        <span>Gain resistors</span><span>${gainResistors}</span>
+        <span>f<sub>c</sub> realized</span><span>${fmtF(fcRealized)} (${fcErr>=0?'+':''}${fcErr.toFixed(1)}%)</span>
+        <span>Op-amp GBW min</span><span>${fmtF(100 * fc)} (≥ 100·f<sub>c</sub> rule)</span>
+        <span>Slew rate min</span><span>${(2*Math.PI*fc*5/1e6).toFixed(3)} V/µs for 5 V<sub>pk</sub> at f<sub>c</sub></span>
+      </div>
+    `;
+
+    drawSKSchematic(R1, R2, C1, C2, K, type, topo);
+
+    const fs = logFreqs(fc/1000, fc*1000, 240);
+    const data = (type === 'lp') ? biquadLP(fcRealized, Qfinal, K, fs) : biquadHP(fcRealized, Qfinal, K, fs);
+    drawBode(document.getElementById('sk-bode'),
+      [{mag: data.mag, phase: data.ph, freqs: fs, cls: 'trace-1'}],
+      { fmin: fc/1000, fmax: fc*1000, dbmin: -60, dbmax: 20 + 20*Math.log10(Math.max(K, 1)),
+        phmin: -200, phmax: 90, fc: fcRealized, fcLabel: 'fc = ' + fmtF(fcRealized) + ' Q=' + Qfinal.toFixed(2) });
+  }
+
+  function drawSKSchematic(R1, R2, C1, C2, K, type, topo){
+    // simple LP topology drawing
+    const out = `
+      <text x="280" y="14" class="label" text-anchor="middle">Sallen-Key ${type.toUpperCase()} schematic</text>
+      <!-- input -->
+      <text x="30" y="100" class="label">Vin</text>
+      <line x1="50" y1="100" x2="100" y2="100" class="wire"/>
+      <!-- R1 -->
+      <rect x="100" y="92" width="40" height="16" fill="var(--bg-elev2)" stroke="var(--accent)"/>
+      <text x="120" y="120" class="label-dim" text-anchor="middle">R1 ${fmtR(R1)}</text>
+      <line x1="140" y1="100" x2="200" y2="100" class="wire"/>
+      <!-- node A -->
+      <circle cx="200" cy="100" r="3" fill="var(--accent2)"/>
+      <!-- R2 -->
+      <rect x="200" y="92" width="40" height="16" fill="var(--bg-elev2)" stroke="var(--accent)"/>
+      <text x="220" y="120" class="label-dim" text-anchor="middle">R2 ${fmtR(R2)}</text>
+      <line x1="240" y1="100" x2="290" y2="100" class="wire"/>
+      <!-- node B (op-amp + input) -->
+      <circle cx="290" cy="100" r="3" fill="var(--accent2)"/>
+      <!-- C2 from node B to ground -->
+      <line x1="290" y1="100" x2="290" y2="140" class="wire"/>
+      <line x1="280" y1="140" x2="300" y2="140" stroke="var(--accent2)" stroke-width="2"/>
+      <line x1="280" y1="146" x2="300" y2="146" stroke="var(--accent2)" stroke-width="2"/>
+      <text x="305" y="146" class="label-dim">C2 ${fmtC(C2)}</text>
+      <line x1="290" y1="150" x2="290" y2="170" class="wire"/>
+      <line x1="280" y1="170" x2="300" y2="170" class="wire"/>
+      <line x1="284" y1="174" x2="296" y2="174" class="wire"/>
+      <!-- op-amp -->
+      <polygon points="310,80 310,120 360,100" fill="var(--bg-elev2)" stroke="var(--accent)"/>
+      <text x="318" y="90" class="label-dim">+</text>
+      <text x="318" y="118" class="label-dim">−</text>
+      <line x1="290" y1="100" x2="310" y2="92" class="wire"/>
+      <line x1="310" y1="108" x2="290" y2="108" class="wire"/>
+      <line x1="290" y1="108" x2="290" y2="150" class="wire" stroke="none"/>
+      <line x1="360" y1="100" x2="420" y2="100" class="wire"/>
+      <text x="430" y="100" class="label-ok">Vout</text>
+      <!-- C1 feedback from output to node A -->
+      <line x1="200" y1="100" x2="200" y2="60" class="wire"/>
+      <line x1="200" y1="60" x2="380" y2="60" class="wire"/>
+      <line x1="380" y1="60" x2="380" y2="100" class="wire" stroke="none"/>
+      <line x1="375" y1="60" x2="385" y2="60" stroke="none"/>
+      <!-- show as cap between 280 and 290 actually for top path -->
+      <line x1="280" y1="55" x2="300" y2="55" stroke="var(--accent2)" stroke-width="2"/>
+      <line x1="280" y1="49" x2="300" y2="49" stroke="var(--accent2)" stroke-width="2"/>
+      <line x1="280" y1="55" x2="280" y2="60" stroke="none"/>
+      <line x1="290" y1="55" x2="290" y2="60" stroke="none"/>
+      <text x="305" y="48" class="label-dim">C1 ${fmtC(C1)}</text>
+      <!-- gain feedback from output to inverting input -->
+      <line x1="380" y1="100" x2="380" y2="160" class="wire"/>
+      <line x1="380" y1="160" x2="280" y2="160" class="wire"/>
+      <text x="330" y="178" class="label-dim" text-anchor="middle">${topo === 'erc' ? 'Rb/Ra = K-1 = ' + (K-1).toFixed(3) : 'unity gain (follower)'}</text>
+      <line x1="280" y1="160" x2="280" y2="108" class="wire"/>
+    `;
+    document.getElementById('sk-schem').innerHTML = out;
+  }
+
+  // ===================================================================
+  // TAB 4: MFB
+  // ===================================================================
+  function updateMFB(){
+    const type = document.getElementById('mfb-type').value;
+    const fc = Math.pow(10, parseFloat(document.getElementById('mfb-fc').value));
+    const Q = parseFloat(document.getElementById('mfb-q').value);
+    const A = parseFloat(document.getElementById('mfb-a').value);
+    const Cpref = parseFloat(document.getElementById('mfb-cpref').value);
+
+    document.getElementById('mfb-typeRead').textContent = (type === 'lp') ? 'low-pass' : 'band-pass';
+    document.getElementById('mfb-fcRead').textContent = fmtF(fc);
+    document.getElementById('mfb-qRead').textContent = Q.toFixed(2);
+    document.getElementById('mfb-aRead').textContent = A.toFixed(1);
+    document.getElementById('mfb-cRead').textContent = fmtC(Cpref);
+
+    const C2 = closestE12(Cpref, E12C_full);
+    let R1, R2, R3, C1, picks;
+    const w0 = 2 * Math.PI * fc;
+    if (type === 'lp'){
+      // LP MFB design (closed-form, Texas Instruments AN-1640-ish):
+      // pick C2; m = C1/C2. Constraint: m ≥ 4·Q²·(1+A); set m = max(4·Q²·(1+A)·1.1, default).
+      const mMin = 4 * Q * Q * (1 + A);
+      const m = Math.max(mMin * 1.2, 4);
+      const C1ideal = m * C2;
+      C1 = closestE12(C1ideal, E12C_full);
+      // closed-form
+      const R2ideal = (m + Math.sqrt(m*m - 4*Q*Q*m*(1+A))) / (4*Math.PI*fc*Q*m*C2);
+      R2 = closestE12(R2ideal, E12R_full);
+      R1 = closestE12(R2 / A, E12R_full);
+      R3 = closestE12(R2 / (m - 4*Q*Q*(1+A) > 0 ? (m - 4*Q*Q*(1+A))/m * (1 + 1/A) : 1), E12R_full);
+      // Make R3 a safe value tied to topology constraint
+      // Simpler approach: use the (R1, R2, R3, C1, C2) form:
+      // 1/(2πfc) = √(R2·R3·C1·C2)
+      // We have R2 + C1 + C2 chosen, pick R3 = 1 / ((2πfc)² · R2 · C1 · C2)
+      const R3ideal = 1 / (Math.pow(2*Math.PI*fc, 2) * R2 * C1 * C2);
+      R3 = closestE12(R3ideal, E12R_full);
+      // R1 = R2·R3 / (A·R3) = R2/A — keep as is for inverting gain A
+      picks = `
+        <span>R1 (input)</span><span>${fmtR(R1)} (sets gain A = ${A.toFixed(1)})</span>
+        <span>R2 (feedback)</span><span>${fmtR(R2)}</span>
+        <span>R3 (to virtual gnd)</span><span>${fmtR(R3)}</span>
+        <span>C1 (feedback)</span><span>${fmtC(C1)}</span>
+        <span>C2 (to gnd)</span><span>${fmtC(C2)}</span>
+        <span>f<sub>c</sub> realized</span><span>${fmtF(1/(2*Math.PI*Math.sqrt(R2*R3*C1*C2)))}</span>
+      `;
+    } else {
+      // BP MFB: pick C1 = C2 = C; R1 = Q/(A·w0·C); R2 = Q/((2Q²-A)·w0·C); R3 = 2Q/(w0·C)
+      C1 = C2;
+      const R1ideal = Q / (A * w0 * C2);
+      R1 = closestE12(R1ideal, E12R_full);
+      const denom = 2*Q*Q - A;
+      const R2ideal = denom > 0 ? Q / (denom * w0 * C2) : 0;
+      R2 = denom > 0 ? closestE12(R2ideal, E12R_full) : 0;
+      const R3ideal = 2*Q / (w0 * C2);
+      R3 = closestE12(R3ideal, E12R_full);
+      picks = `
+        <span>R1 (input)</span><span>${fmtR(R1)}</span>
+        <span>R2 (Q-set)</span><span>${R2 > 0 ? fmtR(R2) : 'invalid (2Q² ≤ A — reduce gain or increase Q)'}</span>
+        <span>R3 (feedback)</span><span>${fmtR(R3)}</span>
+        <span>C1 = C2</span><span>${fmtC(C2)}</span>
+        <span>f<sub>0</sub> realized</span><span>${R2 > 0 ? fmtF(Math.sqrt(1/(R1*R2*C1*C2) + 1/(R2*R3*C1*C2)) / (2*Math.PI)) : fmtF(fc)}</span>
+      `;
+    }
+
+    document.getElementById('mfb-picks').innerHTML = `
+      <b>MFB ${type.toUpperCase()} (inverting):</b>
+      <div class="row">${picks}
+        <span>Op-amp GBW min</span><span>${fmtF(100 * fc * Q)} (≥ 100·f<sub>c</sub>·Q for high Q)</span>
+        <span>Output polarity</span><span style="color:var(--warn)">inverted (180°)</span>
+      </div>
+    `;
+
+    drawMFBSchematic(R1, R2, R3, C1, C2, type, A);
+
+    const fs = logFreqs(fc/1000, fc*1000, 240);
+    const data = (type === 'lp') ? biquadLP(fc, Q, A, fs) : biquadBP(fc, Q, A, fs);
+    drawBode(document.getElementById('mfb-bode'),
+      [{mag: data.mag, phase: data.ph, freqs: fs, cls: 'trace-1'}],
+      { fmin: fc/1000, fmax: fc*1000, dbmin: -60, dbmax: 20*Math.log10(A) + 12 + 20*Math.log10(Math.max(Q, 1)),
+        phmin: -270, phmax: 90, fc: fc, fcLabel: 'fc = ' + fmtF(fc) + ' Q=' + Q.toFixed(2) });
+  }
+
+  function drawMFBSchematic(R1, R2, R3, C1, C2, type, A){
+    const out = `
+      <text x="280" y="14" class="label" text-anchor="middle">MFB ${type.toUpperCase()} schematic (inverting)</text>
+      <text x="30" y="100" class="label">Vin</text>
+      <line x1="50" y1="100" x2="100" y2="100" class="wire"/>
+      <rect x="100" y="92" width="40" height="16" fill="var(--bg-elev2)" stroke="var(--accent)"/>
+      <text x="120" y="120" class="label-dim" text-anchor="middle">R1 ${fmtR(R1)}</text>
+      <line x1="140" y1="100" x2="200" y2="100" class="wire"/>
+      <circle cx="200" cy="100" r="3" fill="var(--accent2)"/>
+      <!-- R3 from node A to virtual ground / node B -->
+      <line x1="200" y1="100" x2="200" y2="140" class="wire"/>
+      <rect x="180" y="140" width="40" height="16" fill="var(--bg-elev2)" stroke="var(--accent)"/>
+      <text x="240" y="156" class="label-dim">R3 ${R3 > 0 ? fmtR(R3) : '—'}</text>
+      <line x1="200" y1="156" x2="200" y2="180" class="wire"/>
+      <line x1="190" y1="180" x2="210" y2="180" class="wire"/>
+      <line x1="193" y1="184" x2="207" y2="184" class="wire"/>
+      <!-- C1 feedback from output to node A -->
+      <line x1="200" y1="100" x2="200" y2="60" class="wire"/>
+      <line x1="190" y1="60" x2="210" y2="60" stroke="var(--accent2)" stroke-width="2"/>
+      <line x1="190" y1="54" x2="210" y2="54" stroke="var(--accent2)" stroke-width="2"/>
+      <line x1="200" y1="54" x2="200" y2="40" class="wire"/>
+      <line x1="200" y1="40" x2="400" y2="40" class="wire"/>
+      <text x="220" y="58" class="label-dim">C1 ${fmtC(C1)}</text>
+      <!-- C2 from node A to op-amp inverting input -->
+      <line x1="200" y1="100" x2="270" y2="100" class="wire"/>
+      <line x1="270" y1="92" x2="270" y2="108" stroke="var(--accent2)" stroke-width="2"/>
+      <line x1="276" y1="92" x2="276" y2="108" stroke="var(--accent2)" stroke-width="2"/>
+      <text x="248" y="86" class="label-dim">C2 ${fmtC(C2)}</text>
+      <line x1="276" y1="100" x2="310" y2="100" class="wire"/>
+      <!-- R2 from node A direct to inverting input (the closed-form path) -->
+      <line x1="200" y1="100" x2="200" y2="220" stroke="none"/>
+      <!-- op-amp -->
+      <polygon points="310,80 310,120 360,100" fill="var(--bg-elev2)" stroke="var(--accent)"/>
+      <text x="318" y="118" class="label-dim">−</text>
+      <text x="318" y="90" class="label-dim">+</text>
+      <line x1="310" y1="92" x2="290" y2="92" class="wire"/>
+      <line x1="290" y1="92" x2="290" y2="170" class="wire"/>
+      <line x1="280" y1="170" x2="300" y2="170" class="wire"/>
+      <line x1="283" y1="174" x2="297" y2="174" class="wire"/>
+      <text x="265" y="174" class="label-dim">GND (V+)</text>
+      <line x1="360" y1="100" x2="400" y2="100" class="wire"/>
+      <line x1="400" y1="100" x2="400" y2="40" class="wire"/>
+      <line x1="400" y1="100" x2="440" y2="100" class="wire"/>
+      <text x="450" y="100" class="label-ok">Vout (inverted)</text>
+      <!-- R2 from node A back via the loop -->
+      <text x="120" y="172" class="label-dim">R2 ${R2 > 0 ? fmtR(R2) : '—'} (loop)</text>
+      <text x="280" y="220" class="label-dim" text-anchor="middle">Inverting gain A = ${A.toFixed(1)} — 180° at DC</text>
+    `;
+    document.getElementById('mfb-schem').innerHTML = out;
+  }
+
+  // ===================================================================
+  // TAB 5: Cascade
+  // ===================================================================
+  function updateCascade(){
+    const fam = document.getElementById('cas-fam').value;
+    const n = parseInt(document.getElementById('cas-n').value);
+    const fc = Math.pow(10, parseFloat(document.getElementById('cas-fc').value));
+    const famLabels = { butterworth:'Butterworth', bessel:'Bessel', cheby1:'Chebyshev 1 dB', cheby3:'Chebyshev 3 dB' };
+    document.getElementById('cas-famRead').textContent = famLabels[fam];
+    document.getElementById('cas-nRead').textContent = n;
+    document.getElementById('cas-fcRead').textContent = fmtF(fc);
+
+    const sections = QTABLE[fam][n];
+
+    let picksHTML = `<b>Cascade of ${sections.length} second-order section${sections.length > 1 ? 's' : ''} (${famLabels[fam]} order ${n}):</b><div class="row">`;
+    sections.forEach((s, i) => {
+      const fcSection = fc * s.fn;
+      picksHTML += `<span>Section ${i+1}</span><span>f<sub>n</sub> = ${s.fn.toFixed(4)}·f<sub>c</sub> = ${fmtF(fcSection)}, Q = ${s.Q.toFixed(3)}, gain K = ${(3 - 1/s.Q).toFixed(3)} (Sallen-Key)</span>`;
+    });
+    picksHTML += `<span>Total rolloff</span><span>−${20*n} dB/decade past f<sub>c</sub></span>`;
+    picksHTML += `<span>Order-vs-spec</span><span>At 10·f<sub>c</sub>: attenuation = ${20*n} dB.</span>`;
+    picksHTML += `</div>`;
+    document.getElementById('cas-picks').innerHTML = picksHTML;
+
+    const fs = logFreqs(fc/100, fc*100, 320);
+    const sectionsBode = sections.map(s => {
+      const d = biquadLP(fc * s.fn, s.Q, 1, fs);
+      return {mag: d.mag, ph: d.ph};
+    });
+    const cas = cascade(sectionsBode, fs);
+
+    const traces = [];
+    sectionsBode.forEach((sd, i) => {
+      traces.push({mag: sd.mag, phase: sd.ph, freqs: fs, cls: 'trace-2'});
+    });
+    traces.push({mag: cas.mag, phase: cas.ph, freqs: fs, cls: 'trace-1'});
+
+    drawBode(document.getElementById('cas-bode'), traces,
+      { fmin: fc/100, fmax: fc*100, dbmin: -100, dbmax: 12,
+        phmin: -360, phmax: 90, fc: fc, fcLabel: 'fc = ' + fmtF(fc) });
+  }
+
+  // ===================================================================
+  // TAB 6: Bode compare
+  // ===================================================================
+  function updateBodeCompare(){
+    const n = parseInt(document.getElementById('bode-n').value);
+    const fc = Math.pow(10, parseFloat(document.getElementById('bode-fc').value));
+    document.getElementById('bode-nRead').textContent = n;
+    document.getElementById('bode-fcRead').textContent = fmtF(fc);
+
+    const fs = logFreqs(fc/100, fc*100, 360);
+    const families = ['butterworth', 'bessel', 'cheby1', 'cheby3'];
+    const clsMap = { butterworth:'trace-1', bessel:'trace-2', cheby1:'trace-3', cheby3:'trace-4' };
+    const traces = [];
+    for (const fam of families){
+      const sections = QTABLE[fam][n];
+      const sb = sections.map(s => biquadLP(fc * s.fn, s.Q, 1, fs));
+      const total = cascade(sb.map(d => ({mag: d.mag, ph: d.ph})), fs);
+      traces.push({mag: total.mag, phase: null, freqs: fs, cls: clsMap[fam]});
+    }
+    drawBode(document.getElementById('bode-plot'), traces,
+      { fmin: fc/100, fmax: fc*100, dbmin: -100, dbmax: 12,
+        phmin: -360, phmax: 90, fc: fc, fcLabel: 'fc = ' + fmtF(fc) });
+  }
+
+  // ===================================================================
+  // TAB 7: Digital IIR (bilinear LP biquad, RBJ form)
+  // ===================================================================
+  function rbjBiquadLP(fc, Q, fs){
+    const w0 = 2 * Math.PI * fc / fs;
+    const cos_w0 = Math.cos(w0);
+    const sin_w0 = Math.sin(w0);
+    const alpha = sin_w0 / (2 * Q);
+    // RBJ Audio EQ cookbook LP
+    const b0 = (1 - cos_w0) / 2;
+    const b1 = 1 - cos_w0;
+    const b2 = (1 - cos_w0) / 2;
+    const a0 = 1 + alpha;
+    const a1 = -2 * cos_w0;
+    const a2 = 1 - alpha;
+    return {
+      b0: b0/a0, b1: b1/a0, b2: b2/a0,
+      a1: a1/a0, a2: a2/a0
+    };
+  }
+  function rbjBiquadHP(fc, Q, fs){
+    const w0 = 2 * Math.PI * fc / fs;
+    const cos_w0 = Math.cos(w0);
+    const sin_w0 = Math.sin(w0);
+    const alpha = sin_w0 / (2 * Q);
+    const b0 = (1 + cos_w0) / 2;
+    const b1 = -(1 + cos_w0);
+    const b2 = (1 + cos_w0) / 2;
+    const a0 = 1 + alpha;
+    const a1 = -2 * cos_w0;
+    const a2 = 1 - alpha;
+    return { b0:b0/a0, b1:b1/a0, b2:b2/a0, a1:a1/a0, a2:a2/a0 };
+  }
+  function rbjBiquadBP(fc, Q, fs){
+    const w0 = 2 * Math.PI * fc / fs;
+    const cos_w0 = Math.cos(w0);
+    const sin_w0 = Math.sin(w0);
+    const alpha = sin_w0 / (2 * Q);
+    const b0 = alpha;
+    const b1 = 0;
+    const b2 = -alpha;
+    const a0 = 1 + alpha;
+    const a1 = -2 * cos_w0;
+    const a2 = 1 - alpha;
+    return { b0:b0/a0, b1:b1/a0, b2:b2/a0, a1:a1/a0, a2:a2/a0 };
+  }
+  // Compute digital biquad H(z = e^{jω}) magnitude/phase across freqs
+  function biquadResponse(coef, fs_sample, freqs){
+    const mag = [], ph = [];
+    for (const f of freqs){
+      const omega = 2 * Math.PI * f / fs_sample;
+      const cw = Math.cos(omega), sw = Math.sin(omega);
+      const c2 = Math.cos(2*omega), s2 = Math.sin(2*omega);
+      // numerator: b0 + b1·e^{-jω} + b2·e^{-2jω}
+      const numRe = coef.b0 + coef.b1 * cw + coef.b2 * c2;
+      const numIm = -coef.b1 * sw - coef.b2 * s2;
+      const denRe = 1 + coef.a1 * cw + coef.a2 * c2;
+      const denIm = -coef.a1 * sw - coef.a2 * s2;
+      const numMag = Math.sqrt(numRe*numRe + numIm*numIm);
+      const denMag = Math.sqrt(denRe*denRe + denIm*denIm);
+      mag.push(20*Math.log10(numMag/denMag));
+      const numPh = Math.atan2(numIm, numRe);
+      const denPh = Math.atan2(denIm, denRe);
+      ph.push((numPh - denPh) * 180/Math.PI);
+    }
+    return {mag, ph};
+  }
+
+  function updateIIR(){
+    const type = document.getElementById('iir-type').value;
+    const fc = Math.pow(10, parseFloat(document.getElementById('iir-fc').value));
+    const Q = parseFloat(document.getElementById('iir-q').value);
+    const fsamp = parseFloat(document.getElementById('iir-fs').value);
+    document.getElementById('iir-fcRead').textContent = fmtF(fc);
+    document.getElementById('iir-qRead').textContent = Q.toFixed(2);
+    document.getElementById('iir-fsRead').textContent = fmtF(fsamp);
+
+    let coef;
+    if (type === 'lp') coef = rbjBiquadLP(fc, Q, fsamp);
+    else if (type === 'hp') coef = rbjBiquadHP(fc, Q, fsamp);
+    else coef = rbjBiquadBP(fc, Q, fsamp);
+
+    const stable = Math.abs(coef.a2) < 1 && Math.abs(coef.a1) < 1 + coef.a2;
+    document.getElementById('iir-picks').innerHTML = `
+      <b>Digital biquad coefficients (RBJ ${type.toUpperCase()}, normalized to a0 = 1):</b>
+      <div class="row">
+        <span>b0</span><span>${coef.b0.toExponential(6)}</span>
+        <span>b1</span><span>${coef.b1.toExponential(6)}</span>
+        <span>b2</span><span>${coef.b2.toExponential(6)}</span>
+        <span>a1</span><span>${coef.a1.toExponential(6)}</span>
+        <span>a2</span><span>${coef.a2.toExponential(6)}</span>
+        <span>Stability</span><span style="color:${stable ? 'var(--accent3)' : 'var(--warn)'}">${stable ? 'STABLE (poles inside unit circle)' : 'UNSTABLE — check parameters'}</span>
+        <span>fc/fs ratio</span><span>${(fc/fsamp).toFixed(4)} ${fc/fsamp > 0.4 ? '(too close to Nyquist — warping severe)' : fc/fsamp > 0.1 ? '(noticeable warping)' : '(safe range)'}</span>
+        <span>Implementation</span><span>y[n] = b0·x[n] + b1·x[n-1] + b2·x[n-2] − a1·y[n-1] − a2·y[n-2]</span>
+      </div>
+    `;
+
+    // Analog prototype + digital response on same axes
+    const fs = logFreqs(Math.max(fc/1000, 1), Math.min(fsamp/2, fc*1000), 240);
+    const analog = (type === 'lp') ? biquadLP(fc, Q, 1, fs)
+                  : (type === 'hp') ? biquadHP(fc, Q, 1, fs)
+                                    : biquadBP(fc, Q, 1, fs);
+    const digital = biquadResponse(coef, fsamp, fs);
+
+    drawBode(document.getElementById('iir-bode'),
+      [{mag: analog.mag, phase: null, freqs: fs, cls: 'trace-1'},
+       {mag: digital.mag, phase: null, freqs: fs, cls: 'trace-2'}],
+      { fmin: Math.max(fc/1000, 1), fmax: Math.min(fsamp/2, fc*1000),
+        dbmin: -60, dbmax: 20*Math.log10(Math.max(Q, 1)) + 6,
+        phmin: -270, phmax: 90, fc: fsamp/2,
+        fcLabel: 'Nyquist = ' + fmtF(fsamp/2) });
+  }
+
+  // ===================================================================
+  // Tab switching
+  // ===================================================================
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.tab;
+      document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('.pane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + id));
+    });
+  });
+
+  // ===================================================================
+  // Wire up all controls
+  // ===================================================================
+  ['rc-type','rc-fc','rc-rpref'].forEach(id => document.getElementById(id).addEventListener('input', updateRC));
+  ['rlc-f0','rlc-q','rlc-lpref'].forEach(id => document.getElementById(id).addEventListener('input', updateRLC));
+  ['sk-type','sk-fc','sk-q','sk-topo','sk-cpref','sk-family'].forEach(id => document.getElementById(id).addEventListener('input', updateSK));
+  ['mfb-type','mfb-fc','mfb-q','mfb-a','mfb-cpref'].forEach(id => document.getElementById(id).addEventListener('input', updateMFB));
+  ['cas-fam','cas-n','cas-fc'].forEach(id => document.getElementById(id).addEventListener('input', updateCascade));
+  ['bode-n','bode-fc'].forEach(id => document.getElementById(id).addEventListener('input', updateBodeCompare));
+  ['iir-type','iir-fc','iir-q','iir-fs'].forEach(id => document.getElementById(id).addEventListener('input', updateIIR));
+
+  // Initial render
+  updateRC(); updateRLC(); updateSK(); updateMFB(); updateCascade(); updateBodeCompare(); updateIIR();
+</script>
+</body>
+</html>

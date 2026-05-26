@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Energy Storage in C and L — visual</title>
+<style>
+  :root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .duality{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+  .duality .col{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .duality .col h3{margin:0 0 8px;font-size:11px;text-transform:uppercase}
+  .duality .col.v h3{color:var(--accent)}
+  .duality .col.i h3{color:var(--accent2)}
+  .preset-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}
+  .preset-row button{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 10px;font:12px ui-monospace,Menlo,monospace;cursor:pointer}
+  .preset-row button:hover{border-color:var(--accent);color:var(--accent)}
+  .preset-row button.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .key{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:middle;margin-right:4px}
+  .bar-cap{background:#5ec8ff;height:20px;border-radius:3px;margin:6px 0;transition:width 0.15s}
+  .bar-ind{background:#ffb86c;height:20px;border-radius:3px;margin:6px 0;transition:width 0.15s}
+  @media (max-width:720px){.duality{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Energy Storage in C and L</h1>
+  <p class="lede">A capacitor stores energy in the electric field between its plates; an inductor stores energy in the magnetic field around its coil. The two formulas — <code>E_C = ½·C·V²</code> and <code>E_L = ½·L·I²</code> — are duals of each other, and the factor of ½ is the same factor you see in kinetic energy (½·m·v²) and spring PE (½·k·x²). This visual lets you compare a capacitor and an inductor side-by-side, dial in real-world C / L values and voltages / currents, and watch energy transfer between the two during an LC charge-discharge cycle.</p>
+
+  <p>Three things to take away: (1) <b>energy scales with the square</b> of voltage (for C) or current (for L) — double the V, four times the energy; (2) the two devices are <b>perfect duals</b> — V ↔ I, C ↔ L, ε ↔ µ, and the storage formulas swap accordingly; (3) <b>real components fall short of ideal</b> — capacitors lose energy as ESR · I² dielectric loss, inductors lose energy as DCR · I² and core hysteresis loss, and the energy ratings on datasheets are nominal at low frequency and 25 °C — derate aggressively for the real world.</p>
+
+  <section class="controls">
+    <div class="control"><label>Capacitance C: <span class="readout" id="cRead">100 µF</span></label><input id="c" type="range" min="-9" max="0" step="0.01" value="-4"></div>
+    <div class="control"><label>Voltage across C: <span class="readout" id="vcRead">5 V</span></label><input id="vc" type="range" min="0" max="500" step="0.5" value="5"></div>
+    <div class="control"><label>Inductance L: <span class="readout" id="lRead">10 mH</span></label><input id="l" type="range" min="-9" max="0" step="0.01" value="-2"></div>
+    <div class="control"><label>Current through L: <span class="readout" id="ilRead">1 A</span></label><input id="il" type="range" min="0" max="100" step="0.1" value="1"></div>
+    <div class="control"><label>LC swap demo speed: <span class="readout" id="spdRead">1.0×</span></label><input id="spd" type="range" min="0" max="3" step="0.1" value="1"></div>
+  </section>
+
+  <div class="preset-row" id="presets">
+    <button data-p="decap">Decoupling cap (100 nF @ 3.3 V)</button>
+    <button data-p="bulk">Bulk cap (470 µF @ 12 V)</button>
+    <button data-p="super">Supercap (1 F @ 2.5 V)</button>
+    <button data-p="boost">Boost-converter inductor (22 µH @ 3 A)</button>
+    <button data-p="solenoid">Door solenoid (50 mH @ 0.5 A)</button>
+    <button data-p="ups">UPS (4700 µF @ 400 V)</button>
+    <button data-p="reset">Reset</button>
+  </div>
+
+  <div class="figure">
+    <table>
+      <thead><tr><th>Quantity</th><th>Capacitor</th><th>Inductor</th></tr></thead>
+      <tbody id="energyBody">
+        <tr><td>Stored energy</td><td class="num" id="ecVal" style="color:#5ec8ff">…</td><td class="num" id="elVal" style="color:#ffb86c">…</td></tr>
+        <tr><td>Equivalent (drives 1 W load for…)</td><td class="num" id="ecTime">…</td><td class="num" id="elTime">…</td></tr>
+        <tr><td>Equivalent (in joules)</td><td class="num" id="ecJ">…</td><td class="num" id="elJ">…</td></tr>
+        <tr><td>Equivalent (10 g object lifted by…)</td><td class="num" id="ecH">…</td><td class="num" id="elH">…</td></tr>
+        <tr><td>Q (capacitor only)</td><td class="num" id="qC">…</td><td>—</td></tr>
+        <tr><td>Flux Φ = L·I (inductor only)</td><td>—</td><td class="num" id="phiL">…</td></tr>
+      </tbody>
+    </table>
+    <h3>Visual comparison (log scale)</h3>
+    <div id="barCap" class="bar-cap" style="width:30%"></div><span id="barCapLabel" class="readout" style="margin-left:8px"></span>
+    <div id="barInd" class="bar-ind" style="width:30%"></div><span id="barIndLabel" class="readout" style="margin-left:8px"></span>
+    <h3>LC tank — energy oscillates between C and L</h3>
+    <svg id="lcSvg" viewBox="0 0 720 220" width="100%" style="margin-top:6px"></svg>
+    <div class="vd"><b>LC tank info:</b> <span id="lcInfo">…</span></div>
+  </div>
+
+  <h2>Where the formula comes from (capacitor)</h2>
+  <div class="deriv">
+    <span class="step">Definition: <b>C = Q/V</b> (capacitance = charge per volt). Differential form: <b>i = C · dV/dt</b>.</span>
+    <span class="step">Instantaneous power into the capacitor: <b>P(t) = V(t) · i(t) = V(t) · C · dV/dt</b>.</span>
+    <span class="step">Energy stored = ∫₀ᵗ P dτ = C · ∫₀ᵛ V dV = <b>½ · C · V²</b>. <span class="arrow">→</span> the factor of ½ comes from integrating V from 0 to V.</span>
+    <span class="step">In terms of charge: E = ½ · Q · V = ½ · Q² / C.  All three forms are equivalent.</span>
+  </div>
+
+  <h2>Where the formula comes from (inductor)</h2>
+  <div class="deriv">
+    <span class="step">Definition: <b>L = Φ/I</b> (inductance = flux linkage per ampere). Differential form: <b>v = L · di/dt</b>.</span>
+    <span class="step">Instantaneous power into the inductor: <b>P(t) = v(t) · i(t) = L · di/dt · i(t)</b>.</span>
+    <span class="step">Energy stored = ∫₀ᵗ P dτ = L · ∫₀ⁱ I dI = <b>½ · L · I²</b>. <span class="arrow">→</span> same ½ factor, same kinetic-energy mathematical shape.</span>
+    <span class="step">In terms of flux: E = ½ · Φ · I = ½ · Φ² / L. All three forms equivalent.</span>
+  </div>
+
+  <h2>Duality table — capacitor vs inductor</h2>
+  <div class="duality">
+    <div class="col v">
+      <h3>Capacitor (electric field)</h3>
+      <table>
+        <tr><th>Defining</th><td>Q = C · V</td></tr>
+        <tr><th>Differential</th><td>i = C · dV/dt</td></tr>
+        <tr><th>Energy</th><td>E = ½ · C · V²</td></tr>
+        <tr><th>Stored quantity</th><td>Charge Q</td></tr>
+        <tr><th>Field</th><td>Electric (volts per metre)</td></tr>
+        <tr><th>Resists</th><td>Sudden voltage change</td></tr>
+        <tr><th>Acts like</th><td>Open at DC, short at high f</td></tr>
+        <tr><th>Geometry constant</th><td>ε (permittivity)</td></tr>
+        <tr><th>Loss</th><td>ESR · I_rms² + dielectric tanδ</td></tr>
+      </table>
+    </div>
+    <div class="col i">
+      <h3>Inductor (magnetic field)</h3>
+      <table>
+        <tr><th>Defining</th><td>Φ = L · I</td></tr>
+        <tr><th>Differential</th><td>v = L · di/dt</td></tr>
+        <tr><th>Energy</th><td>E = ½ · L · I²</td></tr>
+        <tr><th>Stored quantity</th><td>Flux Φ</td></tr>
+        <tr><th>Field</th><td>Magnetic (tesla)</td></tr>
+        <tr><th>Resists</th><td>Sudden current change</td></tr>
+        <tr><th>Acts like</th><td>Short at DC, open at high f</td></tr>
+        <tr><th>Geometry constant</th><td>µ (permeability)</td></tr>
+        <tr><th>Loss</th><td>DCR · I² + core hysteresis + eddy</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h2>Worked example — sizing a bulk cap for a microcontroller brownout</h2>
+  <div class="worked">
+    <h3>The problem</h3>
+    <p>An ESP32 draws 200 mA peak during a WiFi TX burst. The 3.3 V regulator can supply average current but not the burst. A bulk capacitor between regulator output and ESP32 V_DD must hold V above the 3.0 V brownout for 10 ms (the TX burst duration). Size the cap.</p>
+
+    <h3>The arithmetic — energy view</h3>
+    <span class="eq">Allowed voltage droop: ΔV = 3.3 − 3.0 = <b>0.3 V</b></span>
+    <span class="eq">Energy needed during burst: E = V · I · t = 3.15 (average) · 0.2 · 0.01 = <b>6.3 mJ</b></span>
+    <span class="eq">Cap energy difference: E = ½ · C · (V_high² − V_low²) = ½ · C · (3.3² − 3.0²) = ½ · C · 1.89</span>
+    <span class="eq">Solve: C = 6.3·10⁻³ / 0.945 = <b>6.67 mF = 6700 µF</b>  <span class="annot">(too big — wait)</span></span>
+
+    <h3>The arithmetic — current view (more honest)</h3>
+    <span class="eq">From i = C · dV/dt:  C = I · Δt / ΔV = 0.2 · 0.01 / 0.3 = <b>6.67 mF</b></span>
+    <p>Same number, because the energy view assumed constant power; the current view assumes constant current. They agree. But: <b>6700 µF is a huge cap</b> — physically larger than an ESP32 module. The real fix is one of: a smaller burst current (better antenna), a lower brownout threshold (configurable on ESP32), an LDO with a fast dynamic response, or a 10 µF + 100 µF combo that handles the high-frequency edge and lets the regulator handle the low-frequency average.</p>
+
+    <h3>The lesson</h3>
+    <p>Energy storage is fundamental, but in real circuits, <b>bandwidth matters more than steady energy</b>. A 100 µF cap with 0.01 Ω ESR will drop 2 mV per amp of high-frequency current — that's the cap doing what it's actually for. Picking caps for energy alone is rare; picking caps for ESR + Z(f) + ripple capability is the norm.</p>
+  </div>
+
+  <h2>Worked example — ignition coil (inductor) flyback</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>Old-school automotive ignition coil: primary inductance L ≈ 5 mH, primary current I = 5 A at the moment of breakthrough. Calculate stored energy, predict the back-EMF when the points open in 1 µs, and see why a snubber cap is mandatory.</p>
+
+    <h3>The arithmetic</h3>
+    <span class="eq">Stored energy: E = ½ · L · I² = ½ · 0.005 · 25 = <b>62.5 mJ</b></span>
+    <span class="eq">v = L · di/dt — opening 5 A in 1 µs: v = 0.005 · 5/10⁻⁶ = <b>25,000 V</b> back-EMF spike</span>
+    <span class="eq">Stored energy must go somewhere; without a path, it dumps into the dielectric of the switch (sparks across the points, arcs across the FET in a modern system).</span>
+    <span class="eq">Snubber: C = 0.5 µF parallel across the switch → spike clamps to roughly ±sqrt(L/C) · I = sqrt(10⁻³ · 10) · 5 = ~500 V</span>
+
+    <h3>The insight</h3>
+    <p>An inductor with 5 A of current is "loaded" with 62.5 mJ. Switching that current off in microseconds produces hundreds or thousands of volts because v = L · di/dt scales linearly with how fast you cut the current. <b>Inductive kickback is exactly conservation of energy expressed at high speed.</b> Every relay, every motor, every solenoid needs either a flyback diode (recirculates the current until L dissipates the energy as DCR·I²) or a snubber (slows down the transition). This is why a bare BJT switching a relay coil will fail within seconds.</p>
+  </div>
+
+  <h2>Worked example — LC tank stores energy back and forth</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>L = 10 µH, C = 100 nF. Initially V_C = 10 V, I_L = 0. The tank rings; total energy is conserved (ideal case), oscillating between C-stored (electric) and L-stored (magnetic).</p>
+
+    <h3>The arithmetic</h3>
+    <span class="eq">Resonant ω: ω = 1/√(LC) = 1/√(10⁻⁵ · 10⁻⁷) = 1/√10⁻¹² = <b>10⁶ rad/s</b></span>
+    <span class="eq">Frequency f = ω/2π = <b>159.2 kHz</b></span>
+    <span class="eq">Initial energy: E = ½ · C · V² = ½ · 10⁻⁷ · 100 = <b>5 µJ</b> (all in C)</span>
+    <span class="eq">Peak current at zero V: I = √(2E/L) = √(10⁻⁵ / 10⁻⁵) = <b>1 A</b>  <span class="annot">(reaches L when V_C swings through zero)</span></span>
+    <span class="eq">Check: ½·L·I² = ½ · 10⁻⁵ · 1 = <b>5 µJ</b> ✓ — same energy now in L</span>
+
+    <h3>The picture</h3>
+    <p>Two energy buckets, alternately full. V_C = V_max·cos(ωt), I_L = I_max·sin(ωt). E_C oscillates between 5 µJ and 0; E_L oscillates between 0 and 5 µJ; <b>E_total = 5 µJ always</b>. In a real tank, ESR + DCR drains the energy gradually as R·I² heat; this is the Q-factor of the tank, and the basis of every LC oscillator, every PLL, every radio.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Energy scales with the square.</b> Double the voltage on a cap → 4× the energy. Double the current in an inductor → 4× the energy. Bigger sources don't just store more, they store quadratically more.</li>
+    <li><b>The factor of ½ is universal.</b> ½·C·V², ½·L·I², ½·m·v², ½·k·x² — all four come from integrating linear "force × displacement" with one end at zero. Not a coincidence.</li>
+    <li><b>Capacitor energy is in the field, not the charge.</b> Move the plates apart at constant Q → V rises (because C drops) → stored energy increases. You did work against the electric field; the cap stored that work.</li>
+    <li><b>Inductor energy is in the magnetic field.</b> Same flux, smaller core → field intensity rises → energy rises. Saturating the core ruins the formula: L collapses near saturation, energy falls off, and ringing changes.</li>
+    <li><b>Real components have parasitic energy losses.</b> Cap: ESR · I_rms² + dielectric loss tangent tanδ × jωCV². Inductor: DCR · I² (copper) + core hysteresis (∫H·dB per cycle) + eddy-current loss. Datasheets show these as ratings; the ideal formula is only the upper bound on what gets stored.</li>
+    <li><b>An LC tank conserves energy on the ideal axis, ESR/DCR drains it on the time axis.</b> Q-factor = ω·L/R for an inductor's losses, or 1/(ω·C·ESR) for the cap's. Higher Q = more cycles before energy decays e-fold.</li>
+  </ul>
+
+  <h2>Where you'll see this</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Power supply bulk caps</b> — holds energy through the brownout when load steps; sized by ΔV vs Δt vs I.</li>
+      <li><b style="color:var(--fg)">Switch-mode converter inductors</b> — store energy each cycle, release into the load. See <a href="../phase-6-power-electronics/synchronous-rectification.html">EE 6 — Sync Rectification</a>.</li>
+      <li><b style="color:var(--fg)">Photo flash</b> — charge a 1000 µF cap to 300 V → 45 J → dumps through a xenon tube in 1 ms = 45 kW peak.</li>
+      <li><b style="color:var(--fg)">Defibrillator</b> — 32 µF cap charged to 5 kV → 400 J pulse into the heart. Same physics, life-saving instead of camera-flashing.</li>
+      <li><b style="color:var(--fg)">Hybrid car regen braking</b> — kinetic energy → battery/supercap storage → drive train. The supercap form lets you accept high-current bursts the battery alone can't.</li>
+      <li><b style="color:var(--fg)">Magnetic levitation / MRI coils</b> — superconducting coils carry tens of kA at zero DCR; stored energy stays for years.</li>
+      <li><b style="color:var(--fg)">Cross-link:</b> <a href="rlc-step-response.html">RLC Step Response</a> — what happens when you combine C, L, and resistance to dissipate.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Cap energy</dt><dd><span class="eq">E_C = ½ · C · V²</span></dd>
+        <dt>Charge</dt><dd><span class="eq">Q = C · V</span></dd>
+        <dt>Ind energy</dt><dd><span class="eq">E_L = ½ · L · I²</span></dd>
+        <dt>Flux</dt><dd><span class="eq">Φ = L · I</span></dd>
+        <dt>LC tank ω</dt><dd><span class="eq">ω = 1 / √(L·C)</span></dd>
+        <dt>Resonant f</dt><dd><span class="eq">f = 1 / (2π √(L·C))</span></dd>
+        <dt>Cap differential</dt><dd><span class="eq">i = C · dV/dt</span></dd>
+        <dt>Ind differential</dt><dd><span class="eq">v = L · di/dt</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>NICE NUMBERS</h3>
+      <ul>
+        <li>1 F @ 1 V = <b>0.5 J</b></li>
+        <li>1 µF @ 1 V = <b>0.5 µJ</b></li>
+        <li>100 µF @ 5 V = <b>1.25 mJ</b></li>
+        <li>1 mH @ 1 A = <b>0.5 mJ</b></li>
+        <li>1 µH @ 1 A = <b>0.5 µJ</b></li>
+        <li>10 mH @ 1 A = <b>5 mJ</b></li>
+        <li>22 µH @ 3 A = <b>99 µJ</b></li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li><b>Forgetting the ½.</b> E ≠ C·V² or L·I². The half comes from integrating.</li>
+        <li><b>Inductive kickback.</b> Cutting current → v = L·di/dt → huge spike. Always add a flyback diode or snubber.</li>
+        <li><b>Cap derating.</b> Datasheet C is at low DC bias. Class-2 MLCC (X7R) loses 30–80 % of C at rated voltage. Use class-1 (NP0/C0G) or oversize.</li>
+        <li><b>Core saturation.</b> Inductor's L collapses at saturation current; stored energy hits a ceiling.</li>
+        <li><b>Energy vs power confusion.</b> A 1 J cap dumping in 1 µs delivers 1 MW. The energy is small; the power is enormous.</li>
+        <li><b>Stored energy ≠ delivered energy.</b> ESR/DCR turns some into heat during transfer. Real-world efficiency is below 100 %.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 2 — Passive Components</a> ·
+    Forward: <a href="rlc-step-response.html">RLC Step Response</a>
+  </footer>
+</main>
+<script>
+  const els = {};
+  ['c','vc','l','il','spd'].forEach(k => els[k] = document.getElementById(k));
+  function fmtCap(c){
+    if(c >= 1) return c.toFixed(2)+' F';
+    if(c >= 1e-3) return (c*1e3).toFixed(2)+' mF';
+    if(c >= 1e-6) return (c*1e6).toFixed(2)+' µF';
+    if(c >= 1e-9) return (c*1e9).toFixed(2)+' nF';
+    return (c*1e12).toFixed(1)+' pF';
+  }
+  function fmtInd(l){
+    if(l >= 1) return l.toFixed(2)+' H';
+    if(l >= 1e-3) return (l*1e3).toFixed(2)+' mH';
+    if(l >= 1e-6) return (l*1e6).toFixed(2)+' µH';
+    return (l*1e9).toFixed(1)+' nH';
+  }
+  function fmtE(e){
+    if(e >= 1) return e.toFixed(3)+' J';
+    if(e >= 1e-3) return (e*1e3).toFixed(3)+' mJ';
+    if(e >= 1e-6) return (e*1e6).toFixed(3)+' µJ';
+    if(e >= 1e-9) return (e*1e9).toFixed(3)+' nJ';
+    return (e*1e12).toFixed(2)+' pJ';
+  }
+  function fmtV(v){
+    if(v < 1) return (v*1e3).toFixed(2)+' mV';
+    return v.toFixed(2)+' V';
+  }
+  function fmtI(i){
+    if(i < 1e-3) return (i*1e6).toFixed(2)+' µA';
+    if(i < 1) return (i*1e3).toFixed(2)+' mA';
+    return i.toFixed(3)+' A';
+  }
+  function fmtQ(q){
+    if(q >= 1) return q.toFixed(3)+' C';
+    if(q >= 1e-3) return (q*1e3).toFixed(2)+' mC';
+    if(q >= 1e-6) return (q*1e6).toFixed(2)+' µC';
+    return (q*1e9).toFixed(1)+' nC';
+  }
+  function fmtPhi(p){
+    if(p >= 1) return p.toFixed(3)+' Wb';
+    if(p >= 1e-3) return (p*1e3).toFixed(3)+' mWb';
+    return (p*1e6).toFixed(1)+' µWb';
+  }
+  function fmtT(t){
+    if(t >= 1) return t.toFixed(3)+' s';
+    if(t >= 1e-3) return (t*1e3).toFixed(3)+' ms';
+    if(t >= 1e-6) return (t*1e6).toFixed(3)+' µs';
+    return (t*1e9).toFixed(1)+' ns';
+  }
+  function fmtH(h){
+    if(h >= 1) return h.toFixed(3)+' m';
+    if(h >= 1e-3) return (h*1e3).toFixed(2)+' mm';
+    return (h*1e6).toFixed(1)+' µm';
+  }
+  function fmtF(f){
+    if(f >= 1e9) return (f/1e9).toFixed(3)+' GHz';
+    if(f >= 1e6) return (f/1e6).toFixed(3)+' MHz';
+    if(f >= 1e3) return (f/1e3).toFixed(3)+' kHz';
+    return f.toFixed(2)+' Hz';
+  }
+  // Animation state
+  let lcPhase = 0, lastT = performance.now();
+
+  function update(){
+    const C = Math.pow(10, parseFloat(els.c.value));
+    const Vc = parseFloat(els.vc.value);
+    const L = Math.pow(10, parseFloat(els.l.value));
+    const Il = parseFloat(els.il.value);
+    document.getElementById('cRead').textContent = fmtCap(C);
+    document.getElementById('vcRead').textContent = fmtV(Vc);
+    document.getElementById('lRead').textContent = fmtInd(L);
+    document.getElementById('ilRead').textContent = fmtI(Il);
+    document.getElementById('spdRead').textContent = els.spd.value + '×';
+    const Ec = 0.5 * C * Vc * Vc;
+    const El = 0.5 * L * Il * Il;
+    document.getElementById('ecVal').textContent = fmtE(Ec);
+    document.getElementById('elVal').textContent = fmtE(El);
+    // Equivalents
+    // 1 W for ... seconds: t = E / 1W
+    document.getElementById('ecTime').textContent = fmtT(Ec / 1);
+    document.getElementById('elTime').textContent = fmtT(El / 1);
+    document.getElementById('ecJ').textContent = Ec.toExponential(3) + ' J';
+    document.getElementById('elJ').textContent = El.toExponential(3) + ' J';
+    // 10 g lifted: m·g·h = E → h = E / (0.01 · 9.81)
+    document.getElementById('ecH').textContent = fmtH(Ec / (0.01 * 9.81));
+    document.getElementById('elH').textContent = fmtH(El / (0.01 * 9.81));
+    document.getElementById('qC').textContent = fmtQ(C * Vc);
+    document.getElementById('phiL').textContent = fmtPhi(L * Il);
+    // Bars (log scale)
+    const eMax = Math.max(Ec, El, 1e-12);
+    const ratio = (e) => Math.max(1, 100 * (Math.log10(e + 1e-12) + 12) / 14); // -12..2 → 0..100
+    document.getElementById('barCap').style.width = ratio(Ec) + '%';
+    document.getElementById('barInd').style.width = ratio(El) + '%';
+    document.getElementById('barCapLabel').textContent = `E_C = ${fmtE(Ec)}`;
+    document.getElementById('barIndLabel').textContent = `E_L = ${fmtE(El)}`;
+    const omega = 1 / Math.sqrt(L * C);
+    const f = omega / (2 * Math.PI);
+    document.getElementById('lcInfo').textContent =
+      `If you connect this C and L into an ideal tank: ω = ${omega.toExponential(3)} rad/s, f = ${fmtF(f)}, T = ${fmtT(2*Math.PI/omega)}, peak I = ${fmtI(Vc * Math.sqrt(C/L))}`;
+    drawLC(C, L, Vc, Il);
+  }
+
+  function drawLC(C, L, Vc, Il){
+    const svg = document.getElementById('lcSvg');
+    let s = '';
+    // Axes
+    s += `<line x1="60" y1="110" x2="660" y2="110" stroke="var(--fg-dim)" stroke-width="0.6"/>`;
+    s += `<line x1="60" y1="20" x2="60" y2="200" stroke="var(--fg-dim)" stroke-width="0.6"/>`;
+    s += `<text x="56" y="14" class="label-dim" text-anchor="end">E</text>`;
+    s += `<text x="670" y="115" class="label-dim">t</text>`;
+    // Plot E_C and E_L over one period
+    const N = 200;
+    let cPath = `M 60 ${110 - 80}`;
+    let lPath = `M 60 110`;
+    let totalPath = `M 60 ${110 - 80}`;
+    const E0 = 0.5 * C * Vc * Vc; // start energy
+    for(let i=1; i<=N; i++){
+      const t = i / N * 2 * Math.PI + lcPhase;
+      const v = Math.cos(t);
+      const ii = Math.sin(t);
+      const Ec = 0.5 * C * (Vc * v) * (Vc * v);
+      const El = 0.5 * L * (Vc * Math.sqrt(C/L) * ii) * (Vc * Math.sqrt(C/L) * ii);
+      const x = 60 + i * 3;
+      const yc = 110 - (Ec / E0) * 80;
+      const yl = 110 - (El / E0) * 80;
+      const yt = 110 - ((Ec + El) / E0) * 80;
+      cPath += ` L ${x} ${yc}`;
+      lPath += ` L ${x} ${yl}`;
+      totalPath += ` L ${x} ${yt}`;
+    }
+    s += `<path d="${cPath}" fill="none" stroke="#5ec8ff" stroke-width="1.6"/>`;
+    s += `<path d="${lPath}" fill="none" stroke="#ffb86c" stroke-width="1.6"/>`;
+    s += `<path d="${totalPath}" fill="none" stroke="#a3e635" stroke-width="1.2" stroke-dasharray="3 3"/>`;
+    s += `<text x="80" y="35" class="label" fill="#5ec8ff">E_C (cosine²)</text>`;
+    s += `<text x="220" y="35" class="label" fill="#ffb86c">E_L (sine²)</text>`;
+    s += `<text x="360" y="35" class="label" fill="#a3e635">E_total = const</text>`;
+    svg.innerHTML = s;
+  }
+
+  function applyPreset(p){
+    const cfg = {
+      decap:    {c:-7, vc:3.3, l:-3, il:0, spd:1},   // 100 nF
+      bulk:     {c:Math.log10(470e-6), vc:12, l:-3, il:0, spd:1},
+      super:    {c:0, vc:2.5, l:-3, il:0, spd:1},
+      boost:    {c:-6, vc:0, l:Math.log10(22e-6), il:3, spd:1},
+      solenoid: {c:-6, vc:0, l:Math.log10(0.05), il:0.5, spd:1},
+      ups:      {c:Math.log10(4700e-6), vc:400, l:-3, il:0, spd:1},
+      reset:    {c:-4, vc:5, l:-2, il:1, spd:1}
+    }[p];
+    if(!cfg) return;
+    ['c','vc','l','il','spd'].forEach(k => els[k].value = cfg[k]);
+    document.querySelectorAll('#presets button').forEach(b => b.classList.toggle('active', b.dataset.p === p));
+    update();
+  }
+
+  Object.values(els).forEach(el => el.addEventListener('input', update));
+  document.querySelectorAll('#presets button').forEach(b => b.addEventListener('click', () => applyPreset(b.dataset.p)));
+  update();
+  // Animate LC oscillation
+  function tick(now){
+    const dt = (now - lastT) / 1000;
+    lastT = now;
+    lcPhase += dt * 2 * Math.PI * parseFloat(els.spd.value);
+    drawLC(Math.pow(10, parseFloat(els.c.value)), Math.pow(10, parseFloat(els.l.value)), parseFloat(els.vc.value), parseFloat(els.il.value));
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+</script>
+</body>
+</html>

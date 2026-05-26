@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phasor Rotation — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim);cursor:pointer}
+  .anchor:hover{border-color:var(--accent)}
+  .anchor.active{border-color:var(--accent);color:var(--accent)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control button{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:6px 12px;
+    font:13px ui-monospace,Menlo,monospace;cursor:pointer}
+  .control button.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid{stroke:var(--grid);stroke-width:0.5}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .play-row{display:flex;gap:8px;align-items:center;margin:0 0 12px 0}
+  .play-row button{background:var(--accent);color:var(--bg);border:none;
+    border-radius:4px;padding:6px 14px;font:13px ui-monospace,monospace;cursor:pointer}
+  .play-row button.pause{background:var(--accent2)}
+  .play-row .status{color:var(--fg-dim);font:12px ui-monospace,monospace}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:6px 0;font-size:12px;
+    font-family:ui-monospace,Menlo,monospace}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{display:inline-block;width:12px;height:3px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Phasor Rotation</h1>
+  <p class="lede">A sinusoid is the shadow of a spinning arrow. Watch a phasor rotate counter-clockwise at angular speed ω, and the y-projection traces out cos(ωt). For reactive components, V and I are out of phase by exactly 90°: inductor voltage leads current (V_L = jωL · I) and capacitor voltage lags current (V_C = I / jωC). Stop the animation at any angle to read off the instantaneous voltages and currents on the three traces.</p>
+
+  <div class="anchors">
+    <button class="anchor active" data-preset="rl"><b>RL series</b> · V_L leads I by 90°</button>
+    <button class="anchor" data-preset="rc"><b>RC series</b> · V_C lags I by 90°</button>
+    <button class="anchor" data-preset="rlc"><b>RLC series</b> · phase depends on f</button>
+    <button class="anchor" data-preset="resonance"><b>Resonance</b> · X_L = X_C, all real</button>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>Frequency: <span class="readout" id="fRead">60 Hz</span></label><input id="freq" type="range" min="10" max="1000" step="1" value="60"></div>
+    <div class="control"><label>R: <span class="readout" id="rRead">100 Ω</span></label><input id="r" type="range" min="1" max="1000" step="1" value="100"></div>
+    <div class="control"><label>L: <span class="readout" id="lRead">100 mH</span></label><input id="l" type="range" min="0" max="500" step="1" value="100"></div>
+    <div class="control"><label>C: <span class="readout" id="cRead">10 µF</span></label><input id="c" type="range" min="0" max="1000" step="1" value="10"></div>
+    <div class="control"><label>Source V_m: <span class="readout" id="vmRead">10 V</span></label><input id="vm" type="range" min="1" max="100" step="1" value="10"></div>
+    <div class="control"><label>Animation speed</label>
+      <select id="speed">
+        <option value="0.5">0.5×</option>
+        <option value="1" selected>1× (real-time at 1/60 actual)</option>
+        <option value="2">2×</option>
+        <option value="4">4×</option>
+      </select>
+    </div>
+  </section>
+
+  <div class="figure">
+    <div class="play-row">
+      <button id="playBtn">▶ Play</button>
+      <button id="resetBtn" style="background:var(--bg-elev2);color:var(--fg)">↺ Reset</button>
+      <span class="status" id="statusReadout">phase ωt = 0°</span>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>I (current ref)</span>
+      <span><i style="background:var(--accent2)"></i>V_L (leads by 90°)</span>
+      <span><i style="background:var(--accent3)"></i>V_C (lags by 90°)</span>
+      <span><i style="background:var(--warn)"></i>V_R (in phase with I)</span>
+    </div>
+    <svg id="plot" viewBox="0 0 700 360" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+      <tr><td>ω (angular freq)</td><td id="tW" class="num">377 rad/s</td><td><code>2πf</code></td></tr>
+      <tr><td>X_L (inductive reactance)</td><td id="tXL" class="num">37.7 Ω</td><td><code>ωL</code></td></tr>
+      <tr><td>X_C (capacitive reactance)</td><td id="tXC" class="num">265 Ω</td><td><code>1/(ωC)</code></td></tr>
+      <tr><td>Z (impedance magnitude)</td><td id="tZ" class="num">247 Ω</td><td><code>√(R² + (X_L − X_C)²)</code></td></tr>
+      <tr><td>θ (impedance phase)</td><td id="tTheta" class="num">−66.2°</td><td><code>atan2((X_L − X_C), R)</code></td></tr>
+      <tr><td>I_m (peak current)</td><td id="tIm" class="num">40.5 mA</td><td><code>V_m / |Z|</code></td></tr>
+    </table>
+    <div class="vd"><b>Live phasor sum:</b> V_source = V_R + jωL·I − j/(ωC)·I = <span id="vdCalc">…</span></div>
+  </div>
+
+  <h2>From spinning arrow to sinusoid</h2>
+  <p>Every steady-state AC signal at frequency f can be represented by a complex number, called a phasor: amplitude (length) and phase (angle). The instantaneous time-domain value is the real part of <code>phasor · exp(jωt)</code>.</p>
+  <div class="deriv">
+    <span class="step">Sinusoid: <b>v(t) = V_m · cos(ωt + φ)</b></span>
+    <span class="step">Phasor form: <b>V = V_m · e^(jφ) = V_m·(cos φ + j sin φ)</b></span>
+    <span class="step">Recover time: <b>v(t) = Re{ V · e^(jωt) }</b></span>
+    <span class="step">The exponential e^(jωt) is the spinning unit vector at speed ω; multiplication by V scales it (V_m) and rotates it (φ).</span>
+    <span class="step"><span class="arrow">→</span> Phasors live in frequency-domain; all instantaneous time information is "stripped" — only amplitude and phase remain.</span>
+  </div>
+
+  <h2>Why the 90° offsets aren't arbitrary</h2>
+  <p>Inductors and capacitors are dual: one stores energy in magnetic flux, the other in electric charge. Differentiating cos(ωt) gives −sin(ωt) = cos(ωt + 90°), so any time-derivative of a sinusoid is itself a sinusoid rotated by 90°. That's where the 90° phase shift comes from.</p>
+  <div class="deriv">
+    <span class="step">Inductor: <b>v_L = L·di/dt</b>; if i(t) = I_m·cos(ωt), then di/dt = −ωI_m·sin(ωt) = ωI_m·cos(ωt + 90°)</span>
+    <span class="step"><span class="arrow">→</span> <b>V_L leads I by 90°</b></span>
+    <span class="step">Capacitor: <b>i_C = C·dv/dt</b>; if i(t) = I_m·cos(ωt), then v(t) = (I_m/ωC)·sin(ωt) = (I_m/ωC)·cos(ωt − 90°)</span>
+    <span class="step"><span class="arrow">→</span> <b>V_C lags I by 90°</b></span>
+    <span class="step">In phasor form: V_L = jωL·I, V_C = I/(jωC) — the j multiplies-and-rotates-by-90°.</span>
+  </div>
+
+  <h2>Worked example — series RL at 60 Hz</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>R = 100 Ω, L = 100 mH, source V_m = 10 V at f = 60 Hz.</p>
+    <h3>The arithmetic</h3>
+    <span class="eq">ω = 2π·60 = 377 rad/s</span>
+    <span class="eq">X_L = ωL = 377 · 0.1 = 37.7 Ω <span class="annot">(small compared to R at line freq)</span></span>
+    <span class="eq">Z = √(100² + 37.7²) = 106.9 Ω</span>
+    <span class="eq">θ = atan(37.7/100) = +20.7° <span class="annot">(V leads I)</span></span>
+    <span class="eq">I_m = 10 / 106.9 = 93.5 mA peak; I_rms = 66.1 mA</span>
+    <span class="eq">V_R_m = I_m · R = 9.35 V (in phase with I)</span>
+    <span class="eq">V_L_m = I_m · X_L = 3.53 V (leads I by 90°)</span>
+    <h3>Sanity check</h3>
+    <span class="eq">|V_R + jV_L| = √(9.35² + 3.53²) = 10.0 V ✓ <span class="annot">(equals source amplitude)</span></span>
+  </div>
+
+  <h2>Worked example — RC high-pass corner</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>R = 1 kΩ, C = 100 nF. Where is the corner frequency, and what's the phase shift there?</p>
+    <h3>The arithmetic</h3>
+    <span class="eq">f_c = 1 / (2π·R·C) = 1 / (2π · 1000 · 100e-9) = 1592 Hz</span>
+    <span class="eq">At f = f_c: X_C = R = 1000 Ω <span class="annot">(by definition of corner)</span></span>
+    <span class="eq">θ = atan(R / X_C) = 45° <span class="annot">(half of the maximum 90°)</span></span>
+    <span class="eq">|H(f_c)| = 1/√2 = 0.707 = −3 dB</span>
+    <span class="eq">At f = 10·f_c: X_C = 100 Ω → θ → 84°; |H| → 0.995</span>
+    <h3>The takeaway</h3>
+    <p>The phase shift through a reactive element is gradual, not abrupt. It crosses 45° exactly at the corner. Below: dominated by reactance; above: dominated by R.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>The phasor diagram is the picture</b>; the sinusoid is the projection. Looking only at the time waveform, you'd never guess they're all rotating at the same speed.</li>
+    <li><b>V_L and V_C are 180° apart</b> — they always partially cancel each other. At resonance (X_L = X_C), they cancel exactly, leaving only R in the impedance.</li>
+    <li><b>Phase tells you what's leading what</b>, but only in steady state. Transients (after a step) are a different beast — that's the territory of Laplace transforms.</li>
+    <li><b>"V leads I" / "I leads V"</b> — the leading one is the one whose maximum comes first in time. Mnemonics: ELI the ICE man. (E_L leads I; I leads E in C.)</li>
+    <li><b>Phasor magnitudes are usually peak (V_m), not RMS</b>, but the math doesn't care which — same arithmetic with √2 multiplier. Just be consistent across a problem.</li>
+    <li><b>Real waveform = Re{V · e^(jωt)}</b>. The "phasor" is a frozen snapshot at t = 0; the e^(jωt) makes it spin. Engineers write V (no time) understanding the e^(jωt) is implicit.</li>
+  </ul>
+
+  <h2>Where phasors show up</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Filter analysis</b> — Bode plots, group delay, transfer functions are all phasor math.</li>
+      <li><b style="color:var(--fg)">Power factor correction</b> — measure V·I phase angle to know how much reactive power you're moving (and paying for).</li>
+      <li><b style="color:var(--fg)">Motor control</b> — three-phase motors driven with phasors 120° apart; vector control uses Clarke/Park transforms (rotating reference frame).</li>
+      <li><b style="color:var(--fg)">RF impedance matching</b> — Smith chart is a graphical phasor calculator. Z = R + jX everywhere.</li>
+      <li><b style="color:var(--fg)">Vibration / control</b> — bode plots of mechanical systems are the same math (mass = inductor, spring = capacitor).</li>
+      <li><b style="color:var(--fg)">Audio EQ</b> — every parametric EQ band is a 2nd-order RLC analog; phase response matters for transient fidelity.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Phasor</dt><dd><span class="eq">V = V_m·e^(jφ)</span></dd>
+        <dt>Time-domain</dt><dd><span class="eq">v(t) = Re{V·e^(jωt)}</span></dd>
+        <dt>L impedance</dt><dd><span class="eq">Z_L = jωL (V leads I)</span></dd>
+        <dt>C impedance</dt><dd><span class="eq">Z_C = 1/(jωC) (V lags I)</span></dd>
+        <dt>R impedance</dt><dd><span class="eq">Z_R = R (no phase)</span></dd>
+        <dt>Series</dt><dd><span class="eq">Z = Z_R + Z_L + Z_C</span></dd>
+        <dt>|Z|, θ</dt><dd><span class="eq">|Z| = √(R²+X²); θ = atan(X/R)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MNEMONICS</h3>
+      <ul>
+        <li><b>ELI the ICE man</b> — In L, E leads I; In C, I leads E.</li>
+        <li><b>Inductor = magnetic flywheel</b> — resists change in current.</li>
+        <li><b>Capacitor = electric flywheel</b> — resists change in voltage.</li>
+        <li>At <b>resonance</b>: X_L = X_C, so reactances cancel; Z = R, θ = 0.</li>
+        <li>Phasor rotation: <b>CCW = positive frequency</b> by convention.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Sign of X_C</b> — Z_C = 1/(jωC) = −j/(ωC), so X_C is negative when written as reactance. Always keep track of the sign.</li>
+        <li><b>RMS vs peak</b> — wall-outlet "120 V_RMS" means V_m = 170 V. Use one or the other consistently.</li>
+        <li><b>Mixing rad and degrees</b> — calculators in degrees, tables in radians. Convert before adding.</li>
+        <li><b>Treating a transient as a phasor</b> — phasors only describe steady state. After a step, you need the natural-response term too.</li>
+        <li><b>Wrong direction of rotation</b> — engineering convention is CCW (positive ω); physics sometimes uses CW. Lab equipment uses CCW; honor that.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EE Phase 3 — AC Analysis</span> ·
+    Companion: <a href="../phase-2-passive-components/lc-resonance.html">LC Resonance</a> ·
+    Forward: <a href="../phase-2-passive-components/capacitor-explorer.html">Capacitor Explorer</a> for Z_C details.
+  </footer>
+</main>
+<script>
+  let state = {
+    f:60, R:100, L:0.1, C:10e-6, Vm:10,
+    speed:1, t:0, playing:false,
+  };
+
+  function recompute(){
+    const w = 2*Math.PI*state.f;
+    const XL = w*state.L;
+    const XC = state.C > 0 ? 1/(w*state.C) : 1e12;
+    const Xnet = XL - XC;
+    const Zmag = Math.sqrt(state.R*state.R + Xnet*Xnet);
+    const theta = Math.atan2(Xnet, state.R);
+    const Im = state.Vm / Zmag;
+    return {w, XL, XC, Xnet, Zmag, theta, Im};
+  }
+
+  function fmtR(r){
+    if(r >= 1e6) return (r/1e6).toFixed(2) + " MΩ";
+    if(r >= 1e3) return (r/1e3).toFixed(2) + " kΩ";
+    return r.toFixed(1) + " Ω";
+  }
+  function fmtL(l){
+    if (l >= 1) return l.toFixed(2) + " H";
+    if (l >= 1e-3) return (l*1000).toFixed(0) + " mH";
+    if (l >= 1e-6) return (l*1e6).toFixed(0) + " µH";
+    return (l*1e9).toFixed(0) + " nH";
+  }
+  function fmtC(c){
+    if (c >= 1e-3) return (c*1e3).toFixed(1) + " mF";
+    if (c >= 1e-6) return (c*1e6).toFixed(1) + " µF";
+    if (c >= 1e-9) return (c*1e9).toFixed(1) + " nF";
+    return (c*1e12).toFixed(0) + " pF";
+  }
+  function fmtV(v){
+    if (Math.abs(v) >= 1) return v.toFixed(2) + " V";
+    return (v*1000).toFixed(1) + " mV";
+  }
+  function fmtI(i){
+    if (Math.abs(i) >= 1) return i.toFixed(3) + " A";
+    if (Math.abs(i) >= 1e-3) return (i*1000).toFixed(2) + " mA";
+    return (i*1e6).toFixed(1) + " µA";
+  }
+  function fmtF(f){
+    if (f >= 1e6) return (f/1e6).toFixed(2) + " MHz";
+    if (f >= 1e3) return (f/1e3).toFixed(2) + " kHz";
+    return f.toFixed(0) + " Hz";
+  }
+
+  // Plot dimensions: phasor diagram (left), three sinusoids (right)
+  const PW = 700, PH = 360;
+  const PHASOR_X = 90, PHASOR_Y = 180, PHASOR_R = 100;
+  const SIN_X = 240, SIN_W = 440, SIN_H = 90;
+  const SIN_Y0 = 40;  // first wave at top
+  const SIN_GAP = 30;
+
+  function draw(){
+    const r = recompute();
+    const svg = document.getElementById('plot');
+    let s = '';
+    // Background
+    s += `<rect x="0" y="0" width="${PW}" height="${PH}" fill="var(--bg-elev2)"/>`;
+
+    // Phasor diagram
+    s += `<circle cx="${PHASOR_X}" cy="${PHASOR_Y}" r="${PHASOR_R}" stroke="var(--grid)" fill="none"/>`;
+    // Axes
+    s += `<line x1="${PHASOR_X-PHASOR_R-10}" y1="${PHASOR_Y}" x2="${PHASOR_X+PHASOR_R+10}" y2="${PHASOR_Y}" class="axis"/>`;
+    s += `<line x1="${PHASOR_X}" y1="${PHASOR_Y-PHASOR_R-10}" x2="${PHASOR_X}" y2="${PHASOR_Y+PHASOR_R+10}" class="axis"/>`;
+    // 90° tick marks
+    for (let ang = 0; ang < 360; ang += 30){
+      const a = ang * Math.PI/180;
+      const x1 = PHASOR_X + PHASOR_R * Math.cos(a);
+      const y1 = PHASOR_Y - PHASOR_R * Math.sin(a);
+      const x2 = PHASOR_X + (PHASOR_R-5) * Math.cos(a);
+      const y2 = PHASOR_Y - (PHASOR_R-5) * Math.sin(a);
+      s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--fg-dim)" stroke-width="0.5"/>`;
+    }
+    // Direction arrow showing CCW rotation
+    s += `<path d="M ${PHASOR_X+PHASOR_R+15} ${PHASOR_Y-2} L ${PHASOR_X+PHASOR_R+10} ${PHASOR_Y-5} L ${PHASOR_X+PHASOR_R+10} ${PHASOR_Y+1} Z" fill="var(--fg-dim)"/>`;
+    s += `<text x="${PHASOR_X+PHASOR_R+8}" y="${PHASOR_Y+18}" class="label-dim">+ω (CCW)</text>`;
+
+    // Current phasor — reference, angle = phase = ωt
+    const wt = state.t * r.w;
+    const ang_I = wt;
+    const ix = PHASOR_X + PHASOR_R*0.6 * Math.cos(ang_I);
+    const iy = PHASOR_Y - PHASOR_R*0.6 * Math.sin(ang_I);
+    s += arrow(PHASOR_X, PHASOR_Y, ix, iy, "var(--accent)", "I");
+
+    // V_R: in phase with I, magnitude I_m * R / V_m (normalized)
+    const VR_norm = (r.Im * state.R) / state.Vm;
+    const vrx = PHASOR_X + PHASOR_R*0.95*VR_norm * Math.cos(ang_I);
+    const vry = PHASOR_Y - PHASOR_R*0.95*VR_norm * Math.sin(ang_I);
+    s += arrow(PHASOR_X, PHASOR_Y, vrx, vry, "var(--warn)", "V_R");
+
+    // V_L: leads I by 90° (ang+90)
+    if (r.XL > 0.01){
+      const VL_norm = (r.Im * r.XL) / state.Vm;
+      const ang_VL = ang_I + Math.PI/2;
+      const vlx = PHASOR_X + PHASOR_R*0.95*VL_norm * Math.cos(ang_VL);
+      const vly = PHASOR_Y - PHASOR_R*0.95*VL_norm * Math.sin(ang_VL);
+      s += arrow(PHASOR_X, PHASOR_Y, vlx, vly, "var(--accent2)", "V_L");
+    }
+    // V_C: lags I by 90° (ang-90)
+    if (r.XC < 1e10 && r.XC > 0.01){
+      const VC_norm = (r.Im * r.XC) / state.Vm;
+      const ang_VC = ang_I - Math.PI/2;
+      const vcx = PHASOR_X + PHASOR_R*0.95*VC_norm * Math.cos(ang_VC);
+      const vcy = PHASOR_Y - PHASOR_R*0.95*VC_norm * Math.sin(ang_VC);
+      s += arrow(PHASOR_X, PHASOR_Y, vcx, vcy, "var(--accent3)", "V_C");
+    }
+
+    s += `<text x="${PHASOR_X}" y="${PHASOR_Y+PHASOR_R+30}" class="label-dim" text-anchor="middle">phasor diagram</text>`;
+    s += `<text x="${PHASOR_X}" y="${PHASOR_Y+PHASOR_R+44}" class="label-dim" text-anchor="middle">(snapshot at ωt = ${(wt*180/Math.PI).toFixed(0)}°)</text>`;
+
+    // Three sinusoids
+    // y-axis indicators on the right
+    const N_POINTS = 200;
+    const T_SHOWN = 2 * Math.PI / r.w; // one period
+    const time_span = 3 * T_SHOWN; // show 3 periods
+    function plotWave(yCenter, phaseOff, color, label, normMag){
+      let path = '';
+      for (let i=0; i<=N_POINTS; i++){
+        const t = (i/N_POINTS) * time_span;
+        const x = SIN_X + (i/N_POINTS) * SIN_W;
+        const val = normMag * Math.cos(r.w*t + phaseOff);
+        const y = yCenter - val * (SIN_H/2 - 5);
+        path += (i?'L':'M') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+      }
+      // baseline
+      const lineY = yCenter;
+      s += `<line x1="${SIN_X}" y1="${lineY}" x2="${SIN_X+SIN_W}" y2="${lineY}" stroke="var(--fg-dim)" stroke-width="0.5"/>`;
+      s += `<path d="${path}" stroke="${color}" stroke-width="2" fill="none"/>`;
+      // current-time marker
+      const tFrac = (state.t % time_span) / time_span;
+      const markX = SIN_X + tFrac * SIN_W;
+      const valM = normMag * Math.cos(r.w*state.t + phaseOff);
+      const markY = yCenter - valM * (SIN_H/2 - 5);
+      s += `<line x1="${markX}" y1="${yCenter-SIN_H/2}" x2="${markX}" y2="${yCenter+SIN_H/2}" stroke="var(--fg-dim)" stroke-width="0.5" stroke-dasharray="2 3"/>`;
+      s += `<circle cx="${markX}" cy="${markY}" r="3" fill="${color}"/>`;
+      s += `<text x="${SIN_X-8}" y="${yCenter+4}" class="label" text-anchor="end" fill="${color}">${label}</text>`;
+    }
+
+    plotWave(SIN_Y0 + SIN_H/2, 0, "var(--accent)", "I", 0.7);
+    plotWave(SIN_Y0 + SIN_H + SIN_GAP + SIN_H/2, Math.PI/2, "var(--accent2)", "V_L", (r.XL > 0.01 ? 0.7*(r.Im*r.XL)/state.Vm : 0));
+    plotWave(SIN_Y0 + 2*(SIN_H + SIN_GAP) + SIN_H/2, -Math.PI/2, "var(--accent3)", "V_C", (r.XC < 1e10 && r.XC > 0.01 ? 0.7*(r.Im*r.XC)/state.Vm : 0));
+
+    // x-axis label
+    s += `<text x="${SIN_X+SIN_W/2}" y="${SIN_Y0 + 3*(SIN_H+SIN_GAP) + 10}" class="label-dim" text-anchor="middle">time (3 periods shown)</text>`;
+
+    svg.innerHTML = s;
+  }
+
+  function arrow(x1, y1, x2, y2, color, label){
+    const dx = x2 - x1, dy = y2 - y1;
+    const len = Math.sqrt(dx*dx + dy*dy);
+    if (len < 1) return '';
+    const ux = dx/len, uy = dy/len;
+    // shaft (slightly short)
+    const ex = x2 - ux*7, ey = y2 - uy*7;
+    let s = `<line x1="${x1}" y1="${y1}" x2="${ex}" y2="${ey}" stroke="${color}" stroke-width="2"/>`;
+    // arrowhead
+    const headX1 = x2 - ux*9 - uy*4;
+    const headY1 = y2 - uy*9 + ux*4;
+    const headX2 = x2 - ux*9 + uy*4;
+    const headY2 = y2 - uy*9 - ux*4;
+    s += `<path d="M ${x2} ${y2} L ${headX1} ${headY1} L ${headX2} ${headY2} Z" fill="${color}"/>`;
+    s += `<text x="${x2 + ux*15 - 5}" y="${y2 + uy*15 + 4}" fill="${color}" font-family="ui-monospace" font-size="11">${label}</text>`;
+    return s;
+  }
+
+  function update(){
+    document.getElementById('fRead').textContent = fmtF(state.f);
+    document.getElementById('rRead').textContent = fmtR(state.R);
+    document.getElementById('lRead').textContent = fmtL(state.L);
+    document.getElementById('cRead').textContent = fmtC(state.C);
+    document.getElementById('vmRead').textContent = state.Vm + " V";
+
+    const r = recompute();
+    document.getElementById('tW').textContent = r.w.toFixed(0) + " rad/s";
+    document.getElementById('tXL').textContent = fmtR(r.XL);
+    document.getElementById('tXC').textContent = r.XC > 1e9 ? "∞ (open at DC)" : fmtR(r.XC);
+    document.getElementById('tZ').textContent  = fmtR(r.Zmag);
+    document.getElementById('tTheta').textContent = (r.theta * 180/Math.PI).toFixed(1) + "°";
+    document.getElementById('tIm').textContent = fmtI(r.Im);
+
+    const VR = r.Im * state.R;
+    const VL = r.Im * r.XL;
+    const VC = r.Im * r.XC;
+    document.getElementById('vdCalc').textContent =
+      `${fmtV(VR)} + j${fmtV(VL)} − j${fmtV(VC)} = ${fmtV(state.Vm)}∠${(r.theta*180/Math.PI).toFixed(1)}°`;
+
+    const wt = (state.t * r.w * 180/Math.PI) % 360;
+    document.getElementById('statusReadout').textContent = `phase ωt = ${wt.toFixed(0)}°`;
+    draw();
+  }
+
+  // Animation loop
+  let lastFrame = 0;
+  function loop(now){
+    if (state.playing){
+      const dt = lastFrame ? (now - lastFrame)/1000 : 0;
+      lastFrame = now;
+      // Slow down by factor of 60 so 60 Hz isn't too fast to see
+      state.t += dt * state.speed / 60;
+      update();
+    } else {
+      lastFrame = 0;
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // Hookup
+  document.getElementById('freq').addEventListener('input', e => { state.f = parseInt(e.target.value); update(); });
+  document.getElementById('r').addEventListener('input', e => { state.R = parseFloat(e.target.value); update(); });
+  document.getElementById('l').addEventListener('input', e => { state.L = parseFloat(e.target.value) / 1000; update(); });
+  document.getElementById('c').addEventListener('input', e => { state.C = parseFloat(e.target.value) * 1e-6; update(); });
+  document.getElementById('vm').addEventListener('input', e => { state.Vm = parseFloat(e.target.value); update(); });
+  document.getElementById('speed').addEventListener('change', e => { state.speed = parseFloat(e.target.value); });
+
+  document.getElementById('playBtn').addEventListener('click', () => {
+    state.playing = !state.playing;
+    const btn = document.getElementById('playBtn');
+    btn.textContent = state.playing ? '⏸ Pause' : '▶ Play';
+    btn.className = state.playing ? 'pause' : '';
+  });
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    state.t = 0;
+    state.playing = false;
+    document.getElementById('playBtn').textContent = '▶ Play';
+    document.getElementById('playBtn').className = '';
+    update();
+  });
+
+  const PRESETS = {
+    rl: {f:60, R:100, L:0.1, C:1e-12},
+    rc: {f:1000, R:1000, L:0, C:100e-9},
+    rlc: {f:300, R:100, L:0.1, C:10e-6},
+    resonance: {f:159, R:100, L:0.1, C:10e-6}, // f_res ≈ 159 Hz for L=100 mH, C=10 µF
+  };
+  document.querySelectorAll('.anchor').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.anchor').forEach(a => a.classList.remove('active'));
+      b.classList.add('active');
+      const p = PRESETS[b.dataset.preset];
+      Object.assign(state, p);
+      document.getElementById('freq').value = state.f;
+      document.getElementById('r').value = state.R;
+      document.getElementById('l').value = state.L * 1000;
+      document.getElementById('c').value = state.C * 1e6;
+      update();
+    });
+  });
+
+  update();
+</script>
+</body>
+</html>

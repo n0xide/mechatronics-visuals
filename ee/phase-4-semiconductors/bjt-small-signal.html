@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BJT Small-Signal Analysis — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim);cursor:pointer}
+  .anchor:hover{border-color:var(--accent)}
+  .anchor.active{border-color:var(--accent);color:var(--accent)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:4px 8px;
+    font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid{stroke:var(--grid);stroke-width:0.5}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>BJT Small-Signal Analysis</h1>
+  <p class="lede">Bias a BJT in the middle of its active region (Q-point) and the diode-like exponential becomes — for small wiggles around that point — a linear amplifier. Three numbers do all the work: transconductance gm = Ic / VT, base resistance rπ = β / gm, voltage gain Av = −gm · R_C. Slide the bias resistor, watch Q migrate on the load line, see voltage gain change. The hybrid-π model is the small-signal soul of every audio preamp, transistor switch, and current source ever built.</p>
+
+  <div class="anchors">
+    <button class="anchor active" data-preset="common-emitter"><b>Common-emitter</b> · Av = −gm·R_C, max voltage gain</button>
+    <button class="anchor" data-preset="emitter-follower"><b>Emitter-follower</b> · Av ≈ 1, current buffer</button>
+    <button class="anchor" data-preset="common-base"><b>Common-base</b> · high f, low input Z</button>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>V_CC: <span class="readout" id="vccRead">12 V</span></label><input id="vcc" type="range" min="3" max="30" step="0.5" value="12"></div>
+    <div class="control"><label>R_C (kΩ): <span class="readout" id="rcRead">4.7 kΩ</span></label><input id="rc" type="range" min="0.1" max="50" step="0.1" value="4.7"></div>
+    <div class="control"><label>R_E (kΩ): <span class="readout" id="reRead">1.0 kΩ</span></label><input id="re" type="range" min="0" max="20" step="0.1" value="1.0"></div>
+    <div class="control"><label>R_B (kΩ) bias: <span class="readout" id="rbRead">100 kΩ</span></label><input id="rb" type="range" min="1" max="1000" step="1" value="100"></div>
+    <div class="control"><label>V_in_pk small-signal (mV): <span class="readout" id="vinRead">10 mV</span></label><input id="vin" type="range" min="0.1" max="100" step="0.1" value="10"></div>
+    <div class="control"><label>β (h_FE): <span class="readout" id="bRead">200</span></label><input id="b" type="range" min="50" max="500" step="10" value="200"></div>
+  </section>
+
+  <div class="figure">
+    <svg id="schem" viewBox="0 0 700 300" width="100%"></svg>
+    <svg id="plot" viewBox="0 0 700 380" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+      <tr><td>I_C (collector bias)</td><td id="tIc" class="num">2.4 mA</td><td><code>β·I_B, simplified KVL</code></td></tr>
+      <tr><td>V_CE (Q-point)</td><td id="tVce" class="num">0.7 V</td><td><code>V_CC − I_C·(R_C + R_E)</code></td></tr>
+      <tr><td>gm (transconductance)</td><td id="tGm" class="num">93 mA/V</td><td><code>I_C / V_T</code></td></tr>
+      <tr><td>rπ (base resistance)</td><td id="tRpi" class="num">2.15 kΩ</td><td><code>β / gm</code></td></tr>
+      <tr><td>r_e</td><td id="tRe" class="num">10.7 Ω</td><td><code>V_T / I_E ≈ 26 mV / I_E</code></td></tr>
+      <tr><td>Voltage gain Av</td><td id="tAv" class="num">−438</td><td><code>−gm·R_C (no R_E bypass), or −R_C/r_e</code></td></tr>
+      <tr><td>Output V_pk</td><td id="tVo" class="num">−4.38 V</td><td><code>Av · V_in_pk</code></td></tr>
+      <tr><td>Q-point health</td><td id="tStatus" class="num" colspan="2">Mid-rail bias — healthy.</td></tr>
+    </table>
+    <div class="vd"><b>Live hybrid-π:</b> Av ≈ −gm·R_C = <span id="vdCalc">−93 mA/V · 4.7 kΩ = −438</span></div>
+  </div>
+
+  <h2>The DC Q-point: pick the bias before anything else</h2>
+  <p>A BJT is a current amplifier (I_C ≈ β·I_B) only when biased into the active region: V_BE ≈ 0.65 V, V_CE > V_BE. The bias point — "quiescent" or Q-point — sets I_C and V_CE in the absence of any signal. Everything else (gm, rπ, gain) depends on that I_C.</p>
+  <div class="deriv">
+    <span class="step">Base bias network: V_B = (V_CC · R_B2)/(R_B1+R_B2)  <span class="arrow">(or single R_B + base, for simplified case)</span></span>
+    <span class="step">V_E = V_B − V_BE  ≈ V_B − 0.65 V</span>
+    <span class="step">I_E = V_E / R_E  <span class="arrow">→</span>  I_C ≈ I_E (since β > 100)</span>
+    <span class="step">V_C = V_CC − I_C·R_C</span>
+    <span class="step">V_CE = V_C − V_E  <span class="arrow">→ design target: V_CE ≈ V_CC/2</span> (mid-rail, max swing)</span>
+  </div>
+
+  <h2>The load line on the I_C vs V_CE plot</h2>
+  <p>Pick any V_CC and R_C. Plot two extreme operating points: when V_CE = 0 (transistor "saturated"), I_C = V_CC / R_C; when I_C = 0 (transistor "cut off"), V_CE = V_CC. Connect them with a line: that's the load line. The Q-point sits somewhere on it. The base current dictates which I_C curve the transistor follows; where it crosses the load line is the actual operating point.</p>
+
+  <h2>Small-signal: linearize the diode</h2>
+  <p>The Ebers-Moll equation I_C = Is·exp(V_BE / V_T) is exponential, brutally so. But for a tiny wiggle <em>around</em> the Q-point, only the local slope matters — and that slope is gm.</p>
+  <div class="deriv">
+    <span class="step"><b>I_C = Is · exp(V_BE / V_T)</b></span>
+    <span class="step">Differentiate w.r.t. V_BE: <b>dI_C/dV_BE = Is·exp(V_BE/V_T)/V_T = I_C / V_T</b></span>
+    <span class="step"><span class="arrow">→</span> <b>gm = I_C / V_T</b> — the transconductance, the heart of small-signal BJT analysis.</span>
+    <span class="step">At I_C = 1 mA, V_T = 25.7 mV: gm = 0.0389 A/V = 38.9 mA/V. <i>Memorize: ~40 mA/V per mA.</i></span>
+    <span class="step">Base resistance: <b>rπ = β / gm</b> — the small-signal V_BE/I_B ratio. β=200 at I_C=1 mA: rπ = 5.14 kΩ.</span>
+    <span class="step">Emitter resistance: <b>r_e ≈ V_T / I_E ≈ 1/gm</b>. Often more useful than rπ for circuit analysis.</span>
+  </div>
+
+  <h2>Voltage gain Av = −gm · R_C (common-emitter)</h2>
+  <div class="deriv">
+    <span class="step">Small-signal input wiggle V_be drives a collector-current wiggle: <b>i_c = gm · V_be</b></span>
+    <span class="step">That current goes through R_C, producing output: <b>V_out = −i_c · R_C</b> (minus because higher I_C = lower V_C)</span>
+    <span class="step"><span class="arrow">→</span> <b>Av = V_out / V_be = −gm · R_C</b></span>
+    <span class="step">For I_C = 2 mA and R_C = 5 kΩ: gm = 77 mA/V, Av = −385.</span>
+    <span class="step">If R_E is NOT bypassed by a capacitor (degenerated): <b>Av = −R_C / (R_E + r_e) ≈ −R_C / R_E</b> for R_E ≫ r_e.</span>
+    <span class="step">With R_E bypass (small Cap in parallel with R_E): <b>Av_AC = −gm·R_C</b> (full gain at signal freq, but stable DC bias). This is the standard CE amp.</span>
+  </div>
+
+  <h2>Worked example — discrete CE amplifier, 1 kHz audio</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>V_CC = 12 V, β = 200. Want voltage gain ≈ 100. Bias for I_C = 2 mA. Pick R_C, R_E, R_B.</p>
+    <h3>The arithmetic</h3>
+    <span class="eq">Target Av = −100, gm at 2 mA = 2/0.0257 = 78 mA/V</span>
+    <span class="eq">R_C = 100 / 78 mA = 1.28 kΩ → pick 1.3 kΩ (E12: 1.2 kΩ)</span>
+    <span class="eq">For Q-point at V_CE = V_CC/2 = 6 V: V_C = 6 + V_E = 6 + 1 = 7 V (if V_E = 1 V)</span>
+    <span class="eq">I_C · R_C = 12 − 7 = 5 V → I_C = 5/1200 = 4.17 mA — too high; adjust R_C up or accept Vce ≠ 6 V</span>
+    <span class="eq">Recompute with R_C = 2.7 kΩ: I_C·R_C = 5.4 V at 2 mA → V_C = 6.6 V → V_CE = 5.6 V (OK)</span>
+    <span class="eq">R_E for V_E = 1 V at 2 mA: R_E = 500 Ω → pick 470 Ω</span>
+    <span class="eq">R_E bypass cap C_E = 1/(2π·f_low·R_E/10) = 1/(2π·20·47) = 169 µF → use 220 µF electrolytic</span>
+    <span class="eq">Base voltage = V_E + V_BE = 1.65 V; bias network R1/R2 sets this</span>
+    <span class="eq">R_B equivalent ≈ 10·R_E for solid bias: 4.7 kΩ — pick R1=33k, R2=5.6k from V_CC</span>
+    <h3>The achieved gain</h3>
+    <span class="eq">gm at I_C = 2 mA: 78 mA/V; Av = −78 · 2700 = −210 <span class="annot">(with R_E bypassed)</span></span>
+    <span class="eq">If R_E not bypassed (degenerated): Av = −R_C/R_E = −2700/500 = −5.4 (low but stable)</span>
+  </div>
+
+  <h2>Worked example — bias stability with temperature</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>Common-emitter amp warms up; V_BE drops 2 mV/°C, β rises 1 %/°C. By how much does I_C drift over a 60 °C swing?</p>
+    <h3>Without R_E (no degeneration)</h3>
+    <span class="eq">I_C ≈ (V_BB − V_BE)/(R_B/β) — heavily dependent on V_BE</span>
+    <span class="eq">ΔV_BE = 60·2 = 120 mV; if V_BB = 2 V, R_B = 100 kΩ, β = 200:</span>
+    <span class="eq">I_C drift = β·ΔV_BE / R_B = 200·0.12/100k = 240 µA <span class="annot">on top of, say, 2 mA — 12 % drift!</span></span>
+    <h3>With R_E = 1 kΩ (degenerated)</h3>
+    <span class="eq">I_C ≈ (V_BB − V_BE)/R_E (since R_E ≫ r_e)</span>
+    <span class="eq">I_C drift = ΔV_BE/R_E = 0.12/1000 = 120 µA — half, and independent of β</span>
+    <p>The emitter resistor is a feedback element: if I_C tries to rise, V_E rises with it, lowering V_BE, throttling I_C back. R_E gives bias stability at the cost of voltage gain (Av drops by ~R_E/r_e factor unless bypassed).</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>gm = I_C / V_T</b> — once you know I_C, gm is fixed by physics (V_T = 25.7 mV at 25 °C). You can't make gm depend on β or material; only on current.</li>
+    <li><b>The "ideal" CE gain has a maximum</b> at V_CE = V_CC/2 and I_C such that R_C·I_C = V_CC/2. Beyond that, headroom limits swing.</li>
+    <li><b>R_E is the bias stabilizer</b>. Without it, β variation (5×!) and V_BE temperature drift will move the Q-point dramatically. With it, the operating point is set by R_E alone (β-independent for β > 100).</li>
+    <li><b>Bypass R_E with a cap if you want AC gain</b>. The cap shorts R_E to ground at signal frequencies, so the gain is −gm·R_C at AC and stable at DC.</li>
+    <li><b>Input impedance into a CE amp is approximately rπ</b>, parallel with the base bias network. β=200, I_C=1 mA: rπ ≈ 5 kΩ. This is low — bipolar amps load source heavily.</li>
+    <li><b>The hybrid-π model uses 4 parameters</b>: rπ (base-emitter input resistance), gm (transconductance), r_o (Early effect, output resistance), Cπ + Cµ (junction capacitances at high freq). For audio/DC, just gm and rπ are enough.</li>
+    <li><b>"Small" means &lt; V_T</b> (~25 mV). If V_be wiggles approach V_T, the linear model breaks down and you get distortion (the exponential exposes itself).</li>
+  </ul>
+
+  <h2>Where the hybrid-π model shows up</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Audio preamps</b> — guitar pedals, microphone amps; CE topology with R_E bypass.</li>
+      <li><b style="color:var(--fg)">Logic / switches</b> — same transistor, used in saturation/cutoff instead of active region.</li>
+      <li><b style="color:var(--fg)">Differential amplifiers</b> — the front end of every op-amp; long-tailed pair is two CE amps sharing a tail current source.</li>
+      <li><b style="color:var(--fg)">Current mirrors</b> — bias-distribution networks in IC design rely on matched gm of paired BJTs.</li>
+      <li><b style="color:var(--fg)">RF amplifiers</b> — common-base topology has high f_T, used in LNAs and oscillator buffers.</li>
+      <li><b style="color:var(--fg)">Voltage references</b> — ΔV_BE generator (PTAT) is two BJTs at different currents, exploiting gm.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>gm</dt><dd><span class="eq">I_C / V_T (≈ 38.9·I_C[mA] mA/V)</span></dd>
+        <dt>rπ</dt><dd><span class="eq">β / gm</span></dd>
+        <dt>r_e</dt><dd><span class="eq">V_T / I_E ≈ 1/gm</span></dd>
+        <dt>Av (CE, bypassed)</dt><dd><span class="eq">−gm·R_C ≈ −R_C/r_e</span></dd>
+        <dt>Av (CE, degenerated)</dt><dd><span class="eq">−R_C/(R_E + r_e)</span></dd>
+        <dt>Av (EF)</dt><dd><span class="eq">≈ +1, Ri = β·R_E</span></dd>
+        <dt>Q-point</dt><dd><span class="eq">V_CE ≈ V_CC/2 for max swing</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>RULES OF THUMB</h3>
+      <ul>
+        <li><b>gm ≈ 40·I_C(mA)</b> — at 1 mA, gm = 40 mA/V.</li>
+        <li><b>r_e (Ω) ≈ 26 / I_E(mA)</b> — at 1 mA, r_e = 26 Ω.</li>
+        <li><b>V_BE drops 2 mV per °C rise</b>.</li>
+        <li><b>β doubles for −40 °C → +85 °C</b>; use feedback bias.</li>
+        <li><b>Bias voltage at base ≈ 1/10 V_CC</b> as a starting design point.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Using "fixed-bias" (R_B from V_CC to base alone)</b> — extremely β-sensitive. Always add R_E.</li>
+        <li><b>Forgetting r_e in gain formula</b> — for low I_C (sub-mA), r_e becomes significant compared to R_E.</li>
+        <li><b>Operating outside active region</b> — saturation (V_CE ≈ 0.2 V) means β collapses, no amplification.</li>
+        <li><b>Treating β as a constant</b> — β varies 2:1 between same-part-number BJTs.</li>
+        <li><b>Direct-coupling without level-shifting</b> — output bias of one stage doesn't match input bias of the next; use coupling caps or differential pairs.</li>
+        <li><b>Ignoring r_o (Early effect)</b> — at very high R_C, r_o limits Av to V_A/V_T ≈ 50–500.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EE Phase 4 — Semiconductors</span> ·
+    Companion: <a href="../phase-2-passive-components/diode-iv-curve.html">Diode I-V Curve</a> ·
+    Forward: <a href="cmrr-explorer.html">CMRR Explorer</a> for the differential pair built from two BJTs.
+  </footer>
+</main>
+<script>
+  let state = {
+    Vcc:12, Rc:4700, Re:1000, Rb:100000, Vin:0.01, beta:200,
+    preset:"common-emitter",
+  };
+  const VT = 0.0257;
+  const VBE = 0.65;
+
+  const PRESETS = {
+    "common-emitter": {Vcc:12, Rc:4700, Re:1000, Rb:100000, Vin:0.01, beta:200},
+    "emitter-follower": {Vcc:12, Rc:0, Re:4700, Rb:100000, Vin:0.1, beta:200},
+    "common-base": {Vcc:12, Rc:4700, Re:1000, Rb:10000, Vin:0.01, beta:200},
+  };
+
+  function compute(){
+    // Use simplified bias: V_B = Vcc · Re/(Rb+Re), then I_E = (V_B − VBE)/Re
+    // Actually: V_B set by R_B as in single base resistor → I_B = (V_CC − V_BE)/R_B (no divider)
+    // For simplicity, single-R_B from V_CC to base
+    const Ib = Math.max(0, (state.Vcc - VBE) / state.Rb);
+    let Ic_unconstrained = state.beta * Ib;
+    // With R_E feedback: V_B = V_CC · ... but if R_B is direct from V_CC, V_B = V_CC − Ib·R_B
+    // To match the simple model where R_B sets I_B directly:
+    const Ie = Ic_unconstrained * (state.beta + 1) / state.beta;
+    let Vce, Vc, Ve;
+    // Solve KVL: V_CC = I_C·R_C + V_CE + I_E·R_E
+    // Estimate I_C with R_E feedback:
+    // V_B (assumed) = V_BE + I_E·R_E
+    // I_B = (V_CC − V_B)/R_B
+    // I_E = (β+1)·I_B
+    // V_B = V_BE + (β+1)·(V_CC − V_B)/R_B · R_E
+    // V_B·(1 + (β+1)·R_E/R_B) = V_BE + (β+1)·V_CC·R_E/R_B
+    const k = (state.beta + 1) * state.Re / state.Rb;
+    const V_B = (VBE + k*state.Vcc) / (1 + k);
+    const I_E = Math.max(0, (V_B - VBE) / Math.max(0.001, state.Re));
+    const I_C = I_E * state.beta / (state.beta + 1);
+    Vc = state.Vcc - I_C * state.Rc;
+    Ve = I_E * state.Re;
+    Vce = Vc - Ve;
+    // Saturation check: V_CE >= ~0.2 V; otherwise saturated
+    let saturated = Vce < 0.2;
+    if (saturated){
+      // bring V_CE to 0.2 V and re-solve I_C
+      Vce = 0.2;
+      // I_C limited by R_C + R_E and headroom
+      const I_C_sat = (state.Vcc - 0.2) / (state.Rc + state.Re);
+      Ic_unconstrained = I_C_sat;
+    }
+    const I_C_final = saturated ? (state.Vcc - 0.2) / (state.Rc + state.Re) : I_C;
+    const gm = I_C_final / VT;
+    const rpi = state.beta / Math.max(gm, 1e-9);
+    const re = I_C_final > 1e-7 ? VT / I_C_final : 1e6;
+    // Av: assume R_E bypassed (typical AC analysis)
+    let Av;
+    if (state.preset === "emitter-follower"){
+      Av = (state.beta + 1) * state.Re / (rpi + (state.beta + 1)*state.Re);
+    } else if (state.preset === "common-base"){
+      Av = gm * state.Rc;
+    } else {
+      Av = -gm * state.Rc; // bypassed CE
+    }
+    const Vo = Av * state.Vin;
+    return {Ib, Ic:I_C_final, Vce, Vc, Ve, V_B, gm, rpi, re, Av, Vo, saturated};
+  }
+
+  function fmtV(v){
+    if (Math.abs(v) >= 1) return v.toFixed(3) + " V";
+    return (v*1000).toFixed(1) + " mV";
+  }
+  function fmtI(i){
+    if (Math.abs(i) >= 1) return i.toFixed(3) + " A";
+    if (Math.abs(i) >= 1e-3) return (i*1000).toFixed(3) + " mA";
+    if (Math.abs(i) >= 1e-6) return (i*1e6).toFixed(2) + " µA";
+    return (i*1e9).toFixed(0) + " nA";
+  }
+  function fmtR(r){
+    if (r >= 1e6) return (r/1e6).toFixed(2) + " MΩ";
+    if (r >= 1e3) return (r/1e3).toFixed(2) + " kΩ";
+    return r.toFixed(1) + " Ω";
+  }
+
+  function drawSchem(){
+    const svg = document.getElementById('schem');
+    const r = compute();
+    let s = '';
+    s += `<rect x="0" y="0" width="700" height="300" fill="var(--bg-elev2)"/>`;
+    // V_CC rail
+    s += `<line x1="100" y1="40" x2="600" y2="40" stroke="var(--accent2)" stroke-width="2"/>`;
+    s += `<text x="600" y="32" class="label-warn" text-anchor="end">V_CC = ${state.Vcc} V</text>`;
+
+    // R_C
+    s += `<line x1="300" y1="40" x2="300" y2="80" class="wire"/>`;
+    s += `<rect x="290" y="80" width="20" height="50" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1.5"/>`;
+    s += `<text x="320" y="100" class="label">R_C = ${fmtR(state.Rc)}</text>`;
+    s += `<text x="320" y="115" class="label-dim">V_C = ${fmtV(r.Vc)}</text>`;
+    s += `<line x1="300" y1="130" x2="300" y2="160" class="wire"/>`;
+
+    // BJT (NPN)
+    s += `<circle cx="300" cy="180" r="20" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1.5"/>`;
+    s += `<line x1="290" y1="170" x2="290" y2="190" stroke="var(--accent)" stroke-width="2"/>`;
+    s += `<line x1="290" y1="178" x2="305" y2="172" stroke="var(--accent)" stroke-width="1.5"/>`;
+    s += `<line x1="290" y1="188" x2="305" y2="194" stroke="var(--accent)" stroke-width="1.5"/>`;
+    // arrowhead (NPN out)
+    s += `<polygon points="305,194 300,196 304,198" fill="var(--accent)"/>`;
+    s += `<text x="325" y="178" class="label">Q1 NPN</text>`;
+    s += `<text x="325" y="193" class="label-dim">β = ${state.beta}</text>`;
+    // base lead
+    s += `<line x1="280" y1="180" x2="200" y2="180" class="wire"/>`;
+    // collector pin (top)
+    s += `<line x1="300" y1="160" x2="305" y2="170" stroke="var(--accent)" stroke-width="1.5"/>`;
+    // emitter pin (bottom)
+    s += `<line x1="305" y1="195" x2="300" y2="205" stroke="var(--accent)" stroke-width="1.5"/>`;
+
+    // R_B (base bias)
+    s += `<rect x="120" y="125" width="20" height="50" fill="var(--bg-elev)" stroke="var(--accent3)" stroke-width="1.5"/>`;
+    s += `<text x="80" y="155" class="label-ok">R_B</text>`;
+    s += `<text x="80" y="170" class="label-dim">${fmtR(state.Rb)}</text>`;
+    s += `<line x1="130" y1="40" x2="130" y2="125" class="wire"/>`;
+    s += `<line x1="130" y1="175" x2="130" y2="180" class="wire"/>`;
+    s += `<line x1="130" y1="180" x2="200" y2="180" class="wire"/>`;
+
+    // Input signal
+    s += `<text x="80" y="240" class="label-dim">V_in</text>`;
+    s += `<circle cx="60" cy="220" r="15" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1"/>`;
+    s += `<path d="M 50 220 Q 55 213, 60 220 T 70 220" stroke="var(--accent)" fill="none" stroke-width="1"/>`;
+    s += `<line x1="60" y1="205" x2="60" y2="200" class="wire"/>`;
+    s += `<line x1="60" y1="200" x2="170" y2="200" class="wire"/>`;
+    s += `<line x1="170" y1="200" x2="170" y2="180" class="wire"/>`;
+    // coupling cap
+    s += `<line x1="175" y1="195" x2="175" y2="205" stroke="var(--accent2)" stroke-width="2"/>`;
+    s += `<line x1="180" y1="195" x2="180" y2="205" stroke="var(--accent2)" stroke-width="2"/>`;
+    s += `<text x="178" y="220" class="label-dim" text-anchor="middle">C_in</text>`;
+
+    // R_E
+    s += `<line x1="300" y1="205" x2="300" y2="230" class="wire"/>`;
+    s += `<rect x="290" y="230" width="20" height="40" fill="var(--bg-elev)" stroke="var(--accent3)" stroke-width="1.5"/>`;
+    s += `<text x="320" y="250" class="label">R_E = ${fmtR(state.Re)}</text>`;
+    s += `<text x="320" y="265" class="label-dim">V_E = ${fmtV(r.Ve)}</text>`;
+    s += `<line x1="300" y1="270" x2="300" y2="285" class="wire"/>`;
+    // GND
+    s += `<line x1="285" y1="285" x2="315" y2="285" stroke="var(--fg)" stroke-width="1.5"/>`;
+    s += `<line x1="290" y1="289" x2="310" y2="289" stroke="var(--fg)" stroke-width="1"/>`;
+    s += `<line x1="295" y1="293" x2="305" y2="293" stroke="var(--fg)" stroke-width="1"/>`;
+
+    // Output
+    s += `<text x="540" y="115" class="label-ok">V_out</text>`;
+    s += `<line x1="300" y1="160" x2="500" y2="160" class="wire"/>`;
+    s += `<line x1="505" y1="155" x2="505" y2="165" stroke="var(--accent2)" stroke-width="2"/>`;
+    s += `<line x1="510" y1="155" x2="510" y2="165" stroke="var(--accent2)" stroke-width="2"/>`;
+    s += `<line x1="510" y1="160" x2="600" y2="160" class="wire"/>`;
+    s += `<circle cx="610" cy="160" r="4" fill="var(--accent2)"/>`;
+
+    // Q-point display
+    let qcolor = r.saturated ? "var(--warn)" : (Math.abs(r.Vce - state.Vcc/2) < state.Vcc/3 ? "var(--accent3)" : "var(--accent2)");
+    s += `<text x="510" y="245" font-family="ui-monospace" font-size="13" fill="${qcolor}">Q-point: I_C=${fmtI(r.Ic)}, V_CE=${fmtV(r.Vce)}</text>`;
+    if (r.saturated) s += `<text x="510" y="262" class="label-warn">[SATURATED]</text>`;
+
+    svg.innerHTML = s;
+  }
+
+  function drawLoadLine(){
+    const svg = document.getElementById('plot');
+    const r = compute();
+    let s = '';
+    const PW = 700, PH = 380;
+    const PADL = 60, PADR = 20, PADT = 30, PADB = 40;
+    const PLOT_W = PW - PADL - PADR;
+    const PLOT_H = PH - PADT - PADB;
+    s += `<rect x="${PADL}" y="${PADT}" width="${PLOT_W}" height="${PLOT_H}" fill="var(--bg-elev2)"/>`;
+    // Axes: x = V_CE (0 to V_CC), y = I_C
+    const Ic_max = state.Vcc / (state.Rc + state.Re); // saturation point
+    const xMax = state.Vcc;
+    const yMax = Math.max(Ic_max, r.Ic) * 1.1;
+    function xToPx(v){ return PADL + (v/xMax)*PLOT_W; }
+    function yToPx(i){ return PADT + PLOT_H - (i/yMax)*PLOT_H; }
+    // grid
+    for (let i=0; i<=5; i++){
+      const xv = i * xMax / 5;
+      const x = xToPx(xv);
+      s += `<line x1="${x}" y1="${PADT}" x2="${x}" y2="${PADT+PLOT_H}" class="grid"/>`;
+      s += `<text x="${x}" y="${PADT+PLOT_H+15}" class="axis-label" text-anchor="middle">${xv.toFixed(1)}</text>`;
+    }
+    for (let i=0; i<=5; i++){
+      const iv = i*yMax/5;
+      const y = yToPx(iv);
+      s += `<line x1="${PADL}" y1="${y}" x2="${PADL+PLOT_W}" y2="${y}" class="grid"/>`;
+      s += `<text x="${PADL-6}" y="${y+3}" class="axis-label" text-anchor="end">${fmtI(iv)}</text>`;
+    }
+    s += `<line x1="${PADL}" y1="${PADT+PLOT_H}" x2="${PADL+PLOT_W}" y2="${PADT+PLOT_H}" class="axis"/>`;
+    s += `<line x1="${PADL}" y1="${PADT}" x2="${PADL}" y2="${PADT+PLOT_H}" class="axis"/>`;
+    s += `<text x="${PADL+PLOT_W/2}" y="${PADT+PLOT_H+30}" class="axis-label" text-anchor="middle">V_CE (V)</text>`;
+    s += `<text x="${PADL-44}" y="${PADT+PLOT_H/2}" class="axis-label" text-anchor="middle" transform="rotate(-90,${PADL-44},${PADT+PLOT_H/2})">I_C</text>`;
+
+    // Load line: from (V_CC, 0) to (0, V_CC/(R_C+R_E))
+    s += `<line x1="${xToPx(state.Vcc)}" y1="${yToPx(0)}" x2="${xToPx(0)}" y2="${yToPx(Ic_max)}" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 3"/>`;
+    s += `<text x="${PADL+PLOT_W-100}" y="${yToPx(Ic_max*0.6)}" fill="var(--accent)" font-family="ui-monospace" font-size="11">Load line</text>`;
+
+    // Family of I_C(V_CE) curves for various I_B (BJT in active region: I_C ≈ β·I_B independent of V_CE)
+    // We'll draw 5 curves
+    for (let k=1; k<=5; k++){
+      const Ib_k = r.Ib * k / 3; // sweep around the operating Ib
+      const Ic_k = state.beta * Ib_k;
+      // Active region: from Vce_sat (0.2 V) to Vcc, I_C is roughly constant
+      const x1 = xToPx(0.2);
+      const x2 = xToPx(xMax);
+      const y = yToPx(Ic_k);
+      if (Ic_k < yMax){
+        s += `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="var(--fg-dim)" stroke-width="0.5"/>`;
+        // rising part from V_CE=0 to V_CE_sat
+        s += `<line x1="${xToPx(0)}" y1="${yToPx(0)}" x2="${x1}" y2="${y}" stroke="var(--fg-dim)" stroke-width="0.5"/>`;
+        s += `<text x="${x2-5}" y="${y-3}" class="label-dim" text-anchor="end">I_B=${fmtI(Ib_k)}</text>`;
+      }
+    }
+
+    // Q-point marker
+    s += `<circle cx="${xToPx(r.Vce)}" cy="${yToPx(r.Ic)}" r="6" fill="var(--accent2)"/>`;
+    s += `<text x="${xToPx(r.Vce)+12}" y="${yToPx(r.Ic)-8}" fill="var(--accent2)" font-family="ui-monospace" font-size="12">Q (I_C=${fmtI(r.Ic)}, V_CE=${fmtV(r.Vce)})</text>`;
+
+    // AC swing arrows around Q
+    const swingV = Math.min(Math.abs(r.Av * state.Vin), r.Vce * 0.8);
+    if (swingV > 0.05){
+      const swingI = r.gm * state.Vin;
+      const x1 = xToPx(r.Vce - swingV);
+      const x2 = xToPx(r.Vce + swingV);
+      const y1 = yToPx(r.Ic + swingI);
+      const y2 = yToPx(r.Ic - swingI);
+      s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--accent3)" stroke-width="2"/>`;
+      s += `<text x="${x1-5}" y="${y1-5}" class="label-ok" text-anchor="end">AC swing ${fmtV(swingV)}</text>`;
+    }
+
+    svg.innerHTML = s;
+  }
+
+  function update(){
+    document.getElementById('vccRead').textContent = state.Vcc + " V";
+    document.getElementById('rcRead').textContent = fmtR(state.Rc);
+    document.getElementById('reRead').textContent = fmtR(state.Re);
+    document.getElementById('rbRead').textContent = fmtR(state.Rb);
+    document.getElementById('vinRead').textContent = (state.Vin*1000).toFixed(2) + " mV";
+    document.getElementById('bRead').textContent = state.beta;
+
+    const r = compute();
+    document.getElementById('tIc').textContent = fmtI(r.Ic);
+    document.getElementById('tVce').textContent = fmtV(r.Vce);
+    document.getElementById('tGm').textContent = (r.gm*1000).toFixed(1) + " mA/V";
+    document.getElementById('tRpi').textContent = fmtR(r.rpi);
+    document.getElementById('tRe').textContent = fmtR(r.re);
+    document.getElementById('tAv').textContent = r.Av.toFixed(1);
+    document.getElementById('tVo').textContent = fmtV(r.Vo);
+
+    let status;
+    if (r.saturated){ status = "SATURATED — increase R_B or reduce I_C demand."; }
+    else if (Math.abs(r.Vce - state.Vcc/2) < state.Vcc*0.15){ status = "Q-point near mid-rail — excellent symmetric swing."; }
+    else if (r.Vce > state.Vcc * 0.85){ status = "Cutoff territory — base current too low; reduce R_B."; }
+    else { status = "Q-point off-center — usable but limited swing in one direction."; }
+    document.getElementById('tStatus').textContent = status;
+
+    document.getElementById('vdCalc').textContent = `−${(r.gm*1000).toFixed(1)} mA/V · ${fmtR(state.Rc)} = ${r.Av.toFixed(1)}`;
+
+    drawSchem();
+    drawLoadLine();
+  }
+
+  document.getElementById('vcc').addEventListener('input', e => { state.Vcc = parseFloat(e.target.value); update(); });
+  document.getElementById('rc').addEventListener('input', e => { state.Rc = parseFloat(e.target.value)*1000; update(); });
+  document.getElementById('re').addEventListener('input', e => { state.Re = parseFloat(e.target.value)*1000; update(); });
+  document.getElementById('rb').addEventListener('input', e => { state.Rb = parseFloat(e.target.value)*1000; update(); });
+  document.getElementById('vin').addEventListener('input', e => { state.Vin = parseFloat(e.target.value)/1000; update(); });
+  document.getElementById('b').addEventListener('input', e => { state.beta = parseInt(e.target.value); update(); });
+
+  document.querySelectorAll('.anchor').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.anchor').forEach(a => a.classList.remove('active'));
+      b.classList.add('active');
+      state.preset = b.dataset.preset;
+      Object.assign(state, PRESETS[b.dataset.preset]);
+      document.getElementById('vcc').value = state.Vcc;
+      document.getElementById('rc').value = state.Rc/1000;
+      document.getElementById('re').value = state.Re/1000;
+      document.getElementById('rb').value = state.Rb/1000;
+      document.getElementById('vin').value = state.Vin*1000;
+      document.getElementById('b').value = state.beta;
+      update();
+    });
+  });
+
+  update();
+</script>
+</body>
+</html>

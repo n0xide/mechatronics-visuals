@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mechanical Fastener Picker — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:1040px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);
+     margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;
+     text-transform:uppercase;letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+
+  .tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:18px;overflow-x:auto;white-space:nowrap}
+  .tab{background:transparent;color:var(--fg-dim);border:none;
+    padding:10px 16px;font:13px ui-monospace,Menlo,monospace;cursor:pointer;
+    border-bottom:2px solid transparent;white-space:nowrap}
+  .tab:hover{color:var(--fg)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .pane{display:none}
+  .pane.active{display:block}
+
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control select,.control input{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:5px 8px;
+    font:13px ui-monospace,Menlo,monospace}
+  .control input[type=range]{padding:0;accent-color:var(--accent)}
+
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .big{font:600 22px/1 ui-monospace,Menlo,monospace;color:var(--accent3);margin:6px 0}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:16px;margin:18px 0}
+  .figure svg{display:block;max-width:100%;height:auto;margin:0 auto}
+
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+
+  /* Cheat sheet cards */
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+
+  /* Worked example block */
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+
+  /* Derivation block */
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+
+  /* Notice ul */
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+
+  /* Two-column */
+  .two-col{display:grid;gap:16px;grid-template-columns:1fr 1fr;margin:18px 0}
+  @media (max-width:720px){.two-col{grid-template-columns:1fr}}
+  .col-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:12px 14px}
+  .col-card h3{margin:0 0 8px}
+
+  /* SVG styling */
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .bolt-body{fill:#888;stroke:#222;stroke-width:1.5}
+  .bolt-head{fill:#666;stroke:#222;stroke-width:1.5}
+  .bolt-thread{stroke:#444;stroke-width:0.8}
+  .label{fill:var(--fg);font:11px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:11px ui-monospace,monospace}
+
+  .footer-note{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .footer-note a{color:var(--accent);text-decoration:none}
+
+  /* Star pattern viz */
+  .star-bolt{fill:var(--bg-elev2);stroke:var(--fg-dim);stroke-width:1.5}
+  .star-bolt.done{fill:var(--accent3);stroke:var(--accent3)}
+  .star-bolt.next{fill:var(--accent2);stroke:var(--accent2)}
+  .star-num{fill:var(--fg-bright);font:600 13px ui-monospace,monospace;text-anchor:middle;dominant-baseline:central}
+  .star-path{stroke:var(--accent);stroke-width:1.5;stroke-dasharray:4,3;fill:none;opacity:0.6}
+</style>
+</head>
+<body>
+<main>
+  <h1>Mechanical Fastener Picker</h1>
+  <p class="lede">The fastener tab you keep open while you draw a bracket. Metric and imperial thread tables with tap-drill and clearance-drill diameters, property-class strength data with the T = K·F·d torque calculator, thread-engagement length rules for steel / aluminum / soft material, heat-set vs helicoil insert decisions, washer and nut selection, and the crisscross tightening sequence for flanged joints. Every number is what you actually need at the drill press or torque wrench — no hand-waving.</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="metric">Metric thread</button>
+    <button class="tab" data-tab="torque">Class + torque</button>
+    <button class="tab" data-tab="engage">Engagement</button>
+    <button class="tab" data-tab="imperial">UNC / UNF</button>
+    <button class="tab" data-tab="inserts">Inserts</button>
+    <button class="tab" data-tab="washers">Washers + nuts</button>
+    <button class="tab" data-tab="pattern">Star pattern</button>
+  </div>
+
+  <!-- =================================================================== -->
+  <!-- METRIC THREAD PICKER -->
+  <!-- =================================================================== -->
+  <section class="pane active" id="pane-metric">
+    <h2>Metric ISO thread — tap drill, clearance, head sizes</h2>
+    <p>Pick a size. All the numbers that matter for the drawing and the drill press appear together: coarse pitch (the default if the spec doesn't say otherwise), 75 %-engagement tap drill, three clearance grades, hex-socket head dimensions for ISO 4762 (socket cap screw), and the major / minor / pitch diameters that go into thread-stripping calculations.</p>
+
+    <div class="anchors" id="metric-anchors">
+      <span class="anchor"><b>M3</b> tap = 2.5 mm · clearance = 3.2 mm · head = 2.5 mm hex</span>
+      <span class="anchor"><b>M4</b> tap = 3.3 mm · clearance = 4.3 mm · head = 3.0 mm hex</span>
+      <span class="anchor"><b>M5</b> tap = 4.2 mm · clearance = 5.3 mm · head = 4.0 mm hex</span>
+      <span class="anchor"><b>M6</b> tap = 5.0 mm · clearance = 6.4 mm · head = 5.0 mm hex</span>
+    </div>
+
+    <section class="controls">
+      <div class="control">
+        <label>Thread size</label>
+        <select id="m-size">
+          <option value="M2">M2</option>
+          <option value="M2.5">M2.5</option>
+          <option value="M3" selected>M3</option>
+          <option value="M4">M4</option>
+          <option value="M5">M5</option>
+          <option value="M6">M6</option>
+          <option value="M8">M8</option>
+          <option value="M10">M10</option>
+          <option value="M12">M12</option>
+          <option value="M16">M16</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Pitch series</label>
+        <select id="m-pitch">
+          <option value="coarse" selected>Coarse (default)</option>
+          <option value="fine">Fine</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Clearance fit</label>
+        <select id="m-fit">
+          <option value="close">Close (H12)</option>
+          <option value="normal" selected>Normal (H13)</option>
+          <option value="loose">Loose (H14)</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="figure">
+      <svg id="m-svg" viewBox="0 0 600 240" width="100%"></svg>
+      <div style="text-align:center;margin-top:6px"><span class="big" id="m-summary">M3 × 0.5 — tap 2.5 mm</span></div>
+      <p style="text-align:center;color:var(--fg-dim);font-size:12px;margin:4px 0 0" id="m-detail">75 % engagement tap drill</p>
+    </div>
+
+    <h2>Full metric reference (coarse + fine pitches)</h2>
+    <table id="m-table">
+      <tr>
+        <th>Size</th>
+        <th>Coarse pitch (mm)</th>
+        <th>Fine pitch (mm)</th>
+        <th>Tap drill 75 % (mm)</th>
+        <th>Pitch dia (mm)</th>
+        <th>Minor dia (mm)</th>
+        <th>Stress area (mm²)</th>
+        <th>Hex socket (mm)</th>
+      </tr>
+    </table>
+
+    <h3>How tap-drill diameter is computed</h3>
+    <div class="deriv">
+      <span class="step"><b>Tap-drill dia (75 % engagement)</b> = D_major − 1.08253 · pitch · (engagement fraction)</span>
+      <span class="step"><span class="arrow">→</span> for 75 % engagement: <b>D_tap ≈ D_major − 0.812 · pitch</b></span>
+      <span class="step"><span class="arrow">→</span> Example M3: 3.0 − 0.812·0.5 = 2.59 mm <span class="arrow">→</span> nearest stock drill = 2.5 mm</span>
+      <span class="step">Higher engagement (closer to 100 %) gives marginal strength gain but exponential tap-breakage risk. 75 % is the universal default; 65 % is sometimes used in tough stainless to save the tap.</span>
+    </div>
+
+    <ul class="notice">
+      <li><b>Coarse pitch is the default</b> — if a print just says "M6" with no pitch, it means M6 × 1.0 (coarse). Fine pitch is always called out explicitly as M6 × 0.75.</li>
+      <li><b>Tap drill ≠ clearance drill.</b> A tap drill is for cutting threads — it leaves the minor-diameter hole. A clearance drill is for the bolt to <em>pass through</em> — it must be larger than the major diameter, by 0.1–0.5 mm depending on fit grade.</li>
+      <li><b>H12 / H13 / H14 are ISO 273 fit grades</b>. H12 = close fit (precision alignment), H13 = normal (most general work), H14 = loose (slotted holes, thermal expansion).</li>
+      <li><b>Pitch diameter</b> is the diameter at which thread width = gap width — used for strip-strength and torque calculations, not for drilling.</li>
+      <li><b>Stress area</b> is what you multiply by tensile strength to get bolt capacity — slightly larger than minor-diameter area because the thread root carries some load.</li>
+    </ul>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- PROPERTY CLASS + TORQUE -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-torque">
+    <h2>Property class + tightening torque</h2>
+    <p>The little numbers stamped on a bolt head (4.8, 8.8, 10.9, 12.9, or A2-70) are the <em>property class</em> — they set ultimate tensile strength and proof load. The tightening torque T = K · F · d converts your wrench setting into clamp-force preload F, where K is a friction factor (0.2 dry, 0.15 lubed) and d is the nominal diameter.</p>
+
+    <div class="anchors">
+      <span class="anchor"><b>4.8</b> → 400 MPa UTS · cheap mild steel</span>
+      <span class="anchor"><b>8.8</b> → 800 MPa · most common structural</span>
+      <span class="anchor"><b>10.9</b> → 1040 MPa · high-strength</span>
+      <span class="anchor"><b>12.9</b> → 1220 MPa · highest commodity grade</span>
+      <span class="anchor"><b>A2-70</b> → 700 MPa · stainless 304</span>
+    </div>
+
+    <section class="controls">
+      <div class="control">
+        <label>Bolt size</label>
+        <select id="t-size">
+          <option value="M2">M2</option>
+          <option value="M2.5">M2.5</option>
+          <option value="M3" selected>M3</option>
+          <option value="M4">M4</option>
+          <option value="M5">M5</option>
+          <option value="M6">M6</option>
+          <option value="M8">M8</option>
+          <option value="M10">M10</option>
+          <option value="M12">M12</option>
+          <option value="M16">M16</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Property class</label>
+        <select id="t-class">
+          <option value="4.8">4.8 steel</option>
+          <option value="8.8" selected>8.8 steel</option>
+          <option value="10.9">10.9 steel</option>
+          <option value="12.9">12.9 steel</option>
+          <option value="A2-70">A2-70 stainless</option>
+          <option value="A2-80">A2-80 stainless</option>
+          <option value="A4-70">A4-70 stainless</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Lubrication</label>
+        <select id="t-lube">
+          <option value="0.2" selected>Dry (K = 0.2)</option>
+          <option value="0.15">Lubed (K = 0.15)</option>
+          <option value="0.12">Moly-coated (K = 0.12)</option>
+          <option value="0.10">Wax / anti-seize (K = 0.10)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Preload as % of proof load</label>
+        <input id="t-preload" type="range" min="40" max="90" step="5" value="75">
+        <span class="readout" id="t-preloadRead">75 %</span>
+      </div>
+    </section>
+
+    <div class="figure">
+      <div style="display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+        <div>
+          <div style="color:var(--fg-dim);font-size:11px">Proof load (kN)</div>
+          <div class="big" id="t-proof">—</div>
+        </div>
+        <div>
+          <div style="color:var(--fg-dim);font-size:11px">Target preload F (kN)</div>
+          <div class="big" id="t-preloadF" style="color:var(--accent)">—</div>
+        </div>
+        <div>
+          <div style="color:var(--fg-dim);font-size:11px">Tightening torque T (N·m)</div>
+          <div class="big" id="t-torque" style="color:var(--accent2)">—</div>
+        </div>
+        <div>
+          <div style="color:var(--fg-dim);font-size:11px">±25 % scatter band</div>
+          <div class="big" id="t-scatter" style="color:var(--warn);font-size:16px">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="worked">
+      <h3>Worked example — M3 × 12 mm class 8.8, dry</h3>
+      <p>Spec: stress area A_s = 5.03 mm². Class 8.8 → proof stress 580 MPa, UTS 800 MPa. Target 75 % of proof.</p>
+      <span class="eq">F_proof = A_s · σ_proof = 5.03 · 580 = 2917 N ≈ 2.92 kN</span>
+      <span class="eq">F_target = 0.75 · 2917 = 2188 N ≈ 2.19 kN <span class="annot">// 75 % preload is the standard safe target</span></span>
+      <span class="eq">T = K · F · d = 0.20 · 2188 · 0.003 = 1.31 N·m</span>
+      <p>So torque the M3 8.8 bolt to <code>~1.3 N·m</code> dry. A factory torque wrench typically reads ±10 %, but assembly variation pushes the actual clamp force into a ±25 % band — that's why you never preload above 75 % of proof.</p>
+    </div>
+
+    <h2>Property class reference</h2>
+    <table>
+      <tr><th>Class</th><th>Material</th><th>UTS (MPa)</th><th>Proof (MPa)</th><th>Min yield (MPa)</th><th>Notes</th></tr>
+      <tr><td>4.8</td><td>Low-C steel, cold-worked</td><td>400</td><td>310</td><td>320 (0.8·UTS)</td><td>Cheap; soft</td></tr>
+      <tr><td>5.8</td><td>Low-C steel</td><td>500</td><td>380</td><td>400</td><td>Mostly nuts</td></tr>
+      <tr><td>8.8</td><td>Medium-C steel, Q&T</td><td>800</td><td>580</td><td>640</td><td>Default structural</td></tr>
+      <tr><td>10.9</td><td>Alloy steel, Q&T</td><td>1040</td><td>830</td><td>940</td><td>Engine, suspension</td></tr>
+      <tr><td>12.9</td><td>Alloy steel, Q&T</td><td>1220</td><td>970</td><td>1100</td><td>Highest commodity; hydrogen-embrittlement risk</td></tr>
+      <tr><td>A2-70</td><td>Stainless 304, cold-worked</td><td>700</td><td>450</td><td>450</td><td>Default stainless; non-magnetic</td></tr>
+      <tr><td>A2-80</td><td>Stainless 304, heavy cold-worked</td><td>800</td><td>600</td><td>600</td><td>Higher strength stainless</td></tr>
+      <tr><td>A4-70</td><td>Stainless 316, cold-worked</td><td>700</td><td>450</td><td>450</td><td>Marine / chloride resistance</td></tr>
+    </table>
+
+    <div class="cheatsheet">
+      <div class="cheat-card formulas">
+        <h3>Torque formulas</h3>
+        <span class="eq">T = K · F · d</span>
+        <span class="eq">F_proof = A_s · σ_proof</span>
+        <span class="eq">F_target = 0.75 · F_proof (typical)</span>
+        <span class="eq">F_yield = A_s · σ_yield</span>
+        <p style="font-size:11px;color:var(--fg-dim);margin:8px 0 0">d = nominal diameter (m). T in N·m. K is a friction nut-factor folding head-bearing and thread friction.</p>
+      </div>
+      <div class="cheat-card memorize">
+        <h3>K factor (nut factor)</h3>
+        <dl>
+          <dt>Plain dry</dt><dd>0.20 (default)</dd>
+          <dt>Mild lube</dt><dd>0.15 (oil, light grease)</dd>
+          <dt>Moly grease</dt><dd>0.12</dd>
+          <dt>Anti-seize / wax</dt><dd>0.10</dd>
+          <dt>Black oxide dry</dt><dd>0.22</dd>
+          <dt>Zinc plated dry</dt><dd>0.20</dd>
+          <dt>Stainless on stainless</dt><dd>0.30 (galling — always lube)</dd>
+        </dl>
+      </div>
+      <div class="cheat-card pitfalls">
+        <h3>Pitfalls</h3>
+        <ul>
+          <li><b>Dry K on a lubed bolt</b> over-torques by ~33 % → snap or strip.</li>
+          <li><b>Stainless galling</b> — A2/A4 on itself cold-welds at the thread; always use anti-seize or moly.</li>
+          <li><b>Titanium</b> galls worse than stainless; mandatory dry-film lube.</li>
+          <li><b>Re-using stretched bolts</b> for critical joints (head bolts, conrod bolts) — single-use, replace.</li>
+          <li><b>Class 12.9 in wet environments</b> — high hardness → hydrogen embrittlement; use 10.9 or stainless.</li>
+        </ul>
+      </div>
+    </div>
+
+    <p>Cross-link to <a href="../me/phase-6-fasteners-joining/">ME Phase 6 fasteners</a> (planned) for the full preload-vs-fatigue analysis and joint-stiffness math.</p>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- THREAD ENGAGEMENT -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-engage">
+    <h2>Thread engagement length</h2>
+    <p>The minimum thread engagement is set by the rule that the threads must fail <em>after</em> the bolt body — otherwise the threads strip and the bolt pulls out before reaching its rated strength. The engagement scales with the strength ratio between bolt material and tapped material.</p>
+
+    <div class="anchors">
+      <span class="anchor"><b>Steel into steel</b> ≥ 1.0 × d</span>
+      <span class="anchor"><b>Steel into cast iron</b> ≥ 1.25 × d</span>
+      <span class="anchor"><b>Steel into aluminum</b> ≥ 2.0 × d</span>
+      <span class="anchor"><b>Steel into brass / Mg</b> ≥ 2.0 × d</span>
+      <span class="anchor"><b>Steel into plastic</b> use insert!</span>
+    </div>
+
+    <section class="controls">
+      <div class="control">
+        <label>Bolt size</label>
+        <select id="e-size">
+          <option value="M2">M2</option>
+          <option value="M2.5">M2.5</option>
+          <option value="M3">M3</option>
+          <option value="M4">M4</option>
+          <option value="M5" selected>M5</option>
+          <option value="M6">M6</option>
+          <option value="M8">M8</option>
+          <option value="M10">M10</option>
+          <option value="M12">M12</option>
+          <option value="M16">M16</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Tapped material</label>
+        <select id="e-material">
+          <option value="steel">Steel (mild / structural)</option>
+          <option value="alloy">Alloy steel (hardened)</option>
+          <option value="ci">Cast iron</option>
+          <option value="al" selected>Aluminum (6061 / 7075)</option>
+          <option value="brass">Brass</option>
+          <option value="mg">Magnesium</option>
+          <option value="plastic">Plastic (PLA / PETG / ABS)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Bolt class</label>
+        <select id="e-class">
+          <option value="8.8" selected>8.8</option>
+          <option value="10.9">10.9</option>
+          <option value="12.9">12.9</option>
+          <option value="A2-70">A2-70 stainless</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="figure">
+      <svg id="e-svg" viewBox="0 0 600 220" width="100%"></svg>
+      <div style="text-align:center;margin-top:6px"><span class="big" id="e-recommended">—</span></div>
+      <p style="text-align:center;color:var(--fg-dim);font-size:12px;margin:4px 0 0" id="e-note">—</p>
+    </div>
+
+    <h2>Engagement multiplier reference</h2>
+    <table>
+      <tr><th>Tapped material</th><th>Min L_e / d</th><th>Recommended L_e / d</th><th>Notes</th></tr>
+      <tr><td>Steel (same or stronger than bolt)</td><td>1.0</td><td>1.5</td><td>Most bolted joints; thread-stripping math says ~0.8·d, but 1.0 standard</td></tr>
+      <tr><td>Alloy / hardened steel</td><td>0.8</td><td>1.0</td><td>Tougher than bolt → less engagement needed</td></tr>
+      <tr><td>Cast iron</td><td>1.25</td><td>1.5</td><td>Brittle; avoid impact loads</td></tr>
+      <tr><td>Aluminum (6061-T6, 7075)</td><td>1.5</td><td>2.0</td><td>Universal default for AL plates; use 2× for vibration</td></tr>
+      <tr><td>Brass / bronze</td><td>1.5</td><td>2.0</td><td>Similar to aluminum</td></tr>
+      <tr><td>Magnesium</td><td>2.0</td><td>2.5</td><td>Soft; insert preferred for re-use</td></tr>
+      <tr><td>Plastic (PLA, PETG, ABS, nylon)</td><td colspan="2"><b>Always use insert</b> — heat-set, screw-in, or moulded</td><td>Cut threads strip in &lt; 10 cycles</td></tr>
+    </table>
+
+    <h3>Why 1× d for steel-into-steel works</h3>
+    <div class="deriv">
+      <span class="step"><b>Bolt tensile capacity</b> = A_s · σ_uts</span>
+      <span class="step"><b>Thread shear capacity</b> (internal thread, the tapped hole) = π · D_p · L_e · 0.5·σ_shear</span>
+      <span class="step"><span class="arrow">→</span> set thread shear &gt; bolt tensile, solve for L_e</span>
+      <span class="step">For steel/steel with σ_shear ≈ 0.6·σ_uts (same material), the algebra collapses to <b>L_e ≈ 0.8·d</b> — engineers round up to 1.0·d for safety + manufacturing tolerance.</span>
+      <span class="step">For aluminum tapped (σ_uts_al ≈ 270 MPa) vs steel bolt (σ_uts ≈ 800 MPa) the ratio is 3, so L_e ≈ 2.4·d — round to 2·d minimum, 2.5·d for vibration.</span>
+    </div>
+
+    <ul class="notice">
+      <li><b>Bottoming clearance</b> — when tapping a blind hole, leave 2–3 thread pitches at the bottom unthreaded; otherwise the tap bottoms before reaching full depth.</li>
+      <li><b>Through-hole engagement is set by stack-up</b>, not by the rule — a nut on the back side gives nut-engagement (specified by ISO standard nut height = ~0.8·d).</li>
+      <li><b>Tapped hole in a printed part</b> — even with 2× engagement, PLA cut threads fail in fatigue. Use a brass heat-set insert (see Inserts tab).</li>
+    </ul>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- UNC / UNF IMPERIAL -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-imperial">
+    <h2>UNC / UNF imperial thread</h2>
+    <p>US fastener specs: <code>#N-TPI</code> for small sizes ("#4-40" = number-4 body diameter, 40 threads per inch), and <code>fraction"-TPI</code> for sizes ≥ 1/4". UNC is coarse, UNF is fine. Tap-drill diameters come from the same 75 %-engagement rule as metric, but everything is in inches.</p>
+
+    <div class="anchors">
+      <span class="anchor"><b>#4-40</b> tap = #43 (0.089") · clearance = #32 (0.116")</span>
+      <span class="anchor"><b>#6-32</b> tap = #36 (0.106") · clearance = #25 (0.150")</span>
+      <span class="anchor"><b>#8-32</b> tap = #29 (0.136") · clearance = #18 (0.170")</span>
+      <span class="anchor"><b>#10-32</b> tap = #21 (0.159") · clearance = #9 (0.196")</span>
+      <span class="anchor"><b>1/4-20</b> tap = #7 (0.201") · clearance = F (0.257")</span>
+    </div>
+
+    <section class="controls">
+      <div class="control">
+        <label>Size</label>
+        <select id="i-size">
+          <option value="2-56">#2-56 (UNC)</option>
+          <option value="4-40" selected>#4-40 (UNC)</option>
+          <option value="6-32">#6-32 (UNC)</option>
+          <option value="8-32">#8-32 (UNC)</option>
+          <option value="10-24">#10-24 (UNC)</option>
+          <option value="10-32">#10-32 (UNF)</option>
+          <option value="1/4-20">1/4-20 (UNC)</option>
+          <option value="1/4-28">1/4-28 (UNF)</option>
+          <option value="5/16-18">5/16-18 (UNC)</option>
+          <option value="5/16-24">5/16-24 (UNF)</option>
+          <option value="3/8-16">3/8-16 (UNC)</option>
+          <option value="3/8-24">3/8-24 (UNF)</option>
+          <option value="1/2-13">1/2-13 (UNC)</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="figure">
+      <div style="display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+        <div>
+          <div style="color:var(--fg-dim);font-size:11px">Body diameter</div>
+          <div class="big" id="i-body">—</div>
+        </div>
+        <div>
+          <div style="color:var(--fg-dim);font-size:11px">Tap drill (75 %)</div>
+          <div class="big" id="i-tap" style="color:var(--accent)">—</div>
+        </div>
+        <div>
+          <div style="color:var(--fg-dim);font-size:11px">Clearance drill</div>
+          <div class="big" id="i-clear" style="color:var(--accent2)">—</div>
+        </div>
+        <div>
+          <div style="color:var(--fg-dim);font-size:11px">Hex socket cap</div>
+          <div class="big" id="i-hex" style="color:var(--warn);font-size:16px">—</div>
+        </div>
+      </div>
+    </div>
+
+    <h2>UNC / UNF reference table</h2>
+    <table id="i-table">
+      <tr>
+        <th>Size</th><th>Series</th><th>TPI</th>
+        <th>Body dia (in)</th><th>Body dia (mm)</th>
+        <th>Tap drill (in)</th><th>Tap (number/letter)</th>
+        <th>Clearance (in)</th>
+        <th>Hex socket (in)</th>
+      </tr>
+    </table>
+
+    <h3>Reading the number sizes</h3>
+    <div class="deriv">
+      <span class="step"><b>Number-size body dia</b> = 0.060" + N · 0.013"</span>
+      <span class="step"><span class="arrow">→</span> #2 = 0.086" · #4 = 0.112" · #6 = 0.138" · #8 = 0.164" · #10 = 0.190"</span>
+      <span class="step">After #10, sizing switches to fractions: 1/4", 5/16", 3/8", 7/16", 1/2", 9/16", 5/8", 3/4", 7/8", 1".</span>
+      <span class="step">There's no #11 / #12 (rare in modern use); commonly you'll see #2, #4, #6, #8, #10, then 1/4".</span>
+    </div>
+
+    <ul class="notice">
+      <li><b>UNC vs UNF</b> — UNC (coarse) is the default; UNF (fine) has more threads per inch, more strength in tension, less self-loosening resistance. Aerospace tends to UNF, general industrial UNC.</li>
+      <li><b>SAE numbered drills</b> — the tap drill is often a number- or letter-size, not a fractional inch. #43 (0.0890") for #4-40 tap, F (0.257") for 1/4-20 clearance. Buy a tap-drill set.</li>
+      <li><b>Imperial-to-metric tap substitutes</b> — #4-40 ≈ M3 (slightly bigger body, finer pitch); #10-32 ≈ M5 fine; 1/4-20 ≈ M6 coarse. Not interchangeable for any structural joint.</li>
+    </ul>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- INSERTS -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-inserts">
+    <h2>Heat-set / helicoil / threaded insert decision</h2>
+    <p>Three families: <b>heat-set inserts</b> for printed plastics, <b>screw-in (helicoil)</b> for re-threading damaged aluminum tap holes, and <b>moulded / press-fit</b> for production injection-moulded parts. The pick depends on what material you're going into and whether the joint is single-use or repeatedly serviced.</p>
+
+    <table>
+      <tr>
+        <th>Insert type</th>
+        <th>Tapped material</th>
+        <th>Install method</th>
+        <th>Hole prep</th>
+        <th>Re-usable?</th>
+        <th>Strength vs cut thread</th>
+      </tr>
+      <tr>
+        <td><b>Heat-set (brass)</b><br><span style="color:var(--fg-dim);font-size:11px">McMaster, Ruthex, E-Z LOK</span></td>
+        <td>PLA, PETG, ABS, nylon</td>
+        <td>Soldering iron + tip; melt into hole</td>
+        <td>Tapered hole, slightly smaller than insert OD; designed for shrinkage</td>
+        <td>Yes, ~100 cycles</td>
+        <td>5–10× cut PLA thread</td>
+      </tr>
+      <tr>
+        <td><b>Self-tapping plastic insert</b><br><span style="color:var(--fg-dim);font-size:11px">PEM SI series</span></td>
+        <td>Thermoset plastic, soft metals</td>
+        <td>Drive in with low-torque driver</td>
+        <td>Straight pilot hole, larger than tap drill</td>
+        <td>~10 cycles</td>
+        <td>3–5× cut thread</td>
+      </tr>
+      <tr>
+        <td><b>Helicoil (wire coil)</b><br><span style="color:var(--fg-dim);font-size:11px">STI tap, wire-thread insert</span></td>
+        <td>Aluminum, magnesium, soft alloys</td>
+        <td>STI-tap then screw in with tang tool</td>
+        <td>Tap to oversize (STI tap); break off tang after</td>
+        <td>Yes — can replace if damaged</td>
+        <td>~1.5× cut Al thread (stronger steel surface)</td>
+      </tr>
+      <tr>
+        <td><b>Key-locking (Keensert)</b><br><span style="color:var(--fg-dim);font-size:11px">Keensert, Mil-spec MS33537</span></td>
+        <td>Aluminum, repair of stripped Al</td>
+        <td>Tap, screw in, drive locking keys</td>
+        <td>Same as helicoil; positive lock</td>
+        <td>Yes; mil-spec repair</td>
+        <td>~2× cut thread; vibration-resistant</td>
+      </tr>
+      <tr>
+        <td><b>Threaded standoff / boss insert</b><br><span style="color:var(--fg-dim);font-size:11px">PEM SI, BOLLHOFF</span></td>
+        <td>Sheet metal, thin plate</td>
+        <td>Cold-press into pilot hole</td>
+        <td>Punched hole sized to insert</td>
+        <td>Yes (insert is part of plate)</td>
+        <td>Provides any thread to thin sheet</td>
+      </tr>
+      <tr>
+        <td><b>Riv-nut (blind insert)</b><br><span style="color:var(--fg-dim);font-size:11px">RIVNUT, NUTSERT</span></td>
+        <td>Sheet, hollow box section</td>
+        <td>Blind-rivet tool, expands behind</td>
+        <td>Drilled hole sized per insert OD</td>
+        <td>Yes</td>
+        <td>Mounts thread to one-sided / hollow stock</td>
+      </tr>
+    </table>
+
+    <div class="two-col">
+      <div class="col-card">
+        <h3>Heat-set sizing (Ruthex / E-Z LOK)</h3>
+        <table>
+          <tr><th>Thread</th><th>Insert OD</th><th>Hole dia</th><th>Hole depth</th></tr>
+          <tr><td>M2</td><td>3.2 mm</td><td>3.1 mm</td><td>4.0 mm</td></tr>
+          <tr><td>M2.5</td><td>4.0 mm</td><td>3.9 mm</td><td>5.0 mm</td></tr>
+          <tr><td>M3</td><td>4.6 mm</td><td>4.5 mm</td><td>5.7 mm</td></tr>
+          <tr><td>M4</td><td>5.6 mm</td><td>5.5 mm</td><td>8.0 mm</td></tr>
+          <tr><td>M5</td><td>6.4 mm</td><td>6.3 mm</td><td>9.5 mm</td></tr>
+          <tr><td>M6</td><td>8.0 mm</td><td>7.9 mm</td><td>12.7 mm</td></tr>
+        </table>
+        <p style="font-size:11px;color:var(--fg-dim)">Print-orientation tip: orient the hole so the heat-set insert goes into a face perpendicular to print layers — the diagonal-grain melt-flow is more even, less likely to crack.</p>
+      </div>
+      <div class="col-card">
+        <h3>Helicoil sizing</h3>
+        <table>
+          <tr><th>Thread</th><th>STI tap drill</th><th>Length options</th></tr>
+          <tr><td>M3</td><td>3.2 mm</td><td>1·d, 1.5·d, 2·d</td></tr>
+          <tr><td>M4</td><td>4.3 mm</td><td>1·d, 1.5·d, 2·d, 2.5·d</td></tr>
+          <tr><td>M5</td><td>5.4 mm</td><td>1·d, 1.5·d, 2·d, 2.5·d, 3·d</td></tr>
+          <tr><td>M6</td><td>6.4 mm</td><td>1·d, 1.5·d, 2·d, 2.5·d, 3·d</td></tr>
+          <tr><td>M8</td><td>8.4 mm</td><td>1·d, 1.5·d, 2·d, 2.5·d, 3·d</td></tr>
+          <tr><td>M10</td><td>10.5 mm</td><td>1·d, 1.5·d, 2·d, 2.5·d, 3·d</td></tr>
+        </table>
+        <p style="font-size:11px;color:var(--fg-dim)">For new aluminum designs that will be serviced repeatedly (engine castings, aircraft brackets), spec helicoils from the start — don't wait for the first stripped thread.</p>
+      </div>
+    </div>
+
+    <h3>When to spec what</h3>
+    <ul class="notice">
+      <li><b>3D-printed bracket (PLA / PETG / ABS / PA-CF)</b> → heat-set brass insert, always. Cut threads in PLA strip in 5–10 cycles; PETG is slightly better but still inferior. PA-CF (nylon CF) holds threads better but still benefits from inserts for repeated assembly.</li>
+      <li><b>Aluminum bracket, new design, repeatedly serviced</b> → spec helicoils up front. Tap with STI tap, install at assembly. Cost is ~3× a plain tap but saves the part from being scrap when threads strip.</li>
+      <li><b>Aluminum bracket, one-off, threads stripped at field</b> → drill out to STI tap drill, helicoil repair. This is what helicoils were invented for.</li>
+      <li><b>Sheet-metal box with M3/M4 thread</b> → riv-nut or PEM stud. You can't tap 0.6 mm sheet usefully.</li>
+      <li><b>Mil-spec / aerospace</b> → Keensert. Key-locked, doesn't back out, FAA-approved for thread repair.</li>
+      <li><b>Production injection-moulded</b> → ultrasonic / heat-press insert is designed in; the moulded boss is sized for press-in or melt-in.</li>
+    </ul>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- WASHERS + NUTS -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-washers">
+    <h2>Washer + nut decision matrix</h2>
+    <p>The default joint is just <b>flat washer + plain nut</b>. Add layers (lock, Belleville, Nyloc, castle) only when a specific failure mode demands it. Most "I added a lock washer to be safe" is folklore that does nothing or makes the joint worse.</p>
+
+    <h3>Washers</h3>
+    <table>
+      <tr><th>Type</th><th>What it does</th><th>When to use</th><th>When NOT to use</th></tr>
+      <tr>
+        <td><b>Flat (plain)</b></td>
+        <td>Spreads load; protects soft material from gouging; covers oversize hole</td>
+        <td>Almost always; especially under bolt head on aluminum / wood / plastic</td>
+        <td>—</td>
+      </tr>
+      <tr>
+        <td><b>Fender</b></td>
+        <td>Very wide flat — larger load area</td>
+        <td>Sheet metal joints, oversize holes, soft material</td>
+        <td>Where wide OD blocks adjacent features</td>
+      </tr>
+      <tr>
+        <td><b>Split (helical spring)</b></td>
+        <td>Folklore: "locks via friction." Reality: under proper preload it lies flat; under low preload it does nothing. <b>NASA banned them in 1990</b> (NASA-STD-5020).</td>
+        <td>Almost never. Use a Nord-Lock or Nyloc instead.</td>
+        <td>Vibration-critical joints; anything safety-related</td>
+      </tr>
+      <tr>
+        <td><b>Star / external-tooth lock</b></td>
+        <td>Teeth bite into surfaces; resists rotation; provides electrical bonding</td>
+        <td>Grounding straps, chassis bond, sheet-metal joints requiring conductivity</td>
+        <td>Surface-cosmetic joints; high-clamp joints (teeth dig in)</td>
+      </tr>
+      <tr>
+        <td><b>Belleville (conical disc spring)</b></td>
+        <td>Compressed under bolt load; maintains preload through thermal cycling and gasket creep</td>
+        <td>Thermal joints (heatsink on chip), gasket joints, joints with soft materials that creep</td>
+        <td>Where flat load distribution matters (use a flat below the Belleville)</td>
+      </tr>
+      <tr>
+        <td><b>Wave</b></td>
+        <td>Lighter spring than Belleville; takes up small axial slack</td>
+        <td>Bearing pre-loading, vibration in low-clamp joints</td>
+        <td>High-load joints (collapses)</td>
+      </tr>
+      <tr>
+        <td><b>Nord-Lock (wedge-lock pair)</b></td>
+        <td>Pair of cammed washers; locks via wedge action under preload — actually works</td>
+        <td>Vibration-critical: heavy machinery, motor mounts, wind turbines</td>
+        <td>Cost premium; only when vibration is the dominant failure mode</td>
+      </tr>
+    </table>
+
+    <h3>Nuts</h3>
+    <table>
+      <tr><th>Type</th><th>Locking method</th><th>Use</th><th>Notes</th></tr>
+      <tr><td><b>Plain hex (DIN 934)</b></td><td>None</td><td>Default; cheap</td><td>Loosens under vibration without secondary</td></tr>
+      <tr><td><b>Nyloc (DIN 985)</b></td><td>Nylon ring grips threads</td><td>Vibration; reusable ~5–10 cycles</td><td>Max temp 120 °C (nylon); below freezing nylon hardens</td></tr>
+      <tr><td><b>All-metal lock (DIN 980)</b></td><td>Deformed top thread</td><td>Vibration, high temperature (replaces Nyloc above 120 °C)</td><td>One-time use ideally</td></tr>
+      <tr><td><b>Castle / slotted</b></td><td>Cotter pin through bolt hole + slot</td><td>Rotating shafts, wheel spindles, where positive lock is regulated</td><td>Need a cross-drilled bolt</td></tr>
+      <tr><td><b>Jam nut (thin)</b></td><td>Two nuts, second jammed against first</td><td>Setscrew-style locking, low-cost lock pair</td><td>Tighten primary first to full torque, then back jam against it</td></tr>
+      <tr><td><b>Flange (DIN 6923)</b></td><td>Built-in wide flat below nut</td><td>Replaces nut+washer combo; serrated version bites for some locking</td><td>Faster assembly; serrated mars surface</td></tr>
+      <tr><td><b>Wing nut</b></td><td>Hand-tightened</td><td>Service access where no tool is wanted</td><td>Low preload; not structural</td></tr>
+      <tr><td><b>T-nut / weld nut</b></td><td>Embedded / welded in plate</td><td>Sheet-metal fabrications, repeated assembly</td><td>Production assembly aid</td></tr>
+    </table>
+
+    <div class="cheatsheet">
+      <div class="cheat-card pitfalls">
+        <h3>Vibration-locking myths</h3>
+        <ul>
+          <li><b>Split lock washer</b> is mostly placebo — under proper preload it flattens. NASA banned it for spaceflight.</li>
+          <li><b>Two flat washers stacked</b> for "more load spread" actually allows them to spin against each other under torque — use one wider washer instead.</li>
+          <li><b>Loctite + Nyloc</b> = redundant. Pick one; both is overkill and complicates re-assembly.</li>
+          <li><b>Nord-Lock + Nyloc</b> is overkill; either alone is enough.</li>
+        </ul>
+      </div>
+      <div class="cheat-card formulas">
+        <h3>Loctite thread-locker grades</h3>
+        <dl>
+          <dt>222 (purple)</dt><dd>Low strength — small screws (≤ M4); removable by hand tool</dd>
+          <dt>243 (blue)</dt><dd>Medium — default; M5–M20; removable with hand tools</dd>
+          <dt>262 (red)</dt><dd>High — heat to ~250 °C to remove</dd>
+          <dt>271 (red)</dt><dd>Highest — needs heat + impact to remove; semi-permanent</dd>
+          <dt>290 (green)</dt><dd>Wicking — applies after assembly via capillary</dd>
+        </dl>
+      </div>
+      <div class="cheat-card memorize">
+        <h3>Real anti-vibration solutions</h3>
+        <ul>
+          <li><b>Higher preload</b> — most vibration loosening is from preload loss. T = K·F·d to ~75 % of proof.</li>
+          <li><b>Nord-Lock wedge pair</b> — independent of preload; physically locks.</li>
+          <li><b>Nyloc / all-metal lock nut</b> — adequate for normal vibration; cheap.</li>
+          <li><b>Castle nut + cotter pin</b> — mechanical positive lock for rotating-shaft retention.</li>
+          <li><b>Thread-locker</b> (Loctite 243 blue) — bonds the thread; cheap insurance.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- STAR PATTERN -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-pattern">
+    <h2>Star-pattern (crisscross) tightening sequence</h2>
+    <p>When a joint has multiple bolts on a flange — engine head, motor mount, exhaust manifold, brake caliper — tightening them in sequence around the perimeter twists the flange unevenly and warps the gasket. The crisscross pattern distributes preload symmetrically: tighten opposite or near-opposite bolts in turn so the gasket compresses evenly.</p>
+
+    <section class="controls">
+      <div class="control">
+        <label>Number of bolts</label>
+        <select id="sp-n">
+          <option value="4">4 (square flange)</option>
+          <option value="6" selected>6 (hex flange)</option>
+          <option value="8">8 (octagonal)</option>
+          <option value="10">10</option>
+          <option value="12">12 (large flange)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Pass</label>
+        <input id="sp-step" type="range" min="0" step="1" value="0">
+        <span class="readout" id="sp-stepRead">Step 0 — no bolts yet</span>
+      </div>
+      <div class="control">
+        <label>Tightening pass</label>
+        <select id="sp-pass">
+          <option value="1" selected>Pass 1 — 30 % of final torque</option>
+          <option value="2">Pass 2 — 60 % of final torque</option>
+          <option value="3">Pass 3 — 100 % of final torque</option>
+          <option value="4">Pass 4 — re-check (after 1 hour)</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="figure">
+      <svg id="sp-svg" viewBox="0 0 600 400" width="100%"></svg>
+      <p style="text-align:center;color:var(--fg-dim);font-size:12px;margin-top:8px" id="sp-desc">Bolts shaded green are torqued in the current pass; orange shows the next bolt to tighten; the dashed line traces the sequence so far.</p>
+    </div>
+
+    <h3>Why multi-pass?</h3>
+    <div class="deriv">
+      <span class="step"><b>Single-pass full torque</b> on bolt 1 compresses the gasket locally → adjacent area lifts, the next bolt's torque now also closes that gap before it ever pulls the flange flat.</span>
+      <span class="step"><b>Multi-pass low-torque sequence first</b> seats the gasket evenly. Each bolt gets enough torque to pull its area down, but not enough to lock it.</span>
+      <span class="step"><span class="arrow">→</span> Pass 1 at 30 % seats the gasket.</span>
+      <span class="step"><span class="arrow">→</span> Pass 2 at 60 % flattens any remaining unevenness.</span>
+      <span class="step"><span class="arrow">→</span> Pass 3 at 100 % brings every bolt to final preload — they're all pulling against an already-flat surface.</span>
+      <span class="step"><span class="arrow">→</span> Pass 4 (re-check, after thermal cycle / gasket creep) — engine head, exhaust, anything with hot gasket.</span>
+    </div>
+
+    <h3>Special cases</h3>
+    <ul class="notice">
+      <li><b>Engine head bolts</b> — modern engines use stretch bolts (Torque-to-Yield, TTY): tighten to ~30 N·m, then turn an additional 90° + 90° + 90°. Replace bolts each time the head comes off; they don't recover.</li>
+      <li><b>Wheel lug nuts</b> — 5- or 6-lug, crisscross (1, 3, 5, 2, 4 for 5-lug; star). Re-torque after 80 km / 50 mi to catch the lug-seat bedding-in.</li>
+      <li><b>Exhaust manifolds</b> — tighten cold, retorque warm; thermal cycling warps cast-iron manifolds.</li>
+      <li><b>Brake calipers</b> — 2 bolts: just torque both in sequence; calipers don't compress a gasket. But always use the torque spec — caliper bolts are stretch-design.</li>
+      <li><b>Bearing housings with O-ring seal</b> — crisscross matters; the O-ring needs even compression to seal radially.</li>
+    </ul>
+  </section>
+
+  <footer class="footer-note">
+    Topic: ME Phase 6 fasteners — practical pick-and-spec; live tables. ·
+    Cross-links: <a href="unit-converter.html">Engineering Unit Converter</a> (torque units) ·
+    <a href="component-picker.html">Universal Component Picker</a> ·
+    <a href="../me/phase-6-fasteners-joining/">ME Phase 6 — Fasteners</a> (planned: preload + fatigue + joint stiffness).
+  </footer>
+</main>
+
+<script>
+/* ====================================================================
+   TAB SWITCHING
+==================================================================== */
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.pane').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('pane-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+/* ====================================================================
+   METRIC THREAD DATA
+   Sources: ISO 261 (pitches), ISO 273 (clearance), ISO 4762 (socket head),
+   ISO 898-1 (mech props), Machinery's Handbook 29th ed.
+   stress_area = (pi/4) * (d - 0.9382·p)^2  (approximation)
+==================================================================== */
+const METRIC = {
+  // [coarse-pitch, fine-pitch, tap-drill-75%, pitch-dia, minor-dia, stress-area-mm2, hex-socket-mm]
+  'M2':    {p_coarse:0.40, p_fine:0.25, tap:1.6,  d_p:1.740, d_m:1.567, A_s:2.07,  hex:1.5},
+  'M2.5':  {p_coarse:0.45, p_fine:0.35, tap:2.05, d_p:2.208, d_m:2.013, A_s:3.39,  hex:2.0},
+  'M3':    {p_coarse:0.50, p_fine:0.35, tap:2.5,  d_p:2.675, d_m:2.459, A_s:5.03,  hex:2.5},
+  'M4':    {p_coarse:0.70, p_fine:0.50, tap:3.3,  d_p:3.545, d_m:3.242, A_s:8.78,  hex:3.0},
+  'M5':    {p_coarse:0.80, p_fine:0.50, tap:4.2,  d_p:4.480, d_m:4.134, A_s:14.2,  hex:4.0},
+  'M6':    {p_coarse:1.00, p_fine:0.75, tap:5.0,  d_p:5.350, d_m:4.917, A_s:20.1,  hex:5.0},
+  'M8':    {p_coarse:1.25, p_fine:1.00, tap:6.8,  d_p:7.188, d_m:6.647, A_s:36.6,  hex:6.0},
+  'M10':   {p_coarse:1.50, p_fine:1.25, tap:8.5,  d_p:9.026, d_m:8.376, A_s:58.0,  hex:8.0},
+  'M12':   {p_coarse:1.75, p_fine:1.25, tap:10.2, d_p:10.86, d_m:10.11, A_s:84.3,  hex:10.0},
+  'M16':   {p_coarse:2.00, p_fine:1.50, tap:14.0, d_p:14.70, d_m:13.84, A_s:157,   hex:14.0},
+};
+
+// ISO 273 clearance series (close H12, normal H13, loose H14) mm
+const M_CLEARANCE = {
+  'M2':   {close:2.2, normal:2.4, loose:2.6},
+  'M2.5': {close:2.7, normal:2.9, loose:3.1},
+  'M3':   {close:3.2, normal:3.4, loose:3.6},
+  'M4':   {close:4.3, normal:4.5, loose:4.8},
+  'M5':   {close:5.3, normal:5.5, loose:5.8},
+  'M6':   {close:6.4, normal:6.6, loose:7.0},
+  'M8':   {close:8.4, normal:9.0, loose:10.0},
+  'M10':  {close:10.5,normal:11.0,loose:12.0},
+  'M12':  {close:13.0,normal:13.5,loose:14.5},
+  'M16':  {close:17.0,normal:17.5,loose:18.5},
+};
+
+// Diameter of full body (= nominal) mm. For drawing.
+function metricBodyDia(size){ return parseFloat(size.replace('M','')); }
+
+function drawMetricBolt(size, tapDia, clearDia){
+  const svg = document.getElementById('m-svg');
+  const W = 600, H = 240;
+  const dBody = metricBodyDia(size);
+  // scale for drawing: max bolt = 30 mm wide -> 200 px
+  const scale = 200 / 18; // 18 mm normalized for M16 max
+  const px = Math.max(8, dBody * scale);
+  const cx = W/2;
+  let s = '';
+
+  // 1) bolt drawing on left
+  const boltX = 120;
+  const boltY = 50;
+  const headH = 16, bodyH = 110;
+  const headW = px * 1.5;
+  // head
+  s += `<rect x="${boltX - headW/2}" y="${boltY}" width="${headW}" height="${headH}" rx="2" class="bolt-head"/>`;
+  // body
+  s += `<rect x="${boltX - px/2}" y="${boltY + headH}" width="${px}" height="${bodyH}" class="bolt-body"/>`;
+  // threads (lines)
+  for(let y = boltY + headH + 16; y < boltY + headH + bodyH - 6; y += 6){
+    s += `<line x1="${boltX - px/2}" y1="${y}" x2="${boltX + px/2}" y2="${y+2}" class="bolt-thread"/>`;
+  }
+  // dim line + label below
+  s += `<line x1="${boltX - px/2}" y1="${boltY + headH + bodyH + 18}" x2="${boltX + px/2}" y2="${boltY + headH + bodyH + 18}" class="axis"/>`;
+  s += `<text x="${boltX}" y="${boltY + headH + bodyH + 34}" text-anchor="middle" class="label">${dBody.toFixed(1)} mm body</text>`;
+  s += `<text x="${boltX}" y="${boltY - 6}" text-anchor="middle" class="label-ok">${size}</text>`;
+
+  // 2) hole drawings on right — tap drill and clearance drill side by side
+  const tapPx = Math.max(6, tapDia * scale);
+  const clearPx = Math.max(6, clearDia * scale);
+
+  const holeCY = H/2;
+  const tapX = 340;
+  const clearX = 500;
+  // tap hole (filled with bg-elev2)
+  s += `<rect x="${tapX - 60}" y="${holeCY - 60}" width="120" height="120" fill="var(--bg-elev2)" stroke="var(--line)"/>`;
+  s += `<circle cx="${tapX}" cy="${holeCY}" r="${tapPx/2}" fill="#0a0d12" stroke="var(--accent)"/>`;
+  s += `<text x="${tapX}" y="${holeCY - 70}" text-anchor="middle" class="label">tap drill 75 %</text>`;
+  s += `<text x="${tapX}" y="${holeCY + 80}" text-anchor="middle" class="label-ok">Ø ${tapDia.toFixed(2)} mm</text>`;
+
+  s += `<rect x="${clearX - 60}" y="${holeCY - 60}" width="120" height="120" fill="var(--bg-elev2)" stroke="var(--line)"/>`;
+  s += `<circle cx="${clearX}" cy="${holeCY}" r="${clearPx/2}" fill="#0a0d12" stroke="var(--accent2)"/>`;
+  s += `<text x="${clearX}" y="${holeCY - 70}" text-anchor="middle" class="label">clearance drill</text>`;
+  s += `<text x="${clearX}" y="${holeCY + 80}" text-anchor="middle" class="label-ok" fill="var(--accent2)">Ø ${clearDia.toFixed(2)} mm</text>`;
+
+  svg.innerHTML = s;
+}
+
+function metricUpdate(){
+  const size = document.getElementById('m-size').value;
+  const pitchSel = document.getElementById('m-pitch').value;
+  const fit = document.getElementById('m-fit').value;
+  const d = METRIC[size];
+  if(!d) return;
+  const pitch = pitchSel === 'fine' ? d.p_fine : d.p_coarse;
+  const tap = pitchSel === 'fine'
+    ? (metricBodyDia(size) - 1.0825 * pitch * 0.75)  // recompute for fine
+    : d.tap;
+  const clear = M_CLEARANCE[size][fit];
+
+  document.getElementById('m-summary').textContent = `${size} × ${pitch.toFixed(2)} — tap ${tap.toFixed(2)} mm`;
+  document.getElementById('m-detail').textContent =
+    `tap drill (75 % engagement) Ø ${tap.toFixed(2)} mm · clearance (${fit}) Ø ${clear.toFixed(2)} mm · hex socket ${d.hex.toFixed(1)} mm · stress area ${d.A_s.toFixed(2)} mm²`;
+  drawMetricBolt(size, tap, clear);
+}
+
+function populateMetricTable(){
+  const tbl = document.getElementById('m-table');
+  for(const [size, d] of Object.entries(METRIC)){
+    const row = tbl.insertRow();
+    row.innerHTML = `<td>${size}</td>
+      <td class="num">${d.p_coarse.toFixed(2)}</td>
+      <td class="num">${d.p_fine.toFixed(2)}</td>
+      <td class="num">${d.tap.toFixed(2)}</td>
+      <td class="num">${d.d_p.toFixed(3)}</td>
+      <td class="num">${d.d_m.toFixed(3)}</td>
+      <td class="num">${d.A_s.toFixed(2)}</td>
+      <td class="num">${d.hex.toFixed(1)}</td>`;
+  }
+}
+populateMetricTable();
+document.getElementById('m-size').addEventListener('change', metricUpdate);
+document.getElementById('m-pitch').addEventListener('change', metricUpdate);
+document.getElementById('m-fit').addEventListener('change', metricUpdate);
+metricUpdate();
+
+/* ====================================================================
+   PROPERTY CLASS + TORQUE
+   ISO 898-1 mechanical properties (steel), ISO 3506 (stainless)
+==================================================================== */
+const CLASSES = {
+  '4.8':  {uts:400,  yield:320, proof:310},
+  '8.8':  {uts:800,  yield:640, proof:580},
+  '10.9': {uts:1040, yield:940, proof:830},
+  '12.9': {uts:1220, yield:1100,proof:970},
+  'A2-70':{uts:700,  yield:450, proof:450},
+  'A2-80':{uts:800,  yield:600, proof:600},
+  'A4-70':{uts:700,  yield:450, proof:450},
+};
+
+function torqueUpdate(){
+  const size = document.getElementById('t-size').value;
+  const cls = document.getElementById('t-class').value;
+  const K = parseFloat(document.getElementById('t-lube').value);
+  const preloadPct = parseFloat(document.getElementById('t-preload').value);
+  document.getElementById('t-preloadRead').textContent = preloadPct + ' %';
+
+  const m = METRIC[size];
+  const c = CLASSES[cls];
+  if(!m || !c) return;
+
+  const A_s = m.A_s; // mm^2
+  const Fproof_N = A_s * c.proof; // N (since MPa·mm^2 = N)
+  const Ftarget_N = Fproof_N * (preloadPct/100);
+  const d_m = metricBodyDia(size) / 1000; // m
+  const T_Nm = K * Ftarget_N * d_m;
+  const scatterLow = T_Nm * 0.75;
+  const scatterHigh = T_Nm * 1.25;
+
+  document.getElementById('t-proof').textContent = (Fproof_N / 1000).toFixed(2) + ' kN';
+  document.getElementById('t-preloadF').textContent = (Ftarget_N / 1000).toFixed(2) + ' kN';
+  document.getElementById('t-torque').textContent = fmtTorque(T_Nm);
+  document.getElementById('t-scatter').textContent =
+    `${fmtTorque(scatterLow)} – ${fmtTorque(scatterHigh)}`;
+}
+
+function fmtTorque(Nm){
+  if(Nm < 1) return (Nm*1000).toFixed(0) + ' mN·m';
+  if(Nm < 10) return Nm.toFixed(2) + ' N·m';
+  if(Nm < 100) return Nm.toFixed(1) + ' N·m';
+  return Nm.toFixed(0) + ' N·m';
+}
+
+['t-size','t-class','t-lube','t-preload'].forEach(id =>
+  document.getElementById(id).addEventListener('input', torqueUpdate));
+torqueUpdate();
+
+/* ====================================================================
+   ENGAGEMENT
+==================================================================== */
+const ENG_MAT = {
+  steel:   {min:1.0,  rec:1.5,  uts:400, label:'Steel'},
+  alloy:   {min:0.8,  rec:1.0,  uts:800, label:'Alloy / hardened steel'},
+  ci:      {min:1.25, rec:1.5,  uts:250, label:'Cast iron'},
+  al:      {min:1.5,  rec:2.0,  uts:270, label:'Aluminum 6061-T6'},
+  brass:   {min:1.5,  rec:2.0,  uts:380, label:'Brass'},
+  mg:      {min:2.0,  rec:2.5,  uts:200, label:'Magnesium'},
+  plastic: {min:NaN,  rec:NaN,  uts:50,  label:'Plastic'},
+};
+
+function drawEngage(size, Le_min_mm, Le_rec_mm){
+  const svg = document.getElementById('e-svg');
+  const W = 600, H = 220;
+  const d = metricBodyDia(size);
+  const scale = 80 / 16; // generous bolt drawing
+  const px = Math.max(10, d * scale);
+  const cx = 100;
+  const cy = H/2;
+
+  let s = '';
+
+  // baseplate
+  s += `<rect x="200" y="40" width="380" height="160" fill="var(--bg-elev2)" stroke="var(--line)"/>`;
+  s += `<text x="390" y="32" text-anchor="middle" class="label">tapped material</text>`;
+
+  if(!isFinite(Le_rec_mm)){
+    // plastic — show "INSERT" overlay
+    s += `<rect x="240" y="80" width="300" height="80" fill="var(--bg-elev)" stroke="var(--warn)" stroke-dasharray="6,4"/>`;
+    s += `<text x="390" y="120" text-anchor="middle" class="label-warn" font-size="18">USE A HEAT-SET INSERT</text>`;
+    s += `<text x="390" y="145" text-anchor="middle" class="label">cut threads strip in &lt; 10 cycles</text>`;
+    svg.innerHTML = s;
+    return;
+  }
+
+  // draw bolt going into plate
+  // bolt body extends from x=80 (head) to x=200+Le_rec*scale (tip)
+  const Le_rec_px = Le_rec_mm * scale;
+  const Le_min_px = Le_min_mm * scale;
+  const headW = px * 1.4;
+  const headH = 20;
+  // bolt head
+  s += `<rect x="${80 - headW/2}" y="${cy - headH/2}" width="${headW}" height="${headH}" class="bolt-head"/>`;
+  // bolt body (above plate surface)
+  s += `<rect x="${80}" y="${cy - px/2}" width="120" height="${px}" class="bolt-body"/>`;
+  // bolt body inside plate (only to Le_rec)
+  s += `<rect x="200" y="${cy - px/2}" width="${Le_rec_px}" height="${px}" class="bolt-body" opacity="0.95"/>`;
+  // threads in plate region
+  for(let x = 204; x < 200 + Le_rec_px - 4; x += 6){
+    s += `<line x1="${x}" y1="${cy - px/2}" x2="${x+2}" y2="${cy + px/2}" class="bolt-thread"/>`;
+  }
+
+  // dimension lines: min and recommended
+  // min line ABOVE the bolt
+  const minY = cy - px/2 - 30;
+  s += `<line x1="200" y1="${minY}" x2="${200 + Le_min_px}" y2="${minY}" stroke="var(--accent2)" stroke-width="1.5"/>`;
+  s += `<line x1="200" y1="${minY-4}" x2="200" y2="${minY+4}" stroke="var(--accent2)" stroke-width="1.5"/>`;
+  s += `<line x1="${200 + Le_min_px}" y1="${minY-4}" x2="${200 + Le_min_px}" y2="${minY+4}" stroke="var(--accent2)" stroke-width="1.5"/>`;
+  s += `<text x="${200 + Le_min_px/2}" y="${minY-8}" text-anchor="middle" class="label" fill="var(--accent2)">L_e min = ${Le_min_mm.toFixed(1)} mm</text>`;
+
+  // recommended line BELOW
+  const recY = cy + px/2 + 30;
+  s += `<line x1="200" y1="${recY}" x2="${200 + Le_rec_px}" y2="${recY}" stroke="var(--accent3)" stroke-width="1.5"/>`;
+  s += `<line x1="200" y1="${recY-4}" x2="200" y2="${recY+4}" stroke="var(--accent3)" stroke-width="1.5"/>`;
+  s += `<line x1="${200 + Le_rec_px}" y1="${recY-4}" x2="${200 + Le_rec_px}" y2="${recY+4}" stroke="var(--accent3)" stroke-width="1.5"/>`;
+  s += `<text x="${200 + Le_rec_px/2}" y="${recY+16}" text-anchor="middle" class="label" fill="var(--accent3)">L_e recommended = ${Le_rec_mm.toFixed(1)} mm</text>`;
+
+  svg.innerHTML = s;
+}
+
+function engageUpdate(){
+  const size = document.getElementById('e-size').value;
+  const mat = document.getElementById('e-material').value;
+  const m = ENG_MAT[mat];
+  if(!m) return;
+  const d = metricBodyDia(size);
+  const Le_min = m.min * d;
+  const Le_rec = m.rec * d;
+
+  if(mat === 'plastic'){
+    document.getElementById('e-recommended').textContent = `${size} into plastic — use heat-set insert`;
+    document.getElementById('e-note').textContent = 'Cut threads in PLA / PETG / ABS strip in < 10 cycles. See Inserts tab.';
+    drawEngage(size, NaN, NaN);
+    return;
+  }
+  document.getElementById('e-recommended').textContent =
+    `L_e min ${Le_min.toFixed(1)} mm · recommended ${Le_rec.toFixed(1)} mm`;
+  document.getElementById('e-note').textContent =
+    `${size} (Ø ${d} mm) into ${m.label} — min ${m.min}·d, recommended ${m.rec}·d`;
+  drawEngage(size, Le_min, Le_rec);
+}
+
+['e-size','e-material','e-class'].forEach(id =>
+  document.getElementById(id).addEventListener('change', engageUpdate));
+engageUpdate();
+
+/* ====================================================================
+   UNC / UNF
+   tap-drill computed by 75% engagement rule: tap = D_basic - 1.0825 * (1/TPI) * 0.75
+   clearance: standard "free fit" in Machinery's Handbook
+==================================================================== */
+const IMPERIAL = {
+  // [body_in, series, TPI, tap_in, tap_number_or_letter, clearance_in, clearance_name, hex_socket_in]
+  '2-56':   {body:0.086, series:'UNC', tpi:56, tap:0.0700, tapNo:'#50', clear:0.0890, clearNo:'#43', hex:5/64},
+  '4-40':   {body:0.112, series:'UNC', tpi:40, tap:0.0890, tapNo:'#43', clear:0.1160, clearNo:'#32', hex:3/32},
+  '6-32':   {body:0.138, series:'UNC', tpi:32, tap:0.1065, tapNo:'#36', clear:0.1495, clearNo:'#25', hex:7/64},
+  '8-32':   {body:0.164, series:'UNC', tpi:32, tap:0.1360, tapNo:'#29', clear:0.1695, clearNo:'#18', hex:9/64},
+  '10-24':  {body:0.190, series:'UNC', tpi:24, tap:0.1495, tapNo:'#25', clear:0.1960, clearNo:'#9',  hex:5/32},
+  '10-32':  {body:0.190, series:'UNF', tpi:32, tap:0.1590, tapNo:'#21', clear:0.1960, clearNo:'#9',  hex:5/32},
+  '1/4-20': {body:0.250, series:'UNC', tpi:20, tap:0.2010, tapNo:'#7',  clear:0.2570, clearNo:'F',   hex:3/16},
+  '1/4-28': {body:0.250, series:'UNF', tpi:28, tap:0.2130, tapNo:'#3',  clear:0.2570, clearNo:'F',   hex:3/16},
+  '5/16-18':{body:0.3125,series:'UNC', tpi:18, tap:0.2570, tapNo:'F',   clear:0.3230, clearNo:'P',   hex:1/4},
+  '5/16-24':{body:0.3125,series:'UNF', tpi:24, tap:0.2720, tapNo:'I',   clear:0.3230, clearNo:'P',   hex:1/4},
+  '3/8-16': {body:0.375, series:'UNC', tpi:16, tap:0.3125, tapNo:'5/16', clear:0.3860,clearNo:'W',   hex:5/16},
+  '3/8-24': {body:0.375, series:'UNF', tpi:24, tap:0.3320, tapNo:'Q',   clear:0.3860, clearNo:'W',   hex:5/16},
+  '1/2-13': {body:0.500, series:'UNC', tpi:13, tap:0.4219, tapNo:'27/64', clear:0.5160,clearNo:'33/64',hex:3/8},
+};
+
+function inToMm(x){ return x * 25.4; }
+
+function fmtIn(x){ return x.toFixed(4) + '"'; }
+
+function imperialUpdate(){
+  const size = document.getElementById('i-size').value;
+  const d = IMPERIAL[size];
+  if(!d) return;
+  document.getElementById('i-body').textContent =
+    `${fmtIn(d.body)} (${inToMm(d.body).toFixed(2)} mm)`;
+  document.getElementById('i-tap').textContent =
+    `${d.tapNo} = ${fmtIn(d.tap)}`;
+  document.getElementById('i-clear').textContent =
+    `${d.clearNo} = ${fmtIn(d.clear)}`;
+  document.getElementById('i-hex').textContent =
+    `${(d.hex).toFixed(4)}" (≈ ${inToMm(d.hex).toFixed(2)} mm)`;
+}
+
+function populateImperialTable(){
+  const tbl = document.getElementById('i-table');
+  for(const [size, d] of Object.entries(IMPERIAL)){
+    const row = tbl.insertRow();
+    row.innerHTML = `<td>${size}</td>
+      <td>${d.series}</td>
+      <td class="num">${d.tpi}</td>
+      <td class="num">${d.body.toFixed(4)}</td>
+      <td class="num">${inToMm(d.body).toFixed(2)}</td>
+      <td class="num">${d.tap.toFixed(4)}</td>
+      <td>${d.tapNo}</td>
+      <td class="num">${d.clear.toFixed(4)}</td>
+      <td class="num">${d.hex.toFixed(4)}</td>`;
+  }
+}
+populateImperialTable();
+document.getElementById('i-size').addEventListener('change', imperialUpdate);
+imperialUpdate();
+
+/* ====================================================================
+   STAR PATTERN
+==================================================================== */
+function starSequence(n){
+  // Generate crisscross order. Standard rule: take roughly half-N steps each time.
+  const order = [0]; // start at bolt 0
+  const used = new Set([0]);
+  const step = Math.floor(n/2);
+  let cur = 0;
+  while(order.length < n){
+    cur = (cur + step) % n;
+    while(used.has(cur)){
+      cur = (cur + 1) % n;
+    }
+    order.push(cur);
+    used.add(cur);
+  }
+  return order;
+}
+
+function drawStar(n, stepIdx){
+  const svg = document.getElementById('sp-svg');
+  const W = 600, H = 400;
+  const cx = W/2, cy = H/2;
+  const R = 130;
+  let s = '';
+
+  // Outer flange ring
+  s += `<circle cx="${cx}" cy="${cy}" r="${R + 35}" fill="none" stroke="var(--line)" stroke-width="2"/>`;
+  s += `<circle cx="${cx}" cy="${cy}" r="${R - 35}" fill="var(--bg-elev2)" stroke="var(--line)"/>`;
+
+  const seq = starSequence(n);
+  const doneBolts = seq.slice(0, stepIdx);
+  const nextBolt = stepIdx < n ? seq[stepIdx] : -1;
+
+  // draw the lines connecting done bolts
+  if(doneBolts.length > 1){
+    let pathD = '';
+    for(let i=0; i<doneBolts.length; i++){
+      const ang = doneBolts[i] * (2*Math.PI/n) - Math.PI/2;
+      const x = cx + R * Math.cos(ang);
+      const y = cy + R * Math.sin(ang);
+      pathD += (i===0 ? 'M ' : ' L ') + x.toFixed(1) + ' ' + y.toFixed(1);
+    }
+    s += `<path d="${pathD}" class="star-path"/>`;
+  }
+
+  // draw bolts
+  for(let i=0; i<n; i++){
+    const ang = i * (2*Math.PI/n) - Math.PI/2;
+    const x = cx + R * Math.cos(ang);
+    const y = cy + R * Math.sin(ang);
+    let cls = 'star-bolt';
+    let displayNum = '';
+    const seqIdx = seq.indexOf(i);
+    if(doneBolts.includes(i)){ cls += ' done'; displayNum = String(seqIdx + 1); }
+    else if(i === nextBolt){ cls += ' next'; displayNum = String(stepIdx + 1); }
+    else { displayNum = String(i + 1); }
+    s += `<circle cx="${x}" cy="${y}" r="22" class="${cls}"/>`;
+    s += `<text x="${x}" y="${y}" class="star-num">${displayNum}</text>`;
+  }
+
+  // center label
+  s += `<text x="${cx}" y="${cy - 10}" text-anchor="middle" class="label" font-size="13">${n}-bolt flange</text>`;
+  if(nextBolt >= 0){
+    s += `<text x="${cx}" y="${cy + 10}" text-anchor="middle" class="label-ok">step ${stepIdx + 1} of ${n}</text>`;
+    s += `<text x="${cx}" y="${cy + 28}" text-anchor="middle" class="label" font-size="11" fill="var(--fg-dim)">next: bolt position ${nextBolt + 1}</text>`;
+  } else {
+    s += `<text x="${cx}" y="${cy + 10}" text-anchor="middle" class="label-ok">all bolts torqued</text>`;
+  }
+
+  svg.innerHTML = s;
+}
+
+function starUpdate(){
+  const n = parseInt(document.getElementById('sp-n').value);
+  const stepInput = document.getElementById('sp-step');
+  stepInput.max = n;
+  const step = Math.min(parseInt(stepInput.value) || 0, n);
+  const passLabel = document.getElementById('sp-pass').selectedOptions[0].text;
+  const seq = starSequence(n);
+  let desc;
+  if(step === 0) desc = `Step 0 — no bolts yet (${passLabel})`;
+  else if(step >= n) desc = `All ${n} bolts done in this pass — proceed to next pass`;
+  else desc = `Step ${step} of ${n} — sequence so far: ${seq.slice(0, step).map(x => x+1).join(' → ')} (${passLabel})`;
+  document.getElementById('sp-stepRead').textContent = desc;
+  drawStar(n, step);
+}
+
+document.getElementById('sp-n').addEventListener('change', () => {
+  document.getElementById('sp-step').value = 0;
+  starUpdate();
+});
+document.getElementById('sp-step').addEventListener('input', starUpdate);
+document.getElementById('sp-pass').addEventListener('change', starUpdate);
+starUpdate();
+</script>
+</body>
+</html>

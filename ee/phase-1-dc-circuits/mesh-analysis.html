@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mesh Analysis Explorer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select,.control input[type=number]{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .matrix{background:var(--bg-elev2);border-radius:6px;padding:14px 16px;
+    margin:10px 0;font:13px ui-monospace,Menlo,monospace;color:var(--fg);
+    overflow-x:auto;text-align:center}
+  .matrix .row{display:block;white-space:pre}
+  .matrix .accent{color:var(--accent)}
+  .matrix .accent2{color:var(--accent2)}
+  .matrix .accent3{color:var(--accent3)}
+  .preset-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}
+  .preset-row button{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:5px 10px;
+    font:12px ui-monospace,Menlo,monospace;cursor:pointer}
+  .preset-row button:hover{border-color:var(--accent);color:var(--accent)}
+  .preset-row button.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .key{display:inline-block;width:10px;height:10px;border-radius:2px;
+    vertical-align:middle;margin-right:4px}
+  .topo-tab{display:flex;gap:6px;margin:14px 0 8px}
+  .topo-tab button{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:6px 14px;
+    font:12px ui-monospace,Menlo,monospace;cursor:pointer}
+  .topo-tab button.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Mesh Analysis Explorer</h1>
+  <p class="lede">Mesh analysis is the systematic way to solve a circuit with more than one independent loop. Instead of guessing branch currents and chasing them through KCL/KVL by hand, you assign a "mesh current" to each window of the planar circuit, write one KVL equation per window, and you've got an N×N matrix equation. The matrix can be written by <em>inspection</em> — no algebra — once you see the pattern. This explorer shows the 2-mesh and 3-mesh cases, with the matrix appearing live as you change resistor values.</p>
+
+  <p>Three things to take away: (1) <b>each mesh gets one current variable</b>, conventionally drawn clockwise — that single convention removes 90 % of the sign confusion; (2) the matrix has a fixed structure — the <b>diagonal is the sum of all resistors in mesh k</b>, the <b>off-diagonal is the negative of any shared resistor between mesh j and mesh k</b>, and the <b>RHS is the sum of voltage sources driving mesh k clockwise</b>; (3) once you've solved for mesh currents, any branch current is either one mesh current (if the branch is on the outside) or the <em>difference</em> of two mesh currents (if the branch is shared between meshes).</p>
+
+  <div class="topo-tab" id="topoTab">
+    <button data-topo="2mesh" class="active">2-Mesh circuit</button>
+    <button data-topo="3mesh">3-Mesh circuit</button>
+  </div>
+
+  <section class="controls" id="ctrls">
+    <div class="control"><label>V1 (source in mesh 1): <span class="readout" id="v1Read">10 V</span></label><input id="v1" type="range" min="-30" max="30" step="0.5" value="10"></div>
+    <div class="control"><label>V2 (source in mesh 2): <span class="readout" id="v2Read">5 V</span></label><input id="v2" type="range" min="-30" max="30" step="0.5" value="5"></div>
+    <div class="control"><label>V3 (source in mesh 3): <span class="readout" id="v3Read">0 V</span></label><input id="v3" type="range" min="-30" max="30" step="0.5" value="0"></div>
+    <div class="control"><label>R1 (mesh 1 only): <span class="readout" id="r1Read">100 Ω</span></label><input id="r1" type="range" min="10" max="1000" step="10" value="100"></div>
+    <div class="control"><label>R2 (shared 1↔2): <span class="readout" id="r2Read">220 Ω</span></label><input id="r2" type="range" min="10" max="1000" step="10" value="220"></div>
+    <div class="control"><label>R3 (mesh 2 only): <span class="readout" id="r3Read">330 Ω</span></label><input id="r3" type="range" min="10" max="1000" step="10" value="330"></div>
+    <div class="control"><label>R4 (shared 2↔3 / mesh 2 in 2-mesh): <span class="readout" id="r4Read">470 Ω</span></label><input id="r4" type="range" min="10" max="1000" step="10" value="470"></div>
+    <div class="control"><label>R5 (mesh 3 only): <span class="readout" id="r5Read">680 Ω</span></label><input id="r5" type="range" min="10" max="1000" step="10" value="680"></div>
+  </section>
+
+  <div class="preset-row" id="presets">
+    <button data-p="textbook">Textbook 2-mesh (10V/100Ω/220Ω/330Ω)</button>
+    <button data-p="bridge">Wheatstone-like (3-mesh)</button>
+    <button data-p="opposing">Opposing sources (cancellation)</button>
+    <button data-p="ladder">R-2R ladder shape</button>
+    <button data-p="reset">Reset</button>
+  </div>
+
+  <div class="figure">
+    <svg id="circuit" viewBox="0 0 640 360" width="100%"></svg>
+
+    <h3 style="margin-top:14px">Matrix equation (by inspection)</h3>
+    <div class="matrix" id="matBox">…</div>
+
+    <table id="solnTbl">
+      <thead><tr><th>Mesh / Branch</th><th>Current</th><th>Reading</th></tr></thead>
+      <tbody id="solnBody"></tbody>
+    </table>
+
+    <div class="vd" id="checkBox">
+      <b>Power-balance check:</b> <span id="checkCalc">…</span>
+    </div>
+  </div>
+
+  <h2>The systematic procedure</h2>
+  <div class="deriv">
+    <span class="step">1.  Identify the <b>meshes</b> (independent loops with no other loop inside them).</span>
+    <span class="step">2.  Assign a mesh current I_k to each, all <b>clockwise</b> (this is the universal sign convention).</span>
+    <span class="step">3.  For each mesh, walk it clockwise writing KVL: <b>ΣV across resistors = ΣV sources driving the mesh clockwise</b>.</span>
+    <span class="step">4.  Voltage across a resistor in mesh k: <b>R · I_k</b> if the resistor is only in mesh k, or <b>R · (I_k − I_other)</b> if shared.</span>
+    <span class="step">5.  Stack the equations into matrix form: <span class="arrow">→</span> <b>R · I = V</b>, where R is N×N, I and V are N×1.</span>
+    <span class="step">6.  Solve by Cramer's rule, Gaussian elimination, or — at N=2 — direct substitution.</span>
+  </div>
+
+  <h2>The "by inspection" pattern (no algebra needed)</h2>
+  <p>For any planar circuit with N meshes and all currents drawn clockwise:</p>
+  <div class="deriv">
+    <span class="step"><b>R[k][k]</b> (diagonal): sum of <em>all</em> resistors that border mesh k. <span class="arrow">Always positive.</span></span>
+    <span class="step"><b>R[j][k]</b> (off-diagonal, j ≠ k): <em>negative</em> sum of resistors shared between mesh j and mesh k. <span class="arrow">Always non-positive. Zero if the meshes don't touch.</span></span>
+    <span class="step"><b>V[k]</b> (RHS): sum of voltage sources in mesh k that <em>push</em> current clockwise (so the negative terminal is "behind" you as you walk clockwise). <span class="arrow">Source flipped → flip the sign.</span></span>
+    <span class="step"><b>Symmetry</b>: For circuits with only independent sources and resistors, R[j][k] = R[k][j]. The matrix is symmetric — easy to check your work.</span>
+  </div>
+
+  <h2>Worked example — 2-mesh circuit step-by-step</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>Two windows. V1 = 10 V in the left mesh, V2 = 5 V in the right mesh, both pointed to push their respective mesh clockwise. R1 = 100 Ω in left only, R3 = 330 Ω in right only, R2 = 220 Ω shared between them (the middle branch).</p>
+
+    <h3>Write KVL for mesh 1 (clockwise)</h3>
+    <span class="eq">Walk clockwise: start at V1's negative terminal, go up through V1 (gain +10), right across R1 (drop = +100·I1), down through R2 (drop = +220·(I1 − I2)), back to start.</span>
+    <span class="eq">KVL: −10 + 100·I1 + 220·(I1 − I2) = 0</span>
+    <span class="eq">Collect: <b>(100 + 220)·I1 − 220·I2 = 10</b>  →  <b>320·I1 − 220·I2 = 10</b></span>
+
+    <h3>Write KVL for mesh 2 (clockwise)</h3>
+    <span class="eq">Walk clockwise: up through R2 (drop = +220·(I2 − I1)), right through R3 (drop = +330·I2), down through V2 (gain or drop depends on polarity — here V2 pushes mesh 2 clockwise, so it's a gain of +5).</span>
+    <span class="eq">KVL: 220·(I2 − I1) + 330·I2 − 5 = 0</span>
+    <span class="eq">Collect: <b>−220·I1 + (220 + 330)·I2 = 5</b>  →  <b>−220·I1 + 550·I2 = 5</b></span>
+
+    <h3>Stack into matrix form</h3>
+    <span class="eq">[ 320   −220 ] [ I1 ]   [ 10 ]</span>
+    <span class="eq">[ −220   550 ] [ I2 ] = [  5 ]</span>
+    <p>Compare with the "by inspection" pattern: diagonal = sum of mesh resistors (320 = 100+220, 550 = 220+330). Off-diagonal = −R_shared = −220. RHS = source pushing clockwise in that mesh. <b>You didn't need to write KVL at all</b> — the matrix entries are visible directly in the schematic.</p>
+
+    <h3>Solve (Cramer's rule)</h3>
+    <span class="eq">det = 320·550 − (−220)·(−220) = 176,000 − 48,400 = 127,600</span>
+    <span class="eq">I1 = (10·550 − (−220)·5) / det = (5500 + 1100) / 127,600 = <b>51.7 mA</b></span>
+    <span class="eq">I2 = (320·5 − (−220)·10) / det = (1600 + 2200) / 127,600 = <b>29.8 mA</b></span>
+
+    <h3>Recover branch currents</h3>
+    <span class="eq">I_R1 = I1 = 51.7 mA  <span class="annot">(R1 is in mesh 1 only)</span></span>
+    <span class="eq">I_R3 = I2 = 29.8 mA  <span class="annot">(R3 is in mesh 2 only)</span></span>
+    <span class="eq">I_R2 = I1 − I2 = 21.9 mA  <span class="annot">(R2 is shared; net current flows downward in the middle branch)</span></span>
+  </div>
+
+  <h2>Worked example — 3-mesh circuit with the inspection trick</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>Three side-by-side meshes. V1 = 12 V drives mesh 1, V2 = 6 V drives mesh 2, V3 = 0 V (mesh 3 has no source). R1 = 100 Ω (mesh 1 only), R2 = 200 Ω (shared 1↔2), R3 = 300 Ω (mesh 2 only), R4 = 400 Ω (shared 2↔3), R5 = 500 Ω (mesh 3 only).</p>
+
+    <h3>Build the matrix by inspection — no KVL writing</h3>
+    <span class="eq">R[1][1] = 100 + 200 = 300  <span class="annot">(R1 + R2 border mesh 1)</span></span>
+    <span class="eq">R[2][2] = 200 + 300 + 400 = 900  <span class="annot">(R2 + R3 + R4 border mesh 2)</span></span>
+    <span class="eq">R[3][3] = 400 + 500 = 900  <span class="annot">(R4 + R5 border mesh 3)</span></span>
+    <span class="eq">R[1][2] = R[2][1] = −200  <span class="annot">(−R2 shared)</span></span>
+    <span class="eq">R[1][3] = R[3][1] = 0  <span class="annot">(meshes 1 and 3 don't touch)</span></span>
+    <span class="eq">R[2][3] = R[3][2] = −400  <span class="annot">(−R4 shared)</span></span>
+    <span class="eq">V = [12, 6, 0]ᵀ  <span class="annot">(sources driving each mesh clockwise)</span></span>
+
+    <h3>Matrix</h3>
+    <span class="eq">[ 300  −200    0 ] [ I1 ]   [ 12 ]</span>
+    <span class="eq">[−200   900 −400 ] [ I2 ] = [  6 ]</span>
+    <span class="eq">[   0  −400  900 ] [ I3 ]   [  0 ]</span>
+
+    <h3>Solve (Gaussian, or just plug into the explorer)</h3>
+    <span class="eq">I1 ≈ 47.4 mA,  I2 ≈ 11.1 mA,  I3 ≈ 4.93 mA</span>
+    <span class="eq">Branch I_R2 = I1 − I2 = 36.3 mA  <span class="annot">(flows in mesh 1's direction through R2)</span></span>
+    <span class="eq">Branch I_R4 = I2 − I3 = 6.16 mA  <span class="annot">(flows in mesh 2's direction through R4)</span></span>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>The matrix is symmetric for resistor-only circuits.</b> R[j][k] = R[k][j]. If your computed matrix isn't symmetric, you made a sign error on a shared resistor or forgot the clockwise convention.</li>
+    <li><b>Diagonal dominates.</b> R[k][k] ≥ Σ|R[j][k]| for j ≠ k (with equality only at the boundary). This means the system is well-conditioned and easy to solve numerically. Almost any iterative solver converges quickly.</li>
+    <li><b>Off-diagonals are zero between non-adjacent meshes.</b> In the 3-mesh example, R[1][3] = 0 because meshes 1 and 3 don't share a branch. This is what makes large mesh matrices <em>sparse</em>, which is why mesh analysis scales to thousands of nodes in SPICE.</li>
+    <li><b>Reversing a source's polarity flips its RHS sign.</b> Try setting V1 = −10 V; the mesh currents flow the opposite direction. The matrix on the left is unchanged.</li>
+    <li><b>Setting R2 = 0 (a short)</b> doesn't crash the matrix — it just makes the diagonal smaller and the off-diagonal vanish, effectively merging the two meshes into one. Setting R2 = ∞ (open) does the opposite: the meshes decouple completely (R[1][2] → 0).</li>
+    <li><b>Mesh analysis only works for planar circuits</b> (circuits you can draw on paper without crossings). For non-planar (3D / graph-theoretic) circuits, nodal analysis is the only general technique. Most board-level circuits are planar, so this isn't a practical limitation.</li>
+  </ul>
+
+  <h2>Mesh vs nodal — when to pick which</h2>
+  <table>
+    <thead><tr><th>Use mesh when…</th><th>Use nodal when…</th></tr></thead>
+    <tbody>
+      <tr><td>Few meshes (small N), many nodes</td><td>Few nodes, many meshes</td></tr>
+      <tr><td>Voltage sources dominate</td><td>Current sources dominate</td></tr>
+      <tr><td>You want branch currents directly</td><td>You want node voltages directly</td></tr>
+      <tr><td>The circuit is planar</td><td>The circuit may not be planar</td></tr>
+      <tr><td>SPICE-style hand check on a 2-loop circuit</td><td>Op-amp circuits (nodes are natural)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Where you'll see this technique</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">SPICE itself</b> — the modified nodal analysis (MNA) inside every SPICE solver is a generalization of these matrix equations.</li>
+      <li><b style="color:var(--fg)">Power distribution networks</b> — current flow through a multi-loop ground-plane is mesh analysis.</li>
+      <li><b style="color:var(--fg)">Wheatstone bridges</b> — the classic 3-mesh problem; balance condition pops out of the matrix solution.</li>
+      <li><b style="color:var(--fg)">Resistor networks for measurement</b> — Kelvin / 4-wire sense circuits, R-2R ladder DACs.</li>
+      <li><b style="color:var(--fg)">Hand verification</b> — when SPICE gives you a weird answer on a small circuit, mesh analysis is the fastest sanity check.</li>
+      <li><b style="color:var(--fg)">Cross-link:</b> see <a href="nodal-analysis.html">Nodal Analysis Explorer</a> for the dual technique.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>System</dt><dd><span class="eq">R · I = V</span></dd>
+        <dt>Diagonal</dt><dd><span class="eq">R[k][k] = ΣR in mesh k</span></dd>
+        <dt>Off-diag</dt><dd><span class="eq">R[j][k] = −R_shared(j,k)</span></dd>
+        <dt>RHS</dt><dd><span class="eq">V[k] = ΣV driving CW</span></dd>
+        <dt>Branch (only in k)</dt><dd><span class="eq">I_branch = I_k</span></dd>
+        <dt>Branch (shared j,k)</dt><dd><span class="eq">I_branch = I_j − I_k</span></dd>
+        <dt>2x2 inverse</dt><dd><span class="eq">[a b; c d]⁻¹ = (1/det)·[d −b; −c a]</span></dd>
+        <dt>2x2 det</dt><dd><span class="eq">det = ad − bc</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>PROCEDURE</h3>
+      <ul>
+        <li>All mesh currents <b>clockwise</b>.</li>
+        <li><b>Diagonal</b> = sum of border resistors.</li>
+        <li><b>Off-diag</b> = −shared resistor (or 0).</li>
+        <li><b>RHS</b> = sum of CW-driving voltage sources.</li>
+        <li>Symmetric matrix → check by hand-flipping.</li>
+        <li>Branch current = mesh or mesh-minus-mesh.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Mixing CW and CCW</b> — pick one and stick. CW is the universal convention.</li>
+        <li><b>Forgetting the minus on shared R</b> — off-diagonals are always non-positive.</li>
+        <li><b>Source polarity</b> — V_k is positive if the source pushes that mesh CW. Reversed → negate.</li>
+        <li><b>Current source in a mesh</b> — needs a supermesh (combine the two meshes the current source bridges). This explorer keeps to voltage-source-only circuits for clarity.</li>
+        <li><b>Non-planar circuit</b> — you can't draw it without crossings, so you can't identify meshes. Use nodal.</li>
+        <li><b>Power-balance sanity</b> — total source power must equal total resistor dissipation. Always check.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 1 — DC Circuit Foundations</a> ·
+    Topic: Systematic circuit analysis ·
+    Dual: <a href="nodal-analysis.html">Nodal Analysis Explorer</a> ·
+    Forward: <a href="source-transformations.html">Source Transformations</a>
+  </footer>
+</main>
+<script>
+  const els = {};
+  ['v1','v2','v3','r1','r2','r3','r4','r5'].forEach(k => els[k] = document.getElementById(k));
+
+  let topo = '2mesh';
+
+  function fmtV(v){ return v.toFixed(2) + ' V'; }
+  function fmtI(i){
+    if(Math.abs(i) < 1e-3) return (i*1e6).toFixed(1) + ' µA';
+    if(Math.abs(i) < 1) return (i*1e3).toFixed(2) + ' mA';
+    return i.toFixed(3) + ' A';
+  }
+  function fmtR(r){
+    if(r >= 1e3) return (r/1e3).toFixed(2) + ' kΩ';
+    return r.toFixed(0) + ' Ω';
+  }
+  function fmtP(p){
+    if(Math.abs(p) < 1e-3) return (p*1e6).toFixed(1) + ' µW';
+    if(Math.abs(p) < 1) return (p*1e3).toFixed(2) + ' mW';
+    return p.toFixed(3) + ' W';
+  }
+
+  // Solve 2x2 [[a,b],[c,d]] * [x,y] = [e,f]
+  function solve2(a,b,c,d,e,f){
+    const det = a*d - b*c;
+    if(Math.abs(det) < 1e-12) return [0,0];
+    return [(e*d - b*f)/det, (a*f - e*c)/det];
+  }
+  // Solve 3x3 using Cramer
+  function solve3(M, V){
+    function det3(m){
+      return m[0][0]*(m[1][1]*m[2][2] - m[1][2]*m[2][1])
+           - m[0][1]*(m[1][0]*m[2][2] - m[1][2]*m[2][0])
+           + m[0][2]*(m[1][0]*m[2][1] - m[1][1]*m[2][0]);
+    }
+    const D = det3(M);
+    if(Math.abs(D) < 1e-12) return [0,0,0];
+    const out = [];
+    for(let k=0; k<3; k++){
+      const Mk = M.map(r => r.slice());
+      for(let i=0; i<3; i++) Mk[i][k] = V[i];
+      out.push(det3(Mk) / D);
+    }
+    return out;
+  }
+
+  function drawCircuit2(I1, I2, R){
+    const svg = document.getElementById('circuit');
+    svg.setAttribute('viewBox', '0 0 640 320');
+    let s = '';
+    // Two side-by-side rectangles sharing the middle branch
+    // Mesh 1: nodes A(left top), B(mid top), C(mid bot), D(left bot)
+    // Mesh 2: nodes B(mid top), E(right top), F(right bot), C(mid bot)
+    const Ax=80, Ay=70, Bx=320, By=70, Ex=560, Ey=70;
+    const Dx=80, Dy=250, Cx=320, Cy=250, Fx=560, Fy=250;
+    // wires
+    s += `<line x1="${Ax}" y1="${Ay}" x2="${Bx}" y2="${By}" class="wire"/>`;
+    s += `<line x1="${Bx}" y1="${By}" x2="${Ex}" y2="${Ey}" class="wire"/>`;
+    s += `<line x1="${Dx}" y1="${Dy}" x2="${Cx}" y2="${Cy}" class="wire"/>`;
+    s += `<line x1="${Cx}" y1="${Cy}" x2="${Fx}" y2="${Fy}" class="wire"/>`;
+    s += `<line x1="${Bx}" y1="${By}" x2="${Cx}" y2="${Cy}" class="wire"/>`;
+    // V1 (left vertical), V2 (right vertical)
+    s += `<line x1="${Ax}" y1="${Ay}" x2="${Ax}" y2="${(Ay+Dy)/2 - 18}" class="wire"/>`;
+    s += `<line x1="${Ax}" y1="${(Ay+Dy)/2 + 18}" x2="${Ax}" y2="${Dy}" class="wire"/>`;
+    s += `<circle cx="${Ax}" cy="${(Ay+Dy)/2}" r="18" fill="var(--bg-elev2)" stroke="#5ec8ff"/>`;
+    s += `<text x="${Ax}" y="${(Ay+Dy)/2 + 4}" class="label" text-anchor="middle" fill="#5ec8ff">V1</text>`;
+    s += `<text x="${Ax - 26}" y="${(Ay+Dy)/2 + 4}" class="label-dim" text-anchor="end">${R.V1.toFixed(1)}V</text>`;
+    s += `<text x="${Ax + 8}" y="${(Ay+Dy)/2 - 22}" class="label-dim">+</text>`;
+    s += `<text x="${Ax + 8}" y="${(Ay+Dy)/2 + 32}" class="label-dim">−</text>`;
+
+    s += `<line x1="${Ex}" y1="${Ey}" x2="${Ex}" y2="${(Ey+Fy)/2 - 18}" class="wire"/>`;
+    s += `<line x1="${Ex}" y1="${(Ey+Fy)/2 + 18}" x2="${Ex}" y2="${Fy}" class="wire"/>`;
+    s += `<circle cx="${Ex}" cy="${(Ey+Fy)/2}" r="18" fill="var(--bg-elev2)" stroke="#ffb86c"/>`;
+    s += `<text x="${Ex}" y="${(Ey+Fy)/2 + 4}" class="label" text-anchor="middle" fill="#ffb86c">V2</text>`;
+    s += `<text x="${Ex + 26}" y="${(Ey+Fy)/2 + 4}" class="label-dim">${R.V2.toFixed(1)}V</text>`;
+    s += `<text x="${Ex - 14}" y="${(Ey+Fy)/2 - 22}" class="label-dim">+</text>`;
+    s += `<text x="${Ex - 14}" y="${(Ey+Fy)/2 + 32}" class="label-dim">−</text>`;
+
+    // R1 (top of mesh 1)
+    s += resistor((Ax+Bx)/2, Ay, 'horizontal', 'R1', R.R1, '#5ec8ff');
+    // R2 (middle vertical, shared)
+    s += resistor(Bx, (By+Cy)/2, 'vertical', 'R2', R.R2, '#a3e635');
+    // R3 (top of mesh 2)
+    s += resistor((Bx+Ex)/2, By, 'horizontal', 'R3', R.R3, '#ffb86c');
+    // Mesh-current arrows (curved arrow centered in each window)
+    s += `<text x="${(Ax+Bx)/2}" y="${(Ay+Dy)/2 + 5}" class="label" text-anchor="middle" fill="#5ec8ff">I1 ↻</text>`;
+    s += `<text x="${(Ax+Bx)/2}" y="${(Ay+Dy)/2 + 22}" class="label-dim" text-anchor="middle">${fmtI(I1)}</text>`;
+    s += `<text x="${(Bx+Ex)/2}" y="${(By+Fy)/2 + 5}" class="label" text-anchor="middle" fill="#ffb86c">I2 ↻</text>`;
+    s += `<text x="${(Bx+Ex)/2}" y="${(By+Fy)/2 + 22}" class="label-dim" text-anchor="middle">${fmtI(I2)}</text>`;
+    // branch current in shared R2
+    const sharedI = I1 - I2;
+    s += `<text x="${Bx + 30}" y="${(By+Cy)/2 + 5}" class="label" fill="#a3e635">I_R2 = I1−I2</text>`;
+    s += `<text x="${Bx + 30}" y="${(By+Cy)/2 + 22}" class="label-dim">${fmtI(sharedI)} ${sharedI > 0 ? '(downward)' : '(upward)'}</text>`;
+    svg.innerHTML = s;
+  }
+
+  function drawSource(){ /* unused */ }
+
+  function resistor(cx, cy, dir, label, R, color){
+    let s = '';
+    if(dir === 'horizontal'){
+      s += `<rect x="${cx-30}" y="${cy-8}" width="60" height="16" fill="var(--bg-elev2)" stroke="${color}" stroke-width="1.5"/>`;
+      s += `<text x="${cx}" y="${cy - 14}" class="label" text-anchor="middle" fill="${color}">${label}</text>`;
+      s += `<text x="${cx}" y="${cy + 24}" class="label-dim" text-anchor="middle">${fmtR(R)}</text>`;
+    } else {
+      s += `<rect x="${cx-8}" y="${cy-30}" width="16" height="60" fill="var(--bg-elev2)" stroke="${color}" stroke-width="1.5"/>`;
+      s += `<text x="${cx + 14}" y="${cy + 4}" class="label" fill="${color}">${label}</text>`;
+      s += `<text x="${cx - 14}" y="${cy + 4}" class="label-dim" text-anchor="end">${fmtR(R)}</text>`;
+    }
+    return s;
+  }
+
+  function drawCircuit3(I1, I2, I3, R){
+    const svg = document.getElementById('circuit');
+    svg.setAttribute('viewBox', '0 0 720 320');
+    let s = '';
+    // 3 windows side by side
+    const xs = [60, 250, 440, 630];
+    const yT = 70, yB = 250;
+    for(let i=0; i<3; i++){
+      // top + bottom rails
+      s += `<line x1="${xs[i]}" y1="${yT}" x2="${xs[i+1]}" y2="${yT}" class="wire"/>`;
+      s += `<line x1="${xs[i]}" y1="${yB}" x2="${xs[i+1]}" y2="${yB}" class="wire"/>`;
+    }
+    // verticals: 4 of them
+    for(let i=0; i<4; i++){
+      s += `<line x1="${xs[i]}" y1="${yT}" x2="${xs[i]}" y2="${yB}" class="wire"/>`;
+    }
+    // Sources V1, V2, V3 on the verticals at xs[0], xs[1], xs[2] ... wait: classic 3-mesh has V1 on leftmost vertical only.
+    // Put V1 on xs[0], V2 on xs[1] (between mesh 1 and 2 — but that's a shared branch with a resistor R2 too)
+    // To keep it clean: put sources at xs[0] (V1), xs[3] (V2), and skip V3 for now or use it on the bottom.
+    // Actually for 3-mesh: V1 on left, V2 in middle of mesh 2 bottom, V3 on right.
+
+    // V1 on xs[0]
+    s += sourceVert(xs[0], (yT+yB)/2, 'V1', R.V1, '#5ec8ff');
+    // V2 on xs[3]
+    s += sourceVert(xs[3], (yT+yB)/2, 'V2', R.V2, '#ffb86c');
+    // V3 inserted on the bottom of mesh 2 (between xs[1] and xs[2])
+    s += sourceHoriz((xs[1]+xs[2])/2, yB, 'V3', R.V3, '#a3e635');
+    // R1 top of mesh 1
+    s += resistor((xs[0]+xs[1])/2, yT, 'horizontal', 'R1', R.R1, '#5ec8ff');
+    // R2 shared 1-2 (middle vertical at xs[1])
+    s += resistor(xs[1], (yT+yB)/2, 'vertical', 'R2', R.R2, '#c084fc');
+    // R3 top of mesh 2
+    s += resistor((xs[1]+xs[2])/2, yT, 'horizontal', 'R3', R.R3, '#ffb86c');
+    // R4 shared 2-3 (middle vertical at xs[2])
+    s += resistor(xs[2], (yT+yB)/2, 'vertical', 'R4', R.R4, '#c084fc');
+    // R5 top of mesh 3
+    s += resistor((xs[2]+xs[3])/2, yT, 'horizontal', 'R5', R.R5, '#a3e635');
+    // mesh-current labels
+    s += `<text x="${(xs[0]+xs[1])/2}" y="${(yT+yB)/2 + 5}" class="label" text-anchor="middle" fill="#5ec8ff">I1 ↻</text>`;
+    s += `<text x="${(xs[0]+xs[1])/2}" y="${(yT+yB)/2 + 22}" class="label-dim" text-anchor="middle">${fmtI(I1)}</text>`;
+    s += `<text x="${(xs[1]+xs[2])/2}" y="${(yT+yB)/2 + 5}" class="label" text-anchor="middle" fill="#ffb86c">I2 ↻</text>`;
+    s += `<text x="${(xs[1]+xs[2])/2}" y="${(yT+yB)/2 + 22}" class="label-dim" text-anchor="middle">${fmtI(I2)}</text>`;
+    s += `<text x="${(xs[2]+xs[3])/2}" y="${(yT+yB)/2 + 5}" class="label" text-anchor="middle" fill="#a3e635">I3 ↻</text>`;
+    s += `<text x="${(xs[2]+xs[3])/2}" y="${(yT+yB)/2 + 22}" class="label-dim" text-anchor="middle">${fmtI(I3)}</text>`;
+    svg.innerHTML = s;
+  }
+
+  function sourceVert(x, y, label, V, color){
+    let s = '';
+    s += `<circle cx="${x}" cy="${y}" r="18" fill="var(--bg-elev2)" stroke="${color}"/>`;
+    s += `<text x="${x}" y="${y + 4}" class="label" text-anchor="middle" fill="${color}">${label}</text>`;
+    s += `<text x="${x - 26}" y="${y + 4}" class="label-dim" text-anchor="end">${V.toFixed(1)}V</text>`;
+    return s;
+  }
+  function sourceHoriz(x, y, label, V, color){
+    let s = '';
+    s += `<circle cx="${x}" cy="${y}" r="16" fill="var(--bg-elev2)" stroke="${color}"/>`;
+    s += `<text x="${x}" y="${y + 4}" class="label" text-anchor="middle" fill="${color}">${label}</text>`;
+    s += `<text x="${x}" y="${y + 30}" class="label-dim" text-anchor="middle">${V.toFixed(1)}V</text>`;
+    return s;
+  }
+
+  function update(){
+    const V1 = parseFloat(els.v1.value);
+    const V2 = parseFloat(els.v2.value);
+    const V3 = parseFloat(els.v3.value);
+    const R1 = parseFloat(els.r1.value);
+    const R2 = parseFloat(els.r2.value);
+    const R3 = parseFloat(els.r3.value);
+    const R4 = parseFloat(els.r4.value);
+    const R5 = parseFloat(els.r5.value);
+    document.getElementById('v1Read').textContent = fmtV(V1);
+    document.getElementById('v2Read').textContent = fmtV(V2);
+    document.getElementById('v3Read').textContent = fmtV(V3);
+    document.getElementById('r1Read').textContent = fmtR(R1);
+    document.getElementById('r2Read').textContent = fmtR(R2);
+    document.getElementById('r3Read').textContent = fmtR(R3);
+    document.getElementById('r4Read').textContent = fmtR(R4);
+    document.getElementById('r5Read').textContent = fmtR(R5);
+    const matBox = document.getElementById('matBox');
+    const solnBody = document.getElementById('solnBody');
+    const checkCalc = document.getElementById('checkCalc');
+    if(topo === '2mesh'){
+      // R[1][1] = R1+R2, R[2][2] = R2+R3, R[1][2] = -R2
+      const M11 = R1+R2, M22 = R2+R3, Moff = -R2;
+      const [I1, I2] = solve2(M11, Moff, Moff, M22, V1, V2);
+      matBox.innerHTML =
+        `<span class="row"><span class="accent">[ ${M11.toFixed(0).padStart(5)}  ${Moff.toFixed(0).padStart(5)} ]</span>   [ I1 ]     [ ${V1.toFixed(2).padStart(6)} ]</span>` +
+        `<span class="row"><span class="accent">[ ${Moff.toFixed(0).padStart(5)}  ${M22.toFixed(0).padStart(5)} ]</span> · [ I2 ]  =  [ ${V2.toFixed(2).padStart(6)} ]</span>` +
+        `<span class="row" style="margin-top:8px;color:var(--accent3)">det = ${(M11*M22 - Moff*Moff).toFixed(0)}    I1 = ${fmtI(I1)}    I2 = ${fmtI(I2)}</span>`;
+      const I_R1 = I1, I_R3 = I2, I_R2 = I1 - I2;
+      solnBody.innerHTML =
+        `<tr><td><span class="key" style="background:#5ec8ff"></span>Mesh 1 (I1)</td><td class="num" style="color:#5ec8ff">${fmtI(I1)}</td><td>CW loop current</td></tr>` +
+        `<tr><td><span class="key" style="background:#ffb86c"></span>Mesh 2 (I2)</td><td class="num" style="color:#ffb86c">${fmtI(I2)}</td><td>CW loop current</td></tr>` +
+        `<tr><td>R1 (mesh 1 only)</td><td class="num">${fmtI(I_R1)}</td><td>= I1</td></tr>` +
+        `<tr><td>R3 (mesh 2 only)</td><td class="num">${fmtI(I_R3)}</td><td>= I2</td></tr>` +
+        `<tr><td>R2 (shared)</td><td class="num">${fmtI(I_R2)}</td><td>= I1 − I2 (positive = downward)</td></tr>`;
+      // power balance
+      const Psrc = V1*I1 + V2*I2;
+      const Pdiss = I_R1*I_R1*R1 + I_R3*I_R3*R3 + I_R2*I_R2*R2;
+      checkCalc.innerHTML = `Σ source = ${fmtP(Psrc)} · Σ dissipated = ${fmtP(Pdiss)} · error ${(Math.abs(Psrc-Pdiss)/Math.max(Math.abs(Psrc),1e-12)*100).toFixed(3)} %`;
+      drawCircuit2(I1, I2, {V1,V2,R1,R2,R3});
+    } else {
+      // 3-mesh:
+      // Mesh 1 borders: R1 + R2  →  M[0][0] = R1+R2
+      // Mesh 2 borders: R2 + R3 + R4  →  M[1][1] = R2+R3+R4
+      // Mesh 3 borders: R4 + R5  →  M[2][2] = R4+R5
+      // M[0][1] = -R2, M[1][2] = -R4, M[0][2] = 0
+      const M = [[R1+R2, -R2, 0], [-R2, R2+R3+R4, -R4], [0, -R4, R4+R5]];
+      // V3 acts in mesh 2 (on the bottom of mesh 2)
+      const Vrhs = [V1, V2 + V3, 0];
+      // Wait — convention: V1 drives mesh 1, V2 drives mesh 3 (on the right), V3 drives mesh 2 on its bottom branch
+      const Vrhs2 = [V1, V3, V2];
+      const [I1, I2, I3] = solve3(M, Vrhs2);
+      matBox.innerHTML =
+        `<span class="row"><span class="accent">[ ${M[0][0].toFixed(0).padStart(5)}  ${M[0][1].toFixed(0).padStart(5)}  ${M[0][2].toFixed(0).padStart(5)} ]</span>   [ I1 ]     [ ${Vrhs2[0].toFixed(2).padStart(6)} ]</span>` +
+        `<span class="row"><span class="accent">[ ${M[1][0].toFixed(0).padStart(5)}  ${M[1][1].toFixed(0).padStart(5)}  ${M[1][2].toFixed(0).padStart(5)} ]</span> · [ I2 ]  =  [ ${Vrhs2[1].toFixed(2).padStart(6)} ]</span>` +
+        `<span class="row"><span class="accent">[ ${M[2][0].toFixed(0).padStart(5)}  ${M[2][1].toFixed(0).padStart(5)}  ${M[2][2].toFixed(0).padStart(5)} ]</span>   [ I3 ]     [ ${Vrhs2[2].toFixed(2).padStart(6)} ]</span>` +
+        `<span class="row" style="margin-top:8px;color:var(--accent3)">I1 = ${fmtI(I1)}    I2 = ${fmtI(I2)}    I3 = ${fmtI(I3)}</span>`;
+      const I_R1 = I1, I_R3 = I2, I_R5 = I3;
+      const I_R2 = I1 - I2, I_R4 = I2 - I3;
+      solnBody.innerHTML =
+        `<tr><td><span class="key" style="background:#5ec8ff"></span>Mesh 1 (I1)</td><td class="num" style="color:#5ec8ff">${fmtI(I1)}</td><td>CW loop current</td></tr>` +
+        `<tr><td><span class="key" style="background:#ffb86c"></span>Mesh 2 (I2)</td><td class="num" style="color:#ffb86c">${fmtI(I2)}</td><td>CW loop current</td></tr>` +
+        `<tr><td><span class="key" style="background:#a3e635"></span>Mesh 3 (I3)</td><td class="num" style="color:#a3e635">${fmtI(I3)}</td><td>CW loop current</td></tr>` +
+        `<tr><td>R1</td><td class="num">${fmtI(I_R1)}</td><td>= I1</td></tr>` +
+        `<tr><td>R3</td><td class="num">${fmtI(I_R3)}</td><td>= I2</td></tr>` +
+        `<tr><td>R5</td><td class="num">${fmtI(I_R5)}</td><td>= I3</td></tr>` +
+        `<tr><td>R2 (shared 1↔2)</td><td class="num">${fmtI(I_R2)}</td><td>= I1 − I2</td></tr>` +
+        `<tr><td>R4 (shared 2↔3)</td><td class="num">${fmtI(I_R4)}</td><td>= I2 − I3</td></tr>`;
+      const Psrc = V1*I1 + V3*I2 + V2*I3;
+      const Pdiss = I_R1*I_R1*R1 + I_R2*I_R2*R2 + I_R3*I_R3*R3 + I_R4*I_R4*R4 + I_R5*I_R5*R5;
+      checkCalc.innerHTML = `Σ source = ${fmtP(Psrc)} · Σ dissipated = ${fmtP(Pdiss)} · error ${(Math.abs(Psrc-Pdiss)/Math.max(Math.abs(Psrc),1e-12)*100).toFixed(3)} %`;
+      drawCircuit3(I1, I2, I3, {V1,V2,V3,R1,R2,R3,R4,R5});
+    }
+  }
+
+  function applyPreset(p){
+    const cfg = {
+      textbook: {v1:10, v2:5, v3:0, r1:100, r2:220, r3:330, r4:470, r5:680, topo:'2mesh'},
+      bridge:   {v1:9,  v2:0, v3:0, r1:100, r2:100, r3:100, r4:100, r5:100, topo:'3mesh'},
+      opposing: {v1:12, v2:-12, v3:0, r1:200, r2:200, r3:200, r4:200, r5:200, topo:'2mesh'},
+      ladder:   {v1:5,  v2:0, v3:0, r1:200, r2:100, r3:200, r4:100, r5:200, topo:'3mesh'},
+      reset:    {v1:10, v2:5, v3:0, r1:100, r2:220, r3:330, r4:470, r5:680, topo:'2mesh'}
+    }[p];
+    if(!cfg) return;
+    ['v1','v2','v3','r1','r2','r3','r4','r5'].forEach(k => els[k].value = cfg[k]);
+    setTopo(cfg.topo);
+    document.querySelectorAll('#presets button').forEach(b => b.classList.toggle('active', b.dataset.p === p));
+    update();
+  }
+
+  function setTopo(t){
+    topo = t;
+    document.querySelectorAll('#topoTab button').forEach(b => b.classList.toggle('active', b.dataset.topo === t));
+    // Show/hide r4, r5, v3 if 2-mesh
+    const showThird = (t === '3mesh');
+    document.getElementById('r4').parentElement.style.opacity = showThird ? '1' : '0.35';
+    document.getElementById('r5').parentElement.style.opacity = showThird ? '1' : '0.35';
+    document.getElementById('v3').parentElement.style.opacity = showThird ? '1' : '0.35';
+  }
+
+  Object.values(els).forEach(el => el.addEventListener('input', update));
+  document.querySelectorAll('#topoTab button').forEach(b => b.addEventListener('click', () => { setTopo(b.dataset.topo); update(); }));
+  document.querySelectorAll('#presets button').forEach(b => b.addEventListener('click', () => applyPreset(b.dataset.p)));
+  setTopo('2mesh');
+  update();
+</script>
+</body>
+</html>

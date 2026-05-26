@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anodize Dimensional Allowance — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>Anodize Dimensional Allowance</h1>
+  <p class="lede">Anodizing converts aluminum surface into a hard oxide layer — but unlike paint, that layer doesn't sit on top. It grows half outward and half <em>into</em> the metal. For tight-tolerance parts (pins, shafts, holes) you must pre-machine to compensate, or the part won't fit after the anodize bath. Slide the anodize type and surface thickness; watch holes shrink and pins grow.</p>
+
+  <div class="anchors">
+    <span class="anchor"><b>Type II</b>: cosmetic, 5–25 µm, ~50/50 growth</span>
+    <span class="anchor"><b>Type III</b>: hard, 25–100 µm, ~50/50 growth</span>
+    <span class="anchor"><b>Hole shrinks</b> by full coating thickness (both sides)</span>
+    <span class="anchor"><b>Pin grows</b> by full coating thickness (both sides)</span>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>Anodize type</label>
+      <select id="type">
+        <option value="II_thin">Type II thin (5 µm)</option>
+        <option value="II_med" selected>Type II standard (15 µm)</option>
+        <option value="II_thick">Type II thick (25 µm)</option>
+        <option value="III_min">Type III thin (25 µm)</option>
+        <option value="III_med">Type III standard (50 µm)</option>
+        <option value="III_max">Type III max (100 µm)</option>
+      </select>
+    </div>
+    <div class="control"><label>Coating thickness: <span class="readout" id="tcRead">15.0 µm</span></label><input id="tc" type="range" min="3" max="120" step="1" value="15"></div>
+    <div class="control"><label>Hole nominal Ø: <span class="readout" id="dHRead">5.00 mm</span></label><input id="dH" type="range" min="1" max="20" step="0.1" value="5"></div>
+    <div class="control"><label>Pin nominal Ø: <span class="readout" id="dPRead">4.95 mm</span></label><input id="dP" type="range" min="1" max="20" step="0.05" value="4.95"></div>
+  </section>
+
+  <div class="figure">
+    <svg id="diagram" viewBox="0 0 920 360" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+      <tr><td>Layer growth outward</td><td id="rOut" class="num">7.5 µm</td><td><code>~0.5 × t</code></td></tr>
+      <tr><td>Layer growth inward</td><td id="rIn" class="num">7.5 µm</td><td><code>~0.5 × t</code></td></tr>
+      <tr><td>Hole Ø after anodize</td><td id="rH" class="num">4.985 mm</td><td><code>D_nom − 2 × 0.5 × t</code></td></tr>
+      <tr><td>Pin Ø after anodize</td><td id="rP" class="num">4.965 mm</td><td><code>D_nom + 2 × 0.5 × t</code></td></tr>
+      <tr><td>Clearance (pin in hole)</td><td id="rClear" class="num">0.020 mm</td><td><code>D_hole − D_pin (post-anodize)</code></td></tr>
+      <tr><td>Pre-anodize compensation (hole)</td><td id="rPreH" class="num">+0.015 mm</td><td><code>add t to nominal D</code></td></tr>
+      <tr><td>Pre-anodize compensation (pin)</td><td id="rPreP" class="num">−0.015 mm</td><td><code>subtract t from nominal D</code></td></tr>
+    </table>
+
+    <div class="vd" id="verdict">
+      <b>Fit verdict:</b> <span id="verdictText">…</span>
+    </div>
+  </div>
+
+  <h2>The 50/50 rule: where the oxide grows</h2>
+  <p>Anodizing is an electrolytic process. The aluminum surface is converted into Al<sub>2</sub>O<sub>3</sub> (aluminum oxide), but the conversion happens <em>at the original surface plane</em>. New oxide forms by oxidizing the metal below; that oxide is less dense than the parent aluminum, so it occupies more volume.</p>
+  <div class="deriv">
+    <span class="step">1.  Bulk density: Al ≈ 2.70 g/cm³ • Al₂O₃ ≈ 3.95 g/cm³</span>
+    <span class="step">2.  <b>Pilling–Bedworth ratio</b> for Al → Al₂O₃ ≈ <b>1.28</b>. Volume grows by 28% as Al converts.</span>
+    <span class="step">3.  If thickness t of oxide forms, ~ t/1.28 of aluminum is consumed below the original surface.</span>
+    <span class="step">4.  Net: of total layer thickness t, about <b>0.5·t grows outward</b> and <b>0.5·t grows inward</b> — the classic "50/50 rule."</span>
+    <span class="step">5.  <span class="arrow">→</span> A hole of Ø D shrinks to D − t (the layer enters from both walls); a pin grows from D to D + t.</span>
+    <span class="step">6.  Most shops cite 50/50 as average. Real values vary 40/60 to 60/40 with alloy and bath chemistry; specify the deviation if it matters.</span>
+  </div>
+
+  <h2>Type II vs Type III — when to use which</h2>
+  <table>
+    <tr><th>Property</th><th>Type II (Sulfuric)</th><th>Type III (Hard)</th></tr>
+    <tr><td>Thickness range</td><td>5–25 µm typical</td><td>25–100 µm typical</td></tr>
+    <tr><td>Color options</td><td>Wide (dyed, clear, black)</td><td>Limited (greenish-black, dark grey)</td></tr>
+    <tr><td>Surface hardness</td><td>~250–350 HV</td><td>~400–600 HV (hard-coat)</td></tr>
+    <tr><td>Wear resistance</td><td>Modest</td><td>High (bearing surfaces)</td></tr>
+    <tr><td>Dielectric strength</td><td>~600 V (clear) / lower if dyed</td><td>~1500 V at 50 µm</td></tr>
+    <tr><td>Process temp</td><td>~20 °C</td><td>~0–5 °C (chilled bath)</td></tr>
+    <tr><td>Cost (relative)</td><td>1×</td><td>3–5×</td></tr>
+    <tr><td>Common use</td><td>Cosmetic, mild wear</td><td>Hydraulic cylinders, piston bores, gun parts</td></tr>
+  </table>
+
+  <h2>Worked example — Ø5 H7 pin in Ø5 H7 hole, Type III hard-coat</h2>
+  <div class="worked">
+    <h3>Starting fits (raw 6061-T6, no coating)</h3>
+    <span class="eq">Hole Ø5 H7 = 5.000 / 5.012 mm (ISO H7 bore)</span>
+    <span class="eq">Pin Ø5 h6 = 4.992 / 5.000 mm (ISO h6 shaft)</span>
+    <span class="eq">Clearance band = 0.000 / 0.020 mm (sliding fit)</span>
+
+    <h3>After Type III, 50 µm spec</h3>
+    <span class="eq">Hole shrinks: D_after = 5.000 / 5.012 − 0.050 = 4.950 / 4.962 mm</span>
+    <span class="eq">Pin grows: D_after = 4.992 / 5.000 + 0.050 = 5.042 / 5.050 mm</span>
+    <span class="eq">Interference: pin is 5.042 min, hole is 4.962 max → 0.080 mm interference, will not assemble.</span>
+
+    <h3>Compensation strategy</h3>
+    <span class="eq">Pre-anodize hole: 5.000 + 0.050 = 5.050 mm + H7 tolerance → spec 5.050 / 5.062 mm</span>
+    <span class="eq">Pre-anodize pin:  5.000 − 0.050 = 4.950 mm + h6 tolerance → spec 4.942 / 4.950 mm</span>
+    <span class="eq">After anodize: hole 5.000 / 5.012, pin 5.000 / 5.008 → restored clearance band 0.000 / 0.012 mm</span>
+    <span class="eq">Drawing note: "ALL DIMENSIONS BEFORE ANODIZE — HARD-COAT MIL-A-8625 TYPE III, 50 µm, MASK FACES TO ±0.025"</span>
+
+    <h3>Mask or machine after</h3>
+    <p style="color:var(--fg-dim);font-size:12px">Two options to avoid the math: (1) mask the critical surface so oxide doesn't form there (cheap, but mask creep adds ±0.02 mm); (2) anodize over-thick, then grind / hone the precision surfaces to spec (expensive, perfect tolerance). Production hydraulic cylinders use (2); robotic-arm prototype linkages usually use (1).</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>The hole always shrinks by the same amount as the pin grows</b> — they're symmetric. Forget which way each goes by remembering: oxide grows everywhere normal to the metal surface. For a hole, "outward" is inward. For a pin, "outward" is outward.</li>
+    <li><b>Type III at 50 µm shifts dimensions by 0.05 mm</b> — that's significant for an H7/h6 fit (band is 0.020 mm). Always compensate or post-machine.</li>
+    <li><b>Type II at 15 µm shifts by 0.015 mm</b> — also significant for press fits, ignorable for through-hole bolts.</li>
+    <li><b>Thread fits get tight</b> — internal threads (tapped holes) lose 2·t on minor and major diameters; external threads (studs) gain 2·t. Mask threads or chase post-anodize.</li>
+    <li><b>Sharp corners build extra oxide</b> — anodize wants ≥ 0.5 mm radius on outside corners (electric field concentrates). Burn-marks and pitted surface on sharp edges.</li>
+    <li><b>Wave the part rack with care</b> — racking contact points leave un-anodized spots. Hide them on non-critical faces or post-coat-touch with cold-cure.</li>
+    <li><b>Color depth ≠ coating thickness</b> — dyed parts use absorption, so a thicker coating absorbs more dye and looks darker. If color uniformity is critical, hold ±2 µm on the coating spec.</li>
+  </ul>
+
+  <h2>Cross-links</h2>
+  <div class="crosslink">
+    <h4>Related</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Galvanic corrosion</b> — <a href="galvanic-corrosion.html">why anodize for dissimilar metals</a>. Anodize layer is dielectric; breaks the galvanic loop.</li>
+      <li><b style="color:var(--fg)">Fits &amp; clearance</b> — <a href="../phase-1-drawing-cad/fits-clearance.html">H7/h6 etc.</a> Pre-anodize values still have to land on standard fit classes.</li>
+      <li><b style="color:var(--fg)">Tolerance stack-up</b> — <a href="../phase-1-drawing-cad/tolerance-stackup.html">total assembly tolerance</a>. Coating tolerance ±2 µm enters the stack.</li>
+      <li><b style="color:var(--fg)">Surface finish</b> — <a href="../phase-1-drawing-cad/surface-finish-symbols.html">Ra symbols</a>. Anodize roughens slightly; spec post-coating Ra if it matters.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Outward growth</dt><dd><span class="eq">≈ 0.5 × t (coating)</span></dd>
+        <dt>Inward growth</dt><dd><span class="eq">≈ 0.5 × t (consumed Al)</span></dd>
+        <dt>Hole post-coat</dt><dd><span class="eq">D_h' = D_h − t</span></dd>
+        <dt>Pin post-coat</dt><dd><span class="eq">D_p' = D_p + t</span></dd>
+        <dt>Pre-comp hole</dt><dd><span class="eq">D_h(pre) = D_h(target) + t</span></dd>
+        <dt>Pre-comp pin</dt><dd><span class="eq">D_p(pre) = D_p(target) − t</span></dd>
+        <dt>Pilling–Bedworth</dt><dd><span class="eq">PBR(Al) ≈ 1.28</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SHORTCUTS</h3>
+      <ul>
+        <li><b>Type II 15 µm</b> → shifts each face by ~0.008 mm</li>
+        <li><b>Type III 50 µm</b> → shifts each face by ~0.025 mm</li>
+        <li><b>Hole loses, pin gains</b> — same magnitude</li>
+        <li><b>Spec MIL-A-8625</b> with type + class</li>
+        <li><b>Mask</b> bores you need exact, or post-machine</li>
+        <li><b>Radius all outside corners</b> ≥ 0.5 mm</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Forgetting threads</b> — internal M5 threads tighten 0.025 mm per side after Type III 50 µm. M5×0.8 nominal becomes hopeless. Mask or chase.</li>
+        <li><b>Anodizing pre-press-fit parts</b> — the oxide can chip during press-in, leaves bare Al + galvanic risk. Press first, anodize last (mask the bore).</li>
+        <li><b>Mixing alloys on the same rack</b> — 6061 takes color uniformly; 7075 goes blotchy; cast 380 is nearly black no matter what. Group by alloy.</li>
+        <li><b>Assuming color matches between runs</b> — dye lots vary. Order all parts in a single batch if cosmetic.</li>
+        <li><b>Sealed vs unsealed</b> — sealing closes the pores. Unsealed is more dye-friendly but absorbs grease. For functional parts, always seal.</li>
+        <li><b>Hand-soldering after anodize</b> — oxide is non-conductive. You can't solder to anodized surface; either mask the pad or use a dielectric strain relief.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">ME Phase 2 — Materials Science</span> ·
+    Related: <a href="galvanic-corrosion.html">Galvanic Corrosion</a> ·
+    <a href="../phase-1-drawing-cad/fits-clearance.html">Fits &amp; Clearance</a>
+  </footer>
+</main>
+<script>
+  // Preset types
+  const TYPES = {
+    'II_thin':  {label:'Type II thin (5 µm)',     t:5},
+    'II_med':   {label:'Type II standard (15 µm)',t:15},
+    'II_thick': {label:'Type II thick (25 µm)',   t:25},
+    'III_min':  {label:'Type III thin (25 µm)',   t:25},
+    'III_med':  {label:'Type III standard (50 µm)',t:50},
+    'III_max':  {label:'Type III max (100 µm)',   t:100}
+  };
+
+  const tcEl = document.getElementById('tc');
+  const dHEl = document.getElementById('dH');
+  const dPEl = document.getElementById('dP');
+  const typeEl = document.getElementById('type');
+
+  typeEl.addEventListener('change', ()=>{
+    const t = TYPES[typeEl.value].t;
+    tcEl.value = t;
+    update();
+  });
+
+  function update(){
+    const t  = parseFloat(tcEl.value);
+    const dH = parseFloat(dHEl.value);
+    const dP = parseFloat(dPEl.value);
+    document.getElementById('tcRead').textContent = t.toFixed(1)+" µm";
+    document.getElementById('dHRead').textContent = dH.toFixed(2)+" mm";
+    document.getElementById('dPRead').textContent = dP.toFixed(2)+" mm";
+
+    const tmm = t / 1000;  // µm → mm
+    const out = 0.5 * t;
+    const inn = 0.5 * t;
+    const dHpost = dH - tmm;
+    const dPpost = dP + tmm;
+    const clear = dHpost - dPpost;
+
+    document.getElementById('rOut').textContent = out.toFixed(1)+" µm";
+    document.getElementById('rIn').textContent  = inn.toFixed(1)+" µm";
+    document.getElementById('rH').textContent   = dHpost.toFixed(3)+" mm";
+    document.getElementById('rP').textContent   = dPpost.toFixed(3)+" mm";
+    document.getElementById('rClear').textContent = (clear>=0?"+":"")+clear.toFixed(3)+" mm "+(clear>=0?"clear":"interf.");
+    document.getElementById('rPreH').textContent  = "+"+tmm.toFixed(3)+" mm (oversize hole)";
+    document.getElementById('rPreP').textContent  = "−"+tmm.toFixed(3)+" mm (undersize pin)";
+
+    const v = document.getElementById('verdictText');
+    if(clear < -0.005){
+      v.innerHTML = `<b style="color:var(--warn)">INTERFERENCE</b> — Pin won't fit. Press fit ${(-clear).toFixed(3)} mm — or pre-compensate hole +${tmm.toFixed(3)} and pin −${tmm.toFixed(3)}.`;
+    } else if(clear < 0.005){
+      v.innerHTML = `<b style="color:var(--accent2)">TIGHT (near-zero clearance)</b> — Light press fit. Suitable for dowel pins but not sliding.`;
+    } else if(clear < 0.05){
+      v.innerHTML = `<b style="color:var(--accent3)">SLIDING FIT</b> — ${clear.toFixed(3)} mm clearance. Pin will slide freely in hole.`;
+    } else {
+      v.innerHTML = `<b style="color:var(--accent3)">LOOSE FIT</b> — ${clear.toFixed(3)} mm clearance. Significant play; OK for clearance bolt holes.`;
+    }
+
+    drawDiagram(dH, dP, t);
+  }
+
+  function drawDiagram(dH, dP, t){
+    const svg = document.getElementById('diagram');
+    // visual scale: 1 mm = 30 px (so 5 mm is 150 px); coating expanded ×40 for visibility
+    const scale = 30;
+    const cscale = 40;     // exaggerate coating for visibility
+    const tmm = t / 1000;
+    const tpx = tmm * scale * cscale;
+    const cx1 = 200, cy = 180;   // hole center
+    const cx2 = 700;
+    const rH = dH * scale / 2;
+    const rP = dP * scale / 2;
+
+    // Hole drawing
+    let s = `
+      <text x="${cx1}" y="35" class="label" text-anchor="middle">HOLE — Ø ${dH.toFixed(2)} mm nominal</text>
+      <text x="${cx1}" y="50" class="label-dim" text-anchor="middle">oxide grows inward (into the wall)</text>
+      <!-- block with hole -->
+      <rect x="${cx1-130}" y="${cy-100}" width="260" height="200"
+            fill="var(--bg-elev2)" stroke="var(--fg-dim)" stroke-width="1"/>
+      <!-- nominal hole circle (dashed) -->
+      <circle cx="${cx1}" cy="${cy}" r="${rH}" fill="var(--bg)" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <text x="${cx1+rH+8}" y="${cy-rH+12}" class="label-dim">nominal</text>
+      <!-- post-anodize hole circle (smaller, solid) -->
+      <circle cx="${cx1}" cy="${cy}" r="${rH - tpx}" fill="none" stroke="var(--warn)" stroke-width="2"/>
+      <text x="${cx1+rH-tpx-8}" y="${cy+rH-tpx+18}" class="label-warn" text-anchor="end">post-anodize</text>
+      <!-- coating ring -->
+      <path d="M ${cx1-rH} ${cy} A ${rH} ${rH} 0 1 1 ${cx1+rH} ${cy} A ${rH} ${rH} 0 1 1 ${cx1-rH} ${cy} M ${cx1-rH+tpx} ${cy} A ${rH-tpx} ${rH-tpx} 0 1 0 ${cx1+rH-tpx} ${cy} A ${rH-tpx} ${rH-tpx} 0 1 0 ${cx1-rH+tpx} ${cy}"
+            fill="var(--accent2)" opacity="0.4" fill-rule="evenodd"/>
+      <text x="${cx1}" y="${cy+rH+25}" class="label" text-anchor="middle">Ø ${(dH-tmm).toFixed(3)} mm</text>
+    `;
+
+    // Pin drawing
+    s += `
+      <text x="${cx2}" y="35" class="label" text-anchor="middle">PIN — Ø ${dP.toFixed(2)} mm nominal</text>
+      <text x="${cx2}" y="50" class="label-dim" text-anchor="middle">oxide grows outward (off the shaft)</text>
+      <!-- pin outline (nominal, dashed) -->
+      <circle cx="${cx2}" cy="${cy}" r="${rP}" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4,4"/>
+      <!-- post-anodize pin (larger, solid) -->
+      <circle cx="${cx2}" cy="${cy}" r="${rP + tpx}" fill="none" stroke="var(--accent3)" stroke-width="2"/>
+      <!-- coating ring -->
+      <path d="M ${cx2-rP-tpx} ${cy} A ${rP+tpx} ${rP+tpx} 0 1 1 ${cx2+rP+tpx} ${cy} A ${rP+tpx} ${rP+tpx} 0 1 1 ${cx2-rP-tpx} ${cy} M ${cx2-rP} ${cy} A ${rP} ${rP} 0 1 0 ${cx2+rP} ${cy} A ${rP} ${rP} 0 1 0 ${cx2-rP} ${cy}"
+            fill="var(--accent2)" opacity="0.4" fill-rule="evenodd"/>
+      <text x="${cx2}" y="${cy+rP+25}" class="label" text-anchor="middle">Ø ${(dP+tmm).toFixed(3)} mm</text>
+      <text x="${cx2+rP+tpx+8}" y="${cy-rP-tpx+12}" class="label-ok">post-anodize</text>
+    `;
+
+    // Coating thickness legend
+    s += `
+      <text x="460" y="320" class="label-dim" text-anchor="middle">
+        Coating depicted ×40 for clarity • Actual t = ${t.toFixed(1)} µm = ${tmm.toFixed(3)} mm
+      </text>
+      <text x="460" y="340" class="label-dim" text-anchor="middle">
+        50/50 rule: ${(t/2).toFixed(1)} µm outward + ${(t/2).toFixed(1)} µm consumed inward
+      </text>
+    `;
+    svg.innerHTML = s;
+  }
+
+  tcEl.addEventListener('input', update);
+  dHEl.addEventListener('input', update);
+  dPEl.addEventListener('input', update);
+  update();
+</script>
+</body>
+</html>

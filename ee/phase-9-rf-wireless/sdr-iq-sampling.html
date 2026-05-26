@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SDR I/Q Sampling — visual</title>
+<style>:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 system-ui,sans-serif}
+main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright)}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+.control input{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 8px;font:13px ui-monospace,monospace}
+.readout{color:var(--accent);font-family:ui-monospace,monospace;font-size:13px}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>SDR I/Q Sampling — the complex baseband trick</h1>
+<p class="lede">Software-defined radios receive RF signals by quadrature down-conversion: multiply the antenna signal by cos(ω_LO·t) for the I (in-phase) component and sin(ω_LO·t) for the Q (quadrature) component. The two-channel result represents complex baseband — I + jQ — which preserves both positive AND negative frequencies relative to the LO. Without quadrature, you'd alias positive and negative frequencies onto each other and lose half the information.</p>
+
+<div class="anchors">
+<span class="anchor"><b>Real sampling</b>: bandwidth = f_s/2 (Nyquist)</span>
+<span class="anchor"><b>I/Q sampling</b>: bandwidth = f_s (full complex)</span>
+<span class="anchor"><b>Common SDR</b>: RTL-SDR (2 MHz), HackRF (20 MHz), USRP (≥56 MHz)</span>
+<span class="anchor"><b>I/Q skew</b>: image rejection &lt; 60 dB without calibration</span>
+</div>
+
+<section class="controls">
+<div class="control"><label>RF carrier f_c (MHz): <span class="readout" id="fcRead">100</span></label><input id="fc" type="range" min="50" max="200" step="1" value="100"></div>
+<div class="control"><label>LO frequency (MHz): <span class="readout" id="loRead">100</span></label><input id="lo" type="range" min="50" max="200" step="1" value="100"></div>
+<div class="control"><label>Sample rate (MHz): <span class="readout" id="fsRead">2.0</span></label><input id="fs" type="range" min="0.5" max="20" step="0.1" value="2.0"></div>
+<div class="control"><label>Signal offset from LO (kHz): <span class="readout" id="offRead">200</span></label><input id="off" type="range" min="-1000" max="1000" step="10" value="200"></div>
+</section>
+
+<div class="figure">
+<svg id="iq" viewBox="0 0 720 320" width="100%"></svg>
+<table>
+<tr><th>Quantity</th><th>Value</th></tr>
+<tr><td>Baseband frequency</td><td id="bb">+200 kHz (in upper sideband)</td></tr>
+<tr><td>Aliased? (Nyquist check)</td><td id="alias">No — |offset| &lt; fs/2</td></tr>
+<tr><td>Distinguishable from −offset image?</td><td id="distinguish">YES (I/Q complex samples preserve sign)</td></tr>
+</table>
+</div>
+
+<h2>The quadrature mixer</h2>
+<div class="deriv">
+<span class="step">RF signal: s(t) = cos(2π·(f_LO + f_off)·t)</span>
+<span class="step">Multiply by 2·cos(2π·f_LO·t): output = cos(2π·f_off·t) + cos(2π·(2f_LO + f_off)·t)</span>
+<span class="step">Multiply by −2·sin(2π·f_LO·t): output = sin(2π·f_off·t) + (high freq)</span>
+<span class="step">Low-pass filter both, sample → I(n), Q(n) at fs.</span>
+<span class="step">Recovered complex baseband: I(n) + j·Q(n) = exp(j·2π·f_off·n/fs)</span>
+<span class="step"><b>The angle of the complex sample is the phase; rotation rate gives the frequency offset from LO.</b></span>
+</div>
+
+<h2>Why I/Q matters: distinguishing +f_off from −f_off</h2>
+<p>With only I samples (real sampling), a signal at +200 kHz from LO and one at −200 kHz from LO would alias on top of each other — same |cosine|. You couldn't tell them apart.</p>
+
+<p>With I and Q (quadrature) samples, the +200 kHz signal rotates in one direction in the complex plane; the −200 kHz signal rotates in the opposite direction. Subtracting Q from a hypothetical "Q'" derived from the +signal pattern shows whether the rotation is clockwise or counter-clockwise. Two adjacent samples on a complex plane = clear positive vs negative frequency.</p>
+
+<h2>Spectrum visualization</h2>
+<p>The complex spectrum from I/Q samples is two-sided: from −fs/2 to +fs/2. The image-rejection block in the SDR keeps the negative-frequency portion clean (or maps it intentionally to look at both sides of LO). With a real-only ADC, the spectrum is mirror-symmetric and you only see |F|.</p>
+
+<h2>Image rejection</h2>
+<p>Real-world I/Q paths have mismatch: I and Q gains aren't quite equal; the LO phase between I and Q isn't exactly 90°. This creates an "image" — a ghost of a signal at the mirror frequency. Typical raw image rejection is 30–40 dB; with calibration tables it can hit 60–80 dB.</p>
+
+<ul class="notice">
+<li><b>Direct-conversion SDR</b> (zero-IF): both I and Q paths see DC offsets + 1/f noise — appears as a "hump" at zero frequency.</li>
+<li><b>Low-IF SDR</b>: shift the LO slightly so the band of interest isn't centered on zero — avoids 1/f hump but uses more bandwidth.</li>
+<li><b>Image-rejection mixer (Weaver / Hartley)</b>: cancels image with two phase-shifted mixers + adder.</li>
+</ul>
+
+<h2>Common SDR hardware</h2>
+<table>
+<tr><th>Device</th><th>Bandwidth</th><th>Tunable range</th><th>ADC bits</th><th>Cost</th></tr>
+<tr><td>RTL-SDR (Realtek)</td><td>~2.4 MHz</td><td>24 MHz – 1.8 GHz</td><td>8</td><td>$30</td></tr>
+<tr><td>HackRF One</td><td>20 MHz</td><td>1 MHz – 6 GHz (TX too)</td><td>8</td><td>$300</td></tr>
+<tr><td>Airspy R2</td><td>10 MHz</td><td>24 MHz – 1.8 GHz</td><td>12</td><td>$170</td></tr>
+<tr><td>USRP B200mini</td><td>56 MHz</td><td>70 MHz – 6 GHz</td><td>12</td><td>$700</td></tr>
+<tr><td>USRP X310</td><td>200 MHz</td><td>10 MHz – 6 GHz</td><td>16</td><td>$5000+</td></tr>
+</table>
+
+<footer>Curriculum: <a target="_top" href="../../index.html">EE Phase 9 — RF &amp; Wireless</a> · Cross-links: <a href="lora-modulation.html">LoRa Modulation</a>, <a href="spread-spectrum.html">Spread Spectrum</a>, <a href="wireless-spectrum.html">Wireless Spectrum</a>.</footer>
+
+</main><script>
+const els = ['fc','lo','fs','off'].reduce((m,k)=>{m[k]=document.getElementById(k);return m;},{});
+
+function update(){
+  const fc = parseFloat(els.fc.value);
+  const lo = parseFloat(els.lo.value);
+  const fs = parseFloat(els.fs.value);
+  const off = parseFloat(els.off.value); // kHz
+
+  document.getElementById('fcRead').textContent = fc;
+  document.getElementById('loRead').textContent = lo;
+  document.getElementById('fsRead').textContent = fs.toFixed(1);
+  document.getElementById('offRead').textContent = off;
+
+  const bb_kHz = off; // baseband freq after down-conversion
+  document.getElementById('bb').textContent = (bb_kHz >= 0 ? '+' : '') + bb_kHz + ' kHz (in ' + (bb_kHz >= 0 ? 'upper' : 'lower') + ' sideband)';
+
+  const nyquist_kHz = fs * 500;
+  const aliased = Math.abs(bb_kHz) > nyquist_kHz;
+  document.getElementById('alias').textContent = aliased
+    ? 'YES — aliased! |offset| > fs/2 = ' + nyquist_kHz + ' kHz'
+    : 'No — |offset| < fs/2 = ' + nyquist_kHz + ' kHz';
+
+  document.getElementById('distinguish').textContent = 'YES (I/Q complex samples preserve sign of offset)';
+
+  // Draw complex baseband (rotating phasor)
+  const svg = document.getElementById('iq');
+  const W = 720, H = 320, cx = 360, cy = 160;
+  const R = 100;
+  let s = '';
+  // Axes
+  s += `<line x1="${cx-R-20}" y1="${cy}" x2="${cx+R+20}" y2="${cy}" stroke="#8f99a8" stroke-width="0.5"/>`;
+  s += `<line x1="${cx}" y1="${cy-R-20}" x2="${cx}" y2="${cy+R+20}" stroke="#8f99a8" stroke-width="0.5"/>`;
+  s += `<text x="${cx+R+25}" y="${cy+4}" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">I (real)</text>`;
+  s += `<text x="${cx+4}" y="${cy-R-25}" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="11">Q (imag)</text>`;
+
+  // Unit circle
+  s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#3a424f" stroke-width="1" stroke-dasharray="2,3"/>`;
+
+  // Sample points: I = cos(2π·f_off·n/fs), Q = sin
+  const N = 32;
+  for(let n = 0; n < N; n++){
+    const phase = 2 * Math.PI * (bb_kHz * 1000) * n / (fs * 1e6);
+    const I = Math.cos(phase) * R;
+    const Q = Math.sin(phase) * R;
+    const x = cx + I;
+    const y = cy - Q;
+    const opacity = 1 - n / (N + 5);
+    s += `<circle cx="${x}" cy="${y}" r="3" fill="#a3e635" opacity="${opacity}"/>`;
+    if(n < N-1){
+      const phase2 = 2 * Math.PI * (bb_kHz * 1000) * (n+1) / (fs * 1e6);
+      const x2 = cx + Math.cos(phase2) * R;
+      const y2 = cy - Math.sin(phase2) * R;
+      s += `<line x1="${x}" y1="${y}" x2="${x2}" y2="${y2}" stroke="#a3e635" stroke-width="0.8" opacity="${opacity*0.6}"/>`;
+    }
+  }
+
+  // Arrow showing rotation direction
+  const direction = bb_kHz > 0 ? 'CCW (positive offset)' : bb_kHz < 0 ? 'CW (negative offset)' : 'DC';
+  const color = bb_kHz > 0 ? '#a3e635' : bb_kHz < 0 ? '#ff7b72' : '#5ec8ff';
+  s += `<text x="${cx}" y="${cy+R+50}" text-anchor="middle" fill="${color}" font-family="ui-monospace,monospace" font-size="13">Rotation: ${direction}</text>`;
+  s += `<text x="${cx}" y="${cy+R+68}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">Real-only sampling cannot tell CCW from CW — I/Q can.</text>`;
+
+  svg.innerHTML = s;
+}
+
+['fc','lo','fs','off'].forEach(k => els[k].addEventListener('input', update));
+update();
+</script></body></html>

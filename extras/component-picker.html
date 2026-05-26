@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Universal Component Picker — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:1040px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);
+     margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;
+     text-transform:uppercase;letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  .tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:18px;overflow-x:auto}
+  .tab{background:transparent;color:var(--fg-dim);border:none;
+    padding:10px 16px;font:13px ui-monospace,Menlo,monospace;cursor:pointer;
+    border-bottom:2px solid transparent;white-space:nowrap}
+  .tab:hover{color:var(--fg)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .pane{display:none}
+  .pane.active{display:block}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control select,.control input{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:5px 8px;
+    font:13px ui-monospace,Menlo,monospace}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:16px;margin:18px 0}
+  .figure svg{display:block;max-width:100%;height:auto;margin:0 auto}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .big{font:600 22px/1 ui-monospace,Menlo,monospace;color:var(--accent3);margin:6px 0}
+  .footer-note{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .footer-note a{color:var(--accent);text-decoration:none}
+
+  /* Resistor body */
+  .resistor-body{fill:#d4a574;stroke:#a37844;stroke-width:1.5}
+  .lead{stroke:#aaa;stroke-width:2;fill:none}
+
+  /* Capacitor */
+  .cap-disc{fill:#e8c47c;stroke:#a37844}
+  .cap-elec{fill:#3a4b5e;stroke:#1d2733}
+
+  /* Inductor */
+  .ind-core{fill:#444;stroke:#222}
+  .ind-wire{stroke:#c97;stroke-width:1.5;fill:none}
+
+  /* Two-column */
+  .two-col{display:grid;gap:16px;grid-template-columns:1fr 1fr;margin:18px 0}
+  @media (max-width:720px){.two-col{grid-template-columns:1fr}}
+  .col-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:12px 14px}
+  .col-card h3{margin:0 0 8px}
+
+  /* Color swatch row */
+  .color-row{display:flex;gap:4px;justify-content:center;margin:10px 0}
+  .swatch{width:36px;height:48px;border-radius:3px;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font:11px ui-monospace,Menlo,monospace;color:#000;text-shadow:0 0 2px rgba(255,255,255,0.4)}
+  .swatch.dark{color:#fff;text-shadow:0 0 2px rgba(0,0,0,0.6)}
+
+  /* Notice ul */
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Universal Component Picker</h1>
+  <p class="lede">Bidirectional lookup for everything you actually pick from a parts drawer: resistor color bands, ceramic + electrolytic capacitor codes, inductor markings, AWG wire properties, SMD transistor/diode codes, and thermistor curves. Every panel works both ways — type a code to get a value, type a value to get the code.</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" data-tab="resistor">Resistor</button>
+    <button class="tab" data-tab="capacitor">Capacitor</button>
+    <button class="tab" data-tab="inductor">Inductor</button>
+    <button class="tab" data-tab="awg">AWG / Wire</button>
+    <button class="tab" data-tab="smd">SMD codes</button>
+    <button class="tab" data-tab="thermistor">Thermistor</button>
+  </div>
+
+  <!-- =================================================================== -->
+  <!-- RESISTOR -->
+  <!-- =================================================================== -->
+  <section class="pane active" id="pane-resistor">
+    <h2>Resistor color-code decoder</h2>
+    <p>Pick 4, 5, or 6 bands; click the swatches to cycle band colors. Value, tolerance, and (for 6-band) temperature coefficient update live. Or type a value below and the closest E-series part with its bands appears.</p>
+
+    <section class="controls">
+      <div class="control">
+        <label>Band count</label>
+        <select id="r-bands">
+          <option value="4">4-band (standard: 2 digits + mult + tol)</option>
+          <option value="5" selected>5-band (precision: 3 digits + mult + tol)</option>
+          <option value="6">6-band (precision + tempco)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Series</label>
+        <select id="r-series">
+          <option value="e12">E12 (5 % nominal)</option>
+          <option value="e24" selected>E24 (1–5 %)</option>
+          <option value="e48">E48 (2 %)</option>
+          <option value="e96">E96 (1 %)</option>
+          <option value="e192">E192 (0.1 %)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Type a target value</label>
+        <input id="r-target" type="text" placeholder="4.7k, 220, 1M, 10R5" />
+      </div>
+      <div class="control">
+        <label>Closest in series</label>
+        <span class="readout" id="r-closest">4.70 kΩ</span>
+      </div>
+    </section>
+
+    <div class="figure">
+      <svg id="r-svg" viewBox="0 0 600 200" width="100%"></svg>
+      <div id="r-bandpickers" style="margin-top:10px"></div>
+      <p style="text-align:center;margin-top:6px"><span class="big" id="r-value">4.70 kΩ ± 1 %</span></p>
+      <p style="text-align:center;color:var(--fg-dim);font-size:12px" id="r-tempnote"></p>
+    </div>
+
+    <h2>Standard E-series tolerance grid</h2>
+    <table>
+      <tr><th>Series</th><th>Tolerance</th><th>Values per decade</th><th>Use case</th></tr>
+      <tr><td>E6</td><td>±20 %</td><td>6</td><td>Legacy; rarely seen</td></tr>
+      <tr><td>E12</td><td>±10 %</td><td>12</td><td>General-purpose; cheap carbon-film</td></tr>
+      <tr><td>E24</td><td>±5 %</td><td>24</td><td>Default thin-film; what most stockrooms carry</td></tr>
+      <tr><td>E48</td><td>±2 %</td><td>48</td><td>Precision analog</td></tr>
+      <tr><td>E96</td><td>±1 %</td><td>96</td><td>Instrumentation, voltage references</td></tr>
+      <tr><td>E192</td><td>±0.5 % or ±0.1 %</td><td>192</td><td>Voltage references, ratio matching</td></tr>
+    </table>
+
+    <h2>SMD chip-resistor numbering (printed code, no colors)</h2>
+    <p>Chip resistors don't have color bands — they have a 3- or 4-digit code printed on top, or an EIA-96 alphanumeric on tiny parts.</p>
+    <div class="two-col">
+      <div class="col-card">
+        <h3>3-digit code (5 %)</h3>
+        <p>First two digits = significand, third digit = power of 10.</p>
+        <table>
+          <tr><td><code>103</code></td><td>10 × 10³ = 10 kΩ</td></tr>
+          <tr><td><code>4R7</code></td><td>4.7 Ω (R = decimal point, in-range)</td></tr>
+          <tr><td><code>R47</code></td><td>0.47 Ω</td></tr>
+          <tr><td><code>000</code></td><td>0 Ω (jumper)</td></tr>
+          <tr><td><code>473</code></td><td>47 × 10³ = 47 kΩ</td></tr>
+        </table>
+      </div>
+      <div class="col-card">
+        <h3>4-digit code (1 %)</h3>
+        <p>First three digits = significand, fourth = power of 10.</p>
+        <table>
+          <tr><td><code>1002</code></td><td>100 × 10² = 10 kΩ</td></tr>
+          <tr><td><code>4701</code></td><td>470 × 10¹ = 4.7 kΩ</td></tr>
+          <tr><td><code>1R00</code></td><td>1.00 Ω</td></tr>
+          <tr><td><code>0R10</code></td><td>0.10 Ω</td></tr>
+          <tr><td><code>2200</code></td><td>220 × 10⁰ = 220 Ω</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <h2>What to watch for</h2>
+    <ul class="notice">
+      <li><b>Gold vs orange multiplier band</b> — gold is ×0.1 (decimal place), orange is ×10³. On a small part with worn paint, easy to mistake. Verify with a meter.</li>
+      <li><b>Red as 1st digit vs red as tolerance</b> — on a 4-band part, red is "2" if it's the leftmost band; on a 5-band, red is also "2" — but trailing red is ±2 % tolerance. Read direction matters: bands cluster toward one end.</li>
+      <li><b>Power rating isn't in the code</b> — resistor power is set by physical size (0402 ≈ 1/16 W, 0603 ≈ 1/10 W, 0805 ≈ 1/8 W, 1206 ≈ 1/4 W, 2512 ≈ 1 W). Compute I² · R before picking the package.</li>
+      <li><b>Tempco band (6-band)</b> — brown=100 ppm/°C, red=50, yellow=25, orange=15, blue=10. Matters for precision dividers in instrumentation; ignored elsewhere.</li>
+    </ul>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- CAPACITOR -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-capacitor">
+    <h2>Capacitor code + dielectric decoder</h2>
+    <p>Ceramic caps under 1 µF carry a 3-digit code (rarely 4) in pF; bigger caps print the value in µF. Decoder, dielectric class explainer, and the DC-bias and temperature derating that quietly kills MLCC accuracy.</p>
+
+    <section class="controls">
+      <div class="control">
+        <label>3-digit MLCC code</label>
+        <input id="c-code" type="text" value="104" placeholder="104, 471, 2R2">
+      </div>
+      <div class="control">
+        <label>Decoded value</label>
+        <span class="readout big" id="c-decoded">100 nF</span>
+      </div>
+      <div class="control">
+        <label>Or type a value</label>
+        <input id="c-value" type="text" placeholder="100n, 1u, 22p, 10uF">
+      </div>
+      <div class="control">
+        <label>3-digit code for that value</label>
+        <span class="readout" id="c-back">104</span>
+      </div>
+    </section>
+
+    <h2>Dielectric class — what the X7R / NP0 / Y5V actually means</h2>
+    <table>
+      <tr><th>Class</th><th>Letter 1 (low T)</th><th>Letter 2 (high T)</th><th>Letter 3 (change over range)</th></tr>
+      <tr><td>Class I (NP0 / C0G)</td><td colspan="3">±30 ppm/°C, no DC-bias derating, &lt; 10 nF typical. Use for filters, timing.</td></tr>
+      <tr><td>Class II (X7R, X5R, Y5V)</td><td>X = −55 °C, Y = −30 °C, Z = +10 °C</td><td>5 = 85, 7 = 125, 8 = 150</td><td>R = ±15 %, S = ±22 %, V = +22/−82 %</td></tr>
+      <tr><td>Class III (Y5V, Z5U)</td><td colspan="3">Highest C/volume but +22/−82 % over T and 50–90 % loss at rated DC. Bulk decoupling only.</td></tr>
+    </table>
+
+    <div class="two-col">
+      <div class="col-card">
+        <h3>Class I — NP0 / C0G</h3>
+        <ul style="padding-left:18px;color:var(--fg-dim);font-size:12px">
+          <li>±30 ppm/°C drift — flat with temperature</li>
+          <li>No DC-bias derating</li>
+          <li>Tight tolerance (±5 % or better)</li>
+          <li>Limited capacitance (up to ~10 nF in 0805)</li>
+          <li><b>Use for:</b> oscillator timing, anti-alias filters, charge-pump caps, RF tank circuits</li>
+        </ul>
+      </div>
+      <div class="col-card">
+        <h3>Class II — X7R / X5R</h3>
+        <ul style="padding-left:18px;color:var(--fg-dim);font-size:12px">
+          <li>±15 % over rated temperature range</li>
+          <li><b>DC-bias derating</b>: 100 nF rated 10 V can lose 40–60 % at 10 V DC</li>
+          <li>Aging: small capacitance loss over time (1–3 %/decade-hour)</li>
+          <li>Affordable in larger values (1–100 µF easily in 0805)</li>
+          <li><b>Use for:</b> decoupling, bulk filtering, LDO output, general digital</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>Tantalum / electrolytic markings</h2>
+    <p>Tantalum and aluminum-electrolytic caps usually print the value directly in µF along with voltage rating. Voltage <em>derating</em> is required:</p>
+    <table>
+      <tr><th>Type</th><th>Marking style</th><th>Voltage derating rule</th><th>Polarity</th></tr>
+      <tr><td>Aluminum electrolytic</td><td><code>10µF 25V</code> on the can</td><td>Use ≤ 80 % rated; reliability halves per 10 °C above 85 °C</td><td>Marked stripe = negative</td></tr>
+      <tr><td>Solid tantalum</td><td><code>106 25V</code> = 10 µF / 25 V</td><td>Use ≤ 50 % rated; tantalum failures are <b>shorts that catch fire</b></td><td>Marked stripe / + symbol = positive</td></tr>
+      <tr><td>Polymer (solid Al / Ta)</td><td>Same as wet, but ESR much lower</td><td>≤ 80 % rated; less catastrophic failures</td><td>As above</td></tr>
+    </table>
+
+    <h2>What to watch for</h2>
+    <ul class="notice">
+      <li><b>Tantalum derating is mandatory</b> — a 10 V solid tantalum cap used at 9 V in a 5 V circuit will fail short, smoke, and possibly ignite. Use 25 V tantalum on a 5 V rail (≤ 50 % rated). Polymer tantalum is more forgiving but still derate.</li>
+      <li><b>MLCC DC-bias derating</b> — X5R 4.7 µF rated 10 V can be only 1.5 µF at 5 V DC. Datasheets have a curve; always check for bypass caps near power devices.</li>
+      <li><b>NP0 above 10 nF is rare</b> — if you need 100 nF NP0 you'll pay 10× the price of X7R; for high-Q filtering use polypropylene film instead.</li>
+      <li><b>Aluminum electrolytic ESR + temp</b> — bulk caps in switching supplies have specified ESR at 100 kHz / 20 °C. ESR can rise 3–5× at −20 °C, causing ripple voltage to spike. Use polymer or hybrid caps in cold-environment designs.</li>
+    </ul>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- INDUCTOR -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-inductor">
+    <h2>Inductor code decoder</h2>
+    <p>Through-hole and SMD inductors use 3-digit codes nearly identical to capacitors — but the unit is <b>µH</b>, not pF. R = decimal point, last digit = exponent.</p>
+
+    <section class="controls">
+      <div class="control">
+        <label>3-digit code</label>
+        <input id="l-code" type="text" value="100" placeholder="100, 4R7, 102">
+      </div>
+      <div class="control">
+        <label>Decoded value</label>
+        <span class="readout big" id="l-decoded">10 µH</span>
+      </div>
+      <div class="control">
+        <label>Or type a value (µH unless suffix)</label>
+        <input id="l-value" type="text" placeholder="4.7uH, 1mH, 220uH">
+      </div>
+      <div class="control">
+        <label>3-digit code</label>
+        <span class="readout" id="l-back">100</span>
+      </div>
+    </section>
+
+    <h2>Key parameters beyond inductance</h2>
+    <table>
+      <tr><th>Parameter</th><th>What it means</th><th>Why it matters</th></tr>
+      <tr><td>I_sat</td><td>DC current at which L drops ~20–30 %</td><td>If you exceed I_sat, the core saturates and L collapses — switching converters lose regulation</td></tr>
+      <tr><td>I_rms</td><td>Current causing rated 40 °C temperature rise</td><td>Thermal limit; can be lower or higher than I_sat depending on core material</td></tr>
+      <tr><td>DCR</td><td>DC winding resistance (mΩ)</td><td>I² · DCR conduction loss; impacts converter efficiency</td></tr>
+      <tr><td>SRF</td><td>Self-resonant frequency</td><td>Above SRF the inductor looks capacitive; filter design must stay well below</td></tr>
+      <tr><td>Core material</td><td>Ferrite (Mn-Zn, Ni-Zn) / iron-powder / sendust / metal-composite</td><td>Sets I_sat, frequency range, EMI behavior</td></tr>
+    </table>
+
+    <div class="two-col">
+      <div class="col-card">
+        <h3>Core-material picker</h3>
+        <table>
+          <tr><th>Core</th><th>f range</th><th>Use</th></tr>
+          <tr><td>Mn-Zn ferrite</td><td>kHz–MHz</td><td>Power supplies, transformers</td></tr>
+          <tr><td>Ni-Zn ferrite</td><td>MHz–GHz</td><td>RF chokes, ferrite beads</td></tr>
+          <tr><td>Iron powder</td><td>DC–MHz</td><td>High DC bias, output chokes</td></tr>
+          <tr><td>Sendust / Kool Mu</td><td>kHz–MHz</td><td>Soft saturation, line filters</td></tr>
+          <tr><td>Metal composite</td><td>kHz–MHz</td><td>Best I_sat / size; common in modern POL converters</td></tr>
+          <tr><td>Air core</td><td>MHz–GHz</td><td>High-Q RF, no saturation</td></tr>
+        </table>
+      </div>
+      <div class="col-card">
+        <h3>Inductor types you'll see</h3>
+        <table>
+          <tr><th>Form</th><th>What it's for</th></tr>
+          <tr><td>Shielded power</td><td>POL converter, low EMI radiation</td></tr>
+          <tr><td>Unshielded power</td><td>Higher current/L; OK if EMI not critical</td></tr>
+          <tr><td>RF wirewound</td><td>High Q, narrowband RF</td></tr>
+          <tr><td>Multilayer ceramic</td><td>nH range, RF matching networks</td></tr>
+          <tr><td>Ferrite bead</td><td>Impedance vs frequency for EMI</td></tr>
+          <tr><td>Common-mode choke</td><td>Two windings on one core; passes diff, blocks common</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- AWG / WIRE -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-awg">
+    <h2>AWG ↔ wire properties</h2>
+    <p>American Wire Gauge: bigger number = thinner wire. Every 3 AWG steps doubles area (factor of √2 per step). Type either a gauge or a current.</p>
+
+    <section class="controls">
+      <div class="control">
+        <label>AWG</label>
+        <input id="awg-num" type="number" value="22" min="0" max="40">
+      </div>
+      <div class="control">
+        <label>Diameter</label>
+        <span class="readout" id="awg-d">0.644 mm</span>
+      </div>
+      <div class="control">
+        <label>Area</label>
+        <span class="readout" id="awg-a">0.326 mm²</span>
+      </div>
+      <div class="control">
+        <label>R / m (Cu @ 20 °C)</label>
+        <span class="readout" id="awg-r">52.96 mΩ/m</span>
+      </div>
+      <div class="control">
+        <label>Ampacity (chassis)</label>
+        <span class="readout" id="awg-i-chassis">7 A</span>
+      </div>
+      <div class="control">
+        <label>Ampacity (power)</label>
+        <span class="readout" id="awg-i-power">0.92 A</span>
+      </div>
+      <div class="control">
+        <label>Or pick from a current target</label>
+        <input id="awg-i-target" type="number" placeholder="5" min="0" step="0.1">
+      </div>
+      <div class="control">
+        <label>Smallest AWG for that current</label>
+        <span class="readout" id="awg-recommended">—</span>
+      </div>
+    </section>
+
+    <h2>AWG table</h2>
+    <table id="awg-tbl">
+      <tr><th>AWG</th><th>Diameter (mm)</th><th>Area (mm²)</th><th>R/m (mΩ)</th><th>Chassis A (A)</th><th>Power A (A)</th><th>Use case</th></tr>
+    </table>
+
+    <h2>Wire selection rules</h2>
+    <ul class="notice">
+      <li><b>Chassis vs power-transmission</b> — chassis assumes short runs in open air (a chassis wire bundle), power assumes a long bundled run with derating. Real applications fall between; use power numbers for safety margin.</li>
+      <li><b>Skin effect</b> — at high frequency, current flows only in the outer skin. Above ~10 kHz, large solid wire has effective AWG much smaller than its nominal. Use Litz wire (many tiny insulated strands) for high-frequency power.</li>
+      <li><b>Voltage drop limit</b> — even if a wire passes ampacity, V drop = I · R · L can exceed your budget. Rule of thumb: keep DC supply drops below 2–3 % of bus voltage.</li>
+      <li><b>Aluminum is 1.6× more resistive than copper for the same gauge</b> — and won't tolerate the same connector design without antioxidant compound. Stick to copper unless cost forces you to Al for very large bus.</li>
+      <li><b>Stranded vs solid</b> — solid is cheaper, easier to terminate, better for breadboards. Stranded flexes (silicone-jacketed stranded for moving cables), terminates with ferrules or crimped lugs. Same gauge ≈ same ampacity.</li>
+    </ul>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- SMD MARKINGS -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-smd">
+    <h2>SMD transistor + diode marking codes</h2>
+    <p>SOT-23 transistors and diodes have 2- or 3-character markings — same digit means many different things. Cross-reference table for the most common parts; full list at <a href="https://www.s-manuals.com/smd" target="_blank">s-manuals.com</a> or <a href="https://smd.yooneed.one/" target="_blank">smd.yooneed.one</a>.</p>
+
+    <section class="controls">
+      <div class="control">
+        <label>Marking</label>
+        <input id="smd-code" type="text" value="1A" placeholder="1A, W04, A7W">
+      </div>
+      <div class="control">
+        <label>Matches</label>
+        <span class="readout" id="smd-match">BC847A — NPN small-signal</span>
+      </div>
+    </section>
+
+    <h2>Common SOT-23 / SOT-323 codes</h2>
+    <table>
+      <tr><th>Marking</th><th>Part</th><th>Type</th><th>Key spec</th></tr>
+      <tr><td>1A / 1Am</td><td>BC847A</td><td>NPN BJT</td><td>45 V, 100 mA, β = 110–220</td></tr>
+      <tr><td>2A / 2Am</td><td>BC857A</td><td>PNP BJT</td><td>45 V, 100 mA, β = 110–220</td></tr>
+      <tr><td>L1</td><td>SS8050</td><td>NPN BJT high-β</td><td>40 V, 1.5 A, β = 100–300</td></tr>
+      <tr><td>2T1</td><td>BSS84</td><td>P-MOSFET</td><td>−50 V, −130 mA, R_DS(on) ≤ 10 Ω</td></tr>
+      <tr><td>K72A / 702</td><td>2N7002</td><td>N-MOSFET</td><td>60 V, 115 mA, R_DS(on) ≤ 7.5 Ω</td></tr>
+      <tr><td>W04 / DW</td><td>1N4148W</td><td>Switching diode</td><td>100 V, 300 mA, t_rr = 4 ns</td></tr>
+      <tr><td>BAS40W</td><td>BAS40</td><td>Schottky diode</td><td>40 V, 200 mA, low Vf 0.3–0.4 V</td></tr>
+      <tr><td>A7W</td><td>BAV99</td><td>Dual switching diodes</td><td>Common cathode 100 V/200 mA each</td></tr>
+      <tr><td>706 / 7L</td><td>AO3400</td><td>N-MOSFET logic-level</td><td>30 V, 5.7 A, R_DS(on) ≤ 30 mΩ @ 4.5 Vgs</td></tr>
+      <tr><td>A19T</td><td>AO3401</td><td>P-MOSFET logic-level</td><td>−30 V, −4 A, R_DS(on) ≤ 60 mΩ</td></tr>
+      <tr><td>BZX84-C5V1</td><td>BZX84-C5V1</td><td>Zener</td><td>5.1 V, 300 mW</td></tr>
+    </table>
+
+    <h2>Reading rules</h2>
+    <ul class="notice">
+      <li><b>Same code, different parts</b> — markings are not unique across manufacturers. <code>1A</code> is BC847A from NXP but could be a different code on a knockoff. Cross-reference against the datasheet and the package style (SOT-23 vs SOT-323 vs SOT-89).</li>
+      <li><b>Suffix letter = bin</b> — BC847A/B/C differ only in β grade. The bin letter is part of the marking on bigger packages.</li>
+      <li><b>SOT-23 pinout convention</b> — pin 1 is bottom-left looking at the marking; pin 2 is bottom-right; pin 3 is top. For BJTs: 1=Base, 2=Emitter, 3=Collector. For MOSFETs: 1=Gate, 2=Source, 3=Drain.</li>
+      <li><b>Logic-level vs standard MOSFET</b> — 2N7002 (standard) starts conducting at ~2.5 Vgs but barely on at 5 V; AO3400 (logic-level) is fully on at 4.5 Vgs. Use logic-level when driving from a 3.3 V or 5 V GPIO.</li>
+    </ul>
+  </section>
+
+  <!-- =================================================================== -->
+  <!-- THERMISTOR -->
+  <!-- =================================================================== -->
+  <section class="pane" id="pane-thermistor">
+    <h2>NTC thermistor R(T) curve</h2>
+    <p>Negative temperature coefficient (NTC): R drops as T rises. Most embedded thermistors are characterized by R₂₅ and a β (Beta) value over 25–85 °C. The Beta equation gives R at any T from R₂₅.</p>
+
+    <section class="controls">
+      <div class="control">
+        <label>R₂₅ (rated R at 25 °C)</label>
+        <select id="th-r25">
+          <option value="2200">2.2 kΩ</option>
+          <option value="10000" selected>10 kΩ</option>
+          <option value="47000">47 kΩ</option>
+          <option value="100000">100 kΩ</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>β (K)</label>
+        <select id="th-beta">
+          <option value="3380">3380 (common ±1 %)</option>
+          <option value="3435" selected>3435</option>
+          <option value="3950">3950 (high-β)</option>
+        </select>
+      </div>
+      <div class="control">
+        <label>Temperature (°C)</label>
+        <input id="th-tc" type="range" min="-40" max="125" value="25" step="1">
+        <span class="readout" id="th-tcread">25 °C</span>
+      </div>
+      <div class="control">
+        <label>R at that T</label>
+        <span class="readout big" id="th-rread">10.00 kΩ</span>
+      </div>
+    </section>
+
+    <div class="figure">
+      <svg id="th-svg" viewBox="0 0 600 280" width="100%"></svg>
+    </div>
+
+    <h2>Beta equation + the better Steinhart-Hart</h2>
+    <p>Two equations, ascending in accuracy.</p>
+    <table>
+      <tr><th>Equation</th><th>Form</th><th>Accuracy</th></tr>
+      <tr><td>Beta (B)</td><td><code>1/T = 1/T₀ + (1/β)·ln(R/R₀)</code></td><td>±1 °C over 0–70 °C if β rated for that range</td></tr>
+      <tr><td>Steinhart-Hart</td><td><code>1/T = A + B·ln(R) + C·(ln R)³</code></td><td>±0.05 °C over full range; need 3-point calibration</td></tr>
+    </table>
+
+    <p>For most embedded applications (battery temp, room thermostat, motor temp), Beta with the manufacturer's published value is good enough. For battery-fuel-gauge or precision instrumentation, calibrate at 3 points and solve Steinhart-Hart.</p>
+
+    <h2>Voltage-divider reading + linearization</h2>
+    <p>NTC thermistors are usually measured with a series-divider (R_pullup // ADC // NTC). The output voltage is non-linear in T — the divider's non-linearity actually partially cancels the thermistor's non-linearity over a narrow range, but only with a well-chosen R_pullup.</p>
+    <ul class="notice">
+      <li><b>R_pullup = R₂₅</b> for symmetric response near 25 °C. Maximum dV/dT happens right around that temperature.</li>
+      <li><b>R_pullup &lt; R₂₅</b> shifts the linear region toward higher temperatures.</li>
+      <li><b>R_pullup &gt; R₂₅</b> shifts toward lower temperatures.</li>
+      <li><b>Self-heating</b> matters at high R_pullup or low R₂₅: I_NTC · V_NTC · θ_th ≈ ΔT. Keep I_NTC under 100 µA for tight measurements. Use the divider-explorer in EE 1 to size R_pullup.</li>
+    </ul>
+  </section>
+
+  <footer class="footer-note">
+    Topic: cross-cutting reference; live data tables. ·
+    Cross-links: <a href="../ee/phase-1-dc-circuits/voltage-divider-explorer.html">Voltage Divider</a> (thermistor read circuit) ·
+    <a href="../em/phase-1-sensors/resistive-sensors.html">Resistive Sensors</a> (thermistor / FSR / LDR detail).
+  </footer>
+
+</main>
+
+<script>
+/* ====================================================================
+   TAB SWITCHING
+==================================================================== */
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.pane').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('pane-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+/* ====================================================================
+   RESISTOR COLOR CODE
+==================================================================== */
+const R_COLORS = [
+  {n:'black',  hex:'#000', d:0, dark:true},
+  {n:'brown',  hex:'#7b3f00', d:1, dark:true},
+  {n:'red',    hex:'#d4332b', d:2, dark:true},
+  {n:'orange', hex:'#e67e22', d:3, dark:false},
+  {n:'yellow', hex:'#f1c40f', d:4, dark:false},
+  {n:'green',  hex:'#27ae60', d:5, dark:true},
+  {n:'blue',   hex:'#2980b9', d:6, dark:true},
+  {n:'violet', hex:'#7e57c2', d:7, dark:true},
+  {n:'grey',   hex:'#7f8c8d', d:8, dark:false},
+  {n:'white',  hex:'#f0f0f0', d:9, dark:false},
+];
+const R_MULT = [
+  {n:'black', mult:1},   {n:'brown', mult:10},   {n:'red', mult:100},
+  {n:'orange', mult:1e3},{n:'yellow', mult:1e4}, {n:'green', mult:1e5},
+  {n:'blue', mult:1e6},  {n:'violet', mult:1e7}, {n:'grey', mult:1e8},
+  {n:'white', mult:1e9}, {n:'gold', mult:0.1},   {n:'silver', mult:0.01},
+];
+const R_TOL = {brown:1,red:2,green:0.5,blue:0.25,violet:0.1,gold:5,silver:10};
+const R_TEMPCO = {brown:100,red:50,orange:15,yellow:25,blue:10,violet:5};
+
+// E-series significands per decade
+const E12 = [1.0,1.2,1.5,1.8,2.2,2.7,3.3,3.9,4.7,5.6,6.8,8.2];
+const E24 = [1.0,1.1,1.2,1.3,1.5,1.6,1.8,2.0,2.2,2.4,2.7,3.0,3.3,3.6,3.9,4.3,4.7,5.1,5.6,6.2,6.8,7.5,8.2,9.1];
+const E96 = [1.00,1.02,1.05,1.07,1.10,1.13,1.15,1.18,1.21,1.24,1.27,1.30,1.33,1.37,1.40,1.43,1.47,1.50,1.54,1.58,1.62,1.65,1.69,1.74,1.78,1.82,1.87,1.91,1.96,2.00,2.05,2.10,2.15,2.21,2.26,2.32,2.37,2.43,2.49,2.55,2.61,2.67,2.74,2.80,2.87,2.94,3.01,3.09,3.16,3.24,3.32,3.40,3.48,3.57,3.65,3.74,3.83,3.92,4.02,4.12,4.22,4.32,4.42,4.53,4.64,4.75,4.87,4.99,5.11,5.23,5.36,5.49,5.62,5.76,5.90,6.04,6.19,6.34,6.49,6.65,6.81,6.98,7.15,7.32,7.50,7.68,7.87,8.06,8.25,8.45,8.66,8.87,9.09,9.31,9.53,9.76];
+
+function parseValue(str){
+  if(!str) return NaN;
+  str = String(str).trim().toLowerCase().replace(/ohm[s]?|Ω/g, '');
+  // R as decimal point (4R7, R47)
+  if(/^[0-9]*r[0-9]+$/.test(str) || /^r[0-9]+$/.test(str)){
+    return parseFloat(str.replace('r','.').replace(/^\./, '0.'));
+  }
+  if(/r/.test(str)) str = str.replace('r','.');
+  let m;
+  if((m = str.match(/^([\d.]+)\s*([kmg]?)$/))){
+    const val = parseFloat(m[1]);
+    const u = m[2];
+    return val * (u==='k'?1e3 : u==='m'?1e6 : u==='g'?1e9 : 1);
+  }
+  return parseFloat(str);
+}
+
+function fmtR(r){
+  if(r<1)        return (r*1000).toFixed(0)+' mΩ';
+  if(r>=1e9)     return (r/1e9).toFixed(2)+' GΩ';
+  if(r>=1e6)     return (r/1e6).toFixed(2)+' MΩ';
+  if(r>=1e3)     return (r/1e3).toFixed(r>=10000?0:2)+' kΩ';
+  return (r<10?r.toFixed(1):r.toFixed(0))+' Ω';
+}
+
+function closestInSeries(val, series){
+  if(!isFinite(val) || val <= 0) return NaN;
+  const e = series==='e12'?E12 : series==='e24'?E24 : series==='e96'?E96 : E24;
+  const log = Math.log10(val);
+  const decade = Math.floor(log);
+  let best = e[0] * Math.pow(10, decade), err = Math.abs(best - val);
+  for(const d of [decade-1, decade, decade+1]){
+    for(const s of e){
+      const r = s * Math.pow(10, d);
+      const e1 = Math.abs(r - val);
+      if(e1 < err){ best = r; err = e1; }
+    }
+  }
+  return best;
+}
+
+let R_bandPickerState = [0, 0, 0, 0, 0, 0]; // up to 6 bands
+
+function rBandsForValue(val, nBands, tolBand){
+  const sig = val / Math.pow(10, Math.floor(Math.log10(val)));
+  const digitCount = nBands === 4 ? 2 : 3;
+  const scaled = Math.round(sig * Math.pow(10, digitCount-1));
+  const digits = String(scaled).padStart(digitCount, '0').split('').map(Number);
+  const exp = Math.floor(Math.log10(val)) - (digitCount - 1);
+  let bands = [...digits, exp];  // exponent maps to multiplier band
+  if(nBands === 4){
+    bands.push(1); // brown 1% default tol — caller can override
+  } else if(nBands === 5){
+    bands.push(1);
+  } else if(nBands === 6){
+    bands.push(1);  // tol
+    bands.push(1);  // tempco (brown = 100 ppm)
+  }
+  return bands;
+}
+
+function drawResistor(nBands, bandColors){
+  // bandColors: array of color strings or {hex, n}
+  const svg = document.getElementById('r-svg');
+  let s = '';
+  // leads
+  s += `<line x1="40" y1="100" x2="120" y2="100" class="lead"/>`;
+  s += `<line x1="480" y1="100" x2="560" y2="100" class="lead"/>`;
+  // body
+  s += `<rect x="120" y="65" width="360" height="70" rx="35" ry="35" class="resistor-body"/>`;
+  // bands
+  const bandWidth = 22;
+  const startX = 150;
+  const spacing = (nBands === 4) ? 75 : (nBands === 5 ? 60 : 50);
+  for(let i=0; i<nBands; i++){
+    const c = bandColors[i];
+    const fill = c.hex || '#999';
+    s += `<rect x="${startX + i*spacing}" y="65" width="${bandWidth}" height="70" fill="${fill}" stroke="#222"/>`;
+    s += `<text x="${startX + i*spacing + bandWidth/2}" y="160" fill="var(--fg-dim)" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10">${c.n||''}</text>`;
+  }
+  svg.innerHTML = s;
+  svg.setAttribute('viewBox','0 30 600 150');
+}
+
+function rDecode(){
+  const nBands = parseInt(document.getElementById('r-bands').value);
+  const series = document.getElementById('r-series').value;
+  // Build band display from current state — use closestInSeries to seed reasonable values
+  const target = parseValue(document.getElementById('r-target').value) ||
+                  closestInSeries(4700, series);
+  const closest = closestInSeries(target, series);
+  document.getElementById('r-closest').textContent = fmtR(closest);
+
+  // Build band colors for the closest E-series value
+  const bands = rBandsForValue(closest, nBands);
+  // Visual band colors
+  const bandColors = bands.slice(0, nBands === 4 ? 2 : 3).map(d => R_COLORS[d]);
+  // multiplier
+  const expIdx = bands[nBands === 4 ? 2 : 3];
+  const multSwatch = expIdx >= 0 && expIdx < R_MULT.length
+    ? {n: R_MULT[expIdx].n, hex: R_COLORS[expIdx]?.hex || (expIdx === -1 ? '#d4af37' : '#c0c0c0'), dark: R_COLORS[expIdx]?.dark}
+    : {n: expIdx === -1 ? 'gold' : 'silver', hex: expIdx === -1 ? '#d4af37' : '#c0c0c0', dark: false};
+  bandColors.push(multSwatch);
+  // tolerance band — color matches the series's standard tolerance
+  const tolPct = series==='e12'?10 : series==='e24'?5 : series==='e48'?2 : series==='e96'?1 : 0.5;
+  const tolSwatch =
+    tolPct===10 ? {n:'silver', hex:'#c0c0c0', dark:false} :
+    tolPct===5  ? {n:'gold',   hex:'#d4af37', dark:false} :
+    tolPct===2  ? {n:'red',    hex:'#d4332b', dark:true} :
+    tolPct===1  ? {n:'brown',  hex:'#7b3f00', dark:true} :
+                  {n:'green',  hex:'#27ae60', dark:true}; // 0.5 %
+  bandColors.push(tolSwatch);
+  // tempco for 6-band (default brown = 100 ppm/°C)
+  if(nBands === 6){
+    bandColors.push({n:'brown', hex:'#7b3f00', dark:true});
+  }
+  drawResistor(nBands, bandColors);
+  document.getElementById('r-value').textContent = `${fmtR(closest)} ± ${tolPct} %`;
+  document.getElementById('r-tempnote').textContent = nBands === 6 ? '6-band: tempco band shown as 100 ppm/°C (brown).' : '';
+}
+
+document.getElementById('r-bands').addEventListener('change', rDecode);
+document.getElementById('r-series').addEventListener('change', rDecode);
+document.getElementById('r-target').addEventListener('input', rDecode);
+rDecode();
+
+/* ====================================================================
+   CAPACITOR
+==================================================================== */
+function parseCapValue(str){
+  if(!str) return NaN;
+  str = String(str).trim().toLowerCase().replace(/farad[s]?|f$/g, '');
+  let m;
+  if((m = str.match(/^([\d.]+)\s*([pnu])$/))){
+    const val = parseFloat(m[1]);
+    return val * (m[2]==='p'?1e-12 : m[2]==='n'?1e-9 : 1e-6);
+  }
+  // just digits → pF
+  if(/^[\d.]+$/.test(str)) return parseFloat(str) * 1e-12;
+  return parseFloat(str) * 1e-12;
+}
+
+function fmtCap(c){
+  if(c < 1e-12) return (c*1e15).toFixed(0)+' fF';
+  if(c < 1e-9)  return (c*1e12).toFixed(0)+' pF';
+  if(c < 1e-6)  return (c*1e9).toFixed(c*1e9 >= 100 ? 0 : 1)+' nF';
+  if(c < 1e-3)  return (c*1e6).toFixed(c*1e6 >= 100 ? 0 : 1)+' µF';
+  return (c*1e3).toFixed(1)+' mF';
+}
+
+function decodeCapCode(code){
+  if(!code) return NaN;
+  code = code.trim().toUpperCase();
+  // R = decimal point
+  if(code.includes('R')) return parseFloat(code.replace('R','.')) * 1e-12;
+  if(/^\d{2,3}$/.test(code)){
+    if(code.length === 2) return parseFloat(code) * 1e-12;
+    const sig = parseFloat(code.substring(0,2));
+    const exp = parseInt(code.substring(2,3));
+    return sig * Math.pow(10, exp) * 1e-12;
+  }
+  return NaN;
+}
+
+function encodeCapToCode(c){
+  // c in farads; return 3-digit code (in pF)
+  const pf = c * 1e12;
+  if(pf < 10) return pf.toFixed(1).replace('.', 'R');
+  // find significand + exponent
+  const log = Math.log10(pf);
+  const exp = Math.floor(log) - 1; // first two digits = significand
+  const sig = Math.round(pf / Math.pow(10, exp));
+  if(sig >= 100) return Math.round(sig/10) + '' + (exp+1);
+  return sig.toString().padStart(2, '0') + exp;
+}
+
+function cDecode(){
+  const code = document.getElementById('c-code').value;
+  const c = decodeCapCode(code);
+  document.getElementById('c-decoded').textContent = isFinite(c) ? fmtCap(c) : '—';
+
+  const val = parseCapValue(document.getElementById('c-value').value);
+  document.getElementById('c-back').textContent = isFinite(val) && val > 0 ? encodeCapToCode(val) : '—';
+}
+document.getElementById('c-code').addEventListener('input', cDecode);
+document.getElementById('c-value').addEventListener('input', cDecode);
+cDecode();
+
+/* ====================================================================
+   INDUCTOR
+==================================================================== */
+function decodeIndCode(code){
+  if(!code) return NaN;
+  code = code.trim().toUpperCase();
+  if(code.includes('R')) return parseFloat(code.replace('R','.')) * 1e-6;
+  if(/^\d{2,3}$/.test(code)){
+    if(code.length === 2) return parseFloat(code) * 1e-6;
+    const sig = parseFloat(code.substring(0,2));
+    const exp = parseInt(code.substring(2,3));
+    return sig * Math.pow(10, exp) * 1e-6;
+  }
+  return NaN;
+}
+
+function parseIndValue(str){
+  if(!str) return NaN;
+  str = String(str).trim().toLowerCase().replace(/h$/g, '');
+  let m;
+  if((m = str.match(/^([\d.]+)\s*([nu]|m)$/))){
+    const val = parseFloat(m[1]);
+    return val * (m[2]==='n'?1e-9 : m[2]==='u'?1e-6 : 1e-3);
+  }
+  return parseFloat(str) * 1e-6;
+}
+
+function fmtInd(l){
+  if(l < 1e-9) return (l*1e12).toFixed(0)+' pH';
+  if(l < 1e-6) return (l*1e9).toFixed(0)+' nH';
+  if(l < 1e-3) return (l*1e6).toFixed(l*1e6 >= 100 ? 0 : 1)+' µH';
+  return (l*1e3).toFixed(2)+' mH';
+}
+
+function encodeIndCode(l){
+  const uh = l * 1e6;
+  if(uh < 10) return uh.toFixed(1).replace('.','R');
+  const log = Math.log10(uh);
+  const exp = Math.floor(log) - 1;
+  const sig = Math.round(uh / Math.pow(10, exp));
+  if(sig >= 100) return Math.round(sig/10) + '' + (exp+1);
+  return sig.toString().padStart(2,'0') + exp;
+}
+
+function lDecode(){
+  const code = document.getElementById('l-code').value;
+  const l = decodeIndCode(code);
+  document.getElementById('l-decoded').textContent = isFinite(l) ? fmtInd(l) : '—';
+
+  const val = parseIndValue(document.getElementById('l-value').value);
+  document.getElementById('l-back').textContent = isFinite(val) && val > 0 ? encodeIndCode(val) : '—';
+}
+document.getElementById('l-code').addEventListener('input', lDecode);
+document.getElementById('l-value').addEventListener('input', lDecode);
+lDecode();
+
+/* ====================================================================
+   AWG WIRE
+==================================================================== */
+// AWG diameter in mm: d = 0.127 * 92^((36-n)/39)
+function awgDiameter(n){ return 0.127 * Math.pow(92, (36 - n) / 39); }
+function awgArea(n){ const d = awgDiameter(n); return Math.PI * (d/2)*(d/2); } // mm²
+function awgResistance(n){
+  // ohm per meter for copper at 20 °C
+  // rho_Cu = 1.68e-8 Ω·m, area in mm² → convert to m²
+  const a_m2 = awgArea(n) * 1e-6;
+  return 1.68e-8 / a_m2; // Ω/m
+}
+// Ampacity in A — chassis (open air) and power transmission (bundled)
+const AWG_AMP_CHASSIS = {
+  4:140, 6:101, 8:73, 10:55, 12:41, 14:32, 16:22, 18:16, 20:11, 22:7, 24:3.5, 26:2.2, 28:1.4, 30:0.86, 32:0.53, 34:0.32, 36:0.21,
+};
+const AWG_AMP_POWER = {
+  4:60, 6:37, 8:24, 10:15, 12:9.3, 14:5.9, 16:3.7, 18:2.3, 20:1.5, 22:0.92, 24:0.577, 26:0.361, 28:0.226, 30:0.142, 32:0.091, 34:0.056, 36:0.035,
+};
+function ampacity(n, mode){
+  const map = mode==='chassis' ? AWG_AMP_CHASSIS : AWG_AMP_POWER;
+  if(map[n]) return map[n];
+  // interpolate between known points
+  const keys = Object.keys(map).map(Number).sort((a,b)=>a-b);
+  for(let i=0;i<keys.length-1;i++){
+    if(keys[i] <= n && keys[i+1] >= n){
+      const t = (n - keys[i]) / (keys[i+1] - keys[i]);
+      return map[keys[i]] * Math.pow(map[keys[i+1]]/map[keys[i]], t);
+    }
+  }
+  return NaN;
+}
+function smallestAwgForCurrent(I, mode){
+  // walk down (smaller numbers = bigger wire = more current)
+  for(let n = 36; n >= 4; n--){
+    if(ampacity(n, mode) >= I) return n;
+  }
+  return 4;
+}
+
+function awgUseCase(n){
+  if(n<=2) return 'main service drop, EV charging';
+  if(n<=6) return 'sub-panel, battery cable';
+  if(n<=10) return 'high-current PCB / motor leads';
+  if(n<=14) return 'power supply pigtails, household wiring';
+  if(n<=18) return 'lamp cord, low-power AC';
+  if(n<=22) return 'general electronics, breadboard';
+  if(n<=26) return 'ribbon cable, internal jumper';
+  if(n<=30) return 'wire-wrap, fine prototyping';
+  return 'magnet wire, antenna coil';
+}
+
+function awgUpdate(){
+  const n = parseInt(document.getElementById('awg-num').value);
+  document.getElementById('awg-d').textContent = awgDiameter(n).toFixed(3) + ' mm';
+  document.getElementById('awg-a').textContent = awgArea(n).toFixed(3) + ' mm²';
+  document.getElementById('awg-r').textContent = (awgResistance(n)*1000).toFixed(2) + ' mΩ/m';
+  document.getElementById('awg-i-chassis').textContent = (ampacity(n,'chassis')||0).toFixed(2) + ' A';
+  document.getElementById('awg-i-power').textContent = (ampacity(n,'power')||0).toFixed(2) + ' A';
+
+  const I = parseFloat(document.getElementById('awg-i-target').value);
+  if(isFinite(I) && I > 0){
+    const aChassis = smallestAwgForCurrent(I, 'chassis');
+    const aPower   = smallestAwgForCurrent(I, 'power');
+    document.getElementById('awg-recommended').innerHTML =
+      `AWG ${aChassis} <span style="color:var(--fg-dim)">(chassis)</span> · AWG ${aPower} <span style="color:var(--fg-dim)">(power, bundled)</span>`;
+  } else {
+    document.getElementById('awg-recommended').textContent = '—';
+  }
+
+  // table
+  const tbl = document.getElementById('awg-tbl');
+  if(tbl.rows.length === 1){
+    for(const a of [4,6,8,10,12,14,16,18,20,22,24,26,28,30,32]){
+      const row = tbl.insertRow();
+      row.innerHTML = `<td>${a}</td><td>${awgDiameter(a).toFixed(3)}</td>
+        <td class="num">${awgArea(a).toFixed(3)}</td>
+        <td class="num">${(awgResistance(a)*1000).toFixed(1)}</td>
+        <td class="num">${ampacity(a,'chassis').toFixed(1)}</td>
+        <td class="num">${ampacity(a,'power').toFixed(2)}</td>
+        <td>${awgUseCase(a)}</td>`;
+    }
+  }
+}
+document.getElementById('awg-num').addEventListener('input', awgUpdate);
+document.getElementById('awg-i-target').addEventListener('input', awgUpdate);
+awgUpdate();
+
+/* ====================================================================
+   SMD CODES
+==================================================================== */
+const SMD_DB = {
+  '1A':'BC847A — NPN small-signal (45 V, 100 mA, β=110-220)',
+  '1AM':'BC847A — NPN small-signal',
+  '1B':'BC847B — NPN small-signal (β=200-450)',
+  '1C':'BC847C — NPN small-signal (β=420-800)',
+  '2A':'BC857A — PNP small-signal (45 V, 100 mA)',
+  '2B':'BC857B — PNP small-signal',
+  '2C':'BC857C — PNP small-signal',
+  'L1':'SS8050 — NPN high-β (40 V, 1.5 A)',
+  '2T1':'BSS84 — P-MOSFET (-50 V, -130 mA)',
+  '702':'2N7002 — N-MOSFET (60 V, 115 mA)',
+  'K72A':'2N7002 — N-MOSFET',
+  'W04':'1N4148W — switching diode (100 V, 300 mA, t_rr=4 ns)',
+  'DW':'1N4148W — switching diode',
+  'BAS40W':'BAS40 — Schottky (40 V, 200 mA)',
+  'A7W':'BAV99 — dual switching diodes',
+  '706':'AO3400 — N-MOSFET logic-level (30 V, 5.7 A)',
+  '7L':'AO3400 — N-MOSFET logic-level',
+  'A19T':'AO3401 — P-MOSFET logic-level (-30 V, -4 A)',
+  'BZX84-C5V1':'BZX84-C5V1 — Zener 5.1 V / 300 mW',
+};
+
+function smdLookup(){
+  const code = document.getElementById('smd-code').value.trim().toUpperCase();
+  document.getElementById('smd-match').textContent = SMD_DB[code] || 'no match — try a different marking or check a cross-ref table';
+}
+document.getElementById('smd-code').addEventListener('input', smdLookup);
+
+/* ====================================================================
+   THERMISTOR
+==================================================================== */
+function ntcR(T_celsius, R25, beta){
+  const T0 = 25 + 273.15;
+  const T = T_celsius + 273.15;
+  return R25 * Math.exp(beta * (1/T - 1/T0));
+}
+
+function thDraw(R25, beta){
+  const svg = document.getElementById('th-svg');
+  const W = 600, H = 280, M = 50;
+  let s = '';
+  // axes
+  s += `<line x1="${M}" y1="${H-M}" x2="${W-20}" y2="${H-M}" class="axis"/>`;
+  s += `<line x1="${M}" y1="${20}" x2="${M}" y2="${H-M}" class="axis"/>`;
+  s += `<text x="${W/2}" y="${H-15}" class="axis-label" text-anchor="middle">Temperature (°C)</text>`;
+  s += `<text x="15" y="${H/2}" class="axis-label" transform="rotate(-90 15 ${H/2})" text-anchor="middle">Resistance</text>`;
+  // T range -40 to 125
+  // log Y for resistance
+  const ts = [-40,-20,0,25,50,75,100,125];
+  // map T → x
+  const xOf = T => M + ((T + 40) / 165) * (W - M - 20);
+  // log R range from min to max
+  const rValues = ts.map(t => ntcR(t, R25, beta));
+  const logMin = Math.log10(Math.min(...rValues, R25 * 0.1));
+  const logMax = Math.log10(Math.max(...rValues, R25 * 100));
+  const yOf = R => 20 + (1 - (Math.log10(R) - logMin) / (logMax - logMin)) * (H - M - 20);
+  // grid
+  for(const t of ts){
+    const x = xOf(t);
+    s += `<line x1="${x}" y1="${H-M}" x2="${x}" y2="${H-M+5}" class="axis"/>`;
+    s += `<text x="${x}" y="${H-M+18}" class="axis-label" text-anchor="middle">${t}</text>`;
+  }
+  // log gridlines
+  for(let p = Math.floor(logMin); p <= Math.ceil(logMax); p++){
+    const r = Math.pow(10, p);
+    const y = yOf(r);
+    if(y < 20 || y > H-M) continue;
+    s += `<line x1="${M-5}" y1="${y}" x2="${W-20}" y2="${y}" stroke="var(--grid)" stroke-dasharray="2,3"/>`;
+    const label = r >= 1e6 ? (r/1e6)+'M' : r >= 1e3 ? (r/1e3)+'k' : r;
+    s += `<text x="${M-8}" y="${y+4}" class="axis-label" text-anchor="end">${label}</text>`;
+  }
+  // curve
+  let pts = '';
+  for(let t = -40; t <= 125; t += 2){
+    const r = ntcR(t, R25, beta);
+    pts += (pts ? ' L ' : 'M ') + xOf(t).toFixed(1) + ' ' + yOf(r).toFixed(1);
+  }
+  s += `<path d="${pts}" stroke="var(--accent2)" stroke-width="2" fill="none"/>`;
+  // current T marker
+  const tc = parseInt(document.getElementById('th-tc').value);
+  const r = ntcR(tc, R25, beta);
+  s += `<circle cx="${xOf(tc)}" cy="${yOf(r)}" r="5" fill="var(--accent3)" stroke="#000"/>`;
+  s += `<line x1="${xOf(tc)}" y1="${yOf(r)}" x2="${xOf(tc)}" y2="${H-M}" stroke="var(--accent3)" stroke-dasharray="2,2"/>`;
+  s += `<line x1="${xOf(tc)}" y1="${yOf(r)}" x2="${M}" y2="${yOf(r)}" stroke="var(--accent3)" stroke-dasharray="2,2"/>`;
+  s += `<text x="${xOf(tc)+8}" y="${yOf(r)-8}" class="label-ok">${tc}°C, ${fmtR(r)}</text>`;
+  svg.innerHTML = s;
+}
+
+function thUpdate(){
+  const R25 = parseFloat(document.getElementById('th-r25').value);
+  const beta = parseFloat(document.getElementById('th-beta').value);
+  const tc = parseInt(document.getElementById('th-tc').value);
+  document.getElementById('th-tcread').textContent = tc + ' °C';
+  document.getElementById('th-rread').textContent = fmtR(ntcR(tc, R25, beta));
+  thDraw(R25, beta);
+}
+document.getElementById('th-r25').addEventListener('change', thUpdate);
+document.getElementById('th-beta').addEventListener('change', thUpdate);
+document.getElementById('th-tc').addEventListener('input', thUpdate);
+thUpdate();
+</script>
+</body>
+</html>

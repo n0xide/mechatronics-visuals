@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leadscrew Efficiency — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>Leadscrew Efficiency &amp; Back-Drive</h1>
+  <p class="lede">A leadscrew is a screw whose job is converting rotary input into linear output (or vice versa). Two numbers dominate its design: <b>lead angle λ</b> (how steep the helix is) and <b>friction coefficient μ</b>. Together they set <em>efficiency</em> (η = how much input power becomes useful linear force) and decide whether the screw is <em>self-locking</em> — staying put when input torque is removed. Slide λ and μ; watch ACME drop below ball-screw and the back-drive threshold appear.</p>
+
+  <div class="anchors">
+    <span class="anchor"><b>η_lift</b> = tan λ / tan(λ + φ)  where φ = atan μ</span>
+    <span class="anchor"><b>Self-lock</b>: μ &gt; tan λ</span>
+    <span class="anchor"><b>ACME</b> μ ≈ 0.1–0.2, η ~30–50%</span>
+    <span class="anchor"><b>Ball-screw</b> μ ≈ 0.003, η ~90%+</span>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>Screw type</label>
+      <select id="type">
+        <option value="acme" selected>ACME (steel-on-bronze)</option>
+        <option value="trap">Trapezoidal (Tr) — same as ACME</option>
+        <option value="leadscrew">3D-printer leadscrew (steel + brass nut)</option>
+        <option value="poly">Polymer / Delrin nut (low-cost)</option>
+        <option value="ball">Ball-screw (recirculating balls)</option>
+        <option value="planetary">Planetary roller screw (high-end)</option>
+      </select>
+    </div>
+    <div class="control"><label>Lead L: <span class="readout" id="LRead">8 mm/rev</span></label><input id="L" type="range" min="0.5" max="30" step="0.5" value="8"></div>
+    <div class="control"><label>Pitch diameter d: <span class="readout" id="dRead">10 mm</span></label><input id="d" type="range" min="3" max="40" step="0.5" value="10"></div>
+    <div class="control"><label>Friction μ: <span class="readout" id="muRead">0.12</span></label><input id="mu" type="range" min="0.001" max="0.3" step="0.001" value="0.12"></div>
+  </section>
+
+  <div class="figure">
+    <svg id="diagram" viewBox="0 0 920 380" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+      <tr><td>Lead angle λ</td><td id="rL" class="num">14.3°</td><td><code>atan(L / (π · d))</code></td></tr>
+      <tr><td>Friction angle φ</td><td id="rPhi" class="num">6.8°</td><td><code>atan(μ)</code></td></tr>
+      <tr><td>Efficiency (lift, motor → load)</td><td id="rEff" class="num">52 %</td><td><code>tan λ / tan(λ + φ)</code></td></tr>
+      <tr><td>Efficiency (lower, load → motor)</td><td id="rEffR" class="num">42 %</td><td><code>tan(λ − φ) / tan λ</code></td></tr>
+      <tr><td>Self-locking?</td><td id="rSL" class="num">no</td><td><code>μ &gt; tan λ ? → self-lock</code></td></tr>
+      <tr><td>Required torque per unit load</td><td id="rT" class="num">1.21 N·mm/N</td><td><code>T = F · d/2 · tan(λ + φ)</code></td></tr>
+      <tr><td>Force amplification</td><td id="rFamp" class="num">8.3 ×</td><td><code>F / (T/(d/2)) = 1/tan(λ+φ)</code></td></tr>
+    </table>
+    <div class="vd" id="verdict"><b>Verdict:</b> <span id="verdictText">…</span></div>
+  </div>
+
+  <h2>Where the efficiency formula comes from</h2>
+  <p>Imagine "unrolling" one revolution of the screw thread. The helix becomes a ramp: horizontal distance = π·d (one circumference), vertical rise = L (one lead). The ramp angle is λ.</p>
+  <div class="deriv">
+    <span class="step">1.  <b>tan λ = L / (π · d)</b> (geometric definition of lead angle)</span>
+    <span class="step">2.  Pushing a block up a ramp with friction: F_input acts horizontally; load W acts vertically; friction acts along the ramp surface.</span>
+    <span class="step">3.  Force balance: F_input = W · tan(λ + φ), where φ = atan(μ) is the friction angle.</span>
+    <span class="step">4.  Useful work output per rev: W · L</span>
+    <span class="step">5.  Input work per rev: F_input · π · d = W · π · d · tan(λ + φ)</span>
+    <span class="step">6.  <b>η = (W · L) / (W · π · d · tan(λ+φ)) = tan λ / tan(λ + φ)</b></span>
+    <span class="step">7.  Lowering (load drives screw): reverse the friction direction. <b>η_lower = tan(λ − φ) / tan λ</b>.</span>
+    <span class="step">8.  When λ &lt; φ (friction-angle exceeds lead-angle), tan(λ − φ) is negative → load can't drive the screw at all → <b>SELF-LOCKING</b>.</span>
+  </div>
+
+  <h2>The self-lock criterion</h2>
+  <p>Self-locking screws stay put when input torque is removed. Useful for jacks, vises, leveling screws, lift gates. The criterion is simple:</p>
+  <div class="deriv">
+    <span class="step"><b>Self-locking ↔ μ &gt; tan λ ↔ φ &gt; λ</b></span>
+    <span class="step">Examples:</span>
+    <span class="step">  ACME L=8mm, d=10mm → λ = atan(8/(π·10)) = 14.3°. μ_steel-bronze ≈ 0.10 → φ = 5.7° → NOT self-locking.</span>
+    <span class="step">  ACME L=2mm, d=10mm → λ = 3.6°. μ ≈ 0.10 → φ = 5.7° → self-locking ✓</span>
+    <span class="step">  Ball-screw L=10mm, d=20mm → λ = 9.0°, μ ≈ 0.005 → φ = 0.3° → never self-locks. (Use a brake.)</span>
+    <span class="step"><span class="arrow">→</span> Low-lead ACME = self-locking but slow. High-lead ACME = fast but back-drives. Ball-screw = fast and efficient but never self-locks.</span>
+  </div>
+
+  <h2>Worked example — 3D-printer Z-axis</h2>
+  <div class="worked">
+    <h3>The constraint</h3>
+    <p>FDM printer Z-axis must hold ~3 kg gantry against gravity when power is off (motor coils unenergized). Z-axis steppers can hold by themselves (microstep detent), but if a thermistor failure cuts power mid-print, you don't want the gantry crashing into the print.</p>
+
+    <h3>Lead options</h3>
+    <span class="eq">Common 3D-printer Tr leadscrews: Tr8×2 (8mm dia, 2mm lead), Tr8×4, Tr8×8</span>
+    <span class="eq">μ for steel + brass nut: 0.10–0.15 (graphite-greased)</span>
+
+    <h3>Tr8×2 (slow but safe)</h3>
+    <span class="eq">λ = atan(2/(π·8)) = 4.55°</span>
+    <span class="eq">μ = 0.12 → φ = 6.84° → λ &lt; φ → <b>self-locking ✓</b></span>
+    <span class="eq">η_up = tan(4.55°)/tan(11.39°) = 0.395 → 39.5% efficient</span>
+    <span class="eq">η_down = tan(4.55° − 6.84°)/tan(4.55°) = negative → can't back-drive (formula confirms self-lock)</span>
+    <span class="eq">Verdict: holds gantry on power-off. Slow Z-move; OK because Z moves only between layers.</span>
+
+    <h3>Tr8×8 (fast, but check)</h3>
+    <span class="eq">λ = atan(8/(π·8)) = 17.66°</span>
+    <span class="eq">μ = 0.12 → φ = 6.84° → λ &gt; φ → <b>NOT self-locking</b></span>
+    <span class="eq">η_up = tan(17.66°)/tan(24.5°) = 0.702 → 70% efficient</span>
+    <span class="eq">η_down = tan(17.66° − 6.84°)/tan(17.66°) = 0.602 → back-drives at 60% energy recovery</span>
+    <span class="eq">Verdict: gantry will fall on power-off. Add a brake or use a stepper that always holds power.</span>
+
+    <h3>Decision</h3>
+    <p style="color:var(--fg-dim);font-size:12px;margin-top:8px">Most printers use Tr8×8 (fast Z for travel moves) with a continuously-energized Z stepper. If you want a fast, back-drive-safe Z, use ball-screws + electromagnetic brake.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Ball-screws double the efficiency</b> — μ drops from 0.10 (sliding ACME) to ~0.003 (rolling balls). At λ = 10° that turns η = 50% into η = 95%. For long, fast travels (a 1 m machine moves a lot), this saves real energy and heat.</li>
+    <li><b>Steep lead = fast + unsafe</b> — slope of the helix is the lead angle. Steeper means more linear motion per revolution, but also easier to back-drive. Steep + low friction = fast but never holds.</li>
+    <li><b>Self-lock is friction-limited, not gravity-limited</b> — a hydraulic jack screws stays up at 5000 lb only because friction prevents back-drive; the load isn't holding it down. If you lubricate too well, the jack falls.</li>
+    <li><b>Heat is the bill for friction</b> — A 30% efficient ACME at 100W input puts 70W into heat. For continuous operation (motorized linear actuator), this heat will limit the nut life — bronze starts degrading at 150 °C, polymer at 100 °C.</li>
+    <li><b>Ball-screws need a brake</b> — they back-drive freely; a small load makes them unwind. If safety requires "stays put on power-off," add a magnetic brake (50-200 USD) or use an ACME screw.</li>
+    <li><b>Planetary roller screws split the difference</b> — efficiency near ball-screw, no recirculation = silent + smoother, but cost is 3-5× ball-screw. CNC machine spindles use these.</li>
+  </ul>
+
+  <h2>Cross-links</h2>
+  <div class="crosslink">
+    <h4>Related</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Bearings, leadscrews, belts</b> — <a href="bearings-leadscrews-belts.html">power transmission overview</a>.</li>
+      <li><b style="color:var(--fg)">Gear types</b> — <a href="gear-types.html">worm gear self-lock</a>. Same formula governs both.</li>
+      <li><b style="color:var(--fg)">Torque preload</b> — <a href="../phase-6-fasteners-joining/torque-preload.html">bolt torque equation</a>. T = K·D·F is essentially the screw equation with different angles.</li>
+      <li><b style="color:var(--fg)">Friction types</b> — <a href="../phase-3-statics/friction-types.html">static vs kinetic</a>. The μ here is kinetic; static is higher.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Lead angle</dt><dd><span class="eq">tan λ = L / (π·d)</span></dd>
+        <dt>Friction angle</dt><dd><span class="eq">φ = atan(μ)</span></dd>
+        <dt>η (lift)</dt><dd><span class="eq">tan λ / tan(λ + φ)</span></dd>
+        <dt>η (lower)</dt><dd><span class="eq">tan(λ − φ) / tan λ</span></dd>
+        <dt>Torque (lift)</dt><dd><span class="eq">T = F · d/2 · tan(λ + φ)</span></dd>
+        <dt>Self-lock</dt><dd><span class="eq">φ &gt; λ ↔ μ &gt; tan λ</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SCREW TYPES</h3>
+      <ul>
+        <li><b>ACME / Tr</b>: μ ≈ 0.10–0.20</li>
+        <li><b>ACME, fine lead</b>: self-locking</li>
+        <li><b>Ball-screw</b>: μ ≈ 0.003, never self-locks</li>
+        <li><b>Roller screw</b>: μ ≈ 0.01</li>
+        <li><b>Lubricant matters</b> — grease cuts μ by 30–50%</li>
+        <li><b>Worm gear</b> obeys same equations</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li><b>Assuming any screw self-locks</b> — only fine-lead ACME does reliably.</li>
+        <li><b>No brake on ball-screw</b> — vertical loads will fall; add electromagnetic brake.</li>
+        <li><b>Wet vs dry μ</b> — water on ACME drops μ from 0.12 to 0.05 — and the jack falls.</li>
+        <li><b>Pitch vs lead</b> — single-start: pitch = lead. Multi-start: lead = n × pitch.</li>
+        <li><b>Static vs kinetic μ</b> — at startup, μ_s is higher (lock holds). After moving, μ_k is what η uses.</li>
+        <li><b>Thrust bearings still needed</b> — efficiency formula doesn't include the axial thrust bearing friction.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">ME Phase 7 — Mechanisms &amp; Kinematics</span> ·
+    Related: <a href="gear-types.html">Gear Types</a> · <a href="bearings-leadscrews-belts.html">Bearings &amp; Leadscrews</a>
+  </footer>
+</main>
+<script>
+  const TYPES = {
+    'acme':      { mu: 0.12, label: 'ACME steel-on-bronze' },
+    'trap':      { mu: 0.12, label: 'Trapezoidal' },
+    'leadscrew': { mu: 0.10, label: '3D-printer leadscrew' },
+    'poly':      { mu: 0.15, label: 'Polymer nut' },
+    'ball':      { mu: 0.003, label: 'Ball-screw' },
+    'planetary': { mu: 0.01, label: 'Planetary roller' }
+  };
+
+  const typeEl = document.getElementById('type');
+  const LEl = document.getElementById('L');
+  const dEl = document.getElementById('d');
+  const muEl = document.getElementById('mu');
+
+  typeEl.addEventListener('change', ()=>{
+    const t = TYPES[typeEl.value];
+    muEl.value = t.mu;
+    update();
+  });
+
+  function update(){
+    const L  = parseFloat(LEl.value);
+    const d  = parseFloat(dEl.value);
+    const mu = parseFloat(muEl.value);
+    document.getElementById('LRead').textContent = L.toFixed(1)+" mm/rev";
+    document.getElementById('dRead').textContent = d.toFixed(1)+" mm";
+    document.getElementById('muRead').textContent = mu.toFixed(3);
+
+    const lamRad = Math.atan(L / (Math.PI * d));
+    const lam    = lamRad * 180/Math.PI;
+    const phiRad = Math.atan(mu);
+    const phi    = phiRad * 180/Math.PI;
+    const etaLift  = Math.tan(lamRad) / Math.tan(lamRad + phiRad);
+    const etaLower = lamRad > phiRad
+                     ? Math.tan(lamRad - phiRad) / Math.tan(lamRad)
+                     : -Math.abs(Math.tan(phiRad - lamRad) / Math.tan(lamRad));
+    const selfLock = lamRad < phiRad;
+    const torqueperN = (d/2) * Math.tan(lamRad + phiRad);  // mm·N per N load → mm
+    const Famp = 1 / Math.tan(lamRad + phiRad);
+
+    document.getElementById('rL').textContent   = lam.toFixed(2)+"°";
+    document.getElementById('rPhi').textContent = phi.toFixed(2)+"°";
+    document.getElementById('rEff').textContent = (etaLift*100).toFixed(1)+" %";
+    document.getElementById('rEffR').textContent= selfLock ? "— (self-lock)" : (etaLower*100).toFixed(1)+" %";
+    document.getElementById('rSL').textContent  = selfLock ? "YES (self-lock) ✓" : "no";
+    document.getElementById('rT').textContent   = torqueperN.toFixed(2)+" N·mm/N";
+    document.getElementById('rFamp').textContent = Famp.toFixed(2)+" ×";
+
+    const v = document.getElementById('verdictText');
+    if(selfLock){
+      v.innerHTML = `<b style="color:var(--accent3)">Self-locking</b>: load cannot back-drive screw. η_lift = ${(etaLift*100).toFixed(0)}%. Good for jacks &amp; lifting; pay with low efficiency.`;
+    } else if(etaLift > 0.85){
+      v.innerHTML = `<b style="color:var(--accent3)">High efficiency (${(etaLift*100).toFixed(0)}%)</b> — ball-screw territory. Will back-drive easily; add brake for vertical loads.`;
+    } else if(etaLift > 0.5){
+      v.innerHTML = `<b style="color:var(--accent2)">Medium efficiency (${(etaLift*100).toFixed(0)}%)</b> — typical for ACME with steeper lead. Back-drives; not self-locking.`;
+    } else {
+      v.innerHTML = `<b style="color:var(--warn)">Low efficiency (${(etaLift*100).toFixed(0)}%)</b> — mostly heat. Lower lead angle would self-lock; higher would improve efficiency.`;
+    }
+
+    drawScrew(L, d, lam, phi, selfLock);
+    drawChart(lamRad, mu);
+  }
+
+  function drawScrew(L, d, lam, phi, selfLock){
+    const svg = document.getElementById('diagram');
+    const cx = 250, cy = 200, sc = 8;
+    // helix unrolled - ramp
+    const rW = Math.PI * d * sc;
+    const rH = L * sc;
+    let s = `
+      <text x="${cx-100}" y="30" class="label">Unrolled helix — one turn of the screw</text>
+      <!-- ramp -->
+      <line x1="${cx-rW/2}" y1="${cy+30}" x2="${cx+rW/2}" y2="${cy+30}" stroke="var(--fg-dim)" stroke-width="1"/>
+      <line x1="${cx-rW/2}" y1="${cy+30}" x2="${cx-rW/2}" y2="${cy+30-rH}" stroke="var(--fg-dim)" stroke-width="1"/>
+      <line x1="${cx-rW/2}" y1="${cy+30-rH}" x2="${cx+rW/2}" y2="${cy+30}" stroke="var(--accent)" stroke-width="2"/>
+      <polygon points="${cx-rW/2},${cy+30-rH} ${cx+rW/2},${cy+30} ${cx+rW/2},${cy+30-rH}" fill="var(--bg-elev2)" opacity="0.3"/>
+
+      <!-- lead angle arc -->
+      <path d="M ${cx+rW/2-30} ${cy+30} A 30 30 0 0 0 ${cx+rW/2-30*Math.cos(lam*Math.PI/180)} ${cy+30 - 30*Math.sin(lam*Math.PI/180)}"
+            fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="${cx+rW/2-40}" y="${cy+15}" class="label" fill="var(--accent)">λ=${lam.toFixed(1)}°</text>
+
+      <!-- block on ramp -->
+      <rect x="${cx-10}" y="${cy+30 - (rW/2-rW/2*0+rW/2 - 0)*Math.tan(lam*Math.PI/180) - 30}" width="30" height="20" fill="var(--accent2)" opacity="0.7"/>
+
+      <!-- force arrows -->
+      <line x1="${cx+10}" y1="${cy - 5}" x2="${cx+50}" y2="${cy - 5}" stroke="var(--accent3)" stroke-width="2"/>
+      <polygon points="${cx+50},${cy-5} ${cx+46},${cy-2} ${cx+46},${cy-8}" fill="var(--accent3)"/>
+      <text x="${cx+55}" y="${cy}" class="label-ok">F_input</text>
+
+      <line x1="${cx+10}" y1="${cy - 5}" x2="${cx+10}" y2="${cy + 25}" stroke="var(--warn)" stroke-width="2"/>
+      <polygon points="${cx+10},${cy+25} ${cx+7},${cy+21} ${cx+13},${cy+21}" fill="var(--warn)"/>
+      <text x="${cx+15}" y="${cy+30}" class="label-warn">W (load)</text>
+
+      <!-- L dim and pi*d dim -->
+      <line x1="${cx-rW/2-15}" y1="${cy+30}" x2="${cx-rW/2-15}" y2="${cy+30-rH}" stroke="var(--fg-dim)" stroke-width="1"/>
+      <text x="${cx-rW/2-20}" y="${cy+30-rH/2}" class="label-dim" text-anchor="end">L=${L} mm</text>
+      <line x1="${cx-rW/2}" y1="${cy+50}" x2="${cx+rW/2}" y2="${cy+50}" stroke="var(--fg-dim)" stroke-width="1"/>
+      <text x="${cx}" y="${cy+65}" class="label-dim" text-anchor="middle">π·d = ${(Math.PI*d).toFixed(1)} mm</text>
+    `;
+    // Friction angle indicator
+    if(selfLock){
+      s += `<text x="${cx-rW/2}" y="${cy+90}" class="label-ok">SELF-LOCKING (φ &gt; λ): load cannot back-drive</text>`;
+    } else {
+      s += `<text x="${cx-rW/2}" y="${cy+90}" class="label-warn">Back-drives: load can drive screw without input</text>`;
+    }
+
+    // Efficiency vs friction chart on right
+    const x0 = 650, y0 = 50, w = 200, h = 200;
+    s += `<text x="${x0+50}" y="40" class="label">η vs μ (at current λ)</text>`;
+    s += `<line x1="${x0}" y1="${y0+h}" x2="${x0+w}" y2="${y0+h}" stroke="var(--fg-dim)" stroke-width="1"/>`;
+    s += `<line x1="${x0}" y1="${y0}" x2="${x0}" y2="${y0+h}" stroke="var(--fg-dim)" stroke-width="1"/>`;
+    s += `<text x="${x0-5}" y="${y0+10}" class="label-dim" text-anchor="end">1.0</text>`;
+    s += `<text x="${x0-5}" y="${y0+h+5}" class="label-dim" text-anchor="end">0</text>`;
+    s += `<text x="${x0+w}" y="${y0+h+20}" class="label-dim" text-anchor="middle">μ → 0.3</text>`;
+    s += `<text x="${x0}" y="${y0+h+20}" class="label-dim" text-anchor="middle">0</text>`;
+    // curve
+    let path = `M ${x0} ${y0+h}`;
+    for(let muP=0; muP<=0.3; muP+=0.005){
+      const phiR = Math.atan(muP);
+      const lamR = lam * Math.PI/180;
+      const e = Math.tan(lamR)/Math.tan(lamR+phiR);
+      const px = x0 + (muP/0.3)*w;
+      const py = y0+h - e*h;
+      path += ` L ${px} ${py}`;
+    }
+    s += `<path d="${path}" stroke="var(--accent)" stroke-width="2" fill="none"/>`;
+    // current point
+    const cmu = parseFloat(muEl.value);
+    const cphiR = Math.atan(cmu);
+    const clamR = lam * Math.PI/180;
+    const ce = Math.tan(clamR)/Math.tan(clamR+cphiR);
+    const cpx = x0 + (cmu/0.3)*w, cpy = y0+h - ce*h;
+    s += `<circle cx="${cpx}" cy="${cpy}" r="5" fill="var(--accent3)"/>`;
+    s += `<text x="${cpx+8}" y="${cpy-5}" class="label-ok">η = ${(ce*100).toFixed(0)}%</text>`;
+    svg.innerHTML = s;
+  }
+
+  function drawChart(){}  // chart is now in drawScrew
+
+  update();
+</script>
+</body>
+</html>

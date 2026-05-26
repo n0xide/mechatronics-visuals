@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Complementary Filter — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2)}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 20px}
+  .chip{background:var(--bg-elev2);border:1px solid var(--line);border-radius:14px;padding:3px 10px;font:11px ui-monospace,monospace;color:var(--accent);text-decoration:none}
+  .chip:hover{background:var(--bg-elev);border-color:var(--accent)}
+  .toggle-row{display:flex;gap:6px;margin:0 0 10px;flex-wrap:wrap}
+  .toggle-row button{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 10px;cursor:pointer;font:12px ui-monospace,monospace}
+  .toggle-row button.active{background:var(--accent);color:#000;border-color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Complementary Filter (IMU tilt)</h1>
+  <p class="lede">Gyroscopes give clean short-term angle changes but drift over seconds. Accelerometers measure gravity for absolute tilt but get jumpy with vibration. Combine them with a 1-line α blend: <b>θ = α·(θ + gyro·dt) + (1−α)·θ_accel</b>. The gyro half is a high-pass; the accel half is a low-pass; together they cover the whole frequency range. This is the workhorse of every quadcopter, every self-balancing robot, every PoseEstimation library.</p>
+
+  <div class="chips">
+    <a class="chip" href="#sensors">#two-sensors</a>
+    <a class="chip" href="#blend">#alpha-blend</a>
+    <a class="chip" href="#sim">#simulator</a>
+    <a class="chip" href="#worked">#worked-example</a>
+    <a class="chip" href="#cheats">#cheat-sheet</a>
+  </div>
+
+  <h2 id="sensors">Two sensors, complementary noise</h2>
+  <p>Most low-cost IMUs (MPU6050, BMI160, BNO055, ICM-42688) bundle a 3-axis gyro + 3-axis accel in one package. For tilt estimation, we use one axis pair:</p>
+  <ul class="notice">
+    <li><b>Gyro</b>: gives angular velocity (deg/s or rad/s). Integrate over time to get angle. Two issues: (a) zero-rate drift — even when stationary, the gyro outputs ~0.5°/s, and (b) integration accumulates that drift into seconds-to-minutes-scale absolute-angle error. Strengths: fast response, no noise from vibration, no need to assume gravity is the only acceleration.</li>
+    <li><b>Accel</b>: when stationary, measures gravity. Convert (a_x, a_y, a_z) to a tilt angle via <code>atan2(a_y, sqrt(a_x² + a_z²))</code>. Issues: assumes the only acceleration is gravity; any sudden motion (a kicked robot, a propulsion event, vibration from motors) overwhelms gravity. Strengths: drift-free; correct absolute angle.</li>
+    <li><b>Magnetometer</b> (optional 9-DOF): heading reference. Not used in tilt-only filters but added for full attitude.</li>
+  </ul>
+
+  <h2 id="blend">The α blend</h2>
+  <p>One line of code:</p>
+  <div class="deriv">
+    <span class="step"><b>θ_new = α · (θ_old + gyro · dt) + (1 − α) · θ_accel</b></span>
+    <span class="step">Where α is typically 0.95–0.99 — close to 1, but not 1.</span>
+    <span class="step">α = 0 → just accelerometer (jittery).</span>
+    <span class="step">α = 1 → just gyro integration (drifts).</span>
+    <span class="step">α = 0.98 → mostly gyro (smooth), but slowly corrected by accel (drift-free).</span>
+  </div>
+  <p>The filter has a single equivalent time constant τ that controls how fast it forgets the gyro-integrated estimate and trusts the accelerometer:</p>
+  <div class="deriv">
+    <span class="step"><b>τ = α · dt / (1 − α)</b></span>
+    <span class="step">For α = 0.98, dt = 10 ms: τ = 0.98 · 0.01 / 0.02 = <b>0.49 s</b></span>
+    <span class="step">→ The filter "forgets" the gyro estimate over ~½ second; that's how long a vibration spike biases your tilt before the accel anchor pulls it back.</span>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>α (alpha): <span class="readout" id="aRead">0.980</span></label>
+      <input id="a" type="range" min="0.5" max="0.999" step="0.001" value="0.98"></div>
+    <div class="control"><label>dt (update period): <span class="readout" id="dtRead">10 ms</span></label>
+      <input id="dt" type="range" min="1" max="50" step="1" value="10"></div>
+    <div class="control"><label>Gyro drift: <span class="readout" id="dRead">0.5 °/s</span></label>
+      <input id="d" type="range" min="0" max="3" step="0.1" value="0.5"></div>
+    <div class="control"><label>Accel noise σ: <span class="readout" id="nRead">2.0 °</span></label>
+      <input id="n" type="range" min="0" max="10" step="0.1" value="2"></div>
+    <div class="control"><label>Vibration spike: <span class="readout" id="vRead">moderate</span></label>
+      <div class="toggle-row">
+        <button data-v="none">None</button>
+        <button data-v="mild">Mild</button>
+        <button data-v="mod" class="active">Moderate</button>
+        <button data-v="heavy">Heavy</button>
+      </div>
+    </div>
+    <div class="control"><label>Trajectory: <span class="readout" id="trajRead">Sine</span></label>
+      <div class="toggle-row">
+        <button data-t="sine" class="active">Sine</button>
+        <button data-t="step">Step</button>
+        <button data-t="ramp">Ramp</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="figure">
+    <svg id="plot" viewBox="0 0 600 320" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Notes</th></tr>
+      <tr><td>Filter time constant τ</td><td id="tTau" class="num">0.49 s</td><td><code>α·dt/(1−α)</code></td></tr>
+      <tr><td>Gyro drift accumulated (10 s)</td><td id="tDrift" class="num">5.0°</td><td>without correction</td></tr>
+      <tr><td>Gyro-only RMS error</td><td id="tGE" class="num">3.2°</td><td>over 10 s sim</td></tr>
+      <tr><td>Accel-only RMS error</td><td id="tAE" class="num">2.1°</td><td>over 10 s sim</td></tr>
+      <tr><td>Complementary RMS error</td><td id="tCE" class="num">0.6°</td><td>combined, over 10 s</td></tr>
+      <tr><td>Equivalent crossover freq</td><td id="tFc" class="num">0.32 Hz</td><td><code>1/(2π·τ)</code></td></tr>
+    </table>
+  </div>
+
+  <h2>Why it works — frequency-domain interpretation</h2>
+  <p>The complementary filter is two transfer functions that sum to 1:</p>
+  <div class="deriv">
+    <span class="step">Gyro path = high-pass: H(s) = τs / (τs + 1)</span>
+    <span class="step">Accel path = low-pass: L(s) = 1 / (τs + 1)</span>
+    <span class="step">Sum: H(s) + L(s) = 1 → perfect across all frequencies (if both inputs are perfect)</span>
+    <span class="step">Low frequencies (slow tilts) → accel dominates → drift-free.</span>
+    <span class="step">High frequencies (fast motions) → gyro dominates → noise-free.</span>
+  </div>
+  <p>That's why it's <em>complementary</em>: each sensor's strength covers the other's weakness, and their combined response is unity gain across the band.</p>
+
+  <h2 id="worked">Worked example — self-balancing robot</h2>
+  <div class="worked">
+    <h3>The robot</h3>
+    <p>A two-wheel inverted-pendulum balancer. MPU6050 reads accel + gyro at 100 Hz (dt = 10 ms). Goal: estimate pitch angle θ within ±1° accuracy so the PID can hold balance.</p>
+
+    <h3>Choosing α</h3>
+    <p>Slow drift (gyro bias): 0.5°/s typical for MPU6050 after calibration. Want this corrected within 1 second → τ ≈ 1 s.</p>
+    <span class="eq">τ = α·dt / (1−α) → 1 = α · 0.01 / (1 − α) → α / (1 − α) = 100 → <b>α = 0.99</b></span>
+
+    <h3>Vibration handling</h3>
+    <p>Motors spin at 50–200 Hz. Wheel hubs (which mount the IMU) shake at twice that. With α = 0.99, the filter rejects vibration above 0.16 Hz crossover — so any spike longer than ~6 s would leak through. Real spikes are tens of milliseconds; they're absorbed cleanly.</p>
+
+    <h3>Initialization</h3>
+    <p>At startup, set θ = θ_accel (use accel reading as initial estimate). Wait 500 ms for the IMU to stabilize. Calibrate gyro bias by averaging 1000 stationary samples and subtracting.</p>
+
+    <h3>The full code</h3>
+    <span class="eq">
+gx = (gx_raw − gx_bias) * deg_per_lsb;
+ax_g = ax_raw * g_per_lsb;
+ay_g = ay_raw * g_per_lsb;
+theta_accel = atan2(ay_g, sqrt(ax_g² + az_g²)) * RAD_TO_DEG;
+theta = 0.99 * (theta + gx * dt) + 0.01 * theta_accel;
+    </span>
+
+    <h3>Tuning in field</h3>
+    <p>Tap the robot: filter should snap back within 0.5 s. If too slow → reduce α (e.g., 0.97). If too noisy → increase α (e.g., 0.995). Trade-off is fundamental: faster response means more accel noise leaks in.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>One line of code, no matrices.</b> Compare to a Kalman filter (10–20 lines of matrix algebra for the same accuracy). Often the complementary filter is "good enough" — and it's what most quadrotors actually use under the hood.</li>
+    <li><b>Calibrate gyro bias first</b>. Average gyro readings while the IMU is stationary. Subtract that mean from every subsequent gyro sample. Bias drift over temperature is a slower issue — some IMUs (BNO055) self-calibrate; cheaper ones (MPU6050) don't.</li>
+    <li><b>The accel needs gravity</b>. If the robot is accelerating (translational, not rotational), the accel reading includes that as well. Filter assumes accel ≈ gravity; if not, that period accumulates error.</li>
+    <li><b>Pick α once</b>, don't try to vary it dynamically without good reason. Adaptive α schemes exist (sense vibration, lower α when high) but are tricky to get right.</li>
+    <li><b>2-D vs 3-D</b>: for full attitude (roll + pitch + yaw), you need three filters — one per axis — plus a magnetometer to anchor yaw. Madgwick and Mahony filters extend the complementary idea to quaternions.</li>
+  </ul>
+
+  <h2>Where you'll see this</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Self-balancing robots</b> (Segway, MIP, Boston Dynamics' early Atlas balance) — complementary or Kalman.</li>
+      <li><b style="color:var(--fg)">Quadcopters</b> — Madgwick/Mahony (which are complementary filters in quaternion form).</li>
+      <li><b>VR headsets</b> — complementary filter with magnetometer to fight yaw drift.</li>
+      <li><b style="color:var(--fg)">Stabilized gimbals</b> — IMU on the camera, complementary filter for tilt, fast inner-loop motor controller.</li>
+      <li><b style="color:var(--fg)">Mobile phone screen rotation</b> — accel + gyro fusion (heavily filtered to be slow and stable).</li>
+    </ul>
+  </div>
+
+  <h2 id="cheats">Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Filter</dt><dd><span class="eq">θ = α(θ+ω·dt)+(1−α)·θ_a</span></dd>
+        <dt>Tilt from accel</dt><dd><span class="eq">θ_a = atan2(a_y, √(a_x²+a_z²))</span></dd>
+        <dt>τ</dt><dd><span class="eq">τ = α·dt/(1−α)</span></dd>
+        <dt>f_c</dt><dd><span class="eq">f_c = 1/(2π·τ)</span></dd>
+        <dt>α choose</dt><dd><span class="eq">α = τ/(τ+dt)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>RULES OF THUMB</h3>
+      <ul>
+        <li><b>α = 0.96–0.99</b> typical.</li>
+        <li><b>Update rate ≥ 100 Hz</b> for balance applications.</li>
+        <li><b>Calibrate gyro bias</b> at startup; subtract.</li>
+        <li><b>Filter accel</b> (10–50 Hz LPF) before atan2.</li>
+        <li><b>Initialize with accel value</b>, not zero.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Wrong units</b> — gyro in deg/s but θ in radians; mismatch.</li>
+        <li><b>Forgetting dt</b> — gyro · 1 ≠ gyro · dt.</li>
+        <li><b>Vibration spikes</b> overwhelming accel — add 50 Hz LPF on accel input.</li>
+        <li><b>Translational accel</b> at takeoff/braking — accel ≠ gravity for several seconds.</li>
+        <li><b>α not constant</b> — variable dt creates inconsistent τ; pin dt or recompute α.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EM Phase 8 — Robotics</span> ·
+    Topic: Complementary filter, IMU fusion ·
+    Cross: <a href="../phase-1-sensors/imu-overview.html">IMU Overview</a> ·
+    Forward: <a href="path-planning.html">Path Planning</a>
+  </footer>
+</main>
+<script>
+  let vibLevel = 'mod';
+  let trajType = 'sine';
+  const els = {
+    a:document.getElementById('a'),
+    dt:document.getElementById('dt'),
+    d:document.getElementById('d'),
+    n:document.getElementById('n')
+  };
+
+  document.querySelectorAll('[data-v]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('[data-v]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      vibLevel = btn.dataset.v;
+      const labels = {none:'None', mild:'Mild', mod:'Moderate', heavy:'Heavy'};
+      document.getElementById('vRead').textContent = labels[vibLevel];
+      update();
+    });
+  });
+  document.querySelectorAll('[data-t]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('[data-t]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      trajType = btn.dataset.t;
+      document.getElementById('trajRead').textContent = trajType.charAt(0).toUpperCase()+trajType.slice(1);
+      update();
+    });
+  });
+
+  function trueAngle(t){
+    if(trajType === 'sine') return 30 * Math.sin(t * 0.5);
+    if(trajType === 'step') return t < 3 ? 0 : t < 7 ? 30 : 10;
+    return Math.min(30, t * 5 - 10);
+  }
+
+  function update(){
+    const alpha = parseFloat(els.a.value);
+    const dt = parseFloat(els.dt.value) * 0.001;
+    const drift = parseFloat(els.d.value);
+    const noise = parseFloat(els.n.value);
+
+    document.getElementById('aRead').textContent = alpha.toFixed(3);
+    document.getElementById('dtRead').textContent = (dt*1000).toFixed(0) + " ms";
+    document.getElementById('dRead').textContent = drift.toFixed(1) + " °/s";
+    document.getElementById('nRead').textContent = noise.toFixed(1) + " °";
+
+    const tau = alpha * dt / (1 - alpha);
+    document.getElementById('tTau').textContent = tau.toFixed(3) + " s";
+    document.getElementById('tDrift').textContent = (drift * 10).toFixed(1) + "°";
+    document.getElementById('tFc').textContent = (1/(2*Math.PI*tau)).toFixed(2) + " Hz";
+
+    // simulate
+    const T = 10; // seconds
+    const N = Math.floor(T / dt);
+    let theta_gyro = 0;
+    let theta_comp = 0;
+    const pts = [];
+    let sumGyroErr = 0, sumAccelErr = 0, sumCompErr = 0;
+    const vibAmp = vibLevel === 'none' ? 0 : vibLevel === 'mild' ? 1 : vibLevel === 'mod' ? 3 : 8;
+    for(let i = 0; i < N; i++){
+      const t = i * dt;
+      const truth = trueAngle(t);
+      // gyro reading = true angular vel + drift bias
+      const trueOmega = (trueAngle(t + dt) - truth) / dt;
+      const gyro = trueOmega + drift;
+      // accel reading = truth + Gaussian noise + vibration spikes
+      const vib = (Math.random() - 0.5) * 2 * vibAmp * (Math.sin(t * 20) + Math.sin(t * 50));
+      const accel = truth + (Math.random() - 0.5) * 2 * noise + vib;
+      // gyro-only
+      theta_gyro += gyro * dt;
+      // complementary
+      theta_comp = alpha * (theta_comp + gyro * dt) + (1 - alpha) * accel;
+      pts.push({t, truth, gyro_only: theta_gyro, accel, comp: theta_comp});
+      sumGyroErr += (theta_gyro - truth) ** 2;
+      sumAccelErr += (accel - truth) ** 2;
+      sumCompErr += (theta_comp - truth) ** 2;
+    }
+    const rms = (s) => Math.sqrt(s / N);
+    document.getElementById('tGE').textContent = rms(sumGyroErr).toFixed(2) + "°";
+    document.getElementById('tAE').textContent = rms(sumAccelErr).toFixed(2) + "°";
+    document.getElementById('tCE').textContent = rms(sumCompErr).toFixed(2) + "°";
+
+    // Plot
+    const svg = document.getElementById('plot');
+    const W = 600, H = 320, mL = 50, mR = 60, mT = 20, mB = 40;
+    const Tmax = T;
+    const Ymin = -50, Ymax = 50;
+    const x = t => mL + (t/Tmax)*(W - mL - mR);
+    const y = v => mT + (1 - (v - Ymin)/(Ymax - Ymin))*(H - mT - mB);
+    let path1='', path2='', path3='', path4='';
+    pts.forEach((p, i) => {
+      const cmd = i===0?'M':' L';
+      path1 += `${cmd} ${x(p.t)} ${y(p.truth)}`;
+      path2 += `${cmd} ${x(p.t)} ${y(Math.max(-50, Math.min(50, p.gyro_only)))}`;
+      path3 += `${cmd} ${x(p.t)} ${y(Math.max(-50, Math.min(50, p.accel)))}`;
+      path4 += `${cmd} ${x(p.t)} ${y(p.comp)}`;
+    });
+    let ticks = '';
+    for(let v=-50; v<=50; v+=10){
+      ticks += `<line x1="${mL-4}" y1="${y(v)}" x2="${mL}" y2="${y(v)}" stroke="var(--fg-dim)"/>`;
+      ticks += `<text x="${mL-8}" y="${y(v)+3}" class="label-dim" text-anchor="end">${v}°</text>`;
+    }
+    for(let t=0; t<=T; t+=2){
+      ticks += `<line x1="${x(t)}" y1="${H-mB}" x2="${x(t)}" y2="${H-mB+4}" stroke="var(--fg-dim)"/>`;
+      ticks += `<text x="${x(t)}" y="${H-mB+16}" class="label-dim" text-anchor="middle">${t}s</text>`;
+    }
+
+    svg.innerHTML = `
+      <line x1="${mL}" y1="${mT}" x2="${mL}" y2="${H-mB}" stroke="var(--fg-dim)"/>
+      <line x1="${mL}" y1="${H-mB}" x2="${W-mR}" y2="${H-mB}" stroke="var(--fg-dim)"/>
+      ${ticks}
+      <text x="${(W-mL-mR)/2 + mL}" y="${H-4}" class="label-dim" text-anchor="middle">time</text>
+      <text x="20" y="${(H-mT-mB)/2+mT}" class="label-dim" transform="rotate(-90, 20, ${(H-mT-mB)/2+mT})" text-anchor="middle">angle (°)</text>
+
+      <path d="${path3}" stroke="var(--warn)" stroke-width="1" fill="none" opacity="0.4"/>
+      <path d="${path2}" stroke="var(--accent2)" stroke-width="1.5" fill="none" opacity="0.7" stroke-dasharray="3 2"/>
+      <path d="${path1}" stroke="var(--fg)" stroke-width="2" fill="none"/>
+      <path d="${path4}" stroke="var(--accent3)" stroke-width="2" fill="none"/>
+
+      <text x="${W-mR+5}" y="${mT+10}" class="label" fill="var(--fg)">truth</text>
+      <text x="${W-mR+5}" y="${mT+25}" class="label" fill="var(--accent3)">complementary</text>
+      <text x="${W-mR+5}" y="${mT+40}" class="label" fill="var(--accent2)">gyro only</text>
+      <text x="${W-mR+5}" y="${mT+55}" class="label" fill="var(--warn)">accel only</text>
+    `;
+  }
+
+  Object.values(els).forEach(el=>el.addEventListener('input', update));
+  update();
+</script>
+</body>
+</html>

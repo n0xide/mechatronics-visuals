@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Transformer Explorer — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim);cursor:pointer}
+  .anchor:hover{border-color:var(--accent)}
+  .anchor.active{border-color:var(--accent);color:var(--accent)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:4px 8px;
+    font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .duality{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+  .col{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;padding:12px 14px}
+  .col h3{margin-top:0;color:var(--accent3)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Transformer Explorer</h1>
+  <p class="lede">A transformer trades voltage for current at the ratio of its turns. Connect a load on the secondary and the primary sees a <em>reflected</em> impedance — that's how a 4 Ω speaker hides behind an 8 kΩ tube plate, and how a USB-C charger talks to a 120 V wall. Slide N1/N2; watch V, I, and Z scale by the ratio (V), 1/ratio (I), and ratio² (Z). Then turn on the real-world parasitics: leakage inductance, magnetizing current, copper loss.</p>
+
+  <div class="anchors">
+    <button class="anchor active" data-preset="audio"><b>Audio output</b> 5 kΩ : 8 Ω · plate-to-speaker</button>
+    <button class="anchor" data-preset="iso"><b>1:1 isolation</b> · galvanic break</button>
+    <button class="anchor" data-preset="step-down"><b>Step-down 10:1</b> · 120 V → 12 V</button>
+    <button class="anchor" data-preset="step-up"><b>Step-up 1:10</b> · CCFL backlight</button>
+    <button class="anchor" data-preset="flyback"><b>Flyback 5:1</b> · 5 V SMPS</button>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>N1 (primary turns): <span class="readout" id="n1Read">500</span></label><input id="n1" type="range" min="10" max="2000" step="10" value="500"></div>
+    <div class="control"><label>N2 (secondary turns): <span class="readout" id="n2Read">50</span></label><input id="n2" type="range" min="10" max="2000" step="10" value="50"></div>
+    <div class="control"><label>V_primary (RMS): <span class="readout" id="vpRead">120 V</span></label><input id="vp" type="range" min="1" max="240" step="1" value="120"></div>
+    <div class="control"><label>R_load (secondary): <span class="readout" id="rlRead">8 Ω</span></label><input id="rl" type="range" min="0.1" max="100000" step="0.1" value="8"></div>
+    <div class="control"><label>Model</label>
+      <select id="model">
+        <option value="ideal" selected>Ideal (lossless, perfect coupling)</option>
+        <option value="real">Real (Llk, Lm, R_cu)</option>
+      </select>
+    </div>
+    <div class="control"><label>Operating frequency: <span class="readout" id="fRead">60 Hz</span></label><input id="freq" type="range" min="50" max="200000" step="50" value="60"></div>
+  </section>
+
+  <div class="figure">
+    <svg id="schem" viewBox="0 0 700 320" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+      <tr><td>Turns ratio a = N1/N2</td><td id="tRatio" class="num">10.0</td><td><code>N1 / N2</code></td></tr>
+      <tr><td>V_secondary</td><td id="tVs" class="num">12.0 V</td><td><code>V_p / a</code></td></tr>
+      <tr><td>I_secondary</td><td id="tIs" class="num">1.50 A</td><td><code>V_s / R_load</code></td></tr>
+      <tr><td>I_primary (load reflected)</td><td id="tIp" class="num">0.150 A</td><td><code>I_s / a</code></td></tr>
+      <tr><td>Reflected impedance Z_p</td><td id="tZp" class="num">800 Ω</td><td><code>a² · Z_s</code></td></tr>
+      <tr><td>Power delivered</td><td id="tP" class="num">18.0 W</td><td><code>V_s · I_s</code></td></tr>
+      <tr><td>Efficiency η</td><td id="tEta" class="num">100 %</td><td><code>P_out / P_in</code></td></tr>
+    </table>
+    <div class="vd"><b>Reflected impedance (live):</b> Z_p = (N1/N2)² · R_load = <span id="vdCalc">…</span></div>
+  </div>
+
+  <h2>The three transformations: V, I, Z</h2>
+  <p>An ideal transformer obeys two coupled laws (energy in = energy out, flux in = flux out). Those two laws produce three transformations of equal importance:</p>
+  <div class="deriv">
+    <span class="step">Faraday's law in each winding: <b>V₁ = N₁·dΦ/dt</b>, <b>V₂ = N₂·dΦ/dt</b> (same Φ since same core)</span>
+    <span class="step">Voltage ratio: <span class="arrow">→</span> <b>V₁/V₂ = N₁/N₂ = a</b></span>
+    <span class="step">Conservation of energy (no losses): <b>V₁·I₁ = V₂·I₂</b></span>
+    <span class="step">Current ratio: <span class="arrow">→</span> <b>I₁/I₂ = N₂/N₁ = 1/a</b></span>
+    <span class="step">Reflected impedance: <b>Z₁ = V₁/I₁ = (a·V₂)/(I₂/a) = a²·(V₂/I₂) = a²·Z₂</b></span>
+    <span class="step"><span class="arrow">→</span> <b>Z₁ = a² · Z₂</b> — the rule that lets a 4 Ω speaker look like 4 kΩ to a 1000-Ω plate.</span>
+  </div>
+
+  <h2>Real transformer parasitics</h2>
+  <p>Switch the "Real" model above and three resistors / two inductors appear in the schematic. Each one is named — and each one matters.</p>
+  <div class="duality">
+    <div class="col">
+      <h3>Inductive (frequency-dependent)</h3>
+      <p><b>Magnetizing inductance L_m</b> — even with no load, the primary needs current to magnetize the core. L_m is large; reactive current is small but not zero. At DC, L_m looks like a short and the transformer can't pass DC at all.</p>
+      <p><b>Leakage inductance L_lk</b> — flux that doesn't link both windings. Causes voltage spikes in flyback converters (snubber R+C kills them) and high-frequency rolloff in audio transformers.</p>
+    </div>
+    <div class="col">
+      <h3>Resistive (power-dependent)</h3>
+      <p><b>Winding resistance R_cu</b> — DC copper loss = I²·R_cu in each winding. The reason a 50 VA transformer is heavier than a 5 VA one: more copper, lower R_cu, less loss.</p>
+      <p><b>Core loss R_c</b> — modeled as a resistor in parallel with L_m. Eddy currents + hysteresis. At line frequency, ~5 % of the rated power.</p>
+      <p><b>Coupling k</b> — &lt; 1 in real transformers. k=0.99 is excellent; k=0.95 is normal; k=0.7 is a flyback with a deliberate gap.</p>
+    </div>
+  </div>
+
+  <h2>Worked example — tube power amp output</h2>
+  <div class="worked">
+    <h3>The constraints</h3>
+    <p>Single-ended 6V6 plate at 250 V, plate current 35 mA. Plate load wants ~5 kΩ for cleanest operation. Speaker is 8 Ω. Pick the turns ratio.</p>
+    <h3>The arithmetic</h3>
+    <span class="eq">Required Z_p / Z_s = 5000 / 8 = 625</span>
+    <span class="eq">a = √625 = 25 <span class="annot">(turns ratio N1:N2)</span></span>
+    <span class="eq">If N2 = 60 turns of #20 AWG: N1 = 1500 turns of #30 AWG <span class="annot">(thinner because lower current)</span></span>
+    <span class="eq">V_s at full power: V_p = √(P·Z_p) = √(2.5·5000) ≈ 112 V_pk; V_s = 112/25 = 4.47 V_pk = 3.16 V_rms</span>
+    <span class="eq">I_s at full power: 3.16/8 = 395 mA_rms; I_p = 395/25 = 15.8 mA_rms <span class="annot">(plus 35 mA DC bias)</span></span>
+    <h3>Why this works</h3>
+    <p>The tube only knows it's looking at 5 kΩ — which is what it wants. The speaker only knows 3.16 V is being applied to its 8 Ω — and absorbs 1.25 W. The transformer is the impedance matcher; without it, the tube wouldn't move the speaker at all (its plate impedance is 1000× higher than the cone).</p>
+  </div>
+
+  <h2>Worked example — 5 V flyback SMPS</h2>
+  <div class="worked">
+    <h3>The constraints</h3>
+    <p>Universal mains: 90–270 V_DC after rectification. Output: 5 V at 3 A. Switching MOSFET drain stress limit: 700 V. Pick the turns ratio.</p>
+    <h3>The arithmetic</h3>
+    <span class="eq">Reflected output voltage: V_or = a · (V_out + V_D) = a · (5 + 0.5) = 5.5·a <span class="annot">(D = output Schottky)</span></span>
+    <span class="eq">MOSFET drain stress at switch-off: V_in_max + V_or + spike margin ≤ 700 V</span>
+    <span class="eq">Allocating: 270 + V_or + 130 (spike) ≤ 700 → V_or ≤ 300 → a ≤ 54</span>
+    <span class="eq">Picking a = 6 (typical for 5 V output): V_or = 33 V, peak drain = 270 + 33 + spike ≈ 380 V → comfortably under 700 V</span>
+    <span class="eq">Primary peak current at 90 V_in, 50 kHz, D = 0.4: I_p,pk ≈ 2·P/(V·D) ≈ 2·15/(90·0.4) = 0.83 A</span>
+    <span class="eq">Secondary peak current: I_s,pk = a · I_p,pk = 5.0 A <span class="annot">(needs a 8 A Schottky)</span></span>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Z scales as a²</b>, V as a, I as 1/a. Drop a in half and Z drops by 4×. A 10:1 step-down means the primary side sees the load impedance times 100.</li>
+    <li><b>Transformers don't pass DC.</b> The flux Φ has to change for V to appear in the secondary. A pure DC current produces a constant flux and zero secondary voltage. SMPS exploit this: you switch a DC source on/off to create AC for the transformer.</li>
+    <li><b>The "ideal" view ignores L_m, but L_m sets the low-frequency rolloff.</b> Audio output transformers have huge cores (kg of iron) to make L_m large enough at 20 Hz.</li>
+    <li><b>Leakage inductance creates the snubber problem.</b> When the primary switch opens, the energy stored in L_lk has nowhere to go — it spikes the drain voltage. Every flyback PSU has a snubber RC across the primary to dissipate that energy.</li>
+    <li><b>Galvanic isolation is free with a transformer.</b> No DC path from primary to secondary. This is why mains-to-low-voltage power supplies use them — safety. Insulation rating (typically 1500–4000 V_RMS) is what gives "isolated" output rails.</li>
+    <li><b>Copper loss dominates at high current</b> — I²R. Doubling current quadruples loss. Step-down transformers run hotter on the secondary because that's where the high I lives.</li>
+  </ul>
+
+  <h2>Where transformers show up</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Mains power supplies</b> — 50/60 Hz line transformer + bridge + filter; large iron core, heavy.</li>
+      <li><b style="color:var(--fg)">Switch-mode (SMPS)</b> — flyback, forward, half/full bridge; small ferrite core at 50 kHz–1 MHz; much smaller and lighter.</li>
+      <li><b style="color:var(--fg)">Audio output</b> — push-pull or single-ended; matches tube plate impedance to speaker.</li>
+      <li><b style="color:var(--fg)">RF impedance match</b> — balun (balanced–unbalanced); UnUns and step-up transformers in antenna feeds.</li>
+      <li><b style="color:var(--fg)">Isolation</b> — medical, industrial, USB-PD. Insulation barrier rated kV_RMS.</li>
+      <li><b style="color:var(--fg)">Ethernet magnetics</b> — small audio-frequency transformer on every RJ-45 to break ground loops between switches.</li>
+      <li><b style="color:var(--fg)">CT (current transformer)</b> — one turn of mains wire passing through a toroid; secondary outputs current proportional to primary I, scaled by ratio.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>V ratio</dt><dd><span class="eq">V1/V2 = N1/N2 = a</span></dd>
+        <dt>I ratio</dt><dd><span class="eq">I1/I2 = N2/N1 = 1/a</span></dd>
+        <dt>Z reflection</dt><dd><span class="eq">Z_p = a² · Z_s</span></dd>
+        <dt>Power balance</dt><dd><span class="eq">V1·I1 = V2·I2 (ideal)</span></dd>
+        <dt>Faraday</dt><dd><span class="eq">V = N·dΦ/dt</span></dd>
+        <dt>Volt-second</dt><dd><span class="eq">B = (V·t)/(N·A_e) (avoid saturation)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>SHORTCUTS</h3>
+      <ul>
+        <li><b>Step-down a > 1</b> → V drops, I rises, Z reflects up by a²</li>
+        <li><b>Step-up a < 1</b> → V rises, I drops, Z reflects down by a²</li>
+        <li><b>1:1 isolation</b> → no V/I change; only galvanic break</li>
+        <li><b>4 Ω → 4 kΩ</b> needs a = √1000 ≈ 31.6 (turns 32:1)</li>
+        <li>Audio-grade: <b>k ≥ 0.99</b>; flyback intentionally <b>k ≈ 0.95</b></li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>Square-rooting wrong way</b> — Z ratio is squared, so going Z_p → a uses √. Forgetting this gives you a 100× error.</li>
+        <li><b>DC through a transformer</b> — saturates the core. Always design for AC; if DC is unavoidable (single-ended audio), use a gapped core.</li>
+        <li><b>No snubber on flyback primary</b> — L_lk spike will exceed MOSFET V_DS rating and kill it. Always add R+C+D snubber.</li>
+        <li><b>Wrong polarity dot</b> — dot at top of primary AND bottom of secondary inverts the phase; matters for push-pull and parallel windings.</li>
+        <li><b>Forgetting volt-second balance</b> — in an SMPS, ∫V·dt during ON must equal ∫V·dt during OFF, or B drifts and the core saturates.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EE Phase 2 — Passive Components</span> ·
+    Companion: <a href="diodes-zener-transformers.html">Diodes, Zener &amp; Transformers</a> ·
+    Forward: <a href="../phase-6-power-electronics/converter-filters.html">Converter Filters</a> for SMPS output filtering.
+  </footer>
+</main>
+<script>
+  const PRESETS = {
+    audio:     {n1:1250, n2:50,   vp:50,  rl:8,    f:1000,  label:"Audio output 5 kΩ : 8 Ω"},
+    iso:       {n1:500,  n2:500,  vp:120, rl:1000, f:60,    label:"1:1 isolation"},
+    "step-down":{n1:1000,n2:100,  vp:120, rl:8,    f:60,    label:"Step-down 10:1 (120 V → 12 V)"},
+    "step-up": {n1:50,   n2:500,  vp:12,  rl:50000,f:50000, label:"Step-up 1:10 (CCFL)"},
+    flyback:   {n1:50,   n2:10,   vp:200, rl:1.67, f:50000, label:"Flyback 5:1 (5 V SMPS)"},
+  };
+
+  let state = {n1:1250, n2:50, vp:50, rl:8, model:"ideal", f:1000};
+
+  function fmtR(r){
+    if(r >= 1e6) return (r/1e6).toFixed(2) + " MΩ";
+    if(r >= 1e3) return (r/1e3).toFixed(2) + " kΩ";
+    if(r >= 1) return r.toFixed(2) + " Ω";
+    return (r*1000).toFixed(1) + " mΩ";
+  }
+  function fmtV(v){
+    if (Math.abs(v) >= 1) return v.toFixed(2) + " V";
+    return (v*1000).toFixed(1) + " mV";
+  }
+  function fmtI(i){
+    if(Math.abs(i)<1e-3) return (i*1e6).toFixed(1) + " µA";
+    if(Math.abs(i)<1)   return (i*1e3).toFixed(2) + " mA";
+    return i.toFixed(3) + " A";
+  }
+  function fmtP(p){
+    if(Math.abs(p)<1e-3) return (p*1e6).toFixed(1) + " µW";
+    if(Math.abs(p)<1)    return (p*1e3).toFixed(2) + " mW";
+    return p.toFixed(3) + " W";
+  }
+  function fmtF(f){
+    if (f >= 1e6) return (f/1e6).toFixed(2) + " MHz";
+    if (f >= 1e3) return (f/1e3).toFixed(2) + " kHz";
+    return f.toFixed(0) + " Hz";
+  }
+
+  function compute(){
+    const a = state.n1 / state.n2;
+    const Vs_ideal = state.vp / a;
+    const Is_ideal = Vs_ideal / state.rl;
+    const Ip_ideal = Is_ideal / a;
+    const Zp_ideal = a*a * state.rl;
+    const Pdelivered_ideal = Vs_ideal * Is_ideal;
+    const Pin_ideal = state.vp * Ip_ideal;
+
+    let Vs = Vs_ideal, Is = Is_ideal, Ip = Ip_ideal, Pin = Pin_ideal, Pdel = Pdelivered_ideal;
+
+    if (state.model === "real"){
+      // Simplified equivalent: R_cu_p = 1 Ω, R_cu_s = 0.05 Ω, L_m large, L_lk small
+      const Rcu_p = 0.5 + state.n1 * 0.001;
+      const Rcu_s = 0.05 + state.n2 * 0.0002;
+      // Reflect Rcu_s to primary
+      const Rcu_s_refl = a*a * Rcu_s;
+      const RL_refl    = a*a * state.rl;
+      // total primary loop resistance
+      const R_total = Rcu_p + Rcu_s_refl + RL_refl;
+      Ip = state.vp / R_total;
+      Is = a * Ip;
+      Vs = Is * state.rl;
+      Pin = state.vp * Ip;
+      Pdel = Vs * Is;
+    }
+    const eta = Pin > 0 ? Pdel / Pin : 0;
+    return {a, Vs, Is, Ip, Zp:a*a*state.rl, Pdel, Pin, eta};
+  }
+
+  function drawSchem(){
+    const svg = document.getElementById('schem');
+    const r = compute();
+    let s = '';
+    // Frame
+    s += `<rect x="20" y="20" width="660" height="280" fill="var(--bg-elev2)" stroke="var(--line)" rx="6"/>`;
+    // Primary side
+    s += `<text x="100" y="50" class="label">PRIMARY (N1=${state.n1})</text>`;
+    s += `<text x="100" y="68" class="label-dim">V_p = ${fmtV(state.vp)}</text>`;
+    s += `<text x="100" y="82" class="label-dim">I_p = ${fmtI(r.Ip)}</text>`;
+
+    // primary source (circle with sine)
+    s += `<circle cx="80" cy="160" r="20" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1.5"/>`;
+    s += `<path d="M 65 160 Q 72 145, 80 160 T 95 160" stroke="var(--accent)" fill="none" stroke-width="1.5"/>`;
+    s += `<text x="80" y="195" class="label" text-anchor="middle">V_p</text>`;
+    // primary wires
+    s += `<line x1="80" y1="140" x2="80" y2="120" class="wire"/>`;
+    s += `<line x1="80" y1="120" x2="220" y2="120" class="wire"/>`;
+    s += `<line x1="80" y1="180" x2="80" y2="200" class="wire"/>`;
+    s += `<line x1="80" y1="200" x2="220" y2="200" class="wire"/>`;
+
+    // primary coil
+    s += `<rect x="220" y="115" width="14" height="90" fill="var(--bg-elev)" stroke="var(--accent)" stroke-width="1.5"/>`;
+    for(let i=0;i<5;i++){
+      s += `<circle cx="234" cy="${130 + i*12}" r="5" fill="none" stroke="var(--accent)" stroke-width="1.5"/>`;
+    }
+
+    // Core (vertical bars between coils)
+    s += `<rect x="260" y="100" width="6" height="120" fill="var(--fg-dim)"/>`;
+    s += `<rect x="270" y="100" width="6" height="120" fill="var(--fg-dim)"/>`;
+    s += `<text x="266" y="240" class="label-dim" text-anchor="middle">core</text>`;
+
+    // secondary coil
+    s += `<rect x="296" y="115" width="14" height="90" fill="var(--bg-elev)" stroke="var(--accent2)" stroke-width="1.5"/>`;
+    for(let i=0;i<5;i++){
+      s += `<circle cx="296" cy="${130 + i*12}" r="5" fill="none" stroke="var(--accent2)" stroke-width="1.5"/>`;
+    }
+
+    // Polarity dots
+    s += `<circle cx="234" cy="125" r="3" fill="var(--accent)"/>`;
+    s += `<circle cx="296" cy="125" r="3" fill="var(--accent2)"/>`;
+
+    // Secondary wires
+    s += `<line x1="310" y1="120" x2="500" y2="120" class="wire"/>`;
+    s += `<line x1="310" y1="200" x2="500" y2="200" class="wire"/>`;
+
+    // Load resistor
+    s += `<rect x="490" y="135" width="40" height="50" fill="var(--bg-elev2)" stroke="var(--accent3)" stroke-width="1.5"/>`;
+    s += `<line x1="500" y1="120" x2="500" y2="135" class="wire"/>`;
+    s += `<line x1="500" y1="185" x2="500" y2="200" class="wire"/>`;
+    s += `<text x="540" y="155" class="label">R_load</text>`;
+    s += `<text x="540" y="172" class="label-dim">${fmtR(state.rl)}</text>`;
+
+    // Secondary labels
+    s += `<text x="370" y="50" class="label">SECONDARY (N2=${state.n2})</text>`;
+    s += `<text x="370" y="68" class="label-dim">V_s = ${fmtV(r.Vs)}</text>`;
+    s += `<text x="370" y="82" class="label-dim">I_s = ${fmtI(r.Is)}</text>`;
+
+    // Real-model parasitics overlay
+    if (state.model === "real"){
+      s += `<text x="100" y="265" class="label-warn">L_lk_p · R_cu_p</text>`;
+      s += `<text x="400" y="265" class="label-warn">L_lk_s · R_cu_s</text>`;
+      s += `<text x="262" y="278" class="label-warn" text-anchor="middle">L_m · R_core</text>`;
+      // little symbolic boxes
+      s += `<rect x="160" y="105" width="20" height="10" fill="none" stroke="var(--warn)" stroke-width="1"/>`;
+      s += `<rect x="350" y="105" width="20" height="10" fill="none" stroke="var(--warn)" stroke-width="1"/>`;
+    }
+
+    // Arrow showing reflected impedance
+    s += `<text x="160" y="240" class="label-ok">Z_p_reflected = ${fmtR(r.Zp)}</text>`;
+    s += `<line x1="160" y1="225" x2="240" y2="225" stroke="var(--accent3)" stroke-width="1" stroke-dasharray="3 3"/>`;
+    s += `<text x="200" y="280" class="label-dim" text-anchor="middle">a = N1/N2 = ${r.a.toFixed(3)}</text>`;
+
+    svg.innerHTML = s;
+  }
+
+  function update(){
+    document.getElementById('n1Read').textContent = state.n1;
+    document.getElementById('n2Read').textContent = state.n2;
+    document.getElementById('vpRead').textContent = fmtV(state.vp);
+    document.getElementById('rlRead').textContent = fmtR(state.rl);
+    document.getElementById('fRead').textContent  = fmtF(state.f);
+
+    const r = compute();
+    document.getElementById('tRatio').textContent = r.a.toFixed(3);
+    document.getElementById('tVs').textContent = fmtV(r.Vs);
+    document.getElementById('tIs').textContent = fmtI(r.Is);
+    document.getElementById('tIp').textContent = fmtI(r.Ip);
+    document.getElementById('tZp').textContent = fmtR(r.Zp);
+    document.getElementById('tP').textContent  = fmtP(r.Pdel);
+    document.getElementById('tEta').textContent = (r.eta * 100).toFixed(1) + " %";
+
+    document.getElementById('vdCalc').textContent =
+      `(${state.n1}/${state.n2})² · ${fmtR(state.rl)} = ${r.a.toFixed(2)}² · ${fmtR(state.rl)} = ${fmtR(r.Zp)}`;
+
+    drawSchem();
+  }
+
+  document.getElementById('n1').addEventListener('input', e => { state.n1 = parseInt(e.target.value); update(); });
+  document.getElementById('n2').addEventListener('input', e => { state.n2 = parseInt(e.target.value); update(); });
+  document.getElementById('vp').addEventListener('input', e => { state.vp = parseFloat(e.target.value); update(); });
+  document.getElementById('rl').addEventListener('input', e => { state.rl = parseFloat(e.target.value); update(); });
+  document.getElementById('freq').addEventListener('input', e => { state.f = parseInt(e.target.value); update(); });
+  document.getElementById('model').addEventListener('change', e => { state.model = e.target.value; update(); });
+
+  document.querySelectorAll('.anchor').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.anchor').forEach(a => a.classList.remove('active'));
+      b.classList.add('active');
+      const p = PRESETS[b.dataset.preset];
+      Object.assign(state, p);
+      document.getElementById('n1').value = state.n1;
+      document.getElementById('n2').value = state.n2;
+      document.getElementById('vp').value = state.vp;
+      document.getElementById('rl').value = state.rl;
+      document.getElementById('freq').value = state.f;
+      update();
+    });
+  });
+
+  // initialize to audio preset
+  Object.assign(state, PRESETS.audio);
+  document.getElementById('n1').value = state.n1;
+  document.getElementById('n2').value = state.n2;
+  document.getElementById('vp').value = state.vp;
+  document.getElementById('rl').value = state.rl;
+  document.getElementById('freq').value = state.f;
+  update();
+</script>
+</body>
+</html>

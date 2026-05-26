@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fin Efficiency — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>Fin Efficiency</h1>
+  <p class="lede">A heat-sink fin sticks out into the air to dump heat. But each point along the fin is cooler than the base — so the fin face nearest the tip rejects less heat than the face near the base. <b>Fin efficiency η_fin</b> is the actual heat rejected vs the maximum possible (if the whole fin were at base temperature). It depends on fin geometry and conductivity through a single parameter m·L. Slide fin length, thickness, and material; watch when adding more fin length just adds weight, not cooling.</p>
+
+  <div class="anchors">
+    <span class="anchor"><b>m</b> = √(h·P / (k·A_c))</span>
+    <span class="anchor"><b>η</b> = tanh(mL) / (mL)</span>
+    <span class="anchor"><b>mL &gt; 2.5</b>: η &lt; 40%, wasting fin</span>
+    <span class="anchor"><b>η_max @ mL = 0</b>: but no surface</span>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>Fin material</label>
+      <select id="mat">
+        <option value="copper">Copper k = 400 W/m·K</option>
+        <option value="aluminum" selected>Aluminum k = 200 W/m·K</option>
+        <option value="brass">Brass k = 120 W/m·K</option>
+        <option value="steel">Mild steel k = 50 W/m·K</option>
+        <option value="ss">Stainless 304 k = 16 W/m·K</option>
+        <option value="pla">PLA print k = 0.13 W/m·K</option>
+      </select>
+    </div>
+    <div class="control"><label>Fin length L: <span class="readout" id="LRead">30 mm</span></label><input id="L" type="range" min="5" max="120" step="1" value="30"></div>
+    <div class="control"><label>Fin thickness t: <span class="readout" id="tRead">1.0 mm</span></label><input id="t" type="range" min="0.2" max="6" step="0.1" value="1.0"></div>
+    <div class="control"><label>Fin width w: <span class="readout" id="wRead">30 mm</span></label><input id="w" type="range" min="5" max="100" step="1" value="30"></div>
+    <div class="control"><label>Convection h: <span class="readout" id="hRead">25 W/m²·K</span></label><input id="h" type="range" min="5" max="200" step="1" value="25"></div>
+    <div class="control"><label>Base temperature ΔT_b: <span class="readout" id="dtRead">50 K</span></label><input id="dt" type="range" min="5" max="150" step="1" value="50"></div>
+  </section>
+
+  <div class="figure">
+    <svg id="diagram" viewBox="0 0 920 380" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
+      <tr><td>m parameter</td><td id="rM" class="num">19.4 /m</td><td><code>√(h·P / (k·A_c))</code></td></tr>
+      <tr><td>mL</td><td id="rML" class="num">0.58</td><td><code>m × L</code></td></tr>
+      <tr><td>Fin efficiency η</td><td id="rEta" class="num">90.0%</td><td><code>tanh(mL) / (mL)</code></td></tr>
+      <tr><td>Heat rejected, this fin</td><td id="rQ" class="num">2.30 W</td><td><code>η · h · A_surf · ΔT_b</code></td></tr>
+      <tr><td>Heat if perfect (ideal max)</td><td id="rQmax" class="num">2.55 W</td><td><code>h · A_surf · ΔT_b</code></td></tr>
+      <tr><td>Tip temperature</td><td id="rTtip" class="num">42.0 K above ambient</td><td><code>ΔT_tip = ΔT_b / cosh(mL)</code></td></tr>
+      <tr><td>Optimal L (η drop to 75%)</td><td id="rLopt" class="num">85 mm</td><td><code>at mL ≈ 1.2</code></td></tr>
+    </table>
+    <div class="vd" id="verdict"><b>Verdict:</b> <span id="verdictText">Configured.</span></div>
+  </div>
+
+  <h2>Where the efficiency formula comes from</h2>
+  <p>Treat the fin as a long thin rod sticking out of a hot base into air at T_∞. Heat conducts along the fin (axially) and convects off the sides.</p>
+  <div class="deriv">
+    <span class="step">Energy balance on a slice dx of fin: heat in by conduction − heat out by conduction (axially) − heat off by convection (sides) = 0 (steady).</span>
+    <span class="step">For uniform A_c (cross-section) and P (perimeter):</span>
+    <span class="step">  d²θ/dx² − m²θ = 0  where θ = T(x) − T_∞ and m² = h·P/(k·A_c)</span>
+    <span class="step">For long fin with insulated tip (or zero-tip-convection idealization), the temperature profile is θ(x) = θ_b · cosh(m(L − x)) / cosh(mL).</span>
+    <span class="step">Total heat rejected: Q_fin = √(h·P·k·A_c) · θ_b · tanh(mL)</span>
+    <span class="step">Ideal max (whole fin at θ_b): Q_max = h · A_surf · θ_b ≈ h · P · L · θ_b</span>
+    <span class="step">Ratio: <b>η_fin = Q_fin / Q_max = tanh(mL) / (mL)</b></span>
+  </div>
+
+  <h2>The mL trade-off</h2>
+  <p>Two extreme regimes, one sweet spot:</p>
+  <div class="deriv">
+    <span class="step"><b>Short fin (mL &lt;&lt; 1)</b>: tanh(mL) ≈ mL → η ≈ 1. Almost the whole fin is at base temp. But A_surf is small → Q is small. The fin works ideally but barely matters.</span>
+    <span class="step"><b>Long fin (mL &gt;&gt; 1)</b>: tanh(mL) → 1 → η → 1/(mL). Tip temperature → T_∞; tip is useless. Heat capped by conduction along fin, not by surface area. Adding more length adds weight and pressure drop without proportional cooling.</span>
+    <span class="step"><b>Sweet spot</b>: mL ≈ 1–1.5, η = 75–90%. Most of the fin is "warm enough" to convect; extra length pays diminishing returns past mL = 2.</span>
+    <span class="step">For a given m (fixed material, geometry, h): adding L decreases η but adds A_surf. Combined Q = η · h · A_surf · θ_b peaks somewhere — but slowly. Often "make as long as you can" is bounded by space, weight, or pressure drop, not by efficiency.</span>
+  </div>
+
+  <h2>Worked example — CPU heat sink fin sizing</h2>
+  <div class="worked">
+    <h3>The problem</h3>
+    <p>A CPU dissipates 50 W. Allow ΔT_max = 60 K above 25 °C ambient. Forced air at 25 °C provides h ≈ 50 W/m²·K. Heat-sink base is aluminum with 20 fins; design each fin.</p>
+
+    <h3>Per-fin geometry</h3>
+    <span class="eq">Per-fin Q = 50 / 20 = 2.5 W</span>
+    <span class="eq">Fin material Al: k = 200 W/m·K</span>
+    <span class="eq">Trial: w = 40 mm wide, t = 1.5 mm thick, L = ?</span>
+    <span class="eq">m² = h·P/(k·A_c) = 50 · 2(0.040 + 0.0015) / (200 · 0.040 · 0.0015) = 4.15 / 0.012 = 346 → m = 18.6 /m</span>
+
+    <h3>Required surface area</h3>
+    <span class="eq">If η = 0.8: Q = 0.8 · 50 · A_fin · 60 = 2400 · A_fin = 2.5 W → A_fin = 1.04 × 10⁻³ m² ≈ 1040 mm²</span>
+    <span class="eq">A_fin ≈ 2 · w · L (top + bottom faces) = 2 · 0.040 · L = 0.08 L → L = 13 mm</span>
+    <span class="eq">Check: mL = 18.6 · 0.013 = 0.24 → η = tanh(0.24)/0.24 = 0.98. Refit:</span>
+    <span class="eq">If η = 0.98: Q = 0.98 · 50 · 2·0.040·L · 60 = 235 L → L = 2.5/235 = 0.0106 m = 11 mm. Iterate: mL = 0.20, η = 0.99. Converged → <b>L ≈ 11 mm</b>.</span>
+
+    <h3>Design check</h3>
+    <p style="color:var(--fg-dim);font-size:12px;margin-top:8px">A 40 × 11 mm Al fin at h = 50 is heavily over-fanned: η = 99%, you could make it shorter or thinner. In practice you stack 20–30 fins of 25-50 mm length and run lower h (less fan), or use natural convection (h ~ 5–10) which forces longer fins. Slide h down to 10 W/m²·K to see η drop.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Copper is silly for natural convection</b> — at low h (~5 W/m²·K), even short Al fins have η &gt; 95%. Copper's higher k buys very little extra. Use Al; save the cost.</li>
+    <li><b>Stainless and plastic make terrible fins</b> — low k means short conduction length before the fin cools off. mL gets large quickly; most of the fin is dead weight. Steel-frame heat sinks need vapor chambers or heat pipes to compensate.</li>
+    <li><b>Forced air (high h) hurts efficiency</b> — h appears in m². Stronger fan → bigger m → shorter fin needed for η. Counter-intuitively, fans need <em>shorter</em> fins, not longer ones, to maintain efficiency.</li>
+    <li><b>Thin fins are better… up to a point</b> — thinning increases P/A_c slowly, but conduction resistance grows fast. Too thin and the fin can't get heat to the surface. Optimum is around t = 1–2 mm for Al.</li>
+    <li><b>Tip temperature ≈ ΔT_b / cosh(mL)</b> — at mL = 1, tip is at 65% of base; at mL = 2, tip is at 27%; at mL = 3, tip is at 10%. Beyond mL ≈ 3 the tip is just air temperature and you're wasting material.</li>
+    <li><b>Spacing matters too</b> — fins too close (closer than boundary layer thickness) trap stagnant air and h drops. Typical spacing: 5–10 mm for natural convection, 2–4 mm with fan.</li>
+  </ul>
+
+  <h2>Cross-links</h2>
+  <div class="crosslink">
+    <h4>Related</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Heat-transfer modes</b> — <a href="heat-transfer-modes.html">conduction, convection, radiation</a>.</li>
+      <li><b style="color:var(--fg)">Heat sinks</b> — <a href="heat-sinks.html">full sizing including fin count</a>.</li>
+      <li><b style="color:var(--fg)">Thermal networks</b> — <a href="thermal-networks.html">R-θ analog circuits</a>. Fin acts as parallel resistance.</li>
+      <li><b style="color:var(--fg)">TIM &amp; PCB</b> — <a href="tim-pcb.html">thermal interface material</a>. The first R-θ in a CPU stack.</li>
+      <li><b style="color:var(--fg)">System thermal budget</b> — <a href="system-thermal-budget.html">total Q vs allowable T</a>.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>m</dt><dd><span class="eq">√(h P / (k A_c))</span></dd>
+        <dt>η_fin</dt><dd><span class="eq">tanh(mL) / (mL)</span></dd>
+        <dt>Q_fin</dt><dd><span class="eq">η · h · A_surf · ΔT_b</span></dd>
+        <dt>T(x)</dt><dd><span class="eq">T_∞ + ΔT_b · cosh(m(L−x)) / cosh(mL)</span></dd>
+        <dt>T_tip</dt><dd><span class="eq">T_∞ + ΔT_b / cosh(mL)</span></dd>
+        <dt>Optimum</dt><dd><span class="eq">mL ≈ 1–1.5 typical</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>EFFICIENCY TABLE</h3>
+      <ul>
+        <li><b>mL = 0.5</b> → η = 92%</li>
+        <li><b>mL = 1.0</b> → η = 76%</li>
+        <li><b>mL = 1.5</b> → η = 60%</li>
+        <li><b>mL = 2.0</b> → η = 48%</li>
+        <li><b>mL = 3.0</b> → η = 33%</li>
+        <li><b>mL = 5.0</b> → η = 20%</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li><b>Fin too long</b> — extra tip material does nothing past mL ≈ 3.</li>
+        <li><b>Plastic fins</b> — k is so low that even tiny fins are inefficient.</li>
+        <li><b>Tip convection</b> — assumed insulated tip; real tips lose heat. Use "corrected length" L_c = L + t/2.</li>
+        <li><b>Adjacent fins interfere</b> — boundary-layer collision drops effective h.</li>
+        <li><b>Forgetting base resistance</b> — heat must reach the fin base. Big spreaders or heat pipes are needed for hot-spot CPUs.</li>
+        <li><b>Comparing η ratios across designs</b> — η = 90% on a small fin can reject less heat than η = 50% on a big fin. Q = η·A·ΔT is what matters.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">ME Phase 9 — Thermal Engineering</span> ·
+    Related: <a href="heat-transfer-modes.html">Heat Transfer Modes</a> · <a href="heat-sinks.html">Heat Sinks</a> · <a href="thermal-networks.html">Thermal Networks</a>
+  </footer>
+</main>
+<script>
+  const K_TABLE = {
+    'copper': 400, 'aluminum': 200, 'brass': 120,
+    'steel': 50, 'ss': 16, 'pla': 0.13
+  };
+
+  const matEl = document.getElementById('mat');
+  const LEl = document.getElementById('L');
+  const tEl = document.getElementById('t');
+  const wEl = document.getElementById('w');
+  const hEl = document.getElementById('h');
+  const dtEl = document.getElementById('dt');
+
+  function update(){
+    const mat = matEl.value;
+    const L = parseFloat(LEl.value) / 1000;   // m
+    const t = parseFloat(tEl.value) / 1000;   // m
+    const w = parseFloat(wEl.value) / 1000;   // m
+    const h = parseFloat(hEl.value);
+    const dt = parseFloat(dtEl.value);
+    const k = K_TABLE[mat];
+    document.getElementById('LRead').textContent = (L*1000).toFixed(0)+" mm";
+    document.getElementById('tRead').textContent = (t*1000).toFixed(2)+" mm";
+    document.getElementById('wRead').textContent = (w*1000).toFixed(0)+" mm";
+    document.getElementById('hRead').textContent = h+" W/m²·K";
+    document.getElementById('dtRead').textContent = dt+" K";
+
+    const P = 2*(w + t);          // perimeter
+    const Ac = w*t;               // cross-section
+    const m_val = Math.sqrt(h*P / (k*Ac));
+    const mL = m_val * L;
+    const eta = Math.tanh(mL) / mL;
+    const Asurf = P * L;  // approximate, ignoring tip
+    const Qmax = h * Asurf * dt;
+    const Qact = eta * Qmax;
+    const Ttip = dt / Math.cosh(mL);
+    // Find L where eta would drop to 75%
+    let Lopt = 0;
+    for(let testL=0; testL<2; testL+=0.001){
+      const tML = m_val * testL;
+      const tEta = tML < 0.001 ? 1 : Math.tanh(tML)/tML;
+      if(tEta < 0.75){ Lopt = testL; break; }
+    }
+
+    document.getElementById('rM').textContent  = m_val.toFixed(1)+" /m";
+    document.getElementById('rML').textContent = mL.toFixed(2);
+    document.getElementById('rEta').textContent = (eta*100).toFixed(1)+"%";
+    document.getElementById('rQ').textContent   = Qact.toFixed(2)+" W";
+    document.getElementById('rQmax').textContent = Qmax.toFixed(2)+" W";
+    document.getElementById('rTtip').textContent = Ttip.toFixed(1)+" K above ambient";
+    document.getElementById('rLopt').textContent = (Lopt*1000).toFixed(0)+" mm (mL ≈ 1.2)";
+
+    const v = document.getElementById('verdictText');
+    if(eta > 0.9){
+      v.innerHTML = `<b style="color:var(--accent3)">Highly efficient (${(eta*100).toFixed(0)}%)</b> — fin is short relative to material. Add more length for more total Q; η will gracefully drop.`;
+    } else if(eta > 0.7){
+      v.innerHTML = `<b style="color:var(--accent3)">Good (${(eta*100).toFixed(0)}%)</b> — sweet spot. Extra fin length pays modest dividends.`;
+    } else if(eta > 0.5){
+      v.innerHTML = `<b style="color:var(--accent2)">Diminishing returns (${(eta*100).toFixed(0)}%)</b> — tip is significantly cooler than base. Consider switching to higher-k material before adding length.`;
+    } else {
+      v.innerHTML = `<b style="color:var(--warn)">Inefficient (${(eta*100).toFixed(0)}%)</b> — fin is too long for its material. Tip is barely above ambient. Shorten or use copper/Al.`;
+    }
+
+    drawFin(L, t, w, m_val, eta, mL, dt);
+  }
+
+  function drawFin(L, t, w, m_val, eta, mL, dt){
+    const svg = document.getElementById('diagram');
+    // Show fin in side view + temperature gradient + efficiency curve
+    const x0 = 60, y0 = 60, finW = 400;
+    const sc = finW / (L*1000);
+    const tpx = (t*1000)*sc;
+    let s = `
+      <text x="${x0}" y="30" class="label">Fin side view + temperature profile</text>
+      <!-- base wall -->
+      <rect x="${x0-20}" y="${y0-50}" width="20" height="200"
+            fill="var(--bg-elev2)" stroke="var(--warn)" stroke-width="2"/>
+      <text x="${x0-25}" y="${y0+50}" class="label-warn" text-anchor="end">T_base</text>
+      <!-- fin profile -->
+      <rect x="${x0}" y="${y0+50-tpx*3}" width="${finW}" height="${tpx*6}"
+            fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="1"/>
+      <text x="${x0+finW/2}" y="${y0+50-tpx*3-8}" class="label-dim" text-anchor="middle">L = ${(L*1000).toFixed(0)} mm</text>
+      <text x="${x0+finW+5}" y="${y0+50+tpx*3+15}" class="label-dim">tip</text>
+      <!-- thickness annotation -->
+      <text x="${x0+10}" y="${y0+50+tpx*4}" class="label-dim">t=${(t*1000).toFixed(1)}mm</text>
+
+      <!-- temperature profile overlay -->
+      <text x="${x0}" y="${y0+170}" class="label">Temperature along fin:</text>
+    `;
+    // Plot T(x)
+    const py0 = y0 + 220;
+    const pyH = 80;
+    let path = `M ${x0} ${py0}`;
+    for(let xi=0; xi<=1; xi+=0.02){
+      const xphys = xi * L;
+      const Tx = dt * Math.cosh(m_val*(L - xphys)) / Math.cosh(m_val*L);
+      const px = x0 + xi * finW;
+      const py = py0 - (Tx / dt) * pyH;
+      path += ` L ${px} ${py}`;
+    }
+    s += `<line x1="${x0}" y1="${py0}" x2="${x0+finW}" y2="${py0}" stroke="var(--fg-dim)" stroke-width="1"/>`;
+    s += `<line x1="${x0}" y1="${py0-pyH}" x2="${x0+finW}" y2="${py0-pyH}" stroke="var(--fg-dim)" stroke-width="1" stroke-dasharray="3,3"/>`;
+    s += `<text x="${x0-5}" y="${py0+3}" class="label-dim" text-anchor="end">0</text>`;
+    s += `<text x="${x0-5}" y="${py0-pyH+3}" class="label-dim" text-anchor="end">ΔT_b = ${dt}</text>`;
+    s += `<path d="${path}" stroke="var(--accent)" stroke-width="2" fill="none"/>`;
+    s += `<text x="${x0+finW}" y="${py0-((dt/Math.cosh(m_val*L))/dt)*pyH-5}" class="label" fill="var(--accent)">T_tip = ${(dt/Math.cosh(m_val*L)).toFixed(1)} K</text>`;
+
+    // Efficiency curve on right panel
+    const ex0 = x0+finW+80, ey0 = y0+20, ew = 260, eh = 200;
+    s += `<text x="${ex0}" y="${ey0-10}" class="label">η vs mL</text>`;
+    s += `<line x1="${ex0}" y1="${ey0+eh}" x2="${ex0+ew}" y2="${ey0+eh}" stroke="var(--fg-dim)" stroke-width="1"/>`;
+    s += `<line x1="${ex0}" y1="${ey0}" x2="${ex0}" y2="${ey0+eh}" stroke="var(--fg-dim)" stroke-width="1"/>`;
+    s += `<text x="${ex0-5}" y="${ey0+10}" class="label-dim" text-anchor="end">1.0</text>`;
+    s += `<text x="${ex0-5}" y="${ey0+eh+5}" class="label-dim" text-anchor="end">0</text>`;
+    s += `<text x="${ex0+ew}" y="${ey0+eh+15}" class="label-dim" text-anchor="middle">mL = 6</text>`;
+    s += `<text x="${ex0}" y="${ey0+eh+15}" class="label-dim" text-anchor="middle">0</text>`;
+    let etaPath = `M ${ex0} ${ey0}`;
+    for(let mlP=0.01; mlP<=6; mlP+=0.05){
+      const e = Math.tanh(mlP)/mlP;
+      const px = ex0 + (mlP/6)*ew;
+      const py = ey0 + eh - e*eh;
+      etaPath += ` L ${px} ${py}`;
+    }
+    s += `<path d="${etaPath}" stroke="var(--accent)" stroke-width="2" fill="none"/>`;
+    // Current point
+    const cx = ex0 + (Math.min(mL,6)/6)*ew, cy = ey0 + eh - eta*eh;
+    s += `<circle cx="${cx}" cy="${cy}" r="5" fill="var(--accent3)"/>`;
+    s += `<text x="${cx+8}" y="${cy+3}" class="label-ok">mL=${mL.toFixed(2)}, η=${(eta*100).toFixed(0)}%</text>`;
+
+    svg.innerHTML = s;
+  }
+
+  matEl.addEventListener('change', update);
+  LEl.addEventListener('input', update);
+  tEl.addEventListener('input', update);
+  wEl.addEventListener('input', update);
+  hEl.addEventListener('input', update);
+  dtEl.addEventListener('input', update);
+  update();
+</script>
+</body>
+</html>

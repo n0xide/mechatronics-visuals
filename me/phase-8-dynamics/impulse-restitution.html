@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Impulse &amp; Coefficient of Restitution — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>Impulse &amp; Coefficient of Restitution</h1>
+  <p class="lede">When two bodies collide, momentum is always conserved — but kinetic energy generally isn't. The coefficient of restitution <b>e</b> bridges them: e = 0 is a perfectly plastic collision (objects stick), e = 1 is perfectly elastic (no energy lost). Drag the masses, the incoming velocities, and e; watch the after-collision velocities update, see how much KE survives, and compare the impulse with experience.</p>
+
+  <div class="anchors">
+    <span class="anchor"><b>e</b> = (v₂' − v₁') / (v₁ − v₂)</span>
+    <span class="anchor"><b>p</b> conserved always</span>
+    <span class="anchor"><b>KE</b> conserved only if e = 1</span>
+    <span class="anchor"><b>Bowling ball</b> e ≈ 0.4–0.7</span>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>Mass m₁: <span class="readout" id="m1Read">2.0 kg</span></label><input id="m1" type="range" min="0.1" max="20" step="0.1" value="2"></div>
+    <div class="control"><label>Mass m₂: <span class="readout" id="m2Read">1.0 kg</span></label><input id="m2" type="range" min="0.1" max="20" step="0.1" value="1"></div>
+    <div class="control"><label>v₁ (left mass, right+): <span class="readout" id="v1Read">5.0 m/s</span></label><input id="v1" type="range" min="-10" max="20" step="0.5" value="5"></div>
+    <div class="control"><label>v₂ (right mass, right+): <span class="readout" id="v2Read">0.0 m/s</span></label><input id="v2" type="range" min="-20" max="10" step="0.5" value="0"></div>
+    <div class="control"><label>Restitution e: <span class="readout" id="eRead">0.80</span></label><input id="e" type="range" min="0" max="1" step="0.01" value="0.8"></div>
+  </section>
+
+  <div class="figure">
+    <svg id="diagram" viewBox="0 0 920 320" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Before</th><th>After</th><th>Formula</th></tr>
+      <tr><td>v₁ / v₁'</td><td id="v1B" class="num">5.0 m/s</td><td id="v1A" class="num">−1.0 m/s</td><td><code>conservation + e equation</code></td></tr>
+      <tr><td>v₂ / v₂'</td><td id="v2B" class="num">0.0 m/s</td><td id="v2A" class="num">3.0 m/s</td><td><code>(see derivation)</code></td></tr>
+      <tr><td>Momentum p</td><td id="pB" class="num">10.0 kg·m/s</td><td id="pA" class="num">10.0 kg·m/s</td><td><code>m₁v₁ + m₂v₂ = m₁v₁' + m₂v₂'</code></td></tr>
+      <tr><td>Kinetic energy</td><td id="KEB" class="num">25.0 J</td><td id="KEA" class="num">14.0 J</td><td><code>½ m v²</code></td></tr>
+      <tr><td>Energy lost</td><td colspan="2" id="EL" class="num">11.0 J (44%)</td><td><code>ΔKE = (1 − e²) · ½ μ v_rel²</code></td></tr>
+      <tr><td>Impulse J = ∫F dt</td><td colspan="2" id="JI" class="num">6.0 N·s</td><td><code>Δp of either mass</code></td></tr>
+    </table>
+    <div class="vd" id="verdict"><b>Type:</b> <span id="verdictText">Slightly elastic collision: 56% of KE retained.</span></div>
+  </div>
+
+  <h2>Why momentum is always conserved but energy isn't</h2>
+  <p>Momentum conservation comes from Newton's 3rd law: the force one body exerts on the other is equal and opposite. The impulses cancel; the system's total momentum is unchanged by the collision.</p>
+  <div class="deriv">
+    <span class="step">1.  During collision: F_12 = −F_21 (Newton 3).</span>
+    <span class="step">2.  Integrate over collision time: ∫F_12 dt = −∫F_21 dt → J_12 = −J_21.</span>
+    <span class="step">3.  Δp_1 = J_21 and Δp_2 = J_12, so Δp_1 + Δp_2 = 0. <span class="arrow">→</span> Σp constant.</span>
+    <span class="step">4.  Energy is different: during collision, both bodies deform. If deformation is elastic, all stored energy returns as KE. If plastic (sound, heat, permanent dent), it doesn't.</span>
+    <span class="step">5.  The coefficient of restitution e is the ratio of relative <b>separation speed</b> to relative <b>approach speed</b>:</span>
+    <span class="step">    <b>e = (v₂' − v₁') / (v₁ − v₂)</b>  (note: signs!)</span>
+    <span class="step">6.  Combined with momentum conservation, e fixes the after-velocities:</span>
+    <span class="step">    v₁' = (m₁v₁ + m₂v₂ − m₂·e·(v₁ − v₂)) / (m₁ + m₂)</span>
+    <span class="step">    v₂' = (m₁v₁ + m₂v₂ + m₁·e·(v₁ − v₂)) / (m₁ + m₂)</span>
+  </div>
+
+  <h2>Special cases worth memorizing</h2>
+  <table>
+    <tr><th>Case</th><th>e</th><th>After</th><th>KE retained</th></tr>
+    <tr><td>Bouncing on rigid floor (e drops by e)</td><td>0–1</td><td>v' = e · v</td><td>e²</td></tr>
+    <tr><td>Equal mass, m₂ at rest, perfectly elastic</td><td>1</td><td>v₁' = 0, v₂' = v₁</td><td>100%</td></tr>
+    <tr><td>Perfectly plastic, m₂ at rest</td><td>0</td><td>v_both = m₁v₁/(m₁+m₂)</td><td>m₁/(m₁+m₂)</td></tr>
+    <tr><td>Newton's cradle (5 balls in line)</td><td>~1</td><td>End ball leaves at v</td><td>~100%</td></tr>
+    <tr><td>Bullet into block (embed)</td><td>0</td><td>v = m_b v_b / (m_b + m_blk)</td><td>small</td></tr>
+    <tr><td>Tennis ball off racket</td><td>~0.85</td><td>—</td><td>~72%</td></tr>
+    <tr><td>Steel ball / steel anvil</td><td>~0.6</td><td>—</td><td>~36%</td></tr>
+    <tr><td>Wet putty on wall</td><td>0</td><td>sticks</td><td>0%</td></tr>
+  </table>
+
+  <h2>Worked example — pendulum impact tester</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>A Charpy-style pendulum drops from height h = 1 m, swings down, hits a test piece, swings back up to height h'. The pendulum head weighs 5 kg; the test piece is 0.3 kg, free to slide on a frictionless rail. Measure h' = 0.4 m. What is e?</p>
+
+    <h3>Velocities</h3>
+    <span class="eq">v₁ before = √(2 g h) = √(2 · 9.81 · 1) = 4.43 m/s</span>
+    <span class="eq">v₁ after (on rebound) = ±√(2 g h') = ±√(2 · 9.81 · 0.4) = ±2.80 m/s</span>
+    <span class="eq">Since pendulum swings back: v₁' = +2.80 m/s (toward where it came from); call right + so v₁' = −2.80 m/s in our convention.</span>
+    <span class="eq">Test piece: v₂ before = 0; v₂' unknown.</span>
+
+    <h3>Conservation + e</h3>
+    <span class="eq">Momentum: 5 · 4.43 + 0.3 · 0 = 5 · (−2.80) + 0.3 · v₂'</span>
+    <span class="eq">22.15 = −14 + 0.3 v₂'  →  v₂' = 36.15 / 0.3 = 120.5 m/s</span>
+    <span class="eq">Hmm, that's not physical for a 0.3 kg piece hit by 4.43 m/s. Check.</span>
+    <span class="eq">Actually: if the test piece is light, it gets a kick. But 120 m/s exceeds the pendulum speed → check e.</span>
+    <span class="eq">e = (v₂' − v₁') / (v₁ − v₂) = (120.5 − (−2.80)) / (4.43 − 0) = 123.3 / 4.43 = <b>e &gt; 27</b> → impossible.</span>
+
+    <h3>Correct interpretation</h3>
+    <p style="color:var(--fg-dim);font-size:12px">The Charpy hammer doesn't release the test piece — it absorbs energy by deforming/breaking it. Energy difference = absorbed energy (the standard Charpy reading).</p>
+    <span class="eq">E_absorbed = ½ · 5 · 4.43² − ½ · 5 · 2.80² = 49 − 20 = 29 J</span>
+    <span class="eq">This is the Charpy impact energy (kJ/m² with sample area). Use it directly; don't try to model as 2-body collision.</span>
+  </div>
+
+  <h2>Energy-loss formula in two-body collision</h2>
+  <p>For two free bodies (no external constraint):</p>
+  <div class="deriv">
+    <span class="step">1.  Reduced mass: μ = m₁m₂ / (m₁ + m₂)</span>
+    <span class="step">2.  Relative velocity before: v_rel = v₁ − v₂</span>
+    <span class="step">3.  <b>ΔKE = ½ · μ · v_rel² · (1 − e²)</b></span>
+    <span class="step">4.  At e = 0: <b>ΔKE = ½ μ v_rel²</b> — all relative-motion energy is absorbed.</span>
+    <span class="step">5.  At e = 1: ΔKE = 0 — no energy lost (elastic).</span>
+    <span class="step">6.  Bullet (μ → m_bullet for huge m_target): ΔKE ≈ ½ m_b v_b². Almost all the bullet's energy goes into the target.</span>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Momentum survives, energy doesn't</b> — heat and sound are where the energy goes. A loud collision is energy fleeing as sound; a hot dent is energy as heat.</li>
+    <li><b>e is material × geometry</b> — same ball on harder surface has higher e (steel on steel > rubber on rubber). Tennis ball pressure changes e (de-pressurized ball has e ~ 0.65 vs new ~0.85).</li>
+    <li><b>e decreases with impact speed</b> — at higher speeds, materials deform plastically (yield → permanent damage). Above the elastic limit, e drops fast.</li>
+    <li><b>Coefficient of restitution is path-independent</b> — you can drop a ball off a 1 m roof or 10 m roof; the height ratio (bounce / drop) gives the same e. e = √(h_bounce / h_drop).</li>
+    <li><b>Newton's cradle isn't perfect</b> — even the best executive toy has e ~ 0.98. After 30 swings, motion is visibly damped. Steel on steel really is 95%+ elastic.</li>
+    <li><b>Impulse equals Δp</b> — useful even when force-time history is complex. A 0.05 kg golf ball going 70 m/s post-impact had Δp = 3.5 N·s applied by the club, regardless of how the impulse was distributed over the 1 ms contact.</li>
+  </ul>
+
+  <h2>Cross-links</h2>
+  <div class="crosslink">
+    <h4>Related</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Work, energy, power</b> — <a href="work-energy-power.html">KE foundations</a>. Energy gone vs energy retained.</li>
+      <li><b style="color:var(--fg)">Rotational dynamics</b> — <a href="rotational-dynamics.html">angular impulse and momentum</a>.</li>
+      <li><b style="color:var(--fg)">Free vibration</b> — <a href="vibration-free.html">spring-mass impact response</a>.</li>
+      <li><b style="color:var(--fg)">Material classes</b> — <a href="../phase-2-materials-science/material-classes.html">elastic vs plastic</a>.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Restitution</dt><dd><span class="eq">e = (v₂' − v₁') / (v₁ − v₂)</span></dd>
+        <dt>Bounce</dt><dd><span class="eq">v' = e · v ; h' = e² · h</span></dd>
+        <dt>Momentum</dt><dd><span class="eq">m₁v₁ + m₂v₂ = m₁v₁' + m₂v₂'</span></dd>
+        <dt>Energy lost</dt><dd><span class="eq">ΔKE = ½μ v_rel² (1−e²)</span></dd>
+        <dt>Reduced mass</dt><dd><span class="eq">μ = m₁m₂/(m₁+m₂)</span></dd>
+        <dt>Impulse</dt><dd><span class="eq">J = Δp = m·Δv = ∫F dt</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>e VALUES</h3>
+      <ul>
+        <li><b>Steel on steel</b>: 0.55–0.95</li>
+        <li><b>Glass marbles</b>: ~0.95</li>
+        <li><b>Tennis ball</b>: 0.85 (new)</li>
+        <li><b>Basketball</b>: 0.75–0.80</li>
+        <li><b>Bowling pin</b>: ~0.7</li>
+        <li><b>Wood block</b>: ~0.4</li>
+        <li><b>Soft clay</b>: ~0</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>PITFALLS</h3>
+      <ul>
+        <li><b>Sign of velocities</b> — relative speed in same direction or opposite changes the equations.</li>
+        <li><b>Forgetting 2nd equation</b> — momentum alone has 2 unknowns; e equation closes it.</li>
+        <li><b>e isn't constant</b> — drops with speed and with surface deformation.</li>
+        <li><b>Coefficient of restitution vs efficiency</b> — different concepts; e applies to a single collision, η to a continuous process.</li>
+        <li><b>3D collisions</b> — e applies along the normal of contact; tangential motion is governed by friction.</li>
+        <li><b>Embedded impact</b> — when bullet sticks, e = 0; use kinematics, not energy balance, to find common velocity.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">ME Phase 8 — Dynamics</span> ·
+    Related: <a href="work-energy-power.html">Work, Energy, Power</a> · <a href="rotational-dynamics.html">Rotational Dynamics</a>
+  </footer>
+</main>
+<script>
+  const m1El = document.getElementById('m1');
+  const m2El = document.getElementById('m2');
+  const v1El = document.getElementById('v1');
+  const v2El = document.getElementById('v2');
+  const eEl = document.getElementById('e');
+
+  function update(){
+    const m1 = parseFloat(m1El.value);
+    const m2 = parseFloat(m2El.value);
+    const v1 = parseFloat(v1El.value);
+    const v2 = parseFloat(v2El.value);
+    const e  = parseFloat(eEl.value);
+    document.getElementById('m1Read').textContent = m1.toFixed(1)+" kg";
+    document.getElementById('m2Read').textContent = m2.toFixed(1)+" kg";
+    document.getElementById('v1Read').textContent = v1.toFixed(1)+" m/s";
+    document.getElementById('v2Read').textContent = v2.toFixed(1)+" m/s";
+    document.getElementById('eRead').textContent  = e.toFixed(2);
+
+    const M = m1 + m2;
+    const v1p = (m1*v1 + m2*v2 - m2*e*(v1-v2)) / M;
+    const v2p = (m1*v1 + m2*v2 + m1*e*(v1-v2)) / M;
+    const pB = m1*v1 + m2*v2;
+    const pA = m1*v1p + m2*v2p;
+    const KEB = 0.5*m1*v1*v1 + 0.5*m2*v2*v2;
+    const KEA = 0.5*m1*v1p*v1p + 0.5*m2*v2p*v2p;
+    const dKE = KEB - KEA;
+    const J = m1 * (v1 - v1p);  // impulse on mass 1 (from mass 2)
+
+    document.getElementById('v1B').textContent = v1.toFixed(2)+" m/s";
+    document.getElementById('v1A').textContent = v1p.toFixed(2)+" m/s";
+    document.getElementById('v2B').textContent = v2.toFixed(2)+" m/s";
+    document.getElementById('v2A').textContent = v2p.toFixed(2)+" m/s";
+    document.getElementById('pB').textContent  = pB.toFixed(2)+" kg·m/s";
+    document.getElementById('pA').textContent  = pA.toFixed(2)+" kg·m/s";
+    document.getElementById('KEB').textContent = KEB.toFixed(2)+" J";
+    document.getElementById('KEA').textContent = KEA.toFixed(2)+" J";
+    document.getElementById('EL').textContent  = dKE.toFixed(2)+" J ("+ (KEB>0?(dKE/KEB*100).toFixed(0):"0") +"%)";
+    document.getElementById('JI').textContent  = Math.abs(J).toFixed(2)+" N·s";
+
+    const v = document.getElementById('verdictText');
+    if(e === 0){
+      v.innerHTML = `<b style="color:var(--warn)">Perfectly plastic</b> — bodies stick at common velocity ${v1p.toFixed(2)} m/s. ${KEB>0?(dKE/KEB*100).toFixed(0):0}% of KE lost as heat/sound.`;
+    } else if(e === 1){
+      v.innerHTML = `<b style="color:var(--accent3)">Perfectly elastic</b> — KE conserved exactly. No energy lost.`;
+    } else if(e < 0.3){
+      v.innerHTML = `<b style="color:var(--warn)">Mostly inelastic (e=${e.toFixed(2)})</b> — ${(dKE/KEB*100).toFixed(0)}% of KE lost. Bodies separate but slowly.`;
+    } else if(e > 0.7){
+      v.innerHTML = `<b style="color:var(--accent3)">Highly elastic (e=${e.toFixed(2)})</b> — ${(KEA/KEB*100).toFixed(0)}% of KE retained. Like steel ball.`;
+    } else {
+      v.innerHTML = `<b style="color:var(--accent2)">Partial (e=${e.toFixed(2)})</b> — ${(KEA/KEB*100).toFixed(0)}% of KE retained.`;
+    }
+
+    drawCollision(m1, m2, v1, v2, v1p, v2p, e);
+  }
+
+  function drawCollision(m1, m2, v1, v2, v1p, v2p, e){
+    const svg = document.getElementById('diagram');
+    const cy = 100;
+    const cyA = 220;
+    const scale = 30;  // px per kg
+    const r1 = Math.sqrt(m1) * 12;
+    const r2 = Math.sqrt(m2) * 12;
+    const vsc = 10;  // px per m/s
+
+    let s = `
+      <text x="20" y="30" class="label">Before collision (top) vs after (bottom)</text>
+      <!-- BEFORE -->
+      <text x="20" y="60" class="label-dim">Before</text>
+      <circle cx="200" cy="${cy}" r="${r1}" fill="var(--accent)" opacity="0.7"/>
+      <text x="200" y="${cy+4}" class="label" text-anchor="middle" style="fill:var(--bg)">m₁=${m1.toFixed(1)}</text>
+      <circle cx="600" cy="${cy}" r="${r2}" fill="var(--accent2)" opacity="0.7"/>
+      <text x="600" y="${cy+4}" class="label" text-anchor="middle" style="fill:var(--bg)">m₂=${m2.toFixed(1)}</text>
+      <!-- velocity arrows -->
+      <line x1="200" y1="${cy-30}" x2="${200+v1*vsc}" y2="${cy-30}" stroke="var(--accent)" stroke-width="2"/>
+      <polygon points="${200+v1*vsc},${cy-30} ${200+v1*vsc - 5*Math.sign(v1||1)},${cy-33} ${200+v1*vsc - 5*Math.sign(v1||1)},${cy-27}" fill="var(--accent)"/>
+      <text x="${200+v1*vsc+5}" y="${cy-30}" class="label">v₁=${v1.toFixed(1)}</text>
+
+      <line x1="600" y1="${cy-30}" x2="${600+v2*vsc}" y2="${cy-30}" stroke="var(--accent2)" stroke-width="2"/>
+      <polygon points="${600+v2*vsc},${cy-30} ${600+v2*vsc - 5*Math.sign(v2||1)},${cy-33} ${600+v2*vsc - 5*Math.sign(v2||1)},${cy-27}" fill="var(--accent2)"/>
+      <text x="${600+v2*vsc+5}" y="${cy-30}" class="label">v₂=${v2.toFixed(1)}</text>
+
+      <!-- AFTER -->
+      <text x="20" y="180" class="label-dim">After (e = ${e.toFixed(2)})</text>
+      <circle cx="200" cy="${cyA}" r="${r1}" fill="var(--accent)" opacity="0.7"/>
+      <text x="200" y="${cyA+4}" class="label" text-anchor="middle" style="fill:var(--bg)">m₁</text>
+      <circle cx="600" cy="${cyA}" r="${r2}" fill="var(--accent2)" opacity="0.7"/>
+      <text x="600" y="${cyA+4}" class="label" text-anchor="middle" style="fill:var(--bg)">m₂</text>
+      <!-- after velocity arrows -->
+      <line x1="200" y1="${cyA-30}" x2="${200+v1p*vsc}" y2="${cyA-30}" stroke="var(--accent3)" stroke-width="2"/>
+      <polygon points="${200+v1p*vsc},${cyA-30} ${200+v1p*vsc - 5*Math.sign(v1p||1)},${cyA-33} ${200+v1p*vsc - 5*Math.sign(v1p||1)},${cyA-27}" fill="var(--accent3)"/>
+      <text x="${200+v1p*vsc+5}" y="${cyA-30}" class="label-ok">v₁'=${v1p.toFixed(2)}</text>
+
+      <line x1="600" y1="${cyA-30}" x2="${600+v2p*vsc}" y2="${cyA-30}" stroke="var(--accent3)" stroke-width="2"/>
+      <polygon points="${600+v2p*vsc},${cyA-30} ${600+v2p*vsc - 5*Math.sign(v2p||1)},${cyA-33} ${600+v2p*vsc - 5*Math.sign(v2p||1)},${cyA-27}" fill="var(--accent3)"/>
+      <text x="${600+v2p*vsc+5}" y="${cyA-30}" class="label-ok">v₂'=${v2p.toFixed(2)}</text>
+
+      <text x="20" y="290" class="label-dim">Velocities are right-positive. Verify momentum unchanged top→bottom.</text>
+    `;
+    svg.innerHTML = s;
+  }
+
+  m1El.addEventListener('input', update);
+  m2El.addEventListener('input', update);
+  v1El.addEventListener('input', update);
+  v2El.addEventListener('input', update);
+  eEl.addEventListener('input', update);
+  update();
+</script>
+</body>
+</html>

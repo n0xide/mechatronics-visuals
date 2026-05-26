@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Antenna Geometry Calculator — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:1040px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+
+  table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+
+  .tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:18px;
+    overflow-x:auto;white-space:nowrap}
+  .tab{background:transparent;color:var(--fg-dim);border:none;
+    padding:10px 16px;font:13px ui-monospace,Menlo,monospace;cursor:pointer;
+    border-bottom:2px solid transparent;white-space:nowrap}
+  .tab:hover{color:var(--fg)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .pane{display:none}
+  .pane.active{display:block}
+
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:14px 16px;margin:14px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:11px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace;
+    text-transform:uppercase;letter-spacing:0.04em}
+  .control input,.control select{background:var(--bg-elev2);color:var(--fg-bright);
+    border:1px solid var(--line);border-radius:4px;padding:6px 10px;
+    font:13px ui-monospace,Menlo,monospace;width:100%}
+  .control input:focus,.control select:focus{outline:none;border-color:var(--accent)}
+  .control input[readonly]{color:var(--accent);background:var(--bg)}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .anchor b{color:var(--accent2)}
+
+  .preset-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 18px}
+  .preset{background:var(--bg-elev);border:1px solid var(--line);border-radius:4px;
+    color:var(--fg);padding:6px 12px;font:12px ui-monospace,Menlo,monospace;
+    cursor:pointer;transition:all 0.1s}
+  .preset:hover{border-color:var(--accent);color:var(--accent)}
+  .preset.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:14px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  .figure-pair{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin:14px 0}
+  .figure-pair .figure{margin:0}
+  .figure-cap{font-size:11px;color:var(--fg-dim);font-family:ui-monospace,monospace;
+    text-align:center;margin-top:6px}
+
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .label-acc{fill:var(--accent);font:12px ui-monospace,monospace}
+
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>Antenna Geometry Calculator</h1>
+  <p class="lede">Frequency in, physical dimensions out. Every common antenna for sub-6 GHz IoT and amateur radio — λ/4 monopole, λ/2 dipole, axial-mode helix, rectangular patch, PIFA — together with the dielectric and end-effect corrections that decide whether your VSWR comes in at 1.2 or 3.5. Tab a geometry; type a frequency or hit a band preset; read the build dimensions and the radiation-pattern sketch.</p>
+
+  <p>The lesson under all of these calculations: <b>an antenna is a resonator, not just a wire of a certain length</b>. The classical formulas treat the conductor as infinitely thin, in free space, with no end-effect. Real antennas — finite wire diameter, dielectric coating, ground-plane proximity, nearby metal — resonate <em>shorter</em> than the textbook number. The 95 % factor on a λ/4 monopole isn't a fudge; it's the dominant end-effect correction. The same physics shrinks every PCB trace antenna you'll ever cut.</p>
+
+  <div class="preset-row">
+    <span style="color:var(--fg-dim);font:12px ui-monospace,monospace;align-self:center">ISM presets:</span>
+    <button class="preset" data-freq="433.92">433.92 MHz</button>
+    <button class="preset" data-freq="868">868 MHz</button>
+    <button class="preset" data-freq="915">915 MHz</button>
+    <button class="preset" data-freq="2440">2.44 GHz</button>
+    <button class="preset" data-freq="5800">5.8 GHz</button>
+    <button class="preset" data-freq="144">144 MHz (2 m ham)</button>
+    <button class="preset" data-freq="446">446 MHz (PMR)</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="wavelength">λ from f</button>
+    <button class="tab" data-tab="monopole">λ/4 monopole</button>
+    <button class="tab" data-tab="dipole">λ/2 dipole</button>
+    <button class="tab" data-tab="helical">Helical (axial)</button>
+    <button class="tab" data-tab="patch">Patch (microstrip)</button>
+    <button class="tab" data-tab="pifa">PIFA (F-inverted)</button>
+    <button class="tab" data-tab="patterns">Radiation patterns</button>
+  </div>
+
+  <!-- =============================================================== -->
+  <!-- WAVELENGTH                                                        -->
+  <!-- =============================================================== -->
+  <section class="pane active" id="pane-wavelength">
+    <h2>Wavelength &amp; phase velocity</h2>
+    <div class="anchors">
+      <span class="anchor"><b>c</b> = 299 792 458 m/s (exactly)</span>
+      <span class="anchor"><b>λ</b> = c / f</span>
+      <span class="anchor"><b>915 MHz</b> → λ = 328 mm</span>
+      <span class="anchor"><b>2.45 GHz</b> → λ = 122 mm</span>
+      <span class="anchor"><b>5.8 GHz</b> → λ = 51.7 mm</span>
+    </div>
+
+    <div class="controls">
+      <div class="control"><label>Frequency (MHz)</label>
+        <input id="wl-f" type="number" step="any" value="915"></div>
+      <div class="control"><label>Dielectric ε_r</label>
+        <input id="wl-er" type="number" step="any" value="1"></div>
+      <div class="control"><label>→ λ free-space (mm)</label>
+        <input id="wl-lambda" type="number" readonly></div>
+      <div class="control"><label>→ λ in dielectric (mm)</label>
+        <input id="wl-lambdaer" type="number" readonly></div>
+      <div class="control"><label>→ λ/2 (mm)</label>
+        <input id="wl-half" type="number" readonly></div>
+      <div class="control"><label>→ λ/4 (mm)</label>
+        <input id="wl-quarter" type="number" readonly></div>
+    </div>
+
+    <h3>Phase velocity &amp; velocity factor (for cable)</h3>
+    <p>In a dielectric of permittivity ε_r, the wave slows to v = c / √ε_r. The wavelength inside the dielectric shrinks by the same factor: <code>λ_d = λ₀ / √ε_r</code>. This is why a quarter-wave transmission-line section of <em>coax</em> is physically shorter than a quarter-wave of <em>wire in air</em>.</p>
+    <table>
+      <tr><th>Cable / medium</th><th>ε_r (typical)</th><th>VF = 1/√ε_r</th><th>λ at 915 MHz (mm)</th></tr>
+      <tr><td>Air / vacuum</td><td class="num">1.00</td><td class="num">1.00</td><td class="num">328</td></tr>
+      <tr><td>RG-58 / RG-174 (PE dielectric)</td><td class="num">2.30</td><td class="num">0.66</td><td class="num">216</td></tr>
+      <tr><td>RG-316 / LMR-100 (PTFE)</td><td class="num">2.06</td><td class="num">0.70</td><td class="num">230</td></tr>
+      <tr><td>RG-142 / LMR-400 (foam PE)</td><td class="num">1.45</td><td class="num">0.83</td><td class="num">272</td></tr>
+      <tr><td>FR-4 PCB substrate</td><td class="num">4.30</td><td class="num">0.48</td><td class="num">158</td></tr>
+      <tr><td>Rogers RO4003C (RF PCB)</td><td class="num">3.55</td><td class="num">0.53</td><td class="num">174</td></tr>
+      <tr><td>Rogers RT/duroid 5880</td><td class="num">2.20</td><td class="num">0.67</td><td class="num">221</td></tr>
+    </table>
+
+    <h3>Microstrip — the ε_eff trick</h3>
+    <p>A trace on a PCB sits between substrate (ε_r ≈ 4) and air (ε_r = 1) — the wave sees an <em>effective</em> permittivity between the two. The first-order Hammerstad approximation for W/h &gt; 1:</p>
+    <div class="deriv">
+      <span class="step">ε_eff = (ε_r + 1)/2 + (ε_r − 1)/2 · (1 + 12·h/W)^(−1/2)</span>
+      <span class="step">where h = substrate height, W = trace width</span>
+      <span class="step"><span class="arrow">→</span> for FR-4 (ε_r=4.3) with W/h ≈ 2: ε_eff ≈ 3.3</span>
+      <span class="step"><span class="arrow">→</span> guided wavelength: λ_g = λ₀ / √ε_eff ≈ 0.55·λ₀</span>
+    </div>
+
+    <h3>Derivation — where λ = c/f comes from</h3>
+    <div class="deriv">
+      <span class="step">1.  A propagating sinusoid travels v meters in 1 second.</span>
+      <span class="step">2.  It completes f cycles in that second.</span>
+      <span class="step">3.  Therefore each cycle spans <b>v/f</b> meters in space.</span>
+      <span class="step">4.  In free space v = c, so <span class="arrow">→</span> <b>λ = c/f</b>.</span>
+      <span class="step">5.  In dielectric v slows by 1/√ε_r → <b>λ_d = λ₀/√ε_r</b>.</span>
+    </div>
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- MONOPOLE                                                          -->
+  <!-- =============================================================== -->
+  <section class="pane" id="pane-monopole">
+    <h2>λ/4 monopole (vertical / whip)</h2>
+    <div class="anchors">
+      <span class="anchor"><b>915 MHz</b> → λ/4 = 82 mm; real ≈ 78 mm</span>
+      <span class="anchor"><b>433 MHz</b> → λ/4 = 173 mm; real ≈ 164 mm</span>
+      <span class="anchor"><b>2.4 GHz</b> → λ/4 = 31 mm; real ≈ 29 mm</span>
+      <span class="anchor">Feed: <b>~36 Ω</b> over infinite ground</span>
+      <span class="anchor">Ground plane: <b>≥ λ/4 radius</b></span>
+    </div>
+
+    <div class="controls">
+      <div class="control"><label>Frequency (MHz)</label>
+        <input id="mo-f" type="number" step="any" value="915"></div>
+      <div class="control"><label>End-effect factor (K)</label>
+        <input id="mo-k" type="number" step="0.005" value="0.95"></div>
+      <div class="control"><label>→ λ/4 ideal (mm)</label>
+        <input id="mo-li" type="number" readonly></div>
+      <div class="control"><label>→ Physical length (mm)</label>
+        <input id="mo-lp" type="number" readonly></div>
+      <div class="control"><label>→ Ground-plane radius min (mm)</label>
+        <input id="mo-gp" type="number" readonly></div>
+      <div class="control"><label>→ Feed Z over ∞ ground (Ω)</label>
+        <input id="mo-z" type="number" readonly></div>
+    </div>
+
+    <div class="figure">
+      <svg id="mo-svg" viewBox="0 0 600 240"></svg>
+      <div class="figure-cap">Side view — quarter-wave whip over ground plane. The ground plane acts as a mirror; the whip's "image" below provides the missing half of a dipole.</div>
+    </div>
+
+    <div class="vd">
+      <b>What's happening:</b> a single conductor cannot resonate by itself — it needs a return path. The ground plane provides that path via the <em>image principle</em>: the field above the plane looks identical to a full λ/2 dipole, with the bottom half replaced by the conductive image of the top half. That's why the feed-point impedance is ~36 Ω — exactly half of a dipole's 73 Ω.
+    </div>
+
+    <h3>The 95 % factor — end-effect correction</h3>
+    <p>The textbook λ/4 length is derived for an infinitely thin conductor in free space, with the current going to zero exactly at the tip. Real wire has finite diameter and capacitance to its surroundings, which causes the current node to push back from the geometric end — equivalently, the effective electrical length is longer than the physical length. To resonate at the desired frequency, the physical length must be <em>shortened</em>:</p>
+    <div class="deriv">
+      <span class="step">L_physical = K · λ/4</span>
+      <span class="step">K ≈ 0.95   <span class="arrow">←</span> typical for thin wire (λ/d &gt; 100)</span>
+      <span class="step">K ≈ 0.92   <span class="arrow">←</span> chubbier wire or insulated</span>
+      <span class="step">K ≈ 0.98   <span class="arrow">←</span> very thin wire or open scaffolding</span>
+      <span class="step"><span class="arrow">→</span> 915 MHz: 0.95 · 81.94 mm = <b>77.8 mm</b></span>
+    </div>
+
+    <h3>Ground-plane requirement</h3>
+    <p>For a monopole to behave like a λ/4 antenna, it needs a ground plane at its base that extends at least λ/4 radius. Smaller planes raise the feed impedance and tilt the radiation pattern upward — at λ/8 radius you lose ~2 dB and the impedance climbs to ~50 Ω (which can be convenient if you skip the matching network, but the radiation efficiency suffers).</p>
+    <p>A modern <em>handheld</em> radio uses your hand and body as the counterpoise — the antenna only works because you're holding it. This is why a 433 MHz keyfob has a barely-visible PCB trace antenna: the keyfob's ground pour plus your hand provide enough counterpoise to scrape together ~50 m of range.</p>
+
+    <div class="worked">
+      <h3>Worked example — 915 MHz LoRa monopole on RYLR998</h3>
+      <p>Reyax RYLR998 module on a cyberdeck: 915 MHz LoRa, IPEX antenna connector. The module datasheet calls for a 50 Ω whip; we'll cut one from 0.5 mm enameled copper wire.</p>
+      <span class="eq">λ = 299 792 458 / 915 000 000 = 0.3276 m = 327.6 mm</span>
+      <span class="eq">λ/4 ideal = 81.94 mm <span class="annot">(geometric quarter-wave)</span></span>
+      <span class="eq">K = 0.95 for thin wire → L_physical = 0.95 · 81.94 = 77.84 mm</span>
+      <span class="eq">Round to <b>78 mm</b> with a slight long bias <span class="annot">(easier to trim than to extend)</span></span>
+      <span class="eq">Ground-plane radius ≥ λ/4 = 82 mm <span class="annot">(use the cyberdeck's chassis bottom plate)</span></span>
+      <span class="eq">Feed impedance ≈ 36 Ω → use a λ/4 transformer or a quick 50 Ω-to-36 Ω match</span>
+      <p style="color:var(--fg-dim);font-size:12px;margin-top:8px">In practice for LoRa, you can ignore the impedance mismatch — the 1.4:1 VSWR from feeding a 36 Ω antenna with 50 Ω coax loses ~0.15 dB, dwarfed by the SF12-vs-SF7 trade. Just cut 78 mm and call it good.</p>
+    </div>
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- DIPOLE                                                            -->
+  <!-- =============================================================== -->
+  <section class="pane" id="pane-dipole">
+    <h2>λ/2 dipole (centre-fed)</h2>
+    <div class="anchors">
+      <span class="anchor"><b>915 MHz</b> → λ/2 = 164 mm; real ≈ 156 mm (each arm 78 mm)</span>
+      <span class="anchor"><b>433 MHz</b> → λ/2 = 346 mm; real ≈ 329 mm</span>
+      <span class="anchor"><b>Feed Z ≈ 73 Ω</b> (free space)</span>
+      <span class="anchor">Needs <b>balun</b> for unbalanced coax feed</span>
+    </div>
+
+    <div class="controls">
+      <div class="control"><label>Frequency (MHz)</label>
+        <input id="di-f" type="number" step="any" value="915"></div>
+      <div class="control"><label>End-effect factor (K)</label>
+        <input id="di-k" type="number" step="0.005" value="0.95"></div>
+      <div class="control"><label>→ λ/2 ideal (mm)</label>
+        <input id="di-li" type="number" readonly></div>
+      <div class="control"><label>→ Total physical length (mm)</label>
+        <input id="di-lp" type="number" readonly></div>
+      <div class="control"><label>→ Each arm (mm)</label>
+        <input id="di-arm" type="number" readonly></div>
+      <div class="control"><label>→ Feed Z (Ω)</label>
+        <input id="di-z" type="number" readonly></div>
+    </div>
+
+    <div class="figure">
+      <svg id="di-svg" viewBox="0 0 600 200"></svg>
+      <div class="figure-cap">Horizontal centre-fed dipole. Both arms are λ/4. Current is maximum at the centre (feedpoint), zero at the tips. Voltage is the opposite — maximum at the tips, zero at the centre.</div>
+    </div>
+
+    <div class="vd">
+      <b>Why 73 Ω?</b> The radiation resistance of a thin half-wave dipole — the equivalent resistance that the antenna's radiated power "looks like" from the feedpoint — works out to 73.1 Ω by integrating the far-field intensity over a sphere. Add a small reactive part (+j42.5 Ω at exact λ/2), which is why dipoles are usually built 95 % long: shortening drops the reactance to near zero, making the match a clean 50 Ω with a quick 1.46:1 transformer (or nothing at all — VSWR 1.46:1 is only ~0.32 dB return loss).
+    </div>
+
+    <h3>Balun — why dipoles need one</h3>
+    <p>A dipole is a <em>balanced</em> structure: equal-amplitude, opposite-polarity currents on each arm. Coax is <em>unbalanced</em>: the inner conductor carries the signal and the shield is the return. Feed a dipole directly with coax and current sneaks down the <em>outside</em> of the shield (it's a third conductor as far as the dipole sees), distorting the pattern and turning the coax run into part of the antenna.</p>
+    <p>Cure: a balun (balanced-to-unbalanced transformer). Two common types:</p>
+    <ul class="notice">
+      <li><b>Choke balun (ugly balun)</b> — coil 6–10 turns of the coax in a 100 mm loop right at the feedpoint. Cheap, lossy at HF, works fine 100–500 MHz.</li>
+      <li><b>1:1 transformer balun</b> — ferrite toroid with bifilar winding, transforming common-mode current to a high impedance while passing differential mode. Standard solution for VHF/UHF dipoles.</li>
+      <li><b>Half-wave coax balun</b> — a λ/2 loop of coax connected feed-to-ground-to-feed, gives a 1:4 impedance step (73 Ω dipole → ~290 Ω, fed by 4 Ω... not usually used at 4:1, but the 1:1 variant is useful).</li>
+    </ul>
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- HELICAL                                                           -->
+  <!-- =============================================================== -->
+  <section class="pane" id="pane-helical">
+    <h2>Helical antenna (axial mode)</h2>
+    <div class="anchors">
+      <span class="anchor">Axial mode: <b>C ≈ λ</b> (circumference)</span>
+      <span class="anchor">Pitch: <b>S ≈ λ/4</b></span>
+      <span class="anchor">Gain ≈ <b>10·log(K·N·C²·S/λ³)</b> dBi</span>
+      <span class="anchor">Polarization: <b>circular</b> (great for satellite, drone)</span>
+    </div>
+
+    <div class="controls">
+      <div class="control"><label>Frequency (MHz)</label>
+        <input id="he-f" type="number" step="any" value="1575"></div>
+      <div class="control"><label>Turn count N</label>
+        <input id="he-n" type="number" step="1" value="10"></div>
+      <div class="control"><label>Diameter D (mm)</label>
+        <input id="he-d" type="number" step="any" value="60.6"></div>
+      <div class="control"><label>Pitch S (mm)</label>
+        <input id="he-s" type="number" step="any" value="47.6"></div>
+      <div class="control"><label>→ λ (mm)</label>
+        <input id="he-lam" type="number" readonly></div>
+      <div class="control"><label>→ Circumference C (mm)</label>
+        <input id="he-c" type="number" readonly></div>
+      <div class="control"><label>→ Axial length N·S (mm)</label>
+        <input id="he-len" type="number" readonly></div>
+      <div class="control"><label>→ Gain (dBi)</label>
+        <input id="he-g" type="number" readonly></div>
+      <div class="control"><label>→ Pitch angle α (°)</label>
+        <input id="he-alpha" type="number" readonly></div>
+      <div class="control"><label>→ Feed Z (Ω, ~140·C/λ)</label>
+        <input id="he-z" type="number" readonly></div>
+    </div>
+
+    <div class="figure">
+      <svg id="he-svg" viewBox="0 0 600 240"></svg>
+      <div class="figure-cap">Helical antenna in axial (end-fire) mode — radiation peaks along the helix axis. Counter-clockwise winding gives LHCP, clockwise gives RHCP.</div>
+    </div>
+
+    <h3>Axial-mode condition</h3>
+    <p>The helix has two modes: <b>normal mode</b> (small helix, broadside radiation, linear polarization — like a coil-loaded antenna) and <b>axial mode</b> (helix dimensions comparable to λ, end-fire radiation, circular polarization). Axial mode is what you want for high gain, and requires:</p>
+    <div class="deriv">
+      <span class="step">3/4 &lt; C/λ &lt; 4/3        <span class="arrow">←</span> circumference within ~30 % of λ</span>
+      <span class="step">S ≈ λ/4                  <span class="arrow">←</span> pitch a quarter wavelength</span>
+      <span class="step">α ≈ 12°–14°              <span class="arrow">←</span> pitch angle = atan(S/C)</span>
+      <span class="step">N ≥ 4                    <span class="arrow">←</span> below this gain drops &amp; pattern broadens</span>
+      <span class="step">Ground plane ≥ <b>0.8·λ</b> diameter, λ/8 above the first turn</span>
+    </div>
+
+    <h3>Gain formula (Kraus)</h3>
+    <p>The classical Kraus formula for axial-mode helical gain:</p>
+    <div class="deriv">
+      <span class="step">G ≈ K · N · (C/λ)² · (S/λ)         <span class="arrow">←</span> linear (numeric) gain</span>
+      <span class="step">G_dB ≈ 10·log₁₀[K·N·(C/λ)²·(S/λ)]   <span class="arrow">←</span> in dBi over isotropic</span>
+      <span class="step">K ≈ 12       <span class="arrow">←</span> classical Kraus value (slightly optimistic, real measurements ~10–12)</span>
+      <span class="step"><span class="arrow">→</span> for L1 GPS (1575 MHz) with N=10, D=60.6 mm, S=47.6 mm: ~13 dBi</span>
+    </div>
+
+    <div class="worked">
+      <h3>Worked example — L1 GPS helical (1575.42 MHz)</h3>
+      <span class="eq">λ = c / f = 299 792 458 / 1.57542 × 10⁹ = 190.3 mm</span>
+      <span class="eq">C target = λ = 190.3 mm → D = C/π = 60.6 mm</span>
+      <span class="eq">S target = λ/4 = 47.6 mm → pitch angle α = atan(47.6/190.3) = 14.0°</span>
+      <span class="eq">For 10-turn helix, axial length L = N·S = 476 mm</span>
+      <span class="eq">G ≈ 12 · 10 · 1² · 0.25 = 30 numeric → 14.8 dBi</span>
+      <span class="eq">Beam-width (half-power) ≈ 52° / √(N · C/λ · S/λ) ≈ 52° / √2.5 = 33°</span>
+      <span class="eq">Feed Z ≈ 140 · C/λ = 140 Ω → match to 50 Ω with λ/4 transformer of √(140·50)=84 Ω stripline</span>
+    </div>
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- PATCH                                                             -->
+  <!-- =============================================================== -->
+  <section class="pane" id="pane-patch">
+    <h2>Patch antenna (rectangular microstrip)</h2>
+    <div class="anchors">
+      <span class="anchor">W ≈ <b>c / (2·fr · √((ε_r+1)/2))</b></span>
+      <span class="anchor">L ≈ <b>λ_g/2 − 2·Δl</b></span>
+      <span class="anchor">Δl ≈ <b>0.412·h · fringing function</b></span>
+      <span class="anchor">Feed Z (edge) ≈ <b>200–300 Ω</b> — needs inset or λ/4 match</span>
+    </div>
+
+    <div class="controls">
+      <div class="control"><label>Frequency f_r (MHz)</label>
+        <input id="pa-f" type="number" step="any" value="2440"></div>
+      <div class="control"><label>Substrate ε_r</label>
+        <input id="pa-er" type="number" step="0.01" value="4.3"></div>
+      <div class="control"><label>Substrate height h (mm)</label>
+        <input id="pa-h" type="number" step="0.1" value="1.6"></div>
+      <div class="control"><label>→ Width W (mm)</label>
+        <input id="pa-w" type="number" readonly></div>
+      <div class="control"><label>→ ε_eff</label>
+        <input id="pa-eeff" type="number" readonly></div>
+      <div class="control"><label>→ Δl fringing (mm)</label>
+        <input id="pa-dl" type="number" readonly></div>
+      <div class="control"><label>→ Length L (mm)</label>
+        <input id="pa-l" type="number" readonly></div>
+      <div class="control"><label>→ λ_g guided (mm)</label>
+        <input id="pa-lg" type="number" readonly></div>
+    </div>
+
+    <div class="figure">
+      <svg id="pa-svg" viewBox="0 0 600 240"></svg>
+      <div class="figure-cap">Top view of rectangular patch on substrate. Width W controls feed impedance and bandwidth; length L controls resonant frequency. The two radiating slots are at the W-edges.</div>
+    </div>
+
+    <h3>Why W and L are decoupled</h3>
+    <p>Width and length play different roles:</p>
+    <ul class="notice">
+      <li><b>L sets the resonant frequency</b> — the patch resonates when L ≈ λ_g/2, where λ_g = λ₀/√ε_eff is the wavelength in the dielectric. The <em>guided wavelength</em> is what fits in the patch, not free-space λ.</li>
+      <li><b>W sets the impedance and the radiation efficiency</b> — wider patches have lower edge impedance (W → ∞ takes Z to ~120 Ω; narrow patches push it to 400+ Ω) and slightly more bandwidth. The classical choice W ≈ c/(2·fr · √((ε_r+1)/2)) gives a reasonable compromise.</li>
+      <li><b>h sets bandwidth</b> — thicker substrate (more h) widens bandwidth (typ. 1–5 %) but also increases surface-wave loss and decreases efficiency above ~h/λ &gt; 0.05.</li>
+    </ul>
+
+    <h3>Standard design formulas (Balanis)</h3>
+    <div class="deriv">
+      <span class="step"><b>Step 1.</b> Choose W = c/(2·fr) · √(2/(ε_r+1))    <span class="arrow">←</span> compromise width</span>
+      <span class="step"><b>Step 2.</b> ε_eff = (ε_r+1)/2 + (ε_r−1)/2 · (1+12·h/W)^(−1/2)</span>
+      <span class="step"><b>Step 3.</b> Δl = 0.412·h · (ε_eff+0.3)·(W/h+0.264) / [(ε_eff−0.258)·(W/h+0.8)]</span>
+      <span class="step"><b>Step 4.</b> L_eff = c/(2·fr·√ε_eff)    <span class="arrow">←</span> required electrical half-wavelength</span>
+      <span class="step"><b>Step 5.</b> L = L_eff − 2·Δl   <span class="arrow">←</span> physical length, shortened by fringing on both ends</span>
+    </div>
+
+    <h3>Feeding a patch</h3>
+    <p>The patch edge impedance is typically 200–300 Ω — way off from a 50 Ω feed. Three common matching techniques:</p>
+    <table>
+      <tr><th>Method</th><th>How</th><th>Trade-off</th></tr>
+      <tr><td>Inset feed</td><td>Cut a notch into the patch, feed at depth y from the edge: Z(y) = Z_edge · cos²(πy/L)</td><td>Simple, no extra components</td></tr>
+      <tr><td>λ/4 transformer</td><td>Quarter-wave strip of √(Z_edge · 50) Ω feeds the patch edge</td><td>Adds length, narrows BW slightly</td></tr>
+      <tr><td>Coaxial probe</td><td>Drill through substrate, feed from below at point of matching impedance</td><td>Best for low-profile; tricky to manufacture cheaply</td></tr>
+      <tr><td>Aperture coupling</td><td>Slot in ground plane couples to feed line below; patch on top</td><td>Wider BW, cleaner pattern, more PCB layers</td></tr>
+    </table>
+
+    <div class="worked">
+      <h3>Worked example — 2.44 GHz Wi-Fi patch on FR-4</h3>
+      <span class="eq">f_r = 2440 MHz, ε_r = 4.3, h = 1.6 mm (standard 1.6 mm FR-4)</span>
+      <span class="eq">W = (3·10⁸)/(2·2.44·10⁹) · √(2/5.3) = 61.5 mm · 0.614 = 37.7 mm</span>
+      <span class="eq">ε_eff = 2.65 + 1.65 · (1 + 12·1.6/37.7)^(−1/2) = 2.65 + 1.65·0.78 = 3.94</span>
+      <span class="eq">Δl = 0.412·1.6 · (4.24·24.83/(3.68·24.36)) = 0.660 · 1.180 = 0.778 mm</span>
+      <span class="eq">L_eff = c/(2·fr·√ε_eff) = 61.5/√3.94 = 30.98 mm</span>
+      <span class="eq">L = 30.98 − 2·0.778 = <b>29.4 mm</b></span>
+      <span class="eq">Patch outline: <b>37.7 × 29.4 mm</b> on FR-4 1.6 mm — Wi-Fi access-point internal antenna size</span>
+      <p style="color:var(--fg-dim);font-size:12px;margin-top:8px">Compare against a 5.8 GHz patch on the same FR-4: W=15.9 mm, L=12.4 mm — small enough to fit four of them in a 2×2 array on a small PCB.</p>
+    </div>
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- PIFA                                                              -->
+  <!-- =============================================================== -->
+  <section class="pane" id="pane-pifa">
+    <h2>PIFA — Planar Inverted-F Antenna</h2>
+    <div class="anchors">
+      <span class="anchor">Total path: <b>L + W ≈ λ/4</b></span>
+      <span class="anchor">Height above ground: <b>h = 3–10 mm</b> typical</span>
+      <span class="anchor">BW: <b>2–8 %</b> (more with thicker h)</span>
+      <span class="anchor">Every smartphone uses one</span>
+    </div>
+
+    <div class="controls">
+      <div class="control"><label>Frequency (MHz)</label>
+        <input id="pi-f" type="number" step="any" value="2440"></div>
+      <div class="control"><label>Height h (mm)</label>
+        <input id="pi-h" type="number" step="0.5" value="6"></div>
+      <div class="control"><label>→ λ (mm)</label>
+        <input id="pi-lam" type="number" readonly></div>
+      <div class="control"><label>→ λ/4 (mm)</label>
+        <input id="pi-q" type="number" readonly></div>
+      <div class="control"><label>→ Element L+W target (mm)</label>
+        <input id="pi-lpw" type="number" readonly></div>
+      <div class="control"><label>→ Square footprint side L=W (mm)</label>
+        <input id="pi-sq" type="number" readonly></div>
+      <div class="control"><label>→ Ground plane min (mm)</label>
+        <input id="pi-gp" type="number" readonly></div>
+    </div>
+
+    <div class="figure">
+      <svg id="pi-svg" viewBox="0 0 600 220"></svg>
+      <div class="figure-cap">PIFA side view — top patch suspended height h above ground plane, shorted at one corner, fed slightly inboard. Length + width sum to ≈ λ/4 because the short-circuit reflects the wave back.</div>
+    </div>
+
+    <h3>What makes the F-shape "inverted"</h3>
+    <p>A conventional L-antenna is a wire folded once (an "L"). An inverted-F adds a second bend and a shorting pin from the radiator to the ground plane — that's the "F" lying on its side. The shorting pin reflects the standing wave, so the resonant length is <em>halved</em> compared to a λ/4 monopole: <code>L + W ≈ λ/4</code>, not λ/2.</p>
+    <p>This is the dominant low-profile antenna in modern consumer electronics — phones, tablets, IoT modules. The Espressif ESP32 modules with ceramic chip antennas are pre-tuned PIFA variants packaged in 0805 SMD form.</p>
+
+    <h3>Tuning levers</h3>
+    <ul class="notice">
+      <li><b>Length L + W</b> — the main resonance knob. Total electrical path from feed to far corner sets f_r.</li>
+      <li><b>Feed position</b> — moves edge impedance from 5 Ω (near short) up to 200 Ω (far edge). Sweet spot ~15 % of L from short = ~50 Ω.</li>
+      <li><b>Short width</b> — narrower short raises impedance; thicker lowers it.</li>
+      <li><b>h (gap to ground)</b> — wider gap = more bandwidth (better matching tolerance) but more height.</li>
+      <li><b>Slot in the patch</b> — a single slot cut in L lets you tune <em>two</em> bands at once (e.g., 2.4 GHz Wi-Fi + 5 GHz Wi-Fi sharing one antenna).</li>
+    </ul>
+
+    <div class="worked">
+      <h3>Worked example — 2.44 GHz PIFA on a 50×30 mm IoT board</h3>
+      <span class="eq">λ = 122.9 mm → λ/4 = 30.7 mm</span>
+      <span class="eq">L + W = 30.7 mm → choose L = 18 mm, W = 12.7 mm (rectangular, sits along the board edge)</span>
+      <span class="eq">h = 6 mm air gap (lifted by plastic spacers above the ground plane)</span>
+      <span class="eq">Feed at ~2.7 mm from the short → ~50 Ω edge impedance</span>
+      <span class="eq">Ground plane: 50×30 mm is borderline-OK at 2.4 GHz (≈0.4·λ × 0.24·λ) — gain drops ~1.5 dB vs an infinite plane</span>
+      <p style="color:var(--fg-dim);font-size:12px;margin-top:8px">For 433 MHz the same geometry would need L + W ≈ 173 mm — way too big for a small board. That's why 433 MHz IoT modules use external wire whips, while 2.4 GHz IoT modules use on-board PIFAs / chip antennas.</p>
+    </div>
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- PATTERNS                                                          -->
+  <!-- =============================================================== -->
+  <section class="pane" id="pane-patterns">
+    <h2>Radiation patterns — visual intuition</h2>
+    <p class="lede">A radiation pattern is the 3-D distribution of radiated power as a function of direction. Sketches below are the canonical <em>far-field</em> shapes — what you'd measure on an anechoic-chamber rotator. Real patterns get dented by ground reflections, nearby metal, and your hand.</p>
+
+    <div class="figure-pair">
+      <div class="figure">
+        <svg id="pat-dipole" viewBox="0 0 300 240"></svg>
+        <div class="figure-cap"><b>λ/2 dipole — donut (toroid)</b><br>Side view: figure-of-8. End view: omnidirectional. Max gain perpendicular to wire axis. Nulls along wire ends. Gain = 2.15 dBi.</div>
+      </div>
+
+      <div class="figure">
+        <svg id="pat-monopole" viewBox="0 0 300 240"></svg>
+        <div class="figure-cap"><b>λ/4 monopole over ground — half-donut</b><br>Side view: upper half of dipole pattern (ground plane reflects). Top view: omnidirectional. Gain = 5.15 dBi over infinite ground (+3 dB vs dipole — same energy into half the volume).</div>
+      </div>
+
+      <div class="figure">
+        <svg id="pat-patch" viewBox="0 0 300 240"></svg>
+        <div class="figure-cap"><b>Patch — broadside dome</b><br>Side view: hemisphere centred normal to patch face. Top view: circular but narrower along patch length. Gain ≈ 6–9 dBi. Backside is shielded by ground plane (−15 to −25 dB).</div>
+      </div>
+
+      <div class="figure">
+        <svg id="pat-helix" viewBox="0 0 300 240"></svg>
+        <div class="figure-cap"><b>Helix (axial) — pencil beam</b><br>Side view: narrow cone along axis. Top view: narrow circle. Gain ≈ 10–18 dBi depending on N. Circular polarization (CP) — receives any linear orientation with 3 dB loss.</div>
+      </div>
+
+      <div class="figure">
+        <svg id="pat-yagi" viewBox="0 0 300 240"></svg>
+        <div class="figure-cap"><b>Yagi-Uda (for context) — directional</b><br>Driven dipole + reflector + directors. Forward gain ≈ 10–17 dBi. Front-to-back ratio ≈ 15–25 dB. Not in this calculator, but the canonical "fat arrow" lobe.</div>
+      </div>
+
+      <div class="figure">
+        <svg id="pat-iso" viewBox="0 0 300 240"></svg>
+        <div class="figure-cap"><b>Isotropic radiator — sphere</b><br>The mathematical reference (does not physically exist). 0 dBi by definition. All other gains are quoted "vs isotropic" (dBi) or "vs a dipole" (dBd, where 0 dBd = 2.15 dBi).</div>
+      </div>
+    </div>
+
+    <h3>Reading the gain numbers</h3>
+    <table>
+      <tr><th>Antenna</th><th>Gain (dBi)</th><th>HPBW (3 dB beam width)</th><th>Polarization</th></tr>
+      <tr><td>Isotropic (reference)</td><td class="num">0</td><td class="num">360° (sphere)</td><td>n/a</td></tr>
+      <tr><td>λ/2 dipole</td><td class="num">2.15</td><td class="num">78° (E-plane)</td><td>Linear (along wire)</td></tr>
+      <tr><td>λ/4 monopole (∞ GND)</td><td class="num">5.15</td><td class="num">~45° (elevation)</td><td>Linear (vertical)</td></tr>
+      <tr><td>Quarter-wave on small GND</td><td class="num">2–3</td><td class="num">~60° (tilted upward)</td><td>Linear</td></tr>
+      <tr><td>Patch (single element)</td><td class="num">6–9</td><td class="num">60–90°</td><td>Linear (along E-edge)</td></tr>
+      <tr><td>4×4 patch array</td><td class="num">17–19</td><td class="num">~15°</td><td>Linear</td></tr>
+      <tr><td>Helix N=10 axial</td><td class="num">13–15</td><td class="num">~33°</td><td>Circular (RHCP or LHCP)</td></tr>
+      <tr><td>3-element Yagi</td><td class="num">~7</td><td class="num">~60° forward</td><td>Linear</td></tr>
+      <tr><td>Parabolic dish 1 m @ 10 GHz</td><td class="num">~38</td><td class="num">~2.1°</td><td>Linear or CP per feed</td></tr>
+    </table>
+  </section>
+
+  <!-- =============================================================== -->
+  <!-- CHEAT SHEET                                                       -->
+  <!-- =============================================================== -->
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>CORE FORMULAS</h3>
+      <dl>
+        <dt>Wavelength</dt><dd><span class="eq">λ = c / f</span></dd>
+        <dt>In dielectric</dt><dd><span class="eq">λ_d = λ₀ / √ε_r</span></dd>
+        <dt>λ/4 monopole</dt><dd><span class="eq">L = K · λ/4, K ≈ 0.95</span></dd>
+        <dt>λ/2 dipole</dt><dd><span class="eq">L = K · λ/2, Z ≈ 73 Ω</span></dd>
+        <dt>Helix axial gain</dt><dd><span class="eq">G ≈ 12·N·(C/λ)²·(S/λ)</span></dd>
+        <dt>Patch width</dt><dd><span class="eq">W = c/(2fr)·√(2/(ε_r+1))</span></dd>
+        <dt>Patch length</dt><dd><span class="eq">L = c/(2fr·√ε_eff) − 2·Δl</span></dd>
+        <dt>PIFA</dt><dd><span class="eq">L + W ≈ λ/4</span></dd>
+      </dl>
+    </div>
+
+    <div class="cheat-card memorize">
+      <h3>QUICK MENTAL MATH</h3>
+      <ul>
+        <li><b>300 / f_MHz = λ in m</b> — the engineer's shortcut. 300/915 = 0.328 m.</li>
+        <li><b>75 / f_MHz = λ/4 in m</b> — 75/915 = 0.082 m = 82 mm ideal whip.</li>
+        <li>Multiply by <b>0.95</b> for real-wire end-effect.</li>
+        <li><b>ISM cheat sheet</b>: 433 MHz=173 mm whip · 868 MHz=82 mm · 915 MHz=78 mm · 2.4 GHz=29 mm · 5.8 GHz=12 mm.</li>
+        <li>Dipole = 2× monopole length; PIFA = monopole bent in half (L+W=λ/4).</li>
+        <li>Patch on FR-4 at 2.44 GHz ≈ <b>30×38 mm</b> — memorize this one.</li>
+      </ul>
+    </div>
+
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>No ground plane = high VSWR</b> — a monopole on bare wire with nothing under it radiates poorly and reflects power back into the PA. Always provide ≥ λ/4 radius counterpoise.</li>
+        <li><b>Nearby metal detunes the antenna</b> — a metal screw 5 mm from a 2.4 GHz patch can shift f_r by 100 MHz. Datasheet "antenna keep-out" zones are not optional.</li>
+        <li><b>Antenna ≠ "just a wire that long"</b> — wrong diameter, wrong dielectric, wrong end-effect factor → resonance at the wrong frequency → bad VSWR → wasted TX power and degraded RX.</li>
+        <li><b>50 Ω is convention, not law</b> — monopole feed is 36 Ω, dipole 73 Ω, patch edge 200+ Ω. Ignore at low cost in IoT (the loss is tenths of a dB); pay attention in high-gain or PA-limited systems.</li>
+        <li><b>Polarization mismatch costs 20+ dB</b> — vertical antenna receiving a horizontal signal is essentially deaf. Two CP antennas of <em>opposite</em> handedness lose 20 dB.</li>
+        <li><b>Trace inductance from the feed pad adds up</b> — at 2.4 GHz, 5 mm of unmatched 50 Ω trace before the antenna looks like ~3 nH of series L = j2.5 Ω. Tolerable; 50 mm is not.</li>
+      </ul>
+    </div>
+
+    <div class="cheat-card">
+      <h3>WHEN TO USE WHAT</h3>
+      <ul>
+        <li><b>433/868 MHz IoT</b> — λ/4 whip (cheap, simple). Helical loaded whip if size-constrained.</li>
+        <li><b>2.4 GHz IoT</b> — PIFA on PCB or chip antenna SMD. Patch if you want directionality.</li>
+        <li><b>5–6 GHz Wi-Fi</b> — chip antenna, PIFA, or patch array. Easy to make small.</li>
+        <li><b>GPS L1 1.575 GHz</b> — patch (cheap, ceramic) or helix (for handheld). CP either way.</li>
+        <li><b>Drone telemetry</b> — λ/4 whip on the drone, λ/4 whip or short Yagi on the ground station.</li>
+        <li><b>LoRa long-haul</b> — λ/4 whip on the node, λ/2 dipole or 6 dBi collinear on the gateway.</li>
+        <li><b>Satellite comm</b> — circular polarization mandatory: helical, crossed-Yagi, or patch with quadrature feed.</li>
+      </ul>
+    </div>
+  </section>
+
+  <h2>Where this fits in the bigger picture</h2>
+  <ul class="notice">
+    <li><b>Geometry calculator gets you 90 % there</b> — the formulas in this tool will land you at f_r within ±5 % on the first build. The last 5 % is tuning: trim wire, adjust feed offset, watch VSWR on a NanoVNA.</li>
+    <li><b>VSWR / matching is the next step</b> — once you've cut the right length, you may still need an L/T-match to land 50 Ω at the PA. See <a href="../ee/phase-9-rf-wireless/matching-smith.html">matching-smith.html</a> for the Smith-chart workflow.</li>
+    <li><b>Link budget closes the loop</b> — TX power − cable loss + TX gain + RX gain − path loss vs RX sensitivity. The antenna gains feed into <a href="../ee/phase-9-rf-wireless/link-budget.html">link-budget.html</a>.</li>
+    <li><b>For LoRa specifically</b>: a 78 mm whip on a 915 MHz module, fed by 50 Ω coax, with a 100×100 mm metal backplate, will give you a clean 1.3:1 VSWR and ~3 dBi gain at the horizon. Combined with 14 dBm TX and SF12, that's ~10 km outdoor line-of-sight. See <a href="../ee/phase-9-rf-wireless/lora-modulation.html">lora-modulation.html</a>.</li>
+  </ul>
+
+  <div class="crosslink">
+    <h4>Cross-links</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><a href="../ee/phase-9-rf-wireless/antenna-fundamentals.html">Phase 9 — Antenna Fundamentals</a> (theory: aperture, near/far field, polarization, reciprocity)</li>
+      <li><a href="../ee/phase-9-rf-wireless/matching-smith.html">Phase 9 — Matching &amp; Smith Chart</a> (L/T-network design for the last few % of VSWR)</li>
+      <li><a href="../ee/phase-9-rf-wireless/link-budget.html">Phase 9 — Link Budget</a> (use these gain numbers in a path-loss calculation)</li>
+      <li><a href="../ee/phase-9-rf-wireless/lora-modulation.html">Phase 9 — LoRa Modulation</a> (companion for the 915 MHz monopole worked example)</li>
+      <li><a href="../ee/phase-9-rf-wireless/db-rf-power.html">Phase 9 — dB / RF Power</a> (dBm, dBi, dBd — the units that wrap every antenna spec)</li>
+      <li><a href="../ee/phase-9-rf-wireless/wireless-spectrum.html">Phase 9 — Wireless Spectrum</a> (which band uses which geometry &amp; why)</li>
+      <li><a href="unit-converter.html">Engineering Unit Converter</a> · <a href="constants-units.html">Constants &amp; Units</a></li>
+    </ul>
+  </div>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EE Phase 9 — RF &amp; Wireless</span> ·
+    Topic: Antenna geometry, dimensions, and feed impedance ·
+    Companion projects: cyberdeck LoRa subsystem (915 MHz monopole), arm-6dof-pa612 telemetry (2.4 GHz PIFA)
+  </footer>
+</main>
+
+<script>
+/* ===================================================================
+   ANTENNA GEOMETRY CALCULATOR
+   --------------------------------------------------------------------
+   c is exact: 299 792 458 m/s. All frequency inputs are in MHz; all
+   lengths reported in mm. The end-effect factor K defaults to 0.95
+   (typical thin wire); user can override.
+   =================================================================== */
+const C = 299792458; // m/s
+
+function fmt(x, d) {
+  if (!isFinite(x)) return '';
+  const abs = Math.abs(x);
+  if (abs === 0) return '0';
+  if (abs >= 1e4) return x.toFixed(0);
+  if (abs >= 100) return x.toFixed(1);
+  if (abs >= 1)   return x.toFixed(2);
+  if (abs >= 0.01) return x.toFixed(3);
+  return x.toExponential(3);
+}
+
+/* -------- TAB SWITCHING -------- */
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.pane').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('pane-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+/* -------- ISM PRESETS — push frequency into every tab -------- */
+function applyPreset(fMHz) {
+  ['wl-f','mo-f','di-f','pi-f','pa-f'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = fMHz;
+  });
+  // helix preset: keep f, but rescale D and S to axial-mode targets
+  const heF = document.getElementById('he-f');
+  if (heF) {
+    heF.value = fMHz;
+    const lamMM = (C / (fMHz * 1e6)) * 1000;
+    document.getElementById('he-d').value = (lamMM / Math.PI).toFixed(1);
+    document.getElementById('he-s').value = (lamMM / 4).toFixed(1);
+  }
+  // patch
+  recalcAll();
+  // visually mark active preset
+  document.querySelectorAll('.preset').forEach(p => p.classList.remove('active'));
+}
+document.querySelectorAll('.preset').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.preset').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    applyPreset(parseFloat(btn.dataset.freq));
+  });
+});
+
+/* ===================================================================
+   TAB 1 — WAVELENGTH
+   =================================================================== */
+function recalcWavelength() {
+  const fMHz = parseFloat(document.getElementById('wl-f').value);
+  const er   = parseFloat(document.getElementById('wl-er').value);
+  if (!isFinite(fMHz) || fMHz <= 0) return;
+  const lam = (C / (fMHz * 1e6)) * 1000; // mm
+  const lamEr = (isFinite(er) && er > 0) ? lam / Math.sqrt(er) : lam;
+  document.getElementById('wl-lambda').value   = fmt(lam, 2);
+  document.getElementById('wl-lambdaer').value = fmt(lamEr, 2);
+  document.getElementById('wl-half').value     = fmt(lam / 2, 2);
+  document.getElementById('wl-quarter').value  = fmt(lam / 4, 2);
+}
+['wl-f', 'wl-er'].forEach(id =>
+  document.getElementById(id).addEventListener('input', recalcWavelength)
+);
+
+/* ===================================================================
+   TAB 2 — MONOPOLE
+   =================================================================== */
+function recalcMonopole() {
+  const fMHz = parseFloat(document.getElementById('mo-f').value);
+  const K    = parseFloat(document.getElementById('mo-k').value);
+  if (!isFinite(fMHz) || fMHz <= 0) return;
+  const lam = (C / (fMHz * 1e6)) * 1000;
+  const li  = lam / 4;
+  const lp  = (isFinite(K) ? K : 0.95) * li;
+  document.getElementById('mo-li').value = fmt(li, 2);
+  document.getElementById('mo-lp').value = fmt(lp, 2);
+  document.getElementById('mo-gp').value = fmt(li, 2);
+  document.getElementById('mo-z').value  = '36';
+  drawMonopole(lp, li);
+}
+['mo-f', 'mo-k'].forEach(id =>
+  document.getElementById(id).addEventListener('input', recalcMonopole)
+);
+
+function drawMonopole(lp, li) {
+  const svg = document.getElementById('mo-svg');
+  // Scale: max length = max(lp, li) → 140 px vertical
+  const scale = 140 / Math.max(lp, li, 1);
+  const lpPx = lp * scale;
+  const liPx = li * scale;
+  const yGround = 200;
+  const xC = 300;
+  // Ground-plane radius drawn at λ/4 in same scale
+  const gpPx = Math.min(li * scale, 220);
+  svg.innerHTML = `
+    <line x1="${xC - gpPx}" y1="${yGround}" x2="${xC + gpPx}" y2="${yGround}" class="wire" stroke-width="3"/>
+    <text x="${xC + gpPx + 8}" y="${yGround + 4}" class="label-dim">ground plane (≥ λ/4 radius = ${fmt(li,1)} mm)</text>
+    <line x1="${xC}" y1="${yGround}" x2="${xC}" y2="${yGround - lpPx}" stroke="var(--accent2)" stroke-width="2"/>
+    <circle cx="${xC}" cy="${yGround}" r="3" fill="var(--accent3)"/>
+    <text x="${xC + 10}" y="${yGround - lpPx + 4}" class="label-acc">L = ${fmt(lp,1)} mm (physical, K·λ/4)</text>
+    <text x="${xC + 10}" y="${yGround + 16}" class="label-dim">feed point (~36 Ω)</text>
+    <line x1="${xC - 20}" y1="${yGround}" x2="${xC - 20}" y2="${yGround - liPx}" stroke="var(--fg-dim)" stroke-dasharray="3,3"/>
+    <text x="${xC - 90}" y="${yGround - liPx + 4}" class="label-dim">λ/4 ideal = ${fmt(li,1)} mm</text>
+    <!-- standing wave indicator (current peak at base, zero at top) -->
+    <path d="M ${xC + 50} ${yGround - lpPx} Q ${xC + 90} ${yGround - lpPx/2} ${xC + 50} ${yGround}"
+          fill="none" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2,2"/>
+    <text x="${xC + 95}" y="${yGround - lpPx/2 + 4}" class="label-acc">I(z) current</text>
+    <text x="20" y="30" class="label">λ/4 MONOPOLE (side view)</text>
+  `;
+}
+
+/* ===================================================================
+   TAB 3 — DIPOLE
+   =================================================================== */
+function recalcDipole() {
+  const fMHz = parseFloat(document.getElementById('di-f').value);
+  const K    = parseFloat(document.getElementById('di-k').value);
+  if (!isFinite(fMHz) || fMHz <= 0) return;
+  const lam = (C / (fMHz * 1e6)) * 1000;
+  const li  = lam / 2;
+  const lp  = (isFinite(K) ? K : 0.95) * li;
+  document.getElementById('di-li').value  = fmt(li, 2);
+  document.getElementById('di-lp').value  = fmt(lp, 2);
+  document.getElementById('di-arm').value = fmt(lp / 2, 2);
+  document.getElementById('di-z').value   = '73';
+  drawDipole(lp);
+}
+['di-f', 'di-k'].forEach(id =>
+  document.getElementById(id).addEventListener('input', recalcDipole)
+);
+
+function drawDipole(lp) {
+  const svg = document.getElementById('di-svg');
+  const maxPx = 460;
+  const scale = maxPx / Math.max(lp, 1);
+  const lpPx = lp * scale;
+  const xC = 300, yC = 100;
+  svg.innerHTML = `
+    <line x1="${xC - lpPx/2}" y1="${yC}" x2="${xC - 8}" y2="${yC}" stroke="var(--accent2)" stroke-width="3"/>
+    <line x1="${xC + 8}" y1="${yC}" x2="${xC + lpPx/2}" y2="${yC}" stroke="var(--accent2)" stroke-width="3"/>
+    <circle cx="${xC - 8}" cy="${yC}" r="3" fill="var(--accent3)"/>
+    <circle cx="${xC + 8}" cy="${yC}" r="3" fill="var(--accent3)"/>
+    <line x1="${xC - 8}" y1="${yC + 5}" x2="${xC - 8}" y2="${yC + 60}" class="wire"/>
+    <line x1="${xC + 8}" y1="${yC + 5}" x2="${xC + 8}" y2="${yC + 60}" class="wire"/>
+    <text x="${xC - 80}" y="${yC + 75}" class="label-dim">coax → balun → feed (~73 Ω)</text>
+    <!-- Arm labels -->
+    <text x="${xC - lpPx/4}" y="${yC - 10}" class="label-acc" text-anchor="middle">arm 1 = ${fmt(lp/2,1)} mm</text>
+    <text x="${xC + lpPx/4}" y="${yC - 10}" class="label-acc" text-anchor="middle">arm 2 = ${fmt(lp/2,1)} mm</text>
+    <text x="${xC}" y="${yC + 75}" class="label-dim" text-anchor="middle">feedpoint</text>
+    <!-- Current envelope (half sine, peaks centre) -->
+    <path d="M ${xC - lpPx/2} ${yC + 5} Q ${xC} ${yC + 45} ${xC + lpPx/2} ${yC + 5}"
+          fill="none" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2,2"/>
+    <text x="${xC - 30}" y="${yC + 35}" class="label-acc">I(x) sinusoid</text>
+    <text x="20" y="30" class="label">λ/2 DIPOLE — TOTAL ${fmt(lp,1)} mm</text>
+  `;
+}
+
+/* ===================================================================
+   TAB 4 — HELICAL
+   =================================================================== */
+function recalcHelical() {
+  const fMHz = parseFloat(document.getElementById('he-f').value);
+  const N    = parseFloat(document.getElementById('he-n').value);
+  const D    = parseFloat(document.getElementById('he-d').value);
+  const S    = parseFloat(document.getElementById('he-s').value);
+  if (!isFinite(fMHz) || fMHz <= 0) return;
+  const lam = (C / (fMHz * 1e6)) * 1000;
+  const Cmm = Math.PI * D;
+  const len = N * S;
+  const Clam = Cmm / lam;
+  const Slam = S / lam;
+  const gainLin = 12 * N * Clam * Clam * Slam;
+  const gainDb = 10 * Math.log10(gainLin);
+  const alpha = Math.atan2(S, Cmm) * 180 / Math.PI;
+  const Zfeed = 140 * Clam;
+  document.getElementById('he-lam').value   = fmt(lam, 2);
+  document.getElementById('he-c').value     = fmt(Cmm, 2);
+  document.getElementById('he-len').value   = fmt(len, 1);
+  document.getElementById('he-g').value     = fmt(gainDb, 2);
+  document.getElementById('he-alpha').value = fmt(alpha, 2);
+  document.getElementById('he-z').value     = fmt(Zfeed, 0);
+  drawHelical(D, S, N);
+}
+['he-f','he-n','he-d','he-s'].forEach(id =>
+  document.getElementById(id).addEventListener('input', recalcHelical)
+);
+
+function drawHelical(D, S, N) {
+  const svg = document.getElementById('he-svg');
+  // Side view: helix as a series of ellipses
+  const yBase = 200, xC = 300;
+  const maxLen = 140;
+  const scale = Math.min(maxLen / (N * S), 2.5);
+  const dPx = D * scale * 0.6;
+  const sPx = S * scale;
+  const totalLen = N * sPx;
+  let turns = '';
+  for (let i = 0; i < N; i++) {
+    const yTop = yBase - (i + 0.5) * sPx;
+    turns += `<ellipse cx="${xC}" cy="${yTop}" rx="${dPx/2}" ry="${dPx/8}"
+              fill="none" stroke="var(--accent2)" stroke-width="1.5"/>`;
+  }
+  // ground plane
+  svg.innerHTML = `
+    <line x1="${xC - dPx*1.2}" y1="${yBase}" x2="${xC + dPx*1.2}" y2="${yBase}"
+          stroke="var(--fg)" stroke-width="3"/>
+    <text x="${xC + dPx*1.2 + 8}" y="${yBase + 4}" class="label-dim">ground plane (~0.8·λ ⌀)</text>
+    ${turns}
+    <line x1="${xC - dPx/2}" y1="${yBase}" x2="${xC - dPx/2}" y2="${yBase - totalLen}"
+          stroke="var(--accent2)" stroke-width="1" stroke-dasharray="3,3"/>
+    <text x="${xC - dPx/2 - 130}" y="${yBase - totalLen/2}" class="label-acc">N·S = ${fmt(N*S,1)} mm</text>
+    <text x="${xC + dPx/2 + 10}" y="${yBase - 14}" class="label-acc">D = ${fmt(D,1)} mm</text>
+    <text x="${xC + dPx/2 + 10}" y="${yBase - sPx*1.5}" class="label-acc">S = ${fmt(S,1)} mm</text>
+    <text x="20" y="30" class="label">HELIX axial mode (side view)</text>
+  `;
+}
+
+/* ===================================================================
+   TAB 5 — PATCH
+   =================================================================== */
+function recalcPatch() {
+  const fMHz = parseFloat(document.getElementById('pa-f').value);
+  const er   = parseFloat(document.getElementById('pa-er').value);
+  const h    = parseFloat(document.getElementById('pa-h').value);
+  if (!isFinite(fMHz) || fMHz <= 0 || !isFinite(er) || er <= 0 || !isFinite(h) || h <= 0) return;
+  const fHz = fMHz * 1e6;
+  const lam0 = (C / fHz) * 1000; // mm
+  // Step 1: width
+  const W = (C / (2 * fHz)) * Math.sqrt(2 / (er + 1)) * 1000;
+  // Step 2: ε_eff
+  const Eeff = (er + 1) / 2 + (er - 1) / 2 * Math.pow(1 + 12 * h / W, -0.5);
+  // Step 3: Δl
+  const dl = 0.412 * h *
+    ((Eeff + 0.3) * (W / h + 0.264)) /
+    ((Eeff - 0.258) * (W / h + 0.8));
+  // Step 4: L_eff
+  const Leff = (C / (2 * fHz * Math.sqrt(Eeff))) * 1000;
+  // Step 5: L
+  const L = Leff - 2 * dl;
+  const lg = lam0 / Math.sqrt(Eeff);
+  document.getElementById('pa-w').value    = fmt(W, 2);
+  document.getElementById('pa-eeff').value = fmt(Eeff, 3);
+  document.getElementById('pa-dl').value   = fmt(dl, 3);
+  document.getElementById('pa-l').value    = fmt(L, 2);
+  document.getElementById('pa-lg').value   = fmt(lg, 2);
+  drawPatch(W, L);
+}
+['pa-f','pa-er','pa-h'].forEach(id =>
+  document.getElementById(id).addEventListener('input', recalcPatch)
+);
+
+function drawPatch(W, L) {
+  const svg = document.getElementById('pa-svg');
+  const maxDim = Math.max(W, L);
+  const scale = 160 / maxDim;
+  const Wpx = W * scale, Lpx = L * scale;
+  const xC = 300, yC = 120;
+  // Substrate (slightly larger)
+  const subW = Wpx + 60, subL = Lpx + 60;
+  svg.innerHTML = `
+    <rect x="${xC - subW/2}" y="${yC - subL/2}" width="${subW}" height="${subL}"
+          fill="var(--bg-elev2)" stroke="var(--fg-dim)" stroke-width="1" stroke-dasharray="3,3"/>
+    <text x="${xC - subW/2}" y="${yC - subL/2 - 6}" class="label-dim">FR-4 substrate</text>
+    <rect x="${xC - Wpx/2}" y="${yC - Lpx/2}" width="${Wpx}" height="${Lpx}"
+          fill="var(--bg-elev)" stroke="var(--accent2)" stroke-width="2"/>
+    <text x="${xC}" y="${yC + 4}" class="label-acc" text-anchor="middle">PATCH</text>
+    <text x="${xC}" y="${yC - Lpx/2 - 10}" class="label-acc" text-anchor="middle">W = ${fmt(W,2)} mm</text>
+    <text x="${xC + Wpx/2 + 14}" y="${yC + 4}" class="label-acc">L = ${fmt(L,2)} mm</text>
+    <!-- inset feed -->
+    <line x1="${xC}" y1="${yC + Lpx/2}" x2="${xC}" y2="${yC + Lpx/2 + 30}" class="wire"/>
+    <circle cx="${xC}" cy="${yC + Lpx/2}" r="3" fill="var(--accent3)"/>
+    <text x="${xC + 6}" y="${yC + Lpx/2 + 25}" class="label-dim">feed (inset or λ/4)</text>
+    <!-- radiating slots (the two W-edges) -->
+    <line x1="${xC - Wpx/2}" y1="${yC - Lpx/2 - 2}" x2="${xC + Wpx/2}" y2="${yC - Lpx/2 - 2}"
+          stroke="var(--accent)" stroke-width="2"/>
+    <line x1="${xC - Wpx/2}" y1="${yC + Lpx/2 + 2}" x2="${xC + Wpx/2}" y2="${yC + Lpx/2 + 2}"
+          stroke="var(--accent)" stroke-width="2"/>
+    <text x="${xC + Wpx/2 + 8}" y="${yC - Lpx/2 + 4}" class="label-acc">radiating slot</text>
+    <text x="20" y="30" class="label">PATCH (top view)</text>
+  `;
+}
+
+/* ===================================================================
+   TAB 6 — PIFA
+   =================================================================== */
+function recalcPifa() {
+  const fMHz = parseFloat(document.getElementById('pi-f').value);
+  const h    = parseFloat(document.getElementById('pi-h').value);
+  if (!isFinite(fMHz) || fMHz <= 0) return;
+  const lam = (C / (fMHz * 1e6)) * 1000;
+  const q = lam / 4;
+  const lpw = q; // L + W target
+  const side = q / 2; // if square
+  const gp = lam * 0.4;
+  document.getElementById('pi-lam').value = fmt(lam, 2);
+  document.getElementById('pi-q').value   = fmt(q, 2);
+  document.getElementById('pi-lpw').value = fmt(lpw, 2);
+  document.getElementById('pi-sq').value  = fmt(side, 2);
+  document.getElementById('pi-gp').value  = fmt(gp, 1);
+  drawPifa(lpw, h);
+}
+['pi-f','pi-h'].forEach(id =>
+  document.getElementById(id).addEventListener('input', recalcPifa)
+);
+
+function drawPifa(lpw, h) {
+  const svg = document.getElementById('pi-svg');
+  // Side view: ground plane bottom, patch top, short and feed pins
+  const yGND = 180, xC = 300;
+  const scale = 110 / Math.max(lpw, 1);
+  const lPx = lpw * scale * 0.7;
+  const hPx = Math.max(h * 6, 20);
+  const xL = xC - lPx/2, xR = xC + lPx/2;
+  const yTop = yGND - hPx;
+  svg.innerHTML = `
+    <line x1="${xC - 220}" y1="${yGND}" x2="${xC + 220}" y2="${yGND}" stroke="var(--fg)" stroke-width="3"/>
+    <text x="${xC - 220}" y="${yGND + 18}" class="label-dim">ground plane (≥ ~0.4·λ)</text>
+    <line x1="${xL}" y1="${yTop}" x2="${xR}" y2="${yTop}" stroke="var(--accent2)" stroke-width="3"/>
+    <text x="${xC}" y="${yTop - 8}" class="label-acc" text-anchor="middle">top patch — L + W ≈ ${fmt(lpw,1)} mm</text>
+    <!-- short pin -->
+    <line x1="${xL}" y1="${yTop}" x2="${xL}" y2="${yGND}" stroke="var(--warn)" stroke-width="2"/>
+    <text x="${xL - 50}" y="${(yTop + yGND)/2 + 4}" class="label-warn">SHORT</text>
+    <!-- feed pin (inset ~15% of L) -->
+    <line x1="${xL + lPx*0.15}" y1="${yTop}" x2="${xL + lPx*0.15}" y2="${yGND}"
+          stroke="var(--accent3)" stroke-width="2" stroke-dasharray="3,2"/>
+    <text x="${xL + lPx*0.15 + 4}" y="${(yTop + yGND)/2 + 4}" class="label-ok">FEED</text>
+    <!-- height label -->
+    <line x1="${xR + 8}" y1="${yTop}" x2="${xR + 8}" y2="${yGND}" stroke="var(--fg-dim)"/>
+    <text x="${xR + 14}" y="${(yTop + yGND)/2 + 4}" class="label-dim">h = ${fmt(h,1)} mm</text>
+    <text x="20" y="30" class="label">PIFA (side view)</text>
+  `;
+}
+
+/* ===================================================================
+   TAB 7 — RADIATION PATTERNS (sketches)
+   =================================================================== */
+function drawPatterns() {
+  // Dipole — figure-of-8 in vertical plane
+  document.getElementById('pat-dipole').innerHTML = `
+    <line x1="20" y1="120" x2="280" y2="120" stroke="var(--fg-dim)" stroke-dasharray="3,3"/>
+    <line x1="150" y1="10" x2="150" y2="230" stroke="var(--fg-dim)" stroke-dasharray="3,3"/>
+    <path d="M 150 50 Q 80 80 80 120 Q 80 160 150 190 Q 220 160 220 120 Q 220 80 150 50 Z"
+          fill="rgba(94,200,255,0.15)" stroke="var(--accent)" stroke-width="2"/>
+    <line x1="150" y1="80" x2="150" y2="160" stroke="var(--accent2)" stroke-width="3"/>
+    <text x="155" y="95" class="label-acc">dipole</text>
+    <text x="150" y="245" class="label-dim" text-anchor="middle">vertical-plane cut</text>
+    <text x="10" y="20" class="label">DIPOLE — toroid</text>
+  `;
+  // Monopole — half donut
+  document.getElementById('pat-monopole').innerHTML = `
+    <line x1="20" y1="180" x2="280" y2="180" stroke="var(--fg)" stroke-width="2"/>
+    <text x="20" y="200" class="label-dim">ground</text>
+    <line x1="150" y1="10" x2="150" y2="180" stroke="var(--fg-dim)" stroke-dasharray="3,3"/>
+    <path d="M 150 30 Q 70 70 70 180 L 230 180 Q 230 70 150 30 Z"
+          fill="rgba(94,200,255,0.15)" stroke="var(--accent)" stroke-width="2"/>
+    <line x1="150" y1="90" x2="150" y2="180" stroke="var(--accent2)" stroke-width="3"/>
+    <text x="155" y="120" class="label-acc">whip</text>
+    <text x="150" y="220" class="label-dim" text-anchor="middle">vertical-plane cut</text>
+    <text x="10" y="20" class="label">MONOPOLE — half donut</text>
+  `;
+  // Patch — broadside dome
+  document.getElementById('pat-patch').innerHTML = `
+    <line x1="20" y1="180" x2="280" y2="180" stroke="var(--fg)" stroke-width="2"/>
+    <text x="20" y="200" class="label-dim">ground / substrate</text>
+    <rect x="100" y="172" width="100" height="8" fill="var(--accent2)"/>
+    <text x="150" y="170" class="label-acc" text-anchor="middle">patch</text>
+    <path d="M 100 180 Q 60 60 150 30 Q 240 60 200 180 Z"
+          fill="rgba(94,200,255,0.15)" stroke="var(--accent)" stroke-width="2"/>
+    <text x="150" y="220" class="label-dim" text-anchor="middle">broadside (normal to patch)</text>
+    <text x="10" y="20" class="label">PATCH — dome</text>
+  `;
+  // Helix — pencil beam
+  document.getElementById('pat-helix').innerHTML = `
+    <line x1="20" y1="200" x2="280" y2="200" stroke="var(--fg)" stroke-width="2"/>
+    <text x="20" y="218" class="label-dim">ground</text>
+    <!-- helix coil sketch -->
+    <ellipse cx="150" cy="160" rx="20" ry="5" fill="none" stroke="var(--accent2)" stroke-width="1.5"/>
+    <ellipse cx="150" cy="145" rx="20" ry="5" fill="none" stroke="var(--accent2)" stroke-width="1.5"/>
+    <ellipse cx="150" cy="130" rx="20" ry="5" fill="none" stroke="var(--accent2)" stroke-width="1.5"/>
+    <ellipse cx="150" cy="115" rx="20" ry="5" fill="none" stroke="var(--accent2)" stroke-width="1.5"/>
+    <ellipse cx="150" cy="100" rx="20" ry="5" fill="none" stroke="var(--accent2)" stroke-width="1.5"/>
+    <!-- narrow pencil beam upward -->
+    <path d="M 130 90 Q 150 10 170 90 Z" fill="rgba(94,200,255,0.20)" stroke="var(--accent)" stroke-width="2"/>
+    <text x="180" y="40" class="label-acc">main lobe</text>
+    <text x="150" y="240" class="label-dim" text-anchor="middle">end-fire / circular pol</text>
+    <text x="10" y="20" class="label">HELIX — pencil</text>
+  `;
+  // Yagi sketch
+  document.getElementById('pat-yagi').innerHTML = `
+    <line x1="20" y1="160" x2="280" y2="160" stroke="var(--fg-dim)" stroke-dasharray="3,3"/>
+    <line x1="80" y1="100" x2="80" y2="220" stroke="var(--accent2)" stroke-width="2"/>
+    <text x="65" y="95" class="label-dim">refl</text>
+    <line x1="120" y1="110" x2="120" y2="210" stroke="var(--accent2)" stroke-width="2"/>
+    <text x="105" y="105" class="label-acc">driv</text>
+    <line x1="155" y1="115" x2="155" y2="205" stroke="var(--accent2)" stroke-width="2"/>
+    <line x1="185" y1="120" x2="185" y2="200" stroke="var(--accent2)" stroke-width="2"/>
+    <line x1="210" y1="125" x2="210" y2="195" stroke="var(--accent2)" stroke-width="2"/>
+    <text x="180" y="105" class="label-dim">directors →</text>
+    <path d="M 150 160 Q 230 100 270 160 Q 230 220 150 160 Z"
+          fill="rgba(94,200,255,0.15)" stroke="var(--accent)" stroke-width="2"/>
+    <path d="M 80 160 Q 60 145 50 160 Q 60 175 80 160 Z"
+          fill="rgba(255,123,114,0.15)" stroke="var(--warn)" stroke-width="1.5"/>
+    <text x="55" y="195" class="label-warn">back lobe</text>
+    <text x="150" y="240" class="label-dim" text-anchor="middle">forward gain ~12 dBi</text>
+    <text x="10" y="20" class="label">YAGI — arrow</text>
+  `;
+  // Isotropic — sphere
+  document.getElementById('pat-iso').innerHTML = `
+    <line x1="20" y1="120" x2="280" y2="120" stroke="var(--fg-dim)" stroke-dasharray="3,3"/>
+    <line x1="150" y1="10" x2="150" y2="230" stroke="var(--fg-dim)" stroke-dasharray="3,3"/>
+    <circle cx="150" cy="120" r="90" fill="rgba(94,200,255,0.12)" stroke="var(--accent)" stroke-width="2"/>
+    <circle cx="150" cy="120" r="3" fill="var(--accent2)"/>
+    <text x="155" y="116" class="label-acc">point source</text>
+    <text x="150" y="245" class="label-dim" text-anchor="middle">0 dBi reference (theoretical)</text>
+    <text x="10" y="20" class="label">ISOTROPIC — sphere</text>
+  `;
+}
+
+/* ===================================================================
+   GLOBAL RECALC
+   =================================================================== */
+function recalcAll() {
+  recalcWavelength();
+  recalcMonopole();
+  recalcDipole();
+  recalcHelical();
+  recalcPatch();
+  recalcPifa();
+}
+
+recalcAll();
+drawPatterns();
+</script>
+</body>
+</html>

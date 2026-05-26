@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ground Bounce &amp; Topology — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+  .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;
+    padding:4px 8px;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim);cursor:pointer}
+  .anchor:hover{border-color:var(--accent)}
+  .anchor.active{border-color:var(--accent);color:var(--accent)}
+  .anchor b{color:var(--accent2)}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:4px 8px;
+    font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;
+    font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .axis{stroke:var(--fg-dim);stroke-width:1}
+  .axis-label{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .grid{stroke:var(--grid);stroke-width:0.5}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);
+    padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;
+    text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;
+    background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;
+    border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;
+    margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>Ground Bounce &amp; Topology</h1>
+  <p class="lede">Ground isn't a magic infinity; it's a wire (or copper pour, or plane) with inductance. When a switching MOSFET dumps 2 A through the trace in 5 ns, V = L·di/dt creates a transient voltage at the "ground" pin of nearby ICs — that's ground bounce. The fix isn't more ground wire — it's the right <em>topology</em>: star (one common point), daisy-chain (worst), or single-point grounding. Slide the inductance, the di/dt, and the chosen topology; watch the transient voltage at the sensor amplifier rise and fall.</p>
+
+  <div class="anchors">
+    <button class="anchor active" data-preset="bad"><b>Daisy-chain</b> · worst — shared return</button>
+    <button class="anchor" data-preset="star"><b>Star</b> · one node</button>
+    <button class="anchor" data-preset="single"><b>Single-point</b> · separate analog/digital</button>
+    <button class="anchor" data-preset="plane"><b>Solid plane</b> · ideal</button>
+  </div>
+
+  <section class="controls">
+    <div class="control"><label>Switching current Δi: <span class="readout" id="diRead">2.0 A</span></label><input id="di" type="range" min="0.01" max="10" step="0.01" value="2"></div>
+    <div class="control"><label>Edge rate dt: <span class="readout" id="dtRead">5.0 ns</span></label><input id="dt" type="range" min="0.5" max="50" step="0.1" value="5"></div>
+    <div class="control"><label>Trace length / ground path (mm): <span class="readout" id="lenRead">25 mm</span></label><input id="len" type="range" min="2" max="100" step="1" value="25"></div>
+    <div class="control"><label>Trace width: <span class="readout" id="widRead">0.5 mm</span></label><input id="wid" type="range" min="0.1" max="5" step="0.1" value="0.5"></div>
+    <div class="control"><label>Switching frequency: <span class="readout" id="fRead">1.0 MHz</span></label><input id="f" type="range" min="1" max="500000" step="1" value="1000"></div>
+  </section>
+
+  <div class="figure">
+    <svg id="topology" viewBox="0 0 700 320" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Notes</th></tr>
+      <tr><td>Trace inductance L</td><td id="tL" class="num">25 nH</td><td><code>~1 nH/mm narrow trace, ~0.5 nH/mm wide trace</code></td></tr>
+      <tr><td>di/dt</td><td id="tDidt" class="num">400 MA/s</td><td><code>Δi / Δt</code></td></tr>
+      <tr><td>Ground bounce V_GB</td><td id="tVgb" class="num">10.0 V</td><td><code>L · di/dt — transient on "ground"</code></td></tr>
+      <tr><td>Topology effective L</td><td id="tLeff" class="num">25 nH</td><td><code>shared return = full L; star = 0; SP = isolated</code></td></tr>
+      <tr><td>Bounce seen by quiet IC</td><td id="tVbq" class="num">10.0 V</td><td><code>L_eff · di/dt</code></td></tr>
+      <tr><td>Spectral content</td><td id="tBw" class="num">200 MHz</td><td><code>BW ≈ 0.35 / t_rise</code></td></tr>
+      <tr><td>Verdict</td><td id="tStatus" class="num" colspan="2">…</td></tr>
+    </table>
+    <div class="vd"><b>Live derivation:</b> V_GB = L · di/dt = <span id="vdCalc">25 nH · 400 MA/s = 10 V transient</span></div>
+  </div>
+
+  <h2>Why ground is never zero</h2>
+  <p>The textbook says "ground = 0 V everywhere." The textbook lies. Every centimeter of trace, every via, every cable has inductance. Push current through inductance and you get voltage: V = L·di/dt. The faster the current changes (CMOS edges in nanoseconds), the bigger the voltage spike across the "ground" wire.</p>
+  <div class="deriv">
+    <span class="step">Wire inductance (rule of thumb): <b>~1 nH per mm</b> for thin trace; <b>~0.3 nH/mm</b> for a wide trace over a ground plane.</span>
+    <span class="step">A 100 nH wire (10 cm trace) carrying 1 A switched in 5 ns: V_GB = 100e-9 · 1/(5e-9) = <b>20 V transient</b>.</span>
+    <span class="step">That 20 V appears between two points labeled "GND" on the schematic. The "ground" of a sensitive ADC near the switcher just <em>moved</em> by 20 V for 5 nanoseconds.</span>
+    <span class="step">Effect: anything referenced to the bouncing ground sees the bounce subtracted from its signal — false readings, false triggers, comparator firings.</span>
+  </div>
+
+  <h2>The four ground topologies, ranked</h2>
+
+  <h3>1. Daisy-chain (BAD)</h3>
+  <p>Each chip's ground pin connects to the next chip's ground pin, like Christmas lights. Switching current in one chip flows through all the intervening grounds. The far chip sees the ground bounce of every switcher between it and the source.</p>
+
+  <h3>2. Star (better)</h3>
+  <p>All ground pins return to a single common point with separate wires. Each wire has its own L; switching current in one branch doesn't lift the voltage of another branch — the branches are independent paths to the common point.</p>
+
+  <h3>3. Single-point (best for mixed-signal)</h3>
+  <p>Analog ground (AGND) and digital ground (DGND) are <em>separate</em> nets joined at exactly one point — usually under the ADC chip itself. Digital switching currents flow in the DGND loop and never enter the AGND loop. This is the textbook split-ground approach, drawn on every datasheet.</p>
+
+  <h3>4. Solid ground plane (best for high-frequency)</h3>
+  <p>An uninterrupted layer of copper on the PCB. Return current naturally takes the path of least impedance (which at HF is also the path of least inductance, directly under the trace). Effectively zero impedance for most loop currents — the ground bounce drops to noise levels.</p>
+
+  <h2>The split-ground rule (and the exception)</h2>
+  <p>Mixed-signal boards (analog + digital) traditionally split the ground plane and bridge the two nets at a single point. <em>But</em>: if you place a high-speed signal trace over the split, its return current has nowhere to go — it loops around the long way and creates massive ground noise. The modern rule is:</p>
+  <ul class="notice">
+    <li><b>Don't cross splits with high-speed signals</b> — keep digital signals over digital ground, analog over analog.</li>
+    <li><b>If you can't avoid it</b>: bridge the split with a 1 kΩ stitching cap (0.1 µF) directly under the signal.</li>
+    <li><b>Better: no split at all.</b> A solid plane works for most modern designs. The split-ground habit is from the through-hole era; SMD parts now use bypass caps and component placement to avoid noise coupling.</li>
+  </ul>
+
+  <h2>Worked example — 16-bit ADC near a buck switcher</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>5 V → 3.3 V buck switcher, 500 kHz, 2 A. ADS1115 16-bit ADC sampling 3.3V signal nearby. ADC LSB = 50 µV. Switcher trace length to GND: 30 mm narrow + 15 mm wide.</p>
+    <h3>The math</h3>
+    <span class="eq">Trace L: 30·1 nH + 15·0.3 nH = 34.5 nH (narrow + wide)</span>
+    <span class="eq">Switching current di/dt: 2 A / 5 ns = 4·10⁸ A/s</span>
+    <span class="eq">V_GB at switcher's ground pin: 34.5e-9 · 4e8 = <b>13.8 V</b> peak (5 ns spike)</span>
+    <span class="eq">If ADC shares this ground: 16-bit converter sees 13.8 V offset for 5 ns. With sample-and-hold of 30 ns, the spike disturbs the held value.</span>
+    <span class="eq">Effect: 13.8 V / 5 µs sample = 27600 LSB error spikes; the ADC reads noise rather than the input.</span>
+    <h3>The fix</h3>
+    <span class="eq">Star ground: separate trace from ADC GND to PSU GND; ADC sees only its own GND inductance (~3 nH for 3 mm to plane) = 0.27 V — still bad.</span>
+    <span class="eq">Single-point AGND/DGND: ADC's AGND pin goes to its own quiet plane; DGND goes to digital plane. Tied at one point under ADC. Effective coupling: pF-scale.</span>
+    <span class="eq">Best: solid ground plane below the entire layout, switcher and ADC each placed locally; return currents take direct paths under their signals.</span>
+  </div>
+
+  <h2>Worked example — STM32 GPIO toggling a relay coil</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>STM32 toggles a 100 mA relay coil through a transistor. Edge rate of the MCU GPIO: 10 ns. Connecting trace to relay = 20 mm narrow. Sensitive ADC reads strain gauge on same board.</p>
+    <h3>The math</h3>
+    <span class="eq">Edge L: 20 mm · 1 nH/mm = 20 nH</span>
+    <span class="eq">di: only the MCU GPIO charging the gate (10 nF gate cap) → di = 1 A peak for 10 ns</span>
+    <span class="eq">V_GB = 20e-9 · 1e8 = 2 V transient on shared GND</span>
+    <span class="eq">Strain gauge ADC (24-bit, LSB = 1 µV): sees 2,000,000 LSB error for 10 ns.</span>
+    <h3>The fix</h3>
+    <span class="eq">Add a separate "noisy" ground to relay driver + transistor; tie this ground to the "quiet" ground at a single point near the MCU's main GND.</span>
+    <span class="eq">Use a 100 nF cap between drain of FET and source — kills the current spike in the gate drive circuit (snubber).</span>
+    <p>And: add a return cap (1 µF MLCC) close to the MCU's VDD and GND pin — this provides local current for the switching events, bypassing the long ground return.</p>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Ground bounce is V = L · di/dt, not IR.</b> R doesn't matter much for nanosecond edges — L dominates. A trace's R = 0.5 mΩ but L = 30 nH; for 1 ns edges, L's impedance is 188 Ω.</li>
+    <li><b>Wider traces have less inductance per unit length</b>, but the difference is &lt; 2× for typical PCBs. The bigger benefit of width is current capacity, not inductance.</li>
+    <li><b>A solid ground plane reduces L to ~0.1 nH per mm of trace</b> over the plane — 10× better than a thin strip.</li>
+    <li><b>Bypass caps are local current reservoirs</b> for high-frequency switching. A 100 nF X7R right at the IC's V_CC pin prevents the IC's switching current from traveling 30 mm to the bulk cap, drastically reducing trace di/dt.</li>
+    <li><b>Star ground works best when every "spoke" is short</b>. A 100 mm spoke has 100 nH; it defeats the purpose. Keep spokes &lt; 30 mm or use a plane.</li>
+    <li><b>"Mixed signal" ICs (ADC, DAC) define AGND and DGND</b> internally — both pins are at the same potential inside the chip. The split is for routing convenience: keep noisy traces near DGND, quiet traces near AGND.</li>
+    <li><b>Forward and return current loops create magnetic fields</b> proportional to loop area. Small loop area = small inductance = small bounce. Routing return next to signal is the bedrock of low-noise PCBs.</li>
+  </ul>
+
+  <h2>Where ground bounce kills designs</h2>
+  <div class="crosslink">
+    <h4>Real failure modes</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">ADC noise</b> — 12-bit can be reduced to 8-bit by ground bounce; 24-bit to 16-bit.</li>
+      <li><b style="color:var(--fg)">False comparator triggers</b> — high-impedance comparator inputs see the bounce as signal.</li>
+      <li><b style="color:var(--fg)">EMI radiated emissions</b> — the bounce is a small antenna at switching f and harmonics.</li>
+      <li><b style="color:var(--fg)">Crystal oscillator phase noise</b> — ground bounce modulates the load cap, jitters the clock.</li>
+      <li><b style="color:var(--fg)">USB / HDMI / fast SPI eye closure</b> — ground bounce eats jitter budget at signal receiver.</li>
+      <li><b style="color:var(--fg)">Reset glitches</b> — power-on reset can fire spuriously from ground bounce events.</li>
+      <li><b style="color:var(--fg)">SMPS instability</b> — feedback voltage references bounce; switcher hunts and oscillates.</li>
+      <li><b style="color:var(--fg)">Audio hum at switching frequency</b> — if &gt; 20 kHz, you don't hear it; if &lt; 20 kHz (rare for SMPS, common for fan PWM), it whines.</li>
+    </ul>
+  </div>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>V_GB</dt><dd><span class="eq">L · di/dt</span></dd>
+        <dt>Trace L (rough)</dt><dd><span class="eq">~1 nH/mm narrow; ~0.3 nH/mm wide over plane</span></dd>
+        <dt>BW of edge</dt><dd><span class="eq">~0.35 / t_rise</span></dd>
+        <dt>Edge → di/dt</dt><dd><span class="eq">Δi/Δt; typical CMOS: 100 mA/ns</span></dd>
+        <dt>Loop L (rectangle)</dt><dd><span class="eq">≈ (µ₀·h·L)/W (h between layers)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>RULES OF THUMB</h3>
+      <ul>
+        <li><b>Use solid GND plane</b>; avoid splits unless required.</li>
+        <li><b>Star ground</b> for sub-MHz mixed-signal.</li>
+        <li><b>0.1 µF bypass</b> within 5 mm of every IC's V_CC.</li>
+        <li>Don't cross GND splits with high-speed traces.</li>
+        <li>Keep <b>switcher MOSFET loop area &lt; 100 mm²</b>.</li>
+        <li>Place sensor IC <b>far from switcher</b>, ideally on opposite end of board.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>"Wider is better"</b> — partly; can't beat a ground plane.</li>
+        <li><b>Single-point GND at the wrong place</b> — should be under the noisy current source, not the quiet load.</li>
+        <li><b>Forgetting return current path</b> — signals on top layer want GND on layer 2 directly under them.</li>
+        <li><b>Slot in ground plane</b> from connector cutout — return current detours; massive loop, massive inductance.</li>
+        <li><b>Lifting the GND pin of an IC ("ground bounce isolation")</b> — actually makes it worse, not better.</li>
+        <li><b>Bypass cap far from chip</b> — defeats the purpose; cap + trace L resonates.</li>
+        <li><b>"Star at the connector"</b> — usually wrong; star should be at the central noise source (the SMPS GND pin).</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EE Phase 7 — Signal Integrity</span> ·
+    Companion: <a href="../phase-6-power-electronics/converter-filters.html">Converter Output Filters</a> ·
+    Forward: <a href="../phase-8-embedded-protocols/usb-enumeration.html">USB Enumeration</a> for high-speed protocols requiring careful ground.
+  </footer>
+</main>
+<script>
+  let state = {
+    di:2.0, dt:5e-9, len:25, wid:0.5, f:1e6, preset:"bad",
+  };
+  const PRESETS = {
+    bad:{di:2.0, dt:5e-9, len:50, wid:0.5, f:1e6, mult:1.0},
+    star:{di:2.0, dt:5e-9, len:25, wid:0.5, f:1e6, mult:0.3},
+    single:{di:2.0, dt:5e-9, len:15, wid:1.0, f:1e6, mult:0.1},
+    plane:{di:2.0, dt:5e-9, len:25, wid:0.5, f:1e6, mult:0.04},
+  };
+
+  function inductance(){
+    // ~1 nH/mm narrow trace; less with width
+    const factor = state.wid >= 1 ? 0.5 : 1.0;
+    return state.len * factor * 1e-9; // henries
+  }
+
+  function fmtL(L){
+    if (L >= 1e-6) return (L*1e6).toFixed(2) + " µH";
+    if (L >= 1e-9) return (L*1e9).toFixed(1) + " nH";
+    return (L*1e12).toFixed(0) + " pH";
+  }
+  function fmtV(v){
+    if (Math.abs(v) >= 1) return v.toFixed(2) + " V";
+    if (Math.abs(v) >= 1e-3) return (v*1000).toFixed(2) + " mV";
+    return (v*1e6).toFixed(1) + " µV";
+  }
+  function fmtT(t){
+    if (t >= 1e-6) return (t*1e6).toFixed(2) + " µs";
+    if (t >= 1e-9) return (t*1e9).toFixed(1) + " ns";
+    return (t*1e12).toFixed(0) + " ps";
+  }
+  function fmtF(f){
+    if (f >= 1e6) return (f/1e6).toFixed(2) + " MHz";
+    if (f >= 1e3) return (f/1e3).toFixed(1) + " kHz";
+    return f.toFixed(0) + " Hz";
+  }
+
+  function compute(){
+    const L = inductance();
+    const didt = state.di / state.dt;
+    const V_GB = L * didt;
+    // Topology effective L multiplier
+    const mult = PRESETS[state.preset].mult;
+    const L_eff = L * mult;
+    const V_bq = L_eff * didt;
+    const t_rise = state.dt;
+    const BW = 0.35 / t_rise; // Hz
+    return {L, didt, V_GB, L_eff, V_bq, BW};
+  }
+
+  function drawTopology(){
+    const svg = document.getElementById('topology');
+    const r = compute();
+    let s = '';
+    s += `<rect x="0" y="0" width="700" height="320" fill="var(--bg-elev2)"/>`;
+
+    // Three blocks: noisy IC (SMPS), bus, quiet IC (sensor amp/ADC)
+    const noisyX = 100, quietX = 580, busY = 160;
+    // Noisy IC
+    s += `<rect x="${noisyX-50}" y="80" width="100" height="80" fill="var(--bg-elev)" stroke="var(--warn)" stroke-width="1.5" rx="6"/>`;
+    s += `<text x="${noisyX}" y="105" class="label" text-anchor="middle" fill="var(--warn)">Switcher</text>`;
+    s += `<text x="${noisyX}" y="120" class="label-dim" text-anchor="middle">noisy</text>`;
+    s += `<text x="${noisyX}" y="140" class="label-warn" text-anchor="middle">Δi = ${state.di.toFixed(2)} A</text>`;
+    s += `<text x="${noisyX}" y="155" class="label-dim" text-anchor="middle">${fmtT(state.dt)} edges</text>`;
+
+    // Quiet IC
+    s += `<rect x="${quietX-50}" y="80" width="100" height="80" fill="var(--bg-elev)" stroke="var(--accent3)" stroke-width="1.5" rx="6"/>`;
+    s += `<text x="${quietX}" y="105" class="label" text-anchor="middle" fill="var(--accent3)">Sensor IC</text>`;
+    s += `<text x="${quietX}" y="120" class="label-dim" text-anchor="middle">quiet ADC</text>`;
+    s += `<text x="${quietX}" y="140" class="label-dim" text-anchor="middle">12-24 bit</text>`;
+    s += `<text x="${quietX}" y="155" class="label-dim" text-anchor="middle">LSB = µV</text>`;
+
+    // Topology-specific routing
+    if (state.preset === "bad"){
+      // Daisy chain: noisy → quiet shares same wire
+      s += `<line x1="${noisyX}" y1="160" x2="${noisyX}" y2="200" class="wire"/>`;
+      s += `<line x1="${noisyX}" y1="200" x2="${quietX}" y2="200" stroke="var(--warn)" stroke-width="2.5"/>`;
+      s += `<line x1="${quietX}" y1="200" x2="${quietX}" y2="160" class="wire"/>`;
+      // GND bar at bottom
+      s += `<line x1="${noisyX-50}" y1="260" x2="${quietX+50}" y2="260" stroke="var(--fg)" stroke-width="2"/>`;
+      s += `<line x1="350" y1="200" x2="350" y2="260" stroke="var(--fg)" stroke-width="2"/>`;
+      s += `<text x="${(noisyX+quietX)/2}" y="220" class="label-warn" text-anchor="middle">SHARED RETURN — all current flows here</text>`;
+      s += `<text x="${(noisyX+quietX)/2}" y="240" class="label-warn" text-anchor="middle">L_total = ${fmtL(r.L)}; bounce = ${fmtV(r.V_GB)}</text>`;
+    } else if (state.preset === "star"){
+      // Star: each goes to a central point separately
+      s += `<line x1="${noisyX}" y1="160" x2="${noisyX}" y2="220" stroke="var(--warn)" stroke-width="2"/>`;
+      s += `<line x1="${quietX}" y1="160" x2="${quietX}" y2="220" stroke="var(--accent3)" stroke-width="2"/>`;
+      s += `<line x1="${noisyX}" y1="220" x2="350" y2="220" stroke="var(--warn)" stroke-width="2"/>`;
+      s += `<line x1="${quietX}" y1="220" x2="350" y2="220" stroke="var(--accent3)" stroke-width="2"/>`;
+      s += `<circle cx="350" cy="220" r="6" fill="var(--accent2)"/>`;
+      s += `<text x="350" y="245" class="label-warn" text-anchor="middle">STAR POINT</text>`;
+      s += `<text x="350" y="260" class="label-dim" text-anchor="middle">(single common GND)</text>`;
+    } else if (state.preset === "single"){
+      // Split AGND/DGND, joined at single point
+      s += `<line x1="${noisyX}" y1="160" x2="${noisyX}" y2="220" stroke="var(--warn)" stroke-width="2"/>`;
+      s += `<line x1="${noisyX}" y1="220" x2="300" y2="220" stroke="var(--warn)" stroke-width="2"/>`;
+      s += `<text x="200" y="210" class="label-warn">DGND</text>`;
+      s += `<line x1="${quietX}" y1="160" x2="${quietX}" y2="220" stroke="var(--accent3)" stroke-width="2"/>`;
+      s += `<line x1="${quietX}" y1="220" x2="400" y2="220" stroke="var(--accent3)" stroke-width="2"/>`;
+      s += `<text x="500" y="210" class="label-ok">AGND</text>`;
+      // Single-point bridge
+      s += `<line x1="300" y1="220" x2="400" y2="220" stroke="var(--accent2)" stroke-width="3"/>`;
+      s += `<circle cx="350" cy="220" r="5" fill="var(--accent2)"/>`;
+      s += `<text x="350" y="245" class="label-warn" text-anchor="middle">SINGLE-POINT BRIDGE</text>`;
+      s += `<text x="350" y="260" class="label-dim" text-anchor="middle">under ADC chip</text>`;
+    } else { // plane
+      // Solid ground plane
+      s += `<rect x="50" y="220" width="600" height="50" fill="var(--accent)" opacity="0.15" stroke="var(--accent)" stroke-width="1"/>`;
+      s += `<line x1="${noisyX}" y1="160" x2="${noisyX}" y2="220" class="wire"/>`;
+      s += `<line x1="${quietX}" y1="160" x2="${quietX}" y2="220" class="wire"/>`;
+      s += `<text x="350" y="245" class="label-ok" text-anchor="middle">SOLID GROUND PLANE</text>`;
+      s += `<text x="350" y="260" class="label-dim" text-anchor="middle">return current finds path-of-least-impedance</text>`;
+    }
+
+    // Bounce indicator at quiet IC
+    let bounceColor;
+    if (r.V_bq > 0.1) bounceColor = "var(--warn)";
+    else if (r.V_bq > 0.01) bounceColor = "var(--accent2)";
+    else bounceColor = "var(--accent3)";
+    s += `<text x="${quietX}" y="35" font-family="ui-monospace" font-size="13" fill="${bounceColor}" text-anchor="middle">Bounce at quiet IC: ${fmtV(r.V_bq)} pp</text>`;
+    s += `<text x="${quietX}" y="50" class="label-dim" text-anchor="middle">L_effective = ${fmtL(r.L_eff)}</text>`;
+
+    svg.innerHTML = s;
+  }
+
+  function update(){
+    document.getElementById('diRead').textContent = state.di.toFixed(2) + " A";
+    document.getElementById('dtRead').textContent = fmtT(state.dt);
+    document.getElementById('lenRead').textContent = state.len + " mm";
+    document.getElementById('widRead').textContent = state.wid.toFixed(2) + " mm";
+    document.getElementById('fRead').textContent = fmtF(state.f);
+
+    const r = compute();
+    document.getElementById('tL').textContent = fmtL(r.L);
+    document.getElementById('tDidt').textContent = (r.didt/1e6).toFixed(0) + " MA/s";
+    document.getElementById('tVgb').textContent = fmtV(r.V_GB);
+    document.getElementById('tLeff').textContent = fmtL(r.L_eff);
+    document.getElementById('tVbq').textContent = fmtV(r.V_bq);
+    document.getElementById('tBw').textContent = fmtF(r.BW);
+
+    let status;
+    if (r.V_bq > 1.0) status = "CATASTROPHIC — sensor signal lost in bounce";
+    else if (r.V_bq > 0.1) status = "BAD — multi-bit ADC error";
+    else if (r.V_bq > 0.01) status = "MARGINAL — visible noise on scope";
+    else if (r.V_bq > 0.001) status = "OK — sub-LSB on most ADCs";
+    else status = "EXCELLENT — true ground-plane performance";
+    document.getElementById('tStatus').textContent = status;
+
+    document.getElementById('vdCalc').textContent = `${fmtL(r.L)} · ${(r.didt/1e6).toFixed(0)} MA/s = ${fmtV(r.V_GB)} transient`;
+
+    drawTopology();
+  }
+
+  document.getElementById('di').addEventListener('input', e => { state.di = parseFloat(e.target.value); update(); });
+  document.getElementById('dt').addEventListener('input', e => { state.dt = parseFloat(e.target.value)*1e-9; update(); });
+  document.getElementById('len').addEventListener('input', e => { state.len = parseInt(e.target.value); update(); });
+  document.getElementById('wid').addEventListener('input', e => { state.wid = parseFloat(e.target.value); update(); });
+  document.getElementById('f').addEventListener('input', e => { state.f = parseFloat(e.target.value)*1000; update(); });
+
+  document.querySelectorAll('.anchor').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.anchor').forEach(a => a.classList.remove('active'));
+      b.classList.add('active');
+      state.preset = b.dataset.preset;
+      const p = PRESETS[b.dataset.preset];
+      Object.assign(state, p);
+      document.getElementById('di').value = state.di;
+      document.getElementById('dt').value = state.dt*1e9;
+      document.getElementById('len').value = state.len;
+      document.getElementById('wid').value = state.wid;
+      document.getElementById('f').value = state.f/1000;
+      update();
+    });
+  });
+
+  update();
+</script>
+</body>
+</html>

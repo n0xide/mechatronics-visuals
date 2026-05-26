@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Regenerative Braking — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:13px ui-monospace,Menlo,monospace}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+  .figure svg{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:4px 0}
+  ul.notice b{color:var(--fg)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+  th,td{padding:6px 10px;border:1px solid var(--line);text-align:left;font-family:ui-monospace,Menlo,monospace}
+  th{background:var(--bg-elev2);color:var(--fg-bright);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  .label{fill:var(--fg);font:12px ui-monospace,monospace}
+  .label-dim{fill:var(--fg-dim);font:11px ui-monospace,monospace}
+  .label-warn{fill:var(--warn);font:12px ui-monospace,monospace}
+  .label-ok{fill:var(--accent3);font:12px ui-monospace,monospace}
+  .wire{stroke:var(--fg);stroke-width:1.5;fill:none}
+  .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
+  .vd b{color:var(--accent2)}
+  .crosslink{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin-top:10px;font-size:12px}
+  .crosslink h4{margin:0 0 6px;color:var(--accent3);font:600 12px ui-monospace,monospace;text-transform:uppercase}
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+  .worked{background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+  .worked h3{margin:0 0 8px;color:var(--accent3)}
+  .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,Menlo,monospace;background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2)}
+  .worked .eq .annot{color:var(--fg-dim);margin-left:8px}
+  .deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .deriv b{color:var(--fg)}
+  .deriv .step{display:block;margin:4px 0;color:var(--fg)}
+  .deriv .arrow{color:var(--accent2);font-weight:600}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 20px}
+  .chip{background:var(--bg-elev2);border:1px solid var(--line);border-radius:14px;padding:3px 10px;font:11px ui-monospace,monospace;color:var(--accent);text-decoration:none}
+  .chip:hover{background:var(--bg-elev);border-color:var(--accent)}
+  .toggle-row{display:flex;gap:6px;margin:0 0 10px;flex-wrap:wrap}
+  .toggle-row button{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 10px;cursor:pointer;font:12px ui-monospace,monospace}
+  .toggle-row button.active{background:var(--accent);color:#000;border-color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Regenerative Braking</h1>
+  <p class="lede">A spinning motor is a generator. When the motor's back-EMF exceeds the bus voltage, the current direction in the H-bridge reverses — energy flows from the motor's mechanical rotation back into the battery (or, if the battery can't accept it, into a brake resistor). This is how electric vehicles recover braking energy, how cobot joints don't crash on power-loss, and why your robot's motor controller needs a brake-chopper.</p>
+
+  <div class="chips">
+    <a class="chip" href="#emf">#back-emf</a>
+    <a class="chip" href="#bridge">#mosfet-bridge</a>
+    <a class="chip" href="#regen">#current-reversal</a>
+    <a class="chip" href="#chopper">#brake-chopper</a>
+    <a class="chip" href="#worked">#worked-example</a>
+    <a class="chip" href="#cheats">#cheat-sheet</a>
+  </div>
+
+  <h2 id="emf">Back-EMF — the motor's generator voltage</h2>
+  <p>Every brushed-DC and BLDC motor obeys: <b>V_bemf = Kv · ω</b> where Kv is the motor's back-EMF constant (in V/rad/s, or RPM/V depending on convention) and ω is its angular velocity.</p>
+  <p>In normal driving (motoring), the bus supplies V_bus to the motor terminals. Current flows: I = (V_bus − V_bemf) / R_winding. Mechanical power output P_mech = V_bemf · I.</p>
+  <p>If you suddenly stop driving and shorting the bridge so the motor terminals see V_bus = 0, the back-EMF drives current through the (now-shorted) windings — the motor brakes like a generator into a short. Energy is dissipated as I²R in the windings and as torque against rotation.</p>
+  <p>The interesting case: leaving the bridge in PWM mode with a duty cycle giving an <em>effective V_bus = some intermediate voltage</em>. If V_bemf &gt; effective V_bus, current reverses direction. The motor pushes current into the battery; energy flows the "wrong" way; the motor experiences a braking torque equal to Kv · I_regen.</p>
+
+  <section class="controls">
+    <div class="control"><label>V_bus (battery): <span class="readout" id="vRead">36 V</span></label>
+      <input id="v" type="range" min="6" max="80" step="0.5" value="36"></div>
+    <div class="control"><label>Motor Kv: <span class="readout" id="kvRead">100 V/krpm</span></label>
+      <input id="kv" type="range" min="20" max="500" step="5" value="100"></div>
+    <div class="control"><label>R_winding: <span class="readout" id="rRead">0.50 Ω</span></label>
+      <input id="r" type="range" min="0.05" max="3" step="0.05" value="0.5"></div>
+    <div class="control"><label>Motor RPM: <span class="readout" id="rpmRead">3000 RPM</span></label>
+      <input id="rpm" type="range" min="0" max="6000" step="10" value="3000"></div>
+    <div class="control"><label>Mode: <span class="readout" id="modeRead">Motoring</span></label>
+      <div class="toggle-row">
+        <button data-m="motor" class="active">Motoring</button>
+        <button data-m="coast">Coast</button>
+        <button data-m="regen">Regen brake</button>
+        <button data-m="short">Plug brake</button>
+      </div>
+    </div>
+    <div class="control"><label>Battery accept current limit: <span class="readout" id="ilRead">10 A regen</span></label>
+      <input id="il" type="range" min="0" max="50" step="1" value="10"></div>
+  </section>
+
+  <div class="figure">
+    <svg id="bridge" viewBox="0 0 600 320" width="100%"></svg>
+    <table>
+      <tr><th>Quantity</th><th>Value</th><th>Notes</th></tr>
+      <tr><td>Back-EMF</td><td id="tEmf" class="num">30.0 V</td><td><code>Kv · ω</code></td></tr>
+      <tr><td>Net driving voltage</td><td id="tVd" class="num">+6.0 V</td><td><code>V_bus − V_bemf</code> (motoring) or <code>V_bemf − V_bus_eff</code> (regen)</td></tr>
+      <tr><td>Current (signed)</td><td id="tI" class="num">+12 A → motor</td><td><code>I = ΔV / R</code></td></tr>
+      <tr><td>Mechanical power</td><td id="tPm" class="num">360 W out</td><td><code>V_bemf · I</code></td></tr>
+      <tr><td>Electrical power to/from battery</td><td id="tPe" class="num">432 W in</td><td><code>V_bus · I</code></td></tr>
+      <tr><td>Bus overvoltage risk</td><td id="tOv">No</td><td>regen with full battery</td></tr>
+    </table>
+  </div>
+
+  <h2 id="bridge">The MOSFET H-bridge as a 4-quadrant switch</h2>
+  <p>The same four-MOSFET H-bridge that drives a motor can <em>also</em> rectify current flowing the other way — through the body diodes of the MOSFETs (or actively, through synchronous rectification). This is what makes regen possible at the same cost as driving: no extra components, just smarter control.</p>
+
+  <p>Each motor terminal connects to a half-bridge (top MOSFET + bottom MOSFET). The four quadrants of operation:</p>
+  <table>
+    <tr><th>Quadrant</th><th>V_motor sign</th><th>I_motor sign</th><th>Power direction</th></tr>
+    <tr><td>1 — Forward motoring</td><td>+</td><td>+</td><td>battery → motor</td></tr>
+    <tr><td>2 — Forward regen</td><td>+</td><td>−</td><td>motor → battery</td></tr>
+    <tr><td>3 — Reverse motoring</td><td>−</td><td>−</td><td>battery → motor</td></tr>
+    <tr><td>4 — Reverse regen</td><td>−</td><td>+</td><td>motor → battery</td></tr>
+  </table>
+  <p>The body diodes always allow current "backwards" — i.e., from motor's high terminal up to the bus, or from ground up to the motor's low terminal. During regen, instead of letting the body diodes do all the work (and dissipate I²·V_F watts), you actively switch the top/bottom MOSFETs ON when their body diode is conducting. This is <b>synchronous rectification</b>, with I²·R_DS(on) loss instead of I·V_F.</p>
+
+  <h2 id="regen">Current reversal — what the trace looks like</h2>
+  <p>Imagine you're driving at constant duty cycle 70 %, motor spinning at the equilibrium RPM where V_bemf ≈ 0.7·V_bus. Now you drop the duty cycle to 30 %. The motor's RPM (and back-EMF) take milliseconds to react, but the effective V_bus is now only 30 %. So V_bemf &gt; V_bus_eff → current reverses → motor brakes regeneratively. The motor decelerates; V_bemf drops; eventually it matches the new equilibrium and steady state resumes.</p>
+
+  <div class="deriv">
+    <span class="step">Steady-state at duty D: <b>V_motor = D · V_bus</b></span>
+    <span class="step">Steady-state RPM: <b>ω = V_motor / Kv = D·V_bus / Kv</b></span>
+    <span class="step">Current during transient (D changes from D₀ to D₁ instantly): I = (D₁·V_bus − V_bemf) / R</span>
+    <span class="step">If D₁·V_bus &lt; V_bemf → <b>I is negative</b> → current flows from motor into battery.</span>
+  </div>
+
+  <h2 id="chopper">Brake chopper — when the battery can't take it</h2>
+  <p>Batteries have a charge-current limit (typically 0.5C to 3C). At high braking power, you'd push more current than the battery accepts. Result: bus voltage rises uncontrollably as the H-bridge keeps pumping current into a capacitor and a battery that won't take it.</p>
+  <p>The <b>brake chopper</b> (or "brake resistor IC") is a fifth MOSFET in series with a beefy power resistor across the bus. When V_bus exceeds a threshold (say, 110 % of nominal), the chopper switches on, dumping the excess energy into the resistor as heat. The resistor handles the energy the battery can't.</p>
+  <ul class="notice">
+    <li>Threshold: typically <b>V_bus_nom + 10–20 %</b>.</li>
+    <li>Resistor sized for <b>peak brake power × duty</b>; thermal designed for sustained downhill braking.</li>
+    <li>Hysteresis: switch on at V_high, off at V_low, with a 5–10 % gap so it doesn't chatter.</li>
+  </ul>
+
+  <h2 id="worked">Worked example — robot arm joint deceleration</h2>
+  <div class="worked">
+    <h3>The setup</h3>
+    <p>A 6-DOF robot arm joint: BLDC motor, Kv = 80 V/krpm, R_winding = 0.3 Ω, V_bus = 48 V (4S Li-ion). At the moment of braking, joint motor is spinning at 4000 RPM under modest load.</p>
+
+    <h3>Back-EMF at start of brake</h3>
+    <span class="eq">V_bemf = 4000 RPM · (80 V/krpm) / 1000 = 320 V → wait, that's V/krpm with Kv as RPM-per-volt? <span class="annot">Use Kv (V·s/rad) properly.</span></span>
+    <span class="eq">V_bemf at 4000 RPM with Kv = 80 V/krpm: <b>4000 / 1000 · 80 V = 320 V</b> — wait no, this is wrong direction.</span>
+    <span class="eq">Convention: Kv (RPM/V) = 1000 / 80 = 12.5 RPM/V. So V_bemf = 4000 / 12.5 = <b>320 V</b>. Hmm.</span>
+    <span class="eq">Cleaner: Kv = 80 V at 1000 RPM means motor produces 80 V when spinning at 1000 RPM. At 4000 RPM → 320 V. That's higher than the bus.</span>
+    <span class="eq">Reality check: a 48 V system with Kv giving 320 V at 4000 RPM would never reach 4000 RPM under 48 V drive. Steady-state RPM ≤ 48 V / (80 V/1000 RPM) = <b>600 RPM</b>.</span>
+
+    <h3>Use realistic numbers</h3>
+    <p>Pick Kv = 250 RPM/V → at 48 V, max RPM ≈ 12,000. Cruise at 4000 RPM → V_bemf = 4000 / 250 = 16 V.</p>
+    <span class="eq">Brake by setting duty = 0, all 4 low-side FETs on (short-circuit brake):</span>
+    <span class="eq">I = V_bemf / R = 16 / 0.3 = 53 A <span class="annot">(very hard brake; will overheat windings if sustained)</span></span>
+    <span class="eq">Brake by setting duty so V_motor_eff = 10 V (with regen recovery):</span>
+    <span class="eq">I_regen = (V_bemf − V_motor_eff) / R = (16 − 10)/0.3 = 20 A into battery</span>
+    <span class="eq">Power recovered: V_bus · I_regen = 48 · 20 = <b>960 W</b> into the battery.</span>
+    <span class="eq">If battery accept limit is 15 A: brake chopper engages, dissipating (20 − 15) · 48 = 240 W in the brake resistor.</span>
+
+    <h3>Brake chopper sizing</h3>
+    <span class="eq">Peak power: 240 W for ~0.5 s during braking event.</span>
+    <span class="eq">Energy per brake event: 240 W · 0.5 s = 120 J → cap or large resistor with thermal mass.</span>
+    <span class="eq">Sustained downhill: if 1/3 of motion is braking at 240 W → average 80 W → 100 W aluminum-housed 15 Ω, heatsinked.</span>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>Regen is "free" from the bridge's perspective</b> — the same hardware drives and recovers, just with reversed current direction.</li>
+    <li><b>Synchronous rectification matters</b> for efficiency. Letting current freewheel through body diodes wastes Vf·I (about 2 % at low V, 5 %+ at low currents). Active rectification keeps the losses at I²·R_DS(on).</li>
+    <li><b>Battery charge-acceptance is the real bottleneck.</b> A 4S 2 Ah pack at 1C accepts 2 A; at 3C accepts 6 A. Regen above that limit needs a brake resistor.</li>
+    <li><b>Plug-braking (full reversal of polarity)</b> generates the highest brake torque but also the highest peak current — too aggressive for most BLDCs. Use short-circuit brake or PWM-controlled regen instead.</li>
+    <li><b>Without regen capability, an unloaded motor will spin to V_bus / Kv RPM</b> — the no-load speed. With regen, you can hold any RPM with finite torque.</li>
+  </ul>
+
+  <h2>Where you'll see this</h2>
+  <div class="crosslink">
+    <h4>Real uses</h4>
+    <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
+      <li><b style="color:var(--fg)">Electric vehicles</b> — regen recovers 10–30 % of driving energy on a typical commute.</li>
+      <li><b style="color:var(--fg)">E-bikes</b> — light-touch regen helps with steep descents.</li>
+      <li><b style="color:var(--fg)">Cobot arms</b> — joint motors regenerate when bringing a load down; brake chopper protects bus.</li>
+      <li><b style="color:var(--fg)">CNC spindles</b> — fast spindle stops use regen + brake resistor.</li>
+      <li><b style="color:var(--fg)">Elevators</b> — descending elevators regenerate; the energy heats braking resistors on the roof.</li>
+    </ul>
+  </div>
+
+  <h2 id="cheats">Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Back-EMF</dt><dd><span class="eq">V_bemf = Kv · ω</span></dd>
+        <dt>Motor current</dt><dd><span class="eq">I = (V_bus − V_bemf) / R</span></dd>
+        <dt>Mech power</dt><dd><span class="eq">P_mech = V_bemf · I</span></dd>
+        <dt>Bus power</dt><dd><span class="eq">P_bus = V_bus · I</span></dd>
+        <dt>Effective V at PWM</dt><dd><span class="eq">V_eff = D · V_bus</span></dd>
+        <dt>Brake threshold</dt><dd><span class="eq">V_chopper = 1.1 · V_nom</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>RULES OF THUMB</h3>
+      <ul>
+        <li>If V_bemf > V_bus_eff: current reverses, regen happens.</li>
+        <li>Body diodes always allow reverse current, but waste V_F·I.</li>
+        <li>Synchronous rectification: I²·R_DS(on) losses instead.</li>
+        <li>Battery accept = 1–3C typical; size brake resistor for the difference.</li>
+        <li>Always include a TVS or chopper for <b>load-dump</b> protection.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>No brake chopper</b> — full battery + regen = bus pumping into overvoltage → caps blow.</li>
+        <li><b>Body-diode-only regen</b> at PWM rates → diodes overheat.</li>
+        <li><b>Single-quadrant drivers</b> (cheap PWM ICs) only support 1-quadrant motoring. No regen.</li>
+        <li><b>Forgetting current limit in firmware</b> — regen current can exceed motor wire rating in microseconds.</li>
+        <li><b>No deadtime between top/bottom FET</b> — shoot-through during commutation, instant failure.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Curriculum: <span style="opacity:0.55;cursor:default" title="Source lives in the private workspace">EM Phase 6 — Power Management</span> ·
+    Topic: Regenerative braking, brake chopper ·
+    Cross: <a href="../phase-3-motor-control/h-bridge.html">H-bridge PWM</a> ·
+    Forward: <a href="estop-failsafe.html">E-stop & Failsafe</a>
+  </footer>
+</main>
+<script>
+  let mode = 'motor';
+
+  const els = {
+    v:document.getElementById('v'),
+    kv:document.getElementById('kv'),
+    r:document.getElementById('r'),
+    rpm:document.getElementById('rpm'),
+    il:document.getElementById('il')
+  };
+
+  document.querySelectorAll('[data-m]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('[data-m]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      mode = btn.dataset.m;
+      const labels = {motor:'Motoring',coast:'Coast (high-Z)',regen:'Regen brake',short:'Plug brake (short)'};
+      document.getElementById('modeRead').textContent = labels[mode];
+      update();
+    });
+  });
+
+  function fmtI(i){
+    if(Math.abs(i) >= 1) return i.toFixed(1) + " A";
+    return (i*1000).toFixed(0) + " mA";
+  }
+  function fmtP(p){
+    if(Math.abs(p) >= 1000) return (p/1000).toFixed(2) + " kW";
+    return p.toFixed(1) + " W";
+  }
+
+  function drawBridge(I, dir, regen){
+    const svg = document.getElementById('bridge');
+    // H-bridge: 4 FETs, motor in middle
+    // QA top  QB top
+    // QA bot  QB bot
+    // Motor between QA bot's drain and QB bot's drain
+    const cx = 300, cy = 160;
+
+    let fets = '';
+    const fetActive = {QAt:false, QAb:false, QBt:false, QBb:false};
+    if(mode === 'motor'){
+      fetActive.QAt = true; fetActive.QBb = true;
+    } else if(mode === 'regen'){
+      // Synchronous regen — QA bot + QB top (or low-side PWM)
+      fetActive.QAt = true; fetActive.QBb = true; // PWM active
+    } else if(mode === 'short'){
+      fetActive.QAb = true; fetActive.QBb = true; // both low-side on
+    }
+
+    // Helper for FET symbol
+    function fet(x, y, label, on, isHigh){
+      const col = on ? "var(--accent3)" : "var(--fg-dim)";
+      return `
+        <rect x="${x-25}" y="${y-15}" width="50" height="30" fill="var(--bg-elev2)" stroke="${col}" stroke-width="${on?2:1.5}"/>
+        <text x="${x}" y="${y+4}" class="label" text-anchor="middle" fill="${col}">${label}</text>
+        ${on ? `<text x="${x}" y="${y-18}" class="label-ok" text-anchor="middle">ON</text>`:''}
+      `;
+    }
+
+    svg.innerHTML = `
+      <!-- bus -->
+      <line x1="50" y1="50" x2="550" y2="50" stroke="var(--accent2)" stroke-width="2"/>
+      <text x="60" y="44" class="label" fill="var(--accent2)">V_bus</text>
+      <circle cx="50" cy="50" r="3" fill="var(--accent2)"/>
+
+      <!-- battery -->
+      <rect x="20" y="60" width="60" height="180" fill="var(--bg-elev2)" stroke="var(--accent3)" rx="4"/>
+      <text x="50" y="80" class="label" text-anchor="middle" fill="var(--accent3)">BATT</text>
+      <line x1="35" y1="100" x2="65" y2="100" class="wire"/>
+      <line x1="40" y1="105" x2="60" y2="105" class="wire"/>
+      <line x1="35" y1="120" x2="65" y2="120" class="wire"/>
+      <line x1="40" y1="125" x2="60" y2="125" class="wire"/>
+      <text x="50" y="220" class="label-dim" text-anchor="middle">${regen ? '⬆ charging' : '⬇ discharging'}</text>
+      <line x1="50" y1="240" x2="50" y2="270" class="wire"/>
+
+      <!-- GND -->
+      <line x1="50" y1="270" x2="550" y2="270" stroke="var(--fg)" stroke-width="2"/>
+      <text x="60" y="285" class="label-dim">GND</text>
+
+      <!-- left half-bridge -->
+      <line x1="200" y1="50" x2="200" y2="80" class="wire"/>
+      ${fet(200, 95, "Q_A_top", fetActive.QAt, true)}
+      <line x1="200" y1="110" x2="200" y2="155" class="wire"/>
+      <circle cx="200" cy="160" r="4" fill="var(--accent2)"/>
+      <line x1="200" y1="165" x2="200" y2="210" class="wire"/>
+      ${fet(200, 225, "Q_A_bot", fetActive.QAb, false)}
+      <line x1="200" y1="240" x2="200" y2="270" class="wire"/>
+
+      <!-- right half-bridge -->
+      <line x1="400" y1="50" x2="400" y2="80" class="wire"/>
+      ${fet(400, 95, "Q_B_top", fetActive.QBt, true)}
+      <line x1="400" y1="110" x2="400" y2="155" class="wire"/>
+      <circle cx="400" cy="160" r="4" fill="var(--accent2)"/>
+      <line x1="400" y1="165" x2="400" y2="210" class="wire"/>
+      ${fet(400, 225, "Q_B_bot", fetActive.QBb, false)}
+      <line x1="400" y1="240" x2="400" y2="270" class="wire"/>
+
+      <!-- motor -->
+      <line x1="200" y1="160" x2="270" y2="160" class="wire"/>
+      <line x1="330" y1="160" x2="400" y2="160" class="wire"/>
+      <circle cx="300" cy="160" r="30" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="300" y="155" class="label" text-anchor="middle" fill="var(--accent)">M</text>
+      <text x="300" y="170" class="label-dim" text-anchor="middle">${els.rpm.value} RPM</text>
+      <text x="300" y="200" class="label-dim" text-anchor="middle">V_bemf = ${(parseFloat(els.rpm.value)/1000 * parseFloat(els.kv.value)).toFixed(1)} V</text>
+
+      <!-- current arrow -->
+      ${(() => {
+        const isRegen = (I < 0);
+        const arrowColor = isRegen ? "var(--accent3)" : "var(--accent2)";
+        if(Math.abs(I) < 0.01) return '';
+        const arr = isRegen ? `
+          <line x1="220" y1="140" x2="380" y2="140" stroke="${arrowColor}" stroke-width="2"/>
+          <polygon points="225,135 215,140 225,145" fill="${arrowColor}"/>
+          <text x="300" y="135" class="label-ok" text-anchor="middle">I = ${fmtI(I)} (regen)</text>
+        ` : `
+          <line x1="220" y1="140" x2="380" y2="140" stroke="${arrowColor}" stroke-width="2"/>
+          <polygon points="375,135 385,140 375,145" fill="${arrowColor}"/>
+          <text x="300" y="135" class="label" text-anchor="middle" fill="${arrowColor}">I = ${fmtI(I)} (motoring)</text>
+        `;
+        return arr;
+      })()}
+
+      <!-- mode label -->
+      <text x="550" y="100" class="label" text-anchor="end" fill="var(--accent)">${mode.toUpperCase()}</text>
+    `;
+  }
+
+  function update(){
+    const Vbus = parseFloat(els.v.value);
+    const Kv = parseFloat(els.kv.value); // V/krpm
+    const R = parseFloat(els.r.value);
+    const rpm = parseFloat(els.rpm.value);
+    const ilim = parseFloat(els.il.value);
+
+    document.getElementById('vRead').textContent = Vbus.toFixed(1) + " V";
+    document.getElementById('kvRead').textContent = Kv.toFixed(0) + " V/krpm";
+    document.getElementById('rRead').textContent = R.toFixed(2) + " Ω";
+    document.getElementById('rpmRead').textContent = rpm.toFixed(0) + " RPM";
+    document.getElementById('ilRead').textContent = ilim.toFixed(0) + " A accept";
+
+    const Vbemf = rpm/1000 * Kv;
+    let Vmotor;
+    let I;
+    if(mode === 'motor'){
+      Vmotor = Vbus;
+      I = (Vmotor - Vbemf) / R;  // positive = into motor
+    } else if(mode === 'coast'){
+      Vmotor = Vbemf;
+      I = 0;
+    } else if(mode === 'regen'){
+      Vmotor = 0.6 * Vbus;  // mock PWM duty
+      I = (Vmotor - Vbemf) / R;  // negative = out of motor (regen)
+    } else { // short
+      Vmotor = 0;
+      I = -Vbemf / R;
+    }
+    const Pmech = Vbemf * I;
+    const Pe = Vbus * I;
+    const regen = I < 0;
+
+    document.getElementById('tEmf').textContent = Vbemf.toFixed(1) + " V";
+    document.getElementById('tVd').textContent = (Vmotor - Vbemf).toFixed(1) + " V";
+    document.getElementById('tI').textContent = (regen ? "" : "+") + I.toFixed(1) + " A " + (regen ? "← from motor to bus" : "→ to motor");
+    document.getElementById('tPm').textContent = Math.abs(Pmech).toFixed(0) + " W " + (Pmech > 0 ? "out (motor)" : "absorbed (brake)");
+    document.getElementById('tPe').textContent = Math.abs(Pe).toFixed(0) + " W " + (Pe > 0 ? "from battery" : "into battery");
+    const overcurrent = regen && Math.abs(I) > ilim;
+    document.getElementById('tOv').textContent = overcurrent ? "⚠ YES — brake chopper must engage" : (regen ? "No (within accept limit)" : "—");
+    document.getElementById('tOv').style.color = overcurrent ? "var(--warn)" : (regen ? "var(--accent3)" : "var(--fg)");
+
+    drawBridge(I, mode, regen);
+  }
+
+  Object.values(els).forEach(el=>el.addEventListener('input', update));
+  update();
+</script>
+</body>
+</html>

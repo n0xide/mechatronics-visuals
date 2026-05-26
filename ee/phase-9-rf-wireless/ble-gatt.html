@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BLE GATT &amp; Advertising — visual</title>
+<style>:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 system-ui,sans-serif}
+main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:0.04em}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+.control input,.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 8px;font:13px ui-monospace,monospace}
+.readout{color:var(--accent);font-family:ui-monospace,monospace;font-size:13px}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,monospace;color:var(--accent2)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.cheatsheet{display:grid;gap:12px;margin:18px 0;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.cheat-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.cheat-card h3{margin:0 0 8px;font-size:11px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.cheat-card.formulas h3{color:var(--accent)}.cheat-card.pitfalls h3{color:var(--warn)}.cheat-card.memorize h3{color:var(--accent3)}
+.cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+.cheat-card ul li{margin:3px 0}.cheat-card ul li b{color:var(--fg)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+footer a{color:var(--accent);text-decoration:none}
+.tree{font:12px ui-monospace,monospace;line-height:1.7;color:var(--fg)}
+.tree .svc{color:var(--accent);font-weight:600}
+.tree .chr{color:var(--accent2)}
+.tree .desc{color:var(--fg-dim)}
+.worked{background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
+.worked h3{margin:0 0 8px;color:var(--accent3)}
+.worked .eq{display:block;color:var(--accent);font:13px ui-monospace,monospace;background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2)}
+</style></head>
+<body><main>
+
+<h1>BLE GATT &amp; Advertising</h1>
+<p class="lede">Bluetooth Low Energy reaches devices in two phases: <b>advertising</b> on three known channels announces the device, then <b>connection</b> hops across 37 data channels for the actual data exchange. The data model — Services, Characteristics, Descriptors — is GATT (Generic ATTribute profile). This visual maps both layers: the 2.4 GHz channel plan, advertising packet format, the GATT tree, and how connection parameters set power vs latency.</p>
+
+<div class="anchors">
+<span class="anchor"><b>Adv channels</b>: 37, 38, 39 @ 2402/2426/2480 MHz</span>
+<span class="anchor"><b>Data channels</b>: 0-36 @ 2404-2478 MHz</span>
+<span class="anchor"><b>Channel spacing</b>: 2 MHz</span>
+<span class="anchor"><b>Adv interval</b>: 20 ms – 10.24 s</span>
+<span class="anchor"><b>Connection interval</b>: 7.5 ms – 4 s</span>
+</div>
+
+<section class="controls">
+<div class="control"><label>Advertising interval (ms): <span class="readout" id="advRead">100</span></label><input id="adv" type="range" min="20" max="10000" step="10" value="100"></div>
+<div class="control"><label>Connection interval (ms): <span class="readout" id="conRead">30</span></label><input id="con" type="range" min="7.5" max="1000" step="2.5" value="30"></div>
+<div class="control"><label>Slave latency: <span class="readout" id="latRead">0</span></label><input id="lat" type="range" min="0" max="100" step="1" value="0"></div>
+<div class="control"><label>Supervision timeout (ms): <span class="readout" id="supRead">1000</span></label><input id="sup" type="range" min="100" max="32000" step="100" value="1000"></div>
+</section>
+
+<div class="figure">
+<table>
+<tr><th>Quantity</th><th>Value</th><th>Notes</th></tr>
+<tr><td>Wakeups / sec (adv)</td><td id="advRate" class="num">10.0</td><td>1 / adv_interval × N_channels_used</td></tr>
+<tr><td>Battery life multiplier vs 20 ms adv</td><td id="advBatt" class="num">5×</td><td>Less adv = more sleep</td></tr>
+<tr><td>Wakeups / sec (connected)</td><td id="conRate" class="num">33.3</td><td>1 / con_interval / (1 + latency)</td></tr>
+<tr><td>Effective heartbeat (ms)</td><td id="effRate" class="num">30 ms</td><td>con_interval × (1 + latency)</td></tr>
+<tr><td>Connection drop risk</td><td id="dropRisk" class="num">low</td><td>supervision_timeout &gt;= 6 × eff_heartbeat</td></tr>
+</table>
+</div>
+
+<h2>2.4 GHz channel plan</h2>
+<p>BLE uses 40 channels of 2 MHz each from 2402 to 2480 MHz. Three are reserved for advertising (37, 38, 39) placed to dodge WiFi channels 1, 6, 11. The other 37 are for data after connection.</p>
+
+<div class="figure">
+<svg id="channels" viewBox="0 0 720 200" width="100%"></svg>
+</div>
+
+<h2>GATT Tree — services, characteristics, descriptors</h2>
+<p>Every BLE peripheral exposes a tree:</p>
+<div class="figure">
+<div class="tree">
+<div><span class="svc">SERVICE: Generic Access</span> &nbsp;<span class="desc">UUID 0x1800 (mandatory)</span></div>
+<div>&nbsp;&nbsp;<span class="chr">CHARACTERISTIC: Device Name</span> &nbsp;<span class="desc">UUID 0x2A00, READ</span></div>
+<div>&nbsp;&nbsp;<span class="chr">CHARACTERISTIC: Appearance</span> &nbsp;<span class="desc">UUID 0x2A01, READ</span></div>
+<div><span class="svc">SERVICE: Heart Rate Service</span> &nbsp;<span class="desc">UUID 0x180D (standard, SIG-assigned)</span></div>
+<div>&nbsp;&nbsp;<span class="chr">CHARACTERISTIC: Heart Rate Measurement</span> &nbsp;<span class="desc">UUID 0x2A37, NOTIFY</span></div>
+<div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="desc">DESCRIPTOR: Client Char Config (CCCD) — enables NOTIFY</span></div>
+<div>&nbsp;&nbsp;<span class="chr">CHARACTERISTIC: Body Sensor Location</span> &nbsp;<span class="desc">UUID 0x2A38, READ</span></div>
+<div><span class="svc">SERVICE: Vendor-Specific</span> &nbsp;<span class="desc">UUID 128-bit random</span></div>
+<div>&nbsp;&nbsp;<span class="chr">CHARACTERISTIC: Telemetry</span> &nbsp;<span class="desc">128-bit UUID, READ/NOTIFY/WRITE</span></div>
+</div>
+</div>
+
+<p>Three permission types per characteristic:</p>
+<ul class="notice">
+<li><b>READ</b> — central can fetch the value at any time. One-shot.</li>
+<li><b>NOTIFY / INDICATE</b> — peripheral pushes new value when it changes. NOTIFY is unacknowledged (fast), INDICATE has handshake (reliable).</li>
+<li><b>WRITE / WRITE_WITHOUT_RESPONSE</b> — central sends data to peripheral.</li>
+</ul>
+
+<h2>Worked example — heart rate monitor</h2>
+<div class="worked">
+<h3>Use case</h3>
+<p>HRM band worn on chest. Connection interval set to 1 second to extend battery. Heart-rate samples are sent via NOTIFY on the Heart Rate Measurement characteristic.</p>
+
+<h3>Connection parameters</h3>
+<span class="eq">Connection interval = 1000 ms (1 Hz heartbeat)</span>
+<span class="eq">Slave latency = 4 → effective heartbeat = 1000 × (1+4) = 5 seconds. Peripheral can skip 4 connection events if nothing to send.</span>
+<span class="eq">Supervision timeout = 30 seconds. Must be ≥ 6 × effective_heartbeat = 30 s. OK.</span>
+<span class="eq">Result: peripheral wakes once per second when active (HR sample), every 5 s when idle. 50× longer battery vs always-on 20 ms.</span>
+
+<h3>GATT operations during a sample</h3>
+<span class="eq">1. Peripheral wakes 1 s after last connection event</span>
+<span class="eq">2. ACK previous data, send NOTIFY (HR value), receive response</span>
+<span class="eq">3. Sleep until next connection event</span>
+<span class="eq">Total airtime: ~500 µs per second = 0.05 % duty cycle</span>
+</div>
+
+<h2>Common pitfalls</h2>
+<ul class="notice">
+<li><b>Connection interval too short → battery dies fast.</b> 7.5 ms is fastest possible; 50 ms is a good sensor compromise; 1+ s for low-power telemetry.</li>
+<li><b>Slave latency without supervision timeout adjustment</b> — increasing latency without proportionally extending timeout causes premature disconnects.</li>
+<li><b>NOTIFY without CCCD enable</b> — central must write the CCCD descriptor to enable notifications. Forgetting this is the #1 "peripheral isn't sending data" bug.</li>
+<li><b>128-bit vendor UUIDs</b> — these are 16 bytes vs 2 for SIG-standard. They take more advertising payload. Use SIG-standard UUIDs when possible.</li>
+<li><b>Pairing vs bonding</b> — pairing is a one-time encrypted key exchange; bonding stores the keys for later reconnects. Pair without bond = re-pair every connection.</li>
+<li><b>Long-Range / Coded PHY</b> — BLE 5+ supports 125 kbps coded PHY for ~4× range. Lower data rate but better link budget; pick per use case.</li>
+</ul>
+
+<h2>Cheat sheet</h2>
+<section class="cheatsheet">
+<div class="cheat-card formulas"><h3>KEY NUMBERS</h3><ul>
+<li>40 channels of 2 MHz</li>
+<li>3 adv (37, 38, 39) + 37 data</li>
+<li>1 Mbps PHY default; 2 Mbps + Coded available BLE 5+</li>
+<li>Max payload: 27 bytes per packet (legacy), 251 bytes (extended)</li>
+<li>Adv intervals: 20 ms - 10.24 s</li>
+<li>Conn intervals: 7.5 ms - 4 s</li>
+</ul></div>
+<div class="cheat-card memorize"><h3>GATT ROLES</h3><ul>
+<li><b>Server</b>: holds the data (usually peripheral)</li>
+<li><b>Client</b>: reads/writes/subscribes (usually central)</li>
+<li><b>Service</b>: logical grouping (HR, battery, custom)</li>
+<li><b>Characteristic</b>: value + permissions</li>
+<li><b>Descriptor</b>: metadata (CCCD, format, presentation)</li>
+</ul></div>
+<div class="cheat-card pitfalls"><h3>COMMON BUGS</h3><ul>
+<li>Forgetting CCCD enable for NOTIFY</li>
+<li>Too-short connection interval → battery dead in days</li>
+<li>Supervision timeout &lt; 6× eff_interval → drops</li>
+<li>128-bit UUID where 16-bit would do</li>
+<li>Pair without bond → re-pair each connection</li>
+</ul></div>
+</section>
+
+<footer>Curriculum: <a target="_top" href="../../index.html">EE Phase 9 — RF &amp; Wireless</a> · Cross-links: <a href="wireless-spectrum.html">Wireless Spectrum</a>, <a href="link-budget.html">Link Budget</a>, <a href="lora-modulation.html">LoRa Modulation</a>.</footer>
+
+</main>
+<script>
+const els = ['adv','con','lat','sup'].reduce((m,k)=>{m[k]=document.getElementById(k);return m;},{});
+
+function drawChannels(){
+  const svg = document.getElementById('channels');
+  let s = '';
+  // 2402 to 2480 MHz, 40 channels
+  for(let ch = 0; ch < 40; ch++){
+    const freq = 2402 + ch * 2;
+    const x = 40 + (freq - 2400) * 8;
+    const adv = (ch === 37 || ch === 38 || ch === 39);
+    const color = adv ? '#ffb86c' : '#5ec8ff';
+    s += `<rect x="${x}" y="50" width="14" height="100" fill="${color}" opacity="0.6" stroke="${color}" stroke-width="1"/>`;
+    if(ch % 5 === 0 || adv){
+      s += `<text x="${x+7}" y="170" font:9px ui-monospace,monospace fill="#8f99a8" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9">${ch}</text>`;
+      s += `<text x="${x+7}" y="183" fill="#8f99a8" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8">${freq}</text>`;
+    }
+  }
+  // WiFi 1, 6, 11 markers
+  for(const [wf, label] of [[2412,'WiFi 1'],[2437,'WiFi 6'],[2462,'WiFi 11']]){
+    const x = 40 + (wf - 2400) * 8;
+    s += `<rect x="${x-32}" y="30" width="64" height="20" fill="rgba(255,123,114,0.2)" stroke="#ff7b72" stroke-width="1"/>`;
+    s += `<text x="${x}" y="45" fill="#ff7b72" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10">${label}</text>`;
+  }
+  s += `<text x="10" y="100" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="12">Ch:</text>`;
+  s += `<text x="10" y="180" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="11">MHz:</text>`;
+  s += `<text x="600" y="50" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="11">orange = adv (37,38,39)</text>`;
+  s += `<text x="600" y="68" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">blue = data (0-36)</text>`;
+  svg.innerHTML = s;
+}
+
+function update(){
+  const adv = parseFloat(els.adv.value);
+  const con = parseFloat(els.con.value);
+  const lat = parseInt(els.lat.value);
+  const sup = parseFloat(els.sup.value);
+
+  document.getElementById('advRead').textContent = adv.toFixed(0);
+  document.getElementById('conRead').textContent = con.toFixed(1);
+  document.getElementById('latRead').textContent = lat;
+  document.getElementById('supRead').textContent = sup.toFixed(0);
+
+  // Adv: 3 channels per advertisement, but interval is the spacing
+  const advRate = 1000 / adv;
+  const advBatt = (adv / 20).toFixed(1);
+  const effHb = con * (1 + lat);
+  const conRate = 1000 / effHb;
+  const supRatio = sup / effHb;
+  const drop = supRatio < 6 ? 'HIGH (timeout < 6× heartbeat)' : (supRatio < 10 ? 'medium' : 'low');
+
+  document.getElementById('advRate').textContent = advRate.toFixed(2);
+  document.getElementById('advBatt').textContent = advBatt + '×';
+  document.getElementById('conRate').textContent = conRate.toFixed(2);
+  document.getElementById('effRate').textContent = effHb.toFixed(0) + ' ms';
+  document.getElementById('dropRisk').textContent = drop;
+}
+
+['adv','con','lat','sup'].forEach(k => els[k].addEventListener('input', update));
+drawChannels();
+update();
+</script></body></html>
