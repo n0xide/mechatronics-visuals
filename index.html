@@ -116,6 +116,53 @@
     padding:1px 5px;border-radius:3px;margin-left:6px;vertical-align:middle;letter-spacing:0.05em}
   .gv-card .new-badge{position:absolute;top:6px;right:6px;margin:0}
 
+  /* VISITED CHECK */
+  .vis .check{display:inline-block;width:10px;color:var(--accent3);font-size:11px;
+    margin-right:4px;opacity:0;transition:opacity 0.15s}
+  .vis.visited .check{opacity:1}
+  .vis.visited .vt{color:var(--fg-dim);text-decoration:line-through;text-decoration-color:rgba(143,153,168,0.3)}
+  .vis.visited.active .vt{color:var(--fg-bright);text-decoration:none}
+
+  /* PHASE PROGRESS BAR */
+  .phase-bar{height:2px;background:var(--line);margin:0 12px 0 24px;border-radius:1px;overflow:hidden}
+  .phase-bar .fill{height:100%;background:var(--accent3);width:0;transition:width 0.3s}
+  .disc.ee .phase-bar .fill{background:var(--ee)}
+  .disc.me .phase-bar .fill{background:var(--me)}
+  .disc.em .phase-bar .fill{background:var(--em)}
+  .phase-h .pcnt.visited-cnt{font-size:9px;color:var(--accent3);margin-left:2px}
+
+  /* TOUR MODE */
+  .tour-bar{position:fixed;top:var(--header-h);left:var(--sidebar-w);right:0;
+    background:linear-gradient(90deg, rgba(94,200,255,0.10), rgba(94,200,255,0.02));
+    border-bottom:1px solid var(--accent);padding:8px 16px;
+    display:flex;align-items:center;gap:12px;font:12px ui-monospace,Menlo,monospace;
+    z-index:9}
+  .tour-bar.hidden{display:none}
+  .tour-bar .tour-title{color:var(--accent);font-weight:600;flex:1;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tour-bar .tour-progress{color:var(--fg-dim);white-space:nowrap}
+  .tour-bar .tour-btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:4px 10px;font:11px ui-monospace,monospace;cursor:pointer}
+  .tour-bar .tour-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .tour-bar .tour-btn:disabled{opacity:0.4;cursor:not-allowed}
+  .tour-bar .tour-btn.exit{margin-left:8px}
+  .body.with-tour main{top:calc(var(--header-h) + 38px) !important;height:calc(100% - 38px)}
+  .body.with-tour main iframe{height:calc(100vh - var(--header-h) - 38px)}
+
+  /* TOUR PICKER */
+  .tour-picker{position:absolute;top:calc(var(--header-h) + 4px);right:16px;
+    background:var(--bg-elev);border:1px solid var(--line);border-radius:6px;
+    padding:8px;min-width:280px;z-index:20;display:none;
+    box-shadow:0 4px 24px rgba(0,0,0,0.5)}
+  .tour-picker.open{display:block}
+  .tour-picker .t-title{font:600 11px ui-monospace,monospace;color:var(--fg-bright);
+    text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;padding:4px 6px}
+  .tour-picker .t-item{padding:6px 8px;border-radius:4px;cursor:pointer;
+    font:12px ui-monospace,monospace;color:var(--fg);display:flex;
+    justify-content:space-between;gap:8px}
+  .tour-picker .t-item:hover{background:var(--bg-elev2);color:var(--accent)}
+  .tour-picker .t-item .t-meta{color:var(--fg-dim);font-size:10px}
+
   /* IFRAME PANE */
   main{flex:1;background:var(--bg);position:relative;overflow:hidden}
   iframe{width:100%;height:100%;border:none;background:var(--bg);display:block}
@@ -244,12 +291,26 @@
     <span><kbd>?</kbd> help</span>
   </div>
   <button class="hbtn" id="gridBtn" title="Browse all visuals (g)">⊞ Grid</button>
+  <button class="hbtn" id="tourBtn" title="Guided tours (t)">⛳ Tour</button>
   <button class="hbtn" id="randomBtn" title="Random visual (r)">🎲</button>
   <button class="hbtn" id="newTabBtn" title="Open current visual in new tab (o)">↗</button>
   <button class="hbtn" id="helpBtn" title="Help (?)">?</button>
 </header>
 
-<div class="body">
+<div class="tour-picker" id="tourPicker">
+  <div class="t-title">Guided Tours</div>
+  <div id="tourList"></div>
+</div>
+
+<div class="tour-bar hidden" id="tourBar">
+  <span class="tour-title" id="tourTitle">Tour</span>
+  <span class="tour-progress" id="tourProgress">0 / 0</span>
+  <button class="tour-btn" id="tourPrev" title="Previous step">‹ Prev</button>
+  <button class="tour-btn" id="tourNext" title="Next step">Next ›</button>
+  <button class="tour-btn exit" id="tourExit" title="Exit tour">× Exit</button>
+</div>
+
+<div class="body" id="bodyEl">
   <aside id="sidebar">
     <div class="search-row">
       <input id="search" type="text" placeholder="Search 257 visuals... ( / )" autocomplete="off">
@@ -301,10 +362,14 @@
     <tr><td><kbd>o</kbd></td><td>Open current visual in new tab</td></tr>
     <tr><td><kbd>g</kbd> <kbd>h</kbd></td><td>Return to grid (home) view</td></tr>
     <tr><td><kbd>1</kbd>–<kbd>4</kbd></td><td>Jump to EE/ME/EM/Extras section in sidebar</td></tr>
+    <tr><td><kbd>t</kbd></td><td>Open tour picker</td></tr>
+    <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>Previous/next step in active tour</td></tr>
     <tr><td><kbd>?</kbd></td><td>Toggle this help</td></tr>
   </table>
   <p style="margin-top:16px;font-size:11px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace">
-    URLs are deep-linkable: <code>#em/phase-4-feedback-control/pid-explorer</code> — bookmark or share any visual.
+    URLs are deep-linkable: <code>#em/phase-4-feedback-control/pid-explorer</code> — bookmark or share any visual.<br>
+    Visited visuals show <span style="color:var(--accent3)">✓</span> in the sidebar. Progress bars per phase show your coverage.
+    Visit history persists locally in your browser.
   </p>
 </dialog>
 
@@ -579,6 +644,67 @@ const PHASES = {
 const DISC_LABELS = {ee:'EE — Electrical', me:'ME — Mechanical', em:'EM — Electro-Mechanical', extras:'Extras'};
 const DISC_ORDER = ['ee','me','em','extras'];
 
+// ============================================================
+// TOURS — guided pedagogical sequences through the curriculum
+// ============================================================
+// Each tour walks a learner through related visuals in a specific order.
+// File paths use the same `d/ps/f` triple as VISUALS entries.
+const TOURS = [
+  {id:'ee1-foundations', title:'EE 1 — DC Foundations', desc:'Ohm → KVL/KCL → series-parallel → dividers → Thévenin → superposition. Build the divider reflex.',
+   steps:['ee/phase-1-dc-circuits/ohms-law-explorer.html','ee/phase-1-dc-circuits/kvl-kcl-explorer.html','ee/phase-1-dc-circuits/series-parallel-explorer.html','ee/phase-1-dc-circuits/voltage-divider-explorer.html','ee/phase-1-dc-circuits/current-divider-explorer.html','ee/phase-1-dc-circuits/thevenin-norton-explorer.html','ee/phase-1-dc-circuits/superposition-explorer.html','ee/phase-1-dc-circuits/dependent-sources-explorer.html']},
+  {id:'ee-passives', title:'EE 2 — Passive Components', desc:'Resistors → caps → inductors → time constants → LC resonance → real components.',
+   steps:['ee/phase-2-passive-components/resistor-types-codes.html','ee/phase-2-passive-components/capacitor-explorer.html','ee/phase-2-passive-components/inductor-explorer.html','ee/phase-2-passive-components/rc-rl-time-constant.html','ee/phase-2-passive-components/rlc-step-response.html','ee/phase-2-passive-components/energy-storage-cl.html','ee/phase-2-passive-components/lc-resonance.html','ee/phase-2-passive-components/diodes-zener-transformers.html']},
+  {id:'ee-ac', title:'EE 3 — AC Analysis', desc:'Sinusoids → phasors → impedance → resonance → power factor → Bode.',
+   steps:['ee/phase-3-ac-analysis/sinusoid-phasor-explorer.html','ee/phase-3-ac-analysis/phasor-rotation.html','ee/phase-3-ac-analysis/complex-impedance.html','ee/phase-3-ac-analysis/rlc-resonance.html','ee/phase-3-ac-analysis/power-factor-triangle.html','ee/phase-3-ac-analysis/bode-filters.html','ee/phase-3-ac-analysis/crystal-pierce.html']},
+  {id:'ee-opamps', title:'EE 4 — Op-Amp Mastery', desc:'Fundamentals → configurations → instrumentation → integrator → CMRR → real picking.',
+   steps:['ee/phase-4-semiconductors/opamp-fundamentals.html','ee/phase-4-semiconductors/opamp-configurations.html','ee/phase-4-semiconductors/integrator-differentiator.html','ee/phase-4-semiconductors/instrumentation-amp.html','ee/phase-4-semiconductors/cmrr-explorer.html','ee/phase-4-semiconductors/schmitt-comparator.html','extras/opamp-picker.html']},
+  {id:'ee-power', title:'EE 6 — Power Electronics', desc:'Buck → boost → buck-boost → sync rectification → gate drivers → PFC → batt charging.',
+   steps:['ee/phase-6-power-electronics/buck-converter.html','ee/phase-6-power-electronics/boost-converter.html','ee/phase-6-power-electronics/buck-boost-topologies.html','ee/phase-6-power-electronics/synchronous-rectification.html','ee/phase-6-power-electronics/converter-filters.html','ee/phase-6-power-electronics/gate-drivers.html','ee/phase-6-power-electronics/pfc-boost.html','ee/phase-6-power-electronics/battery-charging-protection.html']},
+  {id:'ee-comms', title:'EE 8 — Embedded Comms', desc:'UART → SPI → I²C → USB → CAN → RS-485 → PWM/ADC/DAC.',
+   steps:['ee/phase-8-embedded-protocols/uart-timing.html','ee/phase-8-embedded-protocols/spi-timing.html','ee/phase-8-embedded-protocols/i2c-protocol.html','ee/phase-8-embedded-protocols/usb-basics.html','ee/phase-8-embedded-protocols/usb-enumeration.html','ee/phase-8-embedded-protocols/can-bus.html','ee/phase-8-embedded-protocols/rs485-differential.html','ee/phase-8-embedded-protocols/pwm-explorer.html','ee/phase-8-embedded-protocols/adc-explorer.html','ee/phase-8-embedded-protocols/dac-explorer.html']},
+  {id:'em-control', title:'EM 4 — Control Theory', desc:'Open vs closed loop → PID → each term → tuning → feed-forward → cascade → state-space → Kalman.',
+   steps:['em/phase-4-feedback-control/open-closed-loop.html','em/phase-4-feedback-control/pid-explorer.html','em/phase-4-feedback-control/p-i-d-individually.html','em/phase-4-feedback-control/pid-tuning.html','em/phase-4-feedback-control/feed-forward.html','em/phase-4-feedback-control/cascade-control.html','em/phase-4-feedback-control/state-space-survey.html','em/phase-4-feedback-control/kalman-filter.html']},
+  {id:'em-robotics', title:'EM 8 — Robotics & Kinematics', desc:'Forward → inverse → DH → Jacobian → diff drive → SLAM → impedance control.',
+   steps:['em/phase-8-robotics-mechatronics/forward-kinematics.html','em/phase-8-robotics-mechatronics/inverse-kinematics.html','em/phase-8-robotics-mechatronics/dh-parameters.html','em/phase-8-robotics-mechatronics/jacobian.html','em/phase-8-robotics-mechatronics/trajectory-planning.html','em/phase-8-robotics-mechatronics/diff-drive.html','em/phase-8-robotics-mechatronics/complementary-filter.html','em/phase-8-robotics-mechatronics/impedance-control.html']},
+  {id:'me-mechmat', title:'ME 4 — Mechanics of Materials', desc:'Axial → shear → torsion → bending → deflection → Mohr → failure theories.',
+   steps:['me/phase-4-mechanics-of-materials/axial-stress-strain.html','me/phase-4-mechanics-of-materials/shear-bearing.html','me/phase-4-mechanics-of-materials/torsion-shaft.html','me/phase-4-mechanics-of-materials/bending-moments.html','me/phase-4-mechanics-of-materials/beam-deflection.html','me/phase-4-mechanics-of-materials/pressure-vessel.html','me/phase-4-mechanics-of-materials/mohrs-circle.html','me/phase-4-mechanics-of-materials/failure-theories.html']},
+  {id:'me-thermal', title:'ME 9 — Thermal Engineering', desc:'Modes → networks → heat sinks → TIM/PCB → fin efficiency → system budget.',
+   steps:['me/phase-9-thermal-engineering/heat-transfer-modes.html','me/phase-9-thermal-engineering/thermal-networks.html','me/phase-9-thermal-engineering/heat-sinks.html','me/phase-9-thermal-engineering/fin-efficiency.html','me/phase-9-thermal-engineering/tim-pcb.html','me/phase-9-thermal-engineering/system-thermal-budget.html','extras/heatsink-sizer.html']},
+];
+
+// ============================================================
+// LOCAL STORAGE — visited tracking
+// ============================================================
+const LS_VISITED = 'visuals-visited';
+const LS_TOUR    = 'visuals-tour-state';
+
+function getVisited(){
+  try { return new Set(JSON.parse(localStorage.getItem(LS_VISITED) || '[]')); }
+  catch(e) { return new Set(); }
+}
+function markVisited(path){
+  const v = getVisited();
+  v.add(path);
+  try { localStorage.setItem(LS_VISITED, JSON.stringify([...v])); } catch(e) {}
+}
+function clearVisited(){
+  try { localStorage.removeItem(LS_VISITED); } catch(e) {}
+}
+let VISITED = getVisited();
+
+// ============================================================
+// TOUR STATE
+// ============================================================
+let currentTour = null;
+let currentTourStep = -1;
+function getTourState(){
+  try { return JSON.parse(localStorage.getItem(LS_TOUR) || 'null'); }
+  catch(e) { return null; }
+}
+function setTourState(s){
+  try { if(s) localStorage.setItem(LS_TOUR, JSON.stringify(s)); else localStorage.removeItem(LS_TOUR); } catch(e) {}
+}
+
 // 95 new visuals added in the May 2026 expansion (current-divider + extras + sweeps + gap-fills)
 const NEW_VISUALS = new Set([
   // EE Phase 1
@@ -697,9 +823,19 @@ function renderTree(filter){
         const phaseName = PHASES[disc][p] || `Phase ${p}`;
         const phaseSlug = byPhase[p][0].ps;
         const phaseCollapsed = (filter ? false : restoreCollapsed(`${disc}-p${p}`));
+        // Visited count for this phase
+        const visitedInPhase = byPhase[p].filter(v => VISITED.has(pathFor(v))).length;
+        const pct = Math.round(100 * visitedInPhase / byPhase[p].length);
         out.push(`<div class="phase${phaseCollapsed?' collapsed':''}" data-key="${disc}-p${p}">`);
         out.push(`<div class="phase-h" onclick="toggleCollapse(this.parentElement)">`);
-        out.push(`<span class="chev">▾</span><span class="num">${p}.</span><span class="pname">${escapeHtml(phaseName)}</span><span class="pcnt">${byPhase[p].length}</span></div>`);
+        out.push(`<span class="chev">▾</span><span class="num">${p}.</span><span class="pname">${escapeHtml(phaseName)}</span>`);
+        if(visitedInPhase > 0){
+          out.push(`<span class="pcnt visited-cnt">${visitedInPhase}/${byPhase[p].length}</span>`);
+        } else {
+          out.push(`<span class="pcnt">${byPhase[p].length}</span>`);
+        }
+        out.push(`</div>`);
+        out.push(`<div class="phase-bar"><div class="fill" style="width:${pct}%"></div></div>`);
         out.push(`<div class="visuals">`);
         for(const v of byPhase[p]) out.push(renderVis(v, filter));
         out.push(`</div></div>`);
@@ -724,8 +860,9 @@ function renderVis(v, filter){
   const id = idFor(v);
   const path = pathFor(v);
   const newBadge = NEW_VISUALS.has(v.f) ? '<span class="new-badge">NEW</span>' : '';
-  return `<a class="vis" data-id="${id}" data-idx="${VISUALS.indexOf(v)}" onclick="loadByPath('${path}');return false" title="${escapeHtml(decodeHtmlEntities(v.x))}">
-    <span class="vt">${highlight(v.t, filter)}${newBadge}</span>
+  const visited = VISITED.has(path) ? ' visited' : '';
+  return `<a class="vis${visited}" data-id="${id}" data-idx="${VISUALS.indexOf(v)}" onclick="loadByPath('${path}');return false" title="${escapeHtml(decodeHtmlEntities(v.x))}">
+    <span class="check">✓</span><span class="vt">${highlight(v.t, filter)}${newBadge}</span>
     <span class="vd">${highlight(v.x, filter)}</span>
   </a>`;
 }
@@ -785,10 +922,23 @@ function loadVisual(v){
   history.replaceState(null, '', '#' + id);
   // Update crumb
   updateCrumb(v);
+  // Mark visited (persist) and update sidebar
+  if(!VISITED.has(path)){
+    markVisited(path);
+    VISITED = getVisited();
+    // Re-render tree so the visited check + progress bar update
+    renderTree(currentFilter);
+  }
   // Mark active in sidebar
   markActive();
   // Close mobile sidebar
   document.getElementById('sidebar').classList.remove('open');
+  // Advance tour if a tour is active and this visual is the next step
+  if(currentTour){
+    const idx = currentTour.steps.indexOf(path);
+    if(idx >= 0) currentTourStep = idx;
+    updateTourBar();
+  }
 }
 function showIframe(path){
   const iframe = document.getElementById('viewer');
@@ -919,6 +1069,9 @@ document.addEventListener('keydown', e => {
     case 'r': loadRandom(); break;
     case 'o': openCurrentInNewTab(); break;
     case 'g': case 'h': showGrid(); break;
+    case 't': toggleTourPicker(); break;
+    case ']': if(currentTour) tourNext(); break;
+    case '[': if(currentTour) tourPrev(); break;
     case '?': dlg.showModal(); break;
     case '1': scrollToDisc('ee'); break;
     case '2': scrollToDisc('me'); break;
@@ -934,12 +1087,93 @@ function scrollToDisc(d){
   if(el){ el.classList.remove('collapsed'); el.scrollIntoView({behavior:'smooth',block:'start'}); }
 }
 
+/* ============== TOUR FUNCTIONS ============== */
+function renderTourPicker(){
+  const list = document.getElementById('tourList');
+  let html = '';
+  for(const t of TOURS){
+    const visited = t.steps.filter(s => VISITED.has(s)).length;
+    html += `<div class="t-item" onclick="startTour('${t.id}')">
+      <div><b>${escapeHtml(t.title)}</b><div style="color:var(--fg-dim);font-size:10px;font-weight:normal;margin-top:2px">${escapeHtml(t.desc)}</div></div>
+      <div class="t-meta">${visited}/${t.steps.length}</div>
+    </div>`;
+  }
+  list.innerHTML = html;
+}
+function toggleTourPicker(){
+  document.getElementById('tourPicker').classList.toggle('open');
+  renderTourPicker();
+}
+function startTour(tourId){
+  const t = TOURS.find(x => x.id === tourId);
+  if(!t) return;
+  currentTour = t;
+  currentTourStep = 0;
+  setTourState({tourId, step: 0});
+  document.getElementById('tourPicker').classList.remove('open');
+  document.getElementById('tourBar').classList.remove('hidden');
+  document.getElementById('bodyEl').classList.add('with-tour');
+  updateTourBar();
+  loadByPath(t.steps[0]);
+}
+function exitTour(){
+  currentTour = null;
+  currentTourStep = -1;
+  setTourState(null);
+  document.getElementById('tourBar').classList.add('hidden');
+  document.getElementById('bodyEl').classList.remove('with-tour');
+}
+function tourNext(){
+  if(!currentTour) return;
+  if(currentTourStep < currentTour.steps.length - 1){
+    currentTourStep++;
+    setTourState({tourId: currentTour.id, step: currentTourStep});
+    loadByPath(currentTour.steps[currentTourStep]);
+  }
+}
+function tourPrev(){
+  if(!currentTour) return;
+  if(currentTourStep > 0){
+    currentTourStep--;
+    setTourState({tourId: currentTour.id, step: currentTourStep});
+    loadByPath(currentTour.steps[currentTourStep]);
+  }
+}
+function updateTourBar(){
+  if(!currentTour) return;
+  document.getElementById('tourTitle').textContent = currentTour.title;
+  document.getElementById('tourProgress').textContent = (currentTourStep + 1) + ' / ' + currentTour.steps.length;
+  document.getElementById('tourPrev').disabled = currentTourStep <= 0;
+  document.getElementById('tourNext').disabled = currentTourStep >= currentTour.steps.length - 1;
+}
+function restoreTour(){
+  const s = getTourState();
+  if(!s) return;
+  const t = TOURS.find(x => x.id === s.tourId);
+  if(!t) return;
+  currentTour = t;
+  currentTourStep = s.step;
+  document.getElementById('tourBar').classList.remove('hidden');
+  document.getElementById('bodyEl').classList.add('with-tour');
+  updateTourBar();
+}
+
 /* ============== UI WIRES ============== */
 document.getElementById('helpBtn').addEventListener('click', () => document.getElementById('helpDlg').showModal());
 document.getElementById('randomBtn').addEventListener('click', loadRandom);
 document.getElementById('newTabBtn').addEventListener('click', openCurrentInNewTab);
 document.getElementById('hamBtn').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
 document.getElementById('gridBtn').addEventListener('click', showGrid);
+document.getElementById('tourBtn').addEventListener('click', toggleTourPicker);
+document.getElementById('tourNext').addEventListener('click', tourNext);
+document.getElementById('tourPrev').addEventListener('click', tourPrev);
+document.getElementById('tourExit').addEventListener('click', exitTour);
+// Click outside tour picker closes it
+document.addEventListener('click', (e) => {
+  const picker = document.getElementById('tourPicker');
+  const btn = document.getElementById('tourBtn');
+  if(!picker.contains(e.target) && !btn.contains(e.target)) picker.classList.remove('open');
+});
 // Click the logo to return to grid view
 document.querySelector('.logo').style.cursor = 'pointer';
 document.querySelector('.logo').addEventListener('click', showGrid);
@@ -963,6 +1197,7 @@ function initFromHash(){
 }
 window.addEventListener('hashchange', initFromHash);
 initFromHash();
+restoreTour();
 </script>
 </body>
 </html>
