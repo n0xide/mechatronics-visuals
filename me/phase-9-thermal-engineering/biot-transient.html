@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Biot Number &amp; Transient Cooling — visual</title>
+<style>
+:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,Segoe UI,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:14px 0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.control .val{font:600 13px ui-monospace,monospace;color:var(--accent3)}
+.control input[type=range]{width:100%;accent-color:var(--accent)}
+.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:12px ui-monospace,monospace}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;margin:14px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}.panel.note{border-left:3px solid var(--accent)}
+.panel h3{margin-top:0}
+.scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.score-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center}
+.score-card.hi{border-color:var(--accent3)}.score-card.lo{border-color:var(--warn)}
+.score-num{font:700 22px ui-monospace,Menlo,monospace;color:var(--accent3);margin:6px 0}
+.score-num.warn{color:var(--warn)}.score-num.mid{color:var(--accent2)}
+.score-lbl{color:var(--fg-dim);font-size:11px;font-family:ui-monospace,monospace;text-transform:uppercase;letter-spacing:.4px}
+.score-lbl.unit{text-transform:none;letter-spacing:0}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+.deriv b{color:var(--fg-bright)}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,monospace;color:var(--accent2)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>Biot Number &amp; Transient Cooling — when is lumped capacitance valid?</h1>
+<p class="lede">A hot solid plunged into a cool fluid loses heat over time. The simple "lumped capacitance" model assumes the entire solid is at uniform temperature — internal conduction is fast compared to surface convection. Whether that assumption holds is decided by one number: the <b>Biot number</b>, Bi = h·L_c / k. Below 0.1, lumped is accurate (≤ 5% error). Above, you need the spatial solution (Heisler charts or first-term series). This visual lets you sweep material, geometry, size, and h to see Bi flip from "lumped OK" to "spatial gradients matter," and plots the cooling curve T(t) live.</p>
+
+<div class="anchors">
+<span class="anchor"><b>Bi</b> = h·L_c / k_solid</span>
+<span class="anchor"><b>Bi &lt; 0.1</b>: lumped capacitance valid (≤ 5% error)</span>
+<span class="anchor"><b>τ</b> = ρ·V·c_p / (h·A_s)</span>
+<span class="anchor"><b>Fo</b> = α·t / L_c² (Fourier number)</span>
+<span class="anchor"><b>Lumped</b>: T(t) = T_∞ + (T₀−T_∞)·e<sup>−t/τ</sup></span>
+</div>
+
+<h2>Interactive — Bi check + cooling curve</h2>
+
+<div class="controls">
+<div class="control"><label>Material</label><select id="mat" onchange="render()">
+  <option value="cu" selected>Copper (k = 401)</option>
+  <option value="al">Aluminum (k = 237)</option>
+  <option value="steel">Steel, 1010 (k = 60)</option>
+  <option value="ss">Stainless 304 (k = 16)</option>
+  <option value="ceramic">Alumina (k = 27)</option>
+  <option value="glass">Glass (k = 1.4)</option>
+  <option value="plastic">ABS plastic (k = 0.17)</option>
+  <option value="wood">Wood (k = 0.16)</option>
+</select></div>
+<div class="control"><label>Geometry</label><select id="geom" onchange="render()">
+  <option value="plate">Plane wall (half-thickness)</option>
+  <option value="cyl" selected>Cylinder (radius)</option>
+  <option value="sphere">Sphere (radius)</option>
+</select></div>
+<div class="control"><label>Size (mm)</label><input id="L" type="range" min="1" max="200" value="20" step="0.5" oninput="render()"><span class="val" id="vL">20</span></div>
+<div class="control"><label>h, surface (W/m²·K)</label><input id="h" type="range" min="2" max="5000" value="50" step="2" oninput="render()"><span class="val" id="vH">50</span></div>
+<div class="control"><label>Initial T<sub>0</sub> (°C)</label><input id="T0" type="range" min="20" max="500" value="200" step="5" oninput="render()"><span class="val" id="vT0">200</span></div>
+<div class="control"><label>Ambient T<sub>∞</sub> (°C)</label><input id="Tinf" type="range" min="-50" max="100" value="20" step="5" oninput="render()"><span class="val" id="vTinf">20</span></div>
+</div>
+
+<div class="scoreboard">
+<div class="score-card" id="biCard"><div class="score-lbl">Biot number Bi</div><div class="score-num" id="vBi">—</div><div class="score-lbl" id="vBiNote">—</div></div>
+<div class="score-card"><div class="score-lbl">Time constant τ</div><div class="score-num" id="vTau">—</div><div class="score-lbl unit" id="vTauUnit">s</div></div>
+<div class="score-card"><div class="score-lbl">5τ (≈ thermally settled)</div><div class="score-num" id="v5Tau">—</div><div class="score-lbl unit" id="v5TauUnit">s</div></div>
+<div class="score-card"><div class="score-lbl">α (diffusivity)</div><div class="score-num" id="vAlpha">—</div><div class="score-lbl unit">mm²/s</div></div>
+</div>
+
+<div class="figure"><svg id="curve" viewBox="0 0 900 320" width="100%"></svg></div>
+
+<h2>The math behind Bi and τ</h2>
+<div class="deriv">
+<span class="step">The Biot number compares <b>internal conduction resistance</b> to <b>external convection resistance</b>:</span>
+<span class="step">  <b>Bi = h·L_c / k_solid</b></span>
+<span class="step"></span>
+<span class="step">Characteristic length L_c (depends on shape):</span>
+<span class="step">  Plane wall (insulated back, length 2L): L_c = L  (half-thickness)</span>
+<span class="step">  Long cylinder, radius r:  L_c = V/A_s = (πr²·H)/(2πr·H) = r/2</span>
+<span class="step">  Sphere, radius r:         L_c = V/A_s = (4/3·πr³)/(4πr²) = r/3</span>
+<span class="step">  Generic shape:            L_c = V / A_s</span>
+<span class="step"></span>
+<span class="step"><b>If Bi &lt; 0.1, lumped capacitance is accurate to ≤ 5%.</b></span>
+<span class="step">Energy balance:  ρ·V·c_p · dT/dt = −h·A_s · (T − T_∞)</span>
+<span class="step">Solution:        T(t) = T_∞ + (T₀ − T_∞) · exp(−t/τ)</span>
+<span class="step">Time constant:   <b>τ = ρ·V·c_p / (h·A_s) = ρ·c_p·L_c / h</b></span>
+<span class="step"></span>
+<span class="step">After τ:    63% of the way from T₀ to T_∞</span>
+<span class="step">After 3τ:   95% of the way</span>
+<span class="step">After 5τ:   99% (treated as "settled")</span>
+<span class="step"></span>
+<span class="step">Thermal diffusivity (intrinsic to material):  α = k / (ρ·c_p)  [m²/s]</span>
+<span class="step">Fourier number (dimensionless time):  Fo = α·t / L_c²</span>
+<span class="step">  Fo = 1 means heat has diffused one characteristic length.</span>
+<span class="step"></span>
+<span class="step">For Bi &gt; 0.1, use one-term series approximation (valid for Fo &gt; 0.2):</span>
+<span class="step">  Plane wall center:  θ* = C₁ · exp(−ζ₁² · Fo)</span>
+<span class="step">  where ζ₁ and C₁ are tabulated functions of Bi (Incropera Table 5.1).</span>
+<span class="step">  For full Bi sweep + arbitrary Fo, use the Heisler charts or numerical sim.</span>
+</div>
+
+<h2>Material properties used (typical)</h2>
+<table>
+<tr><th>Material</th><th>k (W/m·K)</th><th>ρ (kg/m³)</th><th>c_p (J/kg·K)</th><th>α (mm²/s)</th></tr>
+<tr><td>Copper</td><td>401</td><td>8933</td><td>385</td><td>117</td></tr>
+<tr><td>Aluminum</td><td>237</td><td>2702</td><td>903</td><td>97.0</td></tr>
+<tr><td>Steel 1010</td><td>60.5</td><td>7854</td><td>434</td><td>17.7</td></tr>
+<tr><td>Stainless 304</td><td>15.1</td><td>7900</td><td>477</td><td>4.0</td></tr>
+<tr><td>Alumina (Al<sub>2</sub>O<sub>3</sub>)</td><td>27</td><td>3900</td><td>880</td><td>7.9</td></tr>
+<tr><td>Glass (window)</td><td>1.4</td><td>2500</td><td>835</td><td>0.67</td></tr>
+<tr><td>ABS plastic</td><td>0.17</td><td>1050</td><td>1400</td><td>0.12</td></tr>
+<tr><td>Wood (oak)</td><td>0.16</td><td>700</td><td>2400</td><td>0.10</td></tr>
+</table>
+
+<h2>Worked example — small aluminum sphere quenched in water</h2>
+<div class="panel tip">
+<h3>Setup</h3>
+<p>Aluminum sphere, 20 mm diameter (r = 10 mm), initially at 200 °C. Plunged into a 20 °C water bath. Water-side h ≈ 500 W/m²·K (forced convection over a sphere at moderate Re). How fast does it cool?</p>
+<h3>Bi check</h3>
+<div class="deriv">
+<span class="step">L_c = r/3 = 0.010/3 = 3.33 mm = 0.00333 m</span>
+<span class="step">Bi = h·L_c / k = 500 · 0.00333 / 237 = 0.0070</span>
+<span class="step">Bi ≪ 0.1 → lumped capacitance valid ✓</span>
+</div>
+<h3>Time constant + curve</h3>
+<div class="deriv">
+<span class="step">τ = ρ·c_p·L_c / h = 2702 · 903 · 0.00333 / 500 = 16.3 s</span>
+<span class="step">5τ ≈ 81 s for the sphere to reach within 1% of 20 °C</span>
+<span class="step">At t = τ: T = 20 + 180·e⁻¹ = 20 + 66 = 86 °C</span>
+<span class="step">At t = 3τ ≈ 49 s: T = 20 + 180·e⁻³ = 20 + 9 = 29 °C</span>
+</div>
+<p><b>Compare to a steel sphere:</b> same geometry, k = 60.5 W/m·K. Bi = 500·0.00333/60.5 = 0.0275 (still &lt; 0.1, lumped still OK). But τ = 7854 · 434 · 0.00333 / 500 = 22.7 s — slower despite much higher conductivity, because steel's volumetric heat capacity (ρ·c_p = 3.4 MJ/m³·K) exceeds aluminum's (2.4 MJ/m³·K). Conductivity changes Bi; it doesn't change τ for lumped objects.</p>
+</div>
+
+<h2>When lumped fails — Bi &gt; 0.1</h2>
+<div class="panel warn">
+<h3>What goes wrong</h3>
+<p>If Bi is large, the surface cools fast but the center stays hot — there's a real spatial gradient. The lumped formula underpredicts the center temperature and overpredicts the average heat removed.</p>
+<p>Example: a glass billet (k = 1.4) at 500 °C plunged in oil (h = 800 W/m²K), r = 50 mm. L_c = r/3 = 16.7 mm. <b>Bi = 800 · 0.0167 / 1.4 = 9.5</b> — completely outside lumped territory.</p>
+<h3>Solutions for large Bi</h3>
+<ul style="padding-left:18px;color:var(--fg-dim);font-size:12.5px">
+<li><b>Heisler charts</b>: graphical lookup of θ_center vs Fo, parameterized by Bi. Used pre-1990s by hand; still in textbooks (Incropera Ch. 5).</li>
+<li><b>One-term series approximation</b> for Fo &gt; 0.2: θ* = C₁·exp(−ζ₁²·Fo), with ζ₁(Bi) and C₁(Bi) tabulated.</li>
+<li><b>Numerical FD/FEM</b>: explicit Euler on a discretized rod / cylinder / sphere; converges if dt &lt; (Δx)² / (2α).</li>
+<li><b>CFD with conjugate heat transfer</b>: full convection-conduction coupling; for production design only.</li>
+</ul>
+<h3>Sanity rule</h3>
+<p>If your problem has Bi &gt; 0.1 and you used the lumped τ anyway: <b>center temperature error grows ~Bi/3 in fraction</b>. For Bi = 0.5, expect ~17% under-prediction of center T at moderate Fo. For thermal-cutoff design (where the center reaching some T matters), this is unsafe.</p>
+</div>
+
+<h2>Where transient analysis matters</h2>
+<table>
+<tr><th>Application</th><th>Typical Bi</th><th>Why</th></tr>
+<tr><td>Quenching a steel forging in oil</td><td>1 - 50</td><td>Large piece + high h ⇒ spatial gradient critical for hardness</td></tr>
+<tr><td>Aluminum heat sink reaching steady-state</td><td>0.001 - 0.05</td><td>High k + small fin thickness ⇒ lumped always OK</td></tr>
+<tr><td>PCB warm-up under load</td><td>0.02 - 0.2</td><td>Thin Cu planes + moderate h; lumped marginal</td></tr>
+<tr><td>Battery thermal runaway</td><td>1 - 100</td><td>Layered cells; can't lump</td></tr>
+<tr><td>Reflow soldering profile</td><td>0.5 - 10</td><td>Joint temperature lags lead temperature; matters for IPC 7711 compliance</td></tr>
+<tr><td>Plastic injection-mold cool-down</td><td>5 - 50</td><td>Polymer's tiny α; surface freezes while center is still molten</td></tr>
+<tr><td>Food cooking (steak, oven, sous-vide)</td><td>0.5 - 20</td><td>Why thick steaks need to rest after searing</td></tr>
+</table>
+
+<h2>Common pitfalls</h2>
+<ul class="notice">
+<li><b>Wrong L_c for the shape</b> — use V/A_s, not "half-the-thickness" by reflex. Sphere L_c = r/3, cylinder L_c = r/2, plane wall (insulated one side) L_c = L.</li>
+<li><b>Properties at the wrong temperature</b> — ρ, c_p, k all drift with T. For 300 °C steel, k drops to ~55 (from 60 at 25 °C). Use mid-range properties for the largest accuracy gain.</li>
+<li><b>h is constant?</b> — convective h depends on ΔT (free convection) and surface T (forced air viscosity drift). Iterate if precision matters.</li>
+<li><b>Forgetting radiation</b> — for surfaces &gt; 100 °C in still air, radiation can equal or exceed forced convection. Treat h_total = h_conv + h_rad.</li>
+<li><b>Initial uniform-T assumption</b> — if you welded the part, it didn't start uniform. Real initial conditions can shift τ by 30%.</li>
+<li><b>Using lumped past Bi = 0.1 because "it's close"</b> — error scales with Fo. Long-time behavior is more wrong than short-time.</li>
+<li><b>Confusing time constant and thermal-rise time</b> — τ to reach 63%, 3τ for 95%, 5τ for "settled." Don't quote "100% in τ."</li>
+</ul>
+
+<h2>Cheat sheet — quick L_c by shape</h2>
+<table>
+<tr><th>Shape</th><th>Characteristic length L_c</th><th>Typical α (mm²/s)</th></tr>
+<tr><td>Plane wall, both sides cooled (thickness 2L)</td><td>L (half-thickness)</td><td>—</td></tr>
+<tr><td>Plane wall, one side insulated (thickness L)</td><td>L (full thickness)</td><td>—</td></tr>
+<tr><td>Long cylinder, radius r</td><td>r / 2</td><td>—</td></tr>
+<tr><td>Sphere, radius r</td><td>r / 3</td><td>—</td></tr>
+<tr><td>Cube, side a</td><td>a / 6</td><td>—</td></tr>
+<tr><td>Any shape</td><td>V / A_s</td><td>—</td></tr>
+<tr><td>Cu / Al heat-sink fin</td><td>thickness / 2</td><td>97-117</td></tr>
+<tr><td>Steel forging</td><td>r / 2 or r / 3</td><td>~18</td></tr>
+<tr><td>PCB Cu plane (35 µm)</td><td>17 µm</td><td>~117</td></tr>
+</table>
+
+<footer>Cross-links: <a href="thermal-networks.html">Thermal Networks</a> · <a href="forced-convection.html">Forced Convection</a> · <a href="heat-transfer-modes.html">Heat Transfer Modes</a> · <a href="heat-sinks.html">Heat Sinks</a> · <a href="../../extras/heatsink-sizer.html">Heatsink Sizer</a></footer>
+
+</main>
+<script>
+const el = id => document.getElementById(id);
+
+const MATS = {
+  cu:       {k: 401,  rho: 8933, cp: 385,  label: 'Cu'},
+  al:       {k: 237,  rho: 2702, cp: 903,  label: 'Al'},
+  steel:    {k: 60.5, rho: 7854, cp: 434,  label: 'Steel 1010'},
+  ss:       {k: 15.1, rho: 7900, cp: 477,  label: 'SS 304'},
+  ceramic:  {k: 27,   rho: 3900, cp: 880,  label: 'Alumina'},
+  glass:    {k: 1.4,  rho: 2500, cp: 835,  label: 'Glass'},
+  plastic:  {k: 0.17, rho: 1050, cp: 1400, label: 'ABS'},
+  wood:     {k: 0.16, rho: 700,  cp: 2400, label: 'Oak'}
+};
+
+function Lc(geom, size_mm){
+  // Returns L_c in meters
+  const s = size_mm / 1000;
+  if(geom === 'plate')  return s;          // half-thickness, given directly
+  if(geom === 'cyl')    return s / 2;      // r/2
+  if(geom === 'sphere') return s / 3;      // r/3
+  return s;
+}
+
+function fmtTime(t_s){
+  if(t_s >= 3600) return {v: (t_s/3600).toFixed(2), u: 'h'};
+  if(t_s >= 60)   return {v: (t_s/60).toFixed(2), u: 'min'};
+  if(t_s >= 1)    return {v: t_s.toFixed(1), u: 's'};
+  return {v: (t_s*1000).toFixed(0), u: 'ms'};
+}
+
+function render(){
+  const matKey = el('mat').value;
+  const mat = MATS[matKey];
+  const geom = el('geom').value;
+  const L_mm = parseFloat(el('L').value);
+  const h = parseFloat(el('h').value);
+  const T0 = parseFloat(el('T0').value);
+  const Tinf = parseFloat(el('Tinf').value);
+
+  el('vL').textContent = L_mm;
+  el('vH').textContent = h;
+  el('vT0').textContent = T0;
+  el('vTinf').textContent = Tinf;
+
+  const Lcm = Lc(geom, L_mm);
+  const Bi = h * Lcm / mat.k;
+  const tau = mat.rho * mat.cp * Lcm / h;
+  const alpha = mat.k / (mat.rho * mat.cp);  // m²/s
+
+  el('vBi').textContent = Bi < 0.001 ? Bi.toExponential(1) : Bi.toFixed(3);
+  el('vAlpha').textContent = (alpha * 1e6).toFixed(2);
+
+  const fmTau = fmtTime(tau);
+  el('vTau').textContent = fmTau.v;
+  el('vTauUnit').textContent = fmTau.u;
+  const fm5 = fmtTime(tau * 5);
+  el('v5Tau').textContent = fm5.v;
+  el('v5TauUnit').textContent = fm5.u;
+
+  // Bi verdict
+  const biCard = el('biCard');
+  const biNum = el('vBi');
+  const biNote = el('vBiNote');
+  biCard.classList.remove('hi','lo');
+  biNum.classList.remove('warn','mid');
+  if(Bi < 0.1){ biCard.classList.add('hi'); biNote.textContent = 'lumped capacitance OK'; }
+  else if(Bi < 1){ biNum.classList.add('mid'); biNote.textContent = 'lumped marginal — error grows ~Bi/3'; }
+  else { biCard.classList.add('lo'); biNum.classList.add('warn'); biNote.textContent = 'use Heisler / numerical'; }
+
+  drawCurve(tau, T0, Tinf, Bi);
+}
+
+function drawCurve(tau, T0, Tinf, Bi){
+  const svg = el('curve');
+  const W = 900, H = 320, M = 60;
+  // X: time from 0 to 6τ; Y: T from min(T0,T_∞) to max(T0,T_∞)
+  const tMax = 6 * tau;
+  const Tmin = Math.min(T0, Tinf);
+  const Tmax = Math.max(T0, Tinf);
+  const dT = Tmax - Tmin;
+  const xOf = t => M + (t / tMax) * (W - 2*M);
+  const yOf = T => H - M - ((T - Tmin) / Math.max(dT, 1)) * (H - 2*M - 30);
+
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">Cooling / heating curve  T(t) = T_∞ + (T₀ − T_∞)·e^(−t/τ)</text>`;
+  // Axes
+  s += `<line x1="${M}" y1="${H-M}" x2="${W-M}" y2="${H-M}" stroke="#8f99a8"/>`;
+  s += `<line x1="${M}" y1="${M+8}" x2="${M}" y2="${H-M}" stroke="#8f99a8"/>`;
+  // T_∞ line
+  s += `<line x1="${M}" y1="${yOf(Tinf)}" x2="${W-M}" y2="${yOf(Tinf)}" stroke="#a3e635" stroke-width="1" stroke-dasharray="3,2"/>`;
+  s += `<text x="${W-M-4}" y="${yOf(Tinf)-3}" text-anchor="end" fill="#a3e635" font-family="ui-monospace,monospace" font-size="10">T_∞ = ${Tinf} °C</text>`;
+  // T0 marker on y-axis
+  s += `<text x="${M-6}" y="${yOf(T0)+3}" text-anchor="end" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="10">${T0} °C  T₀</text>`;
+  // Y label
+  s += `<text x="20" y="${H/2}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11" transform="rotate(-90 20 ${H/2})" text-anchor="middle">T (°C)</text>`;
+  // X labels at multiples of τ
+  for(let k = 0; k <= 6; k++){
+    const t = k * tau;
+    const x = xOf(t);
+    s += `<line x1="${x}" y1="${H-M}" x2="${x}" y2="${H-M+5}" stroke="#8f99a8"/>`;
+    s += `<text x="${x}" y="${H-M+18}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${k}τ</text>`;
+  }
+  // Y gridlines at meaningful T (63%, 95%, 99%)
+  const markers = [
+    {frac: 0.63, label: '63%', t: tau},
+    {frac: 0.95, label: '95%', t: 3*tau},
+    {frac: 0.99, label: '99%', t: 5*tau}
+  ];
+
+  // Curve
+  let path = '';
+  const N = 200;
+  for(let i = 0; i <= N; i++){
+    const t = (i / N) * tMax;
+    const T = Tinf + (T0 - Tinf) * Math.exp(-t / tau);
+    const x = xOf(t), y = yOf(T);
+    path += (i === 0 ? 'M ' : 'L ') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+  }
+  s += `<path d="${path}" fill="none" stroke="#5ec8ff" stroke-width="2.5"/>`;
+
+  // Marker dots at τ, 3τ, 5τ
+  for(const mk of markers){
+    const T_at = Tinf + (T0 - Tinf) * Math.exp(-mk.t / tau);
+    const x = xOf(mk.t), y = yOf(T_at);
+    s += `<circle cx="${x}" cy="${y}" r="4" fill="#ffb86c"/>`;
+    s += `<text x="${x+8}" y="${y-6}" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="10">${mk.label}</text>`;
+  }
+
+  // Bi warning overlay if Bi > 0.1
+  if(Bi > 0.1){
+    s += `<text x="${W/2}" y="${M+30}" text-anchor="middle" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="11" font-weight="600">⚠ Bi = ${Bi.toFixed(2)} &gt; 0.1 — center T differs from this curve</text>`;
+  }
+
+  // Time axis
+  const fmT = fmtTime(tau);
+  s += `<text x="${W/2}" y="${H-12}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">Time (τ = ${fmT.v} ${fmT.u})</text>`;
+
+  svg.innerHTML = s;
+}
+
+render();
+</script>
+</body></html>

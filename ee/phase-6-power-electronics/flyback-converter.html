@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Flyback Converter — visual</title>
+<style>
+:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,Segoe UI,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:14px 0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.control .val{font:600 13px ui-monospace,monospace;color:var(--accent3)}
+.control input[type=range]{width:100%;accent-color:var(--accent)}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;margin:14px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}.panel.note{border-left:3px solid var(--accent)}
+.panel h3{margin-top:0}
+.scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.score-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center}
+.score-card.hi{border-color:var(--accent3)}.score-card.lo{border-color:var(--warn)}
+.score-num{font:700 22px ui-monospace,Menlo,monospace;color:var(--accent3);margin:6px 0}
+.score-num.warn{color:var(--warn)}.score-num.mid{color:var(--accent2)}
+.score-lbl{color:var(--fg-dim);font-size:11px;font-family:ui-monospace,monospace;text-transform:uppercase;letter-spacing:.4px}
+.score-lbl.unit{text-transform:none;letter-spacing:0}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+.deriv b{color:var(--fg-bright)}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,monospace;color:var(--accent2)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>Flyback Converter — the isolated buck-boost workhorse</h1>
+<p class="lede">The flyback is the most common isolated DC-DC topology under ~150 W. It uses a single coupled inductor (called a "flyback transformer," though it's not really a transformer — primary and secondary never conduct simultaneously) to store energy when the switch is on and release it through the secondary diode when the switch is off. Same topology as a buck-boost, but isolated. Phone chargers, PoE PDs, low-cost AC adapters, set-top boxes, smart-meter supplies — virtually all under-100 W mains-fed switchers are flybacks. This visual lets you build one interactively: sweep V_in / V_out / load / frequency / turns ratio, watch DCM-vs-CCM operation, primary peak current, and snubber voltage.</p>
+
+<div class="anchors">
+<span class="anchor"><b>V_out / V_in</b> = (N_s/N_p) · D / (1−D)  [CCM]</span>
+<span class="anchor"><b>Power range</b>: 5 W - 150 W typical</span>
+<span class="anchor"><b>Efficiency</b>: 80-92 % (lower than non-isolated)</span>
+<span class="anchor"><b>RHP zero</b>: makes CCM control loop tricky</span>
+<span class="anchor"><b>QR / valley switching</b>: free EMI win at light load</span>
+</div>
+
+<h2>Schematic + waveforms — pick your operating point</h2>
+
+<div class="controls">
+<div class="control"><label>V<sub>in</sub> (V DC bus)</label><input id="Vin" type="range" min="20" max="400" value="380" step="5" oninput="render()"><span class="val" id="vVin">380</span></div>
+<div class="control"><label>V<sub>out</sub> (V)</label><input id="Vout" type="range" min="3" max="60" value="12" step="0.5" oninput="render()"><span class="val" id="vVout">12</span></div>
+<div class="control"><label>P<sub>out</sub> (W)</label><input id="Pout" type="range" min="1" max="200" value="60" step="1" oninput="render()"><span class="val" id="vPout">60</span></div>
+<div class="control"><label>Frequency f<sub>sw</sub> (kHz)</label><input id="fsw" type="range" min="25" max="500" value="100" step="5" oninput="render()"><span class="val" id="vFsw">100</span></div>
+<div class="control"><label>Turns ratio N = N<sub>p</sub>/N<sub>s</sub></label><input id="N" type="range" min="1" max="30" value="10" step="0.5" oninput="render()"><span class="val" id="vN">10</span></div>
+<div class="control"><label>Primary inductance L<sub>p</sub> (µH)</label><input id="Lp" type="range" min="50" max="3000" value="500" step="25" oninput="render()"><span class="val" id="vLp">500</span></div>
+<div class="control"><label>V<sub>F</sub> sec diode (V)</label><input id="Vf" type="range" min="0.3" max="1.5" value="0.5" step="0.05" oninput="render()"><span class="val" id="vVf">0.5</span></div>
+<div class="control"><label>Leakage L<sub>lk</sub> (% of L<sub>p</sub>)</label><input id="Llk" type="range" min="0.5" max="10" value="3" step="0.5" oninput="render()"><span class="val" id="vLlk">3</span></div>
+</div>
+
+<div class="scoreboard">
+<div class="score-card"><div class="score-lbl">Duty cycle D</div><div class="score-num" id="vD">—</div><div class="score-lbl" id="vMode">—</div></div>
+<div class="score-card"><div class="score-lbl">I<sub>pk</sub> primary</div><div class="score-num" id="vIpk">—</div><div class="score-lbl unit">A</div></div>
+<div class="score-card"><div class="score-lbl">I<sub>sec,pk</sub></div><div class="score-num" id="vIsec">—</div><div class="score-lbl unit">A</div></div>
+<div class="score-card" id="vdsCard"><div class="score-lbl">V<sub>DS</sub> on switch</div><div class="score-num" id="vVds">—</div><div class="score-lbl unit">V (incl. leakage spike)</div></div>
+</div>
+
+<div class="figure"><svg id="schematic" viewBox="0 0 900 320" width="100%"></svg></div>
+<div class="figure"><svg id="wave" viewBox="0 0 900 320" width="100%"></svg></div>
+
+<h2>The math behind the flyback</h2>
+<div class="deriv">
+<span class="step">During switch ON (time D·T_sw):</span>
+<span class="step">  Primary current ramps:  di/dt = V_in / L_p</span>
+<span class="step">  Energy stored:          E = ½ · L_p · I_pk²</span>
+<span class="step">  Secondary diode reverse-biased (V_in/N + V_out across it)</span>
+<span class="step"></span>
+<span class="step">During switch OFF (time (1−D)·T_sw):</span>
+<span class="step">  Secondary diode conducts; energy transfers to C_out + load</span>
+<span class="step">  Secondary current = N · I_pri (referenced)</span>
+<span class="step">  V_DS on switch  = V_in + N · (V_out + V_F) + leakage spike</span>
+<span class="step"></span>
+<span class="step"><b>CCM transfer function (current never zero):</b></span>
+<span class="step">  V_out / V_in = (1/N) · D / (1−D)</span>
+<span class="step">  Solve for D:  D = N·V_out / (V_in + N·V_out)</span>
+<span class="step"></span>
+<span class="step"><b>DCM transfer function (current goes to zero each cycle):</b></span>
+<span class="step">  V_out = V_in · D · √(R_load · T_sw / (2·L_p)) / N</span>
+<span class="step">  ⇒ V_out depends on load — needs feedback</span>
+<span class="step"></span>
+<span class="step"><b>Boundary between CCM and DCM:</b></span>
+<span class="step">  L_p_crit = R_load · (1−D)² · T_sw / 2  (referred to secondary)</span>
+<span class="step">  Above L_p_crit: CCM. Below: DCM.</span>
+<span class="step"></span>
+<span class="step"><b>Peak primary current (CCM):</b></span>
+<span class="step">  I_pk = I_avg + ΔI/2  where  I_avg = P_in/(V_in·D),  ΔI = V_in·D·T_sw / L_p</span>
+<span class="step"></span>
+<span class="step"><b>Peak primary current (DCM):</b></span>
+<span class="step">  Energy per cycle:  E = P_out / (η · f_sw) = ½ · L_p · I_pk²</span>
+<span class="step">  ⇒ I_pk = √(2·P_out / (η · L_p · f_sw))</span>
+<span class="step"></span>
+<span class="step"><b>Switch voltage:</b></span>
+<span class="step">  V_DS = V_in + N·(V_out + V_F) + V_spike(L_lk)</span>
+<span class="step">  Snubber clamps V_spike. Without snubber: V_spike can be 50-200 V.</span>
+</div>
+
+<h2>DCM vs CCM — which to use?</h2>
+<table>
+<tr><th>Aspect</th><th>DCM (discontinuous)</th><th>CCM (continuous)</th></tr>
+<tr><td>Primary current</td><td>Starts at 0 each cycle; triangular</td><td>Stays above 0; trapezoidal with ripple</td></tr>
+<tr><td>I_pk for same P_out</td><td>~1.5-2× higher than CCM</td><td>Lower I_pk → lower copper loss</td></tr>
+<tr><td>Core size</td><td>Larger (energy = ½·L·I² stored)</td><td>Smaller — most energy transferred each cycle, not stored</td></tr>
+<tr><td>RHP zero in control loop</td><td>None (first-order)</td><td>Yes — limits crossover frequency</td></tr>
+<tr><td>EMI</td><td>Lower (lower di/dt at turn-on)</td><td>Higher (hard switching with stored current)</td></tr>
+<tr><td>Control complexity</td><td>Simple voltage mode</td><td>Current mode preferred; slope comp needed</td></tr>
+<tr><td>Best for</td><td>&lt; 50 W, varying loads, EMI-sensitive</td><td>&gt; 50 W, steady loads, efficiency-critical</td></tr>
+<tr><td>Examples</td><td>Phone chargers, USB-PD bricks, smart-meter supplies</td><td>PoE PDs, server standby, LED drivers above 75 W</td></tr>
+</table>
+
+<h2>Snubber design — clamping the leakage spike</h2>
+<div class="panel note">
+<p>When the switch turns off, the energy in the transformer's <b>leakage inductance</b> (~1-5% of L_p) has nowhere to go on the secondary side (diode is forward-biased, but mutual coupling is imperfect). This energy ramps the drain voltage up — sometimes 100-300 V above the reflected V_out — until the snubber circuit absorbs it.</p>
+<h3>Three common topologies</h3>
+<ul style="padding-left:18px;color:var(--fg-dim);font-size:12.5px">
+<li><b>RCD snubber</b> (resistor + cap + diode): cheapest. Diode catches the spike, cap absorbs energy, resistor bleeds it off between cycles. Dissipates the entire leakage energy as heat in R. Typical clamp voltage: V_clamp = 1.5-2× reflected V_out. R sized so V_clamp·V_clamp / R ≈ leakage power.</li>
+<li><b>TVS / Zener clamp</b>: a high-voltage TVS or Zener absorbs the spike directly. Simpler than RCD; less efficient (no recovery), but compact. Common for small adapters.</li>
+<li><b>Active clamp</b>: a second MOSFET + cap. Recycles the leakage energy back to V_in. 1-3% efficiency gain, more cost + control complexity. Used in high-end USB-PD bricks (Apple, GaN-based designs).</li>
+</ul>
+<h3>Leakage energy per cycle</h3>
+<div class="deriv">
+<span class="step">E_lk = ½ · L_lk · I_pk²</span>
+<span class="step">P_lk = E_lk · f_sw  (all dissipated in RCD R)</span>
+<span class="step">Example: L_lk = 5 µH, I_pk = 2 A, f = 100 kHz:  E_lk = 10 µJ,  P_lk = 1 W</span>
+</div>
+</div>
+
+<h2>Flyback vs other isolated topologies</h2>
+<table>
+<tr><th>Topology</th><th>Power range</th><th>Pros</th><th>Cons</th></tr>
+<tr><td><b>Flyback</b></td><td>1 - 150 W</td><td>1 magnetic; multiple outputs easy; cheapest isolated</td><td>Large I ripple; energy storage in gap; lower η (80-92%)</td></tr>
+<tr><td>Forward</td><td>50 - 500 W</td><td>True transformer (no energy storage); cleaner waveforms</td><td>Needs separate output inductor + reset winding/clamp</td></tr>
+<tr><td>Two-switch forward</td><td>200 W - 1 kW</td><td>Switch voltage clamped to V_in (vs 2×V_in for single-switch forward)</td><td>Two switches + drivers; more cost</td></tr>
+<tr><td>Half-bridge / full-bridge</td><td>500 W - 10 kW</td><td>Best for high power; symmetric core utilization</td><td>4 (or 2) switches; complex isolated drive</td></tr>
+<tr><td><b>LLC resonant</b></td><td>100 W - 3 kW</td><td>Soft-switching → 95-97% η; high frequency → small magnetics</td><td>Complex frequency control; load-range limited</td></tr>
+<tr><td>Push-pull</td><td>100 - 500 W (low V_in)</td><td>Doubles V_in usage; simple drive (ground-referenced)</td><td>Switches see 2·V_in; tightly matched needed</td></tr>
+</table>
+
+<h2>Worked example — 65 W USB-C PD charger (the AC-adapter flyback)</h2>
+<div class="panel tip">
+<h3>Spec</h3>
+<p>Universal-input AC charger: 90-264 V AC → 20 V / 3.25 A = 65 W USB-PD output. After PFC + bulk cap, the flyback sees ~380 V DC bus (high-line) down to ~110 V (low-line). Target 100 kHz switching, &gt; 90% η.</p>
+<h3>Design walkthrough</h3>
+<div class="deriv">
+<span class="step">Pick turns ratio N = N_p/N_s. Reflected V_out: V_or = N · (V_out + V_F) ≈ N · 20.5 V</span>
+<span class="step">Choose V_or = 120 V (V_DS_max = 380 + 120 + spike → 650 V switch with margin) → N = 5.85, round to 6</span>
+<span class="step">Switch must handle 380 + 120 + ~100 V spike = 600 V → 650 V SiC MOSFET or 700 V Si</span>
+<span class="step"></span>
+<span class="step">Operate in CCM at high-line, transition to DCM at low-line + light load</span>
+<span class="step">High-line CCM duty: D = 6·20.5 / (380 + 6·20.5) = 123/503 = 0.245</span>
+<span class="step">Low-line CCM duty: D = 6·20.5 / (110 + 123) = 0.528 → designs check &lt; 0.5 for transformer reset margin</span>
+<span class="step"></span>
+<span class="step">Pick L_p for CCM at half load: I_avg = 65 / 380 = 171 mA  →  L_p = V_in·D·T_sw / (2·ΔI_ratio·I_avg)</span>
+<span class="step">For 30% ripple ratio: L_p ≈ 1 mH. Use 800 µH (standard core).</span>
+<span class="step"></span>
+<span class="step">Peak primary current at high-line CCM:</span>
+<span class="step">  ΔI = 380 · 0.245 · 10 µs / 800 µH = 1.16 A</span>
+<span class="step">  I_avg = 65 / (380 · 0.245) = 0.70 A · I_pk = 0.70 + 0.58 = 1.28 A</span>
+<span class="step"></span>
+<span class="step">Secondary peak: I_sec_pk = N · I_pk = 6 · 1.28 = 7.7 A → SiC Schottky or fast Si diode rated 10A/100V</span>
+</div>
+<p>Off-the-shelf controllers: TI UCC28780 (active-clamp flyback), STM L6566B, ON NCP1252. Add a synchronous rectifier on the secondary for 1-2% η improvement.</p>
+</div>
+
+<h2>Quasi-resonant + valley switching — the free EMI win</h2>
+<div class="panel note">
+<p>Standard flyback hard-switches: when the SW turns on, V_DS jumps from clamped voltage to 0 instantly, dumping C_DS energy into the channel as loss. <b>Quasi-resonant (QR)</b> mode waits for the drain ringing to hit a "valley" (minimum) before turning on — soft(er) switching.</p>
+<ul style="padding-left:18px;color:var(--fg-dim);font-size:12.5px">
+<li>Operates always in DCM, so secondary current rings down before next pulse</li>
+<li>Controller waits for the drain ring minimum (often 2nd or 3rd valley at light load) and fires at that moment</li>
+<li>Frequency varies with load (lighter load → fewer rings before threshold)</li>
+<li>EMI is 6-10 dB lower than fixed-f flyback because switching frequency spreads naturally</li>
+<li>Common for sub-30 W adapters — Apple's classic 20 W charger is QR</li>
+</ul>
+</div>
+
+<h2>Common pitfalls</h2>
+<ul class="notice">
+<li><b>Sizing the transformer for steady-state instead of cold-start surge</b> — at startup, output cap is empty, full duty for tens of µs. Use peak-current limit to protect.</li>
+<li><b>Skipping the snubber</b> — leakage spike kills the switch in seconds at full load. Always include RCD or TVS, even on bench prototype.</li>
+<li><b>Wrong gap calculation</b> — flyback core gap stores ~all the energy. Wrong gap → wrong L_p → wrong saturation point. Verify with the gap formula: L_p = µ₀·A_e·N² / l_g.</li>
+<li><b>RHP zero in CCM</b> — pushes the maximum control-loop bandwidth to ~1/5 of f_sw. Don't try to cross over higher; the loop becomes unstable.</li>
+<li><b>Forward-active clamp gotcha</b> — different from flyback active clamp. Don't grab the wrong app note.</li>
+<li><b>Magnetizing-current asymmetry</b> — in heavily loaded flybacks, asymmetric switching can lead to flux-walking. Always use current-mode control with cycle-by-cycle limit.</li>
+<li><b>EMI filter undersized</b> — flyback's I_pk pulses 10× the average create huge LF EMI. Plan for a meaty common-mode + differential filter.</li>
+<li><b>Loading regulation</b> — at very light load (1% rated), flyback enters burst mode or skips cycles; V_out can ripple. Use minimum dummy load resistor (~ 1% rated current).</li>
+</ul>
+
+<h2>Cheat sheet — pick mode by power level</h2>
+<table>
+<tr><th>Power</th><th>Likely mode</th><th>Typical controller</th><th>Notes</th></tr>
+<tr><td>&lt; 10 W</td><td>DCM / QR</td><td>NCP1342, STR5N (single-chip with MOSFET)</td><td>Phone chargers, smart-meter supplies</td></tr>
+<tr><td>10 - 30 W</td><td>QR or fixed-f DCM</td><td>UC3845, NCP1271</td><td>USB chargers, IoT power bricks</td></tr>
+<tr><td>30 - 65 W</td><td>QR with active clamp or CCM</td><td>UCC28780, NCP1568</td><td>USB-PD 65W chargers (GaN-based)</td></tr>
+<tr><td>65 - 150 W</td><td>CCM with sync rectifier</td><td>UCC28950, LM5025</td><td>PoE+ PDs, mid-range laptop chargers</td></tr>
+<tr><td>&gt; 150 W</td><td>Consider forward / LLC instead</td><td>—</td><td>Flyback becomes inefficient + bulky here</td></tr>
+</table>
+
+<footer>Cross-links: <a href="buck-converter.html">Buck Converter</a> · <a href="boost-converter.html">Boost Converter</a> · <a href="buck-boost-topologies.html">Buck-Boost Topologies</a> · <a href="synchronous-rectification.html">Sync Rectification</a> · <a href="gate-drivers.html">Gate Drivers</a> · <a href="../../extras/heatsink-sizer.html">Heatsink Sizer</a></footer>
+
+</main>
+<script>
+const el = id => document.getElementById(id);
+
+function render(){
+  const Vin = parseFloat(el('Vin').value);
+  const Vout = parseFloat(el('Vout').value);
+  const Pout = parseFloat(el('Pout').value);
+  const fsw = parseFloat(el('fsw').value) * 1000;  // Hz
+  const N = parseFloat(el('N').value);             // Np/Ns
+  const Lp = parseFloat(el('Lp').value) * 1e-6;    // H
+  const Vf = parseFloat(el('Vf').value);
+  const Llk_pct = parseFloat(el('Llk').value);
+  const Llk = Lp * Llk_pct / 100;
+
+  el('vVin').textContent = Vin;
+  el('vVout').textContent = Vout;
+  el('vPout').textContent = Pout;
+  el('vFsw').textContent = fsw/1000;
+  el('vN').textContent = N;
+  el('vLp').textContent = Lp * 1e6;
+  el('vVf').textContent = Vf;
+  el('vLlk').textContent = Llk_pct;
+
+  const eta = 0.88;  // assumed
+  const Pin = Pout / eta;
+  const Tsw = 1 / fsw;
+
+  // CCM duty cycle (ideal)
+  const Vor = N * (Vout + Vf);
+  const D_ccm = Vor / (Vin + Vor);
+
+  // Check CCM vs DCM
+  // CCM requires inductor current to never hit zero. Critical L_p:
+  // For boundary mode, I_avg = (V_in·D·T)/(2·L_p) = I_pri,avg = Pin/Vin/D · ... actually use:
+  // ΔI = V_in·D·T/L_p; in CCM, I_avg ≥ ΔI/2
+  // Boundary: I_avg = ΔI/2 → L_crit = V_in·D·T·D·Vin/(2·Pin) = Vin²·D²·T/(2·Pin)
+  const Lp_crit = Vin * Vin * D_ccm * D_ccm * Tsw / (2 * Pin);
+  const isCCM = Lp > Lp_crit;
+
+  let D, Ipk, Isec_pk, mode;
+  if(isCCM){
+    mode = 'CCM';
+    D = D_ccm;
+    const Ipri_avg = Pin / Vin;          // through the switch, time-averaged
+    const Ipri_avg_during_on = Ipri_avg / D;  // average WHILE switch is on
+    const dI = Vin * D * Tsw / Lp;
+    Ipk = Ipri_avg_during_on + dI / 2;
+    Isec_pk = N * Ipk;
+  } else {
+    mode = 'DCM';
+    // E_per_cycle = ½ Lp Ipk² = Pin · Tsw  ⇒  Ipk = √(2·Pin / (Lp·fsw))
+    Ipk = Math.sqrt(2 * Pin / (Lp * fsw));
+    // D found from Ipk = Vin·D·Tsw/Lp  ⇒ D = Ipk·Lp/(Vin·Tsw)
+    D = Ipk * Lp / (Vin * Tsw);
+    if(D > 1) D = 1;  // saturated
+    Isec_pk = N * Ipk;
+  }
+
+  // Leakage spike
+  // Without snubber: V_spike ~ Ipk·√(Llk/Cds_parasitic) — but simplify: estimate ~50% of reflected V
+  const Vspike_unclamped = Ipk * Math.sqrt(Llk / 100e-12);  // assume 100pF Cds for spike calc
+  const Vspike_clamped = Math.min(Vspike_unclamped, Vor * 0.7);  // typical snubber caps at ~70% Vor
+  const Vds = Vin + Vor + Vspike_clamped;
+
+  el('vD').textContent = D.toFixed(3);
+  el('vMode').textContent = mode + (D > 0.5 ? '  (D > 0.5: watch reset!)' : '');
+  el('vIpk').textContent = Ipk.toFixed(2);
+  el('vIsec').textContent = Isec_pk.toFixed(1);
+  el('vVds').textContent = Vds.toFixed(0);
+
+  // Color vds card
+  const vdsCard = el('vdsCard');
+  const vdsNum = el('vVds');
+  vdsCard.classList.remove('hi','lo');
+  vdsNum.classList.remove('warn','mid');
+  if(Vds < 500) vdsCard.classList.add('hi');
+  else if(Vds < 700) vdsNum.classList.add('mid');
+  else { vdsCard.classList.add('lo'); vdsNum.classList.add('warn'); }
+
+  drawSchematic(Vin, Vout, N);
+  drawWaveform(D, Ipk, Isec_pk, mode, Vds, Vin, Vor);
+}
+
+function drawSchematic(Vin, Vout, N){
+  const svg = el('schematic');
+  const W = 900, H = 320;
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">Flyback topology</text>`;
+
+  // Primary side (left half)
+  // Vin source
+  s += `<line x1="80" y1="80" x2="80" y2="240" stroke="#dde3ec" stroke-width="1.5"/>`;
+  s += `<line x1="60" y1="80" x2="100" y2="80" stroke="#dde3ec" stroke-width="1.5"/>`;
+  s += `<line x1="68" y1="240" x2="92" y2="240" stroke="#dde3ec" stroke-width="2.5"/>`;
+  s += `<text x="40" y="160" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="12">V_in</text>`;
+  s += `<text x="40" y="178" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">${Vin} V</text>`;
+
+  // Top wire to transformer primary
+  s += `<line x1="80" y1="80" x2="350" y2="80" stroke="#dde3ec" stroke-width="1.5"/>`;
+  // Primary winding (vertical zigzag)
+  s += `<path d="M 350 80 Q 365 95 350 110 Q 335 125 350 140 Q 365 155 350 170 Q 335 185 350 200" stroke="#a3e635" stroke-width="2" fill="none"/>`;
+  s += `<text x="305" y="145" fill="#a3e635" font-family="ui-monospace,monospace" font-size="11">L_p (N_p)</text>`;
+  // Polarity dot (top of primary)
+  s += `<circle cx="362" cy="78" r="3" fill="#a3e635"/>`;
+
+  // Wire from primary bottom to MOSFET drain
+  s += `<line x1="350" y1="200" x2="350" y2="220" stroke="#dde3ec" stroke-width="1.5"/>`;
+  // MOSFET symbol (simplified)
+  s += `<rect x="330" y="220" width="40" height="30" fill="#1d232c" stroke="#ffb86c" stroke-width="1.5" rx="3"/>`;
+  s += `<text x="350" y="240" text-anchor="middle" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="11">SW</text>`;
+  // Source to ground
+  s += `<line x1="350" y1="250" x2="350" y2="280" stroke="#dde3ec" stroke-width="1.5"/>`;
+  s += `<line x1="80" y1="240" x2="350" y2="240" stroke="#dde3ec" stroke-width="0"/>`;  // gap
+  s += `<line x1="80" y1="280" x2="350" y2="280" stroke="#dde3ec" stroke-width="1.5"/>`;
+  s += `<line x1="80" y1="240" x2="80" y2="280" stroke="#dde3ec" stroke-width="1.5"/>`;
+
+  // Iron core lines between primary and secondary
+  s += `<line x1="385" y1="78" x2="385" y2="202" stroke="#8f99a8" stroke-width="1"/>`;
+  s += `<line x1="390" y1="78" x2="390" y2="202" stroke="#8f99a8" stroke-width="1"/>`;
+
+  // Secondary winding (right, mirrored)
+  s += `<path d="M 425 80 Q 410 95 425 110 Q 440 125 425 140 Q 410 155 425 170 Q 440 185 425 200" stroke="#a3e635" stroke-width="2" fill="none"/>`;
+  s += `<text x="445" y="145" fill="#a3e635" font-family="ui-monospace,monospace" font-size="11">N_s</text>`;
+  // Polarity dot on secondary (bottom — flyback convention)
+  s += `<circle cx="413" cy="202" r="3" fill="#a3e635"/>`;
+
+  // Top of secondary to diode (cathode side has bar)
+  s += `<line x1="425" y1="80" x2="540" y2="80" stroke="#dde3ec" stroke-width="1.5"/>`;
+  s += `<polygon points="540,72 540,88 555,80" fill="#ff7b72"/>`;
+  s += `<line x1="555" y1="72" x2="555" y2="88" stroke="#ff7b72" stroke-width="2"/>`;
+  s += `<text x="540" y="65" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="11">D</text>`;
+  s += `<line x1="555" y1="80" x2="700" y2="80" stroke="#dde3ec" stroke-width="1.5"/>`;
+
+  // Output cap
+  s += `<line x1="700" y1="80" x2="700" y2="120" stroke="#dde3ec" stroke-width="1.5"/>`;
+  s += `<line x1="680" y1="120" x2="720" y2="120" stroke="#dde3ec" stroke-width="2"/>`;
+  s += `<line x1="685" y1="135" x2="715" y2="135" stroke="#dde3ec" stroke-width="2"/>`;
+  s += `<line x1="700" y1="135" x2="700" y2="170" stroke="#dde3ec" stroke-width="1.5"/>`;
+  s += `<text x="710" y="130" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">C_out</text>`;
+
+  // Load
+  s += `<line x1="700" y1="170" x2="700" y2="220" stroke="#dde3ec" stroke-width="0"/>`;  // continue down
+  s += `<rect x="685" y="170" width="30" height="50" fill="#1d232c" stroke="#dde3ec" stroke-width="1.5"/>`;
+  s += `<text x="700" y="200" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="11">load</text>`;
+  s += `<text x="730" y="200" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">V_out = ${Vout} V</text>`;
+
+  // GND bus (secondary)
+  s += `<line x1="425" y1="200" x2="425" y2="280" stroke="#dde3ec" stroke-width="1.5"/>`;
+  s += `<line x1="425" y1="280" x2="700" y2="280" stroke="#dde3ec" stroke-width="1.5"/>`;
+  s += `<line x1="700" y1="280" x2="700" y2="220" stroke="#dde3ec" stroke-width="1.5"/>`;
+
+  // Isolation barrier
+  s += `<line x1="395" y1="40" x2="395" y2="290" stroke="#ff7b72" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+  s += `<text x="395" y="35" text-anchor="middle" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="11">isolation</text>`;
+
+  // Turn ratio label
+  s += `<text x="380" y="220" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">N = N_p/N_s = ${N}</text>`;
+
+  svg.innerHTML = s;
+}
+
+function drawWaveform(D, Ipk, Isec_pk, mode, Vds, Vin, Vor){
+  const svg = el('wave');
+  const W = 900, H = 320, M = 50;
+  const top = 40;
+
+  // Two panels: I_pri (top), I_sec + V_DS (bottom)
+  const panelH = (H - 2*M - 30) / 2;
+  const y1Top = top + 10;
+  const y1Bot = y1Top + panelH;
+  const y2Top = y1Bot + 30;
+  const y2Bot = y2Top + panelH;
+
+  // Two cycles
+  const xOf = u => M + u * (W - 2*M) / 2;
+  const Imax = Math.max(Ipk, Isec_pk);
+
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">Primary + secondary current · V_DS  (${mode}, two switching periods)</text>`;
+
+  // Primary current
+  s += `<line x1="${M}" y1="${y1Bot}" x2="${W-M}" y2="${y1Bot}" stroke="#8f99a8"/>`;
+  s += `<text x="${M-6}" y="${y1Top+10}" text-anchor="end" fill="#a3e635" font-family="ui-monospace,monospace" font-size="11">I_pri</text>`;
+  s += `<text x="${M-6}" y="${y1Bot+4}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">0</text>`;
+  s += `<text x="${M-6}" y="${y1Top+24}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${Ipk.toFixed(1)} A</text>`;
+
+  // Build primary current path for two cycles
+  let pPath = `M ${xOf(0).toFixed(1)},${y1Bot.toFixed(1)} `;
+  for(let cyc = 0; cyc < 2; cyc++){
+    const xStart = cyc;
+    if(mode === 'CCM'){
+      // Starts at I_min, ramps up to I_pk during D, drops to I_min at switch off (reflected to sec)
+      const Imin = Math.max(0, Ipk * 0.6);  // visual approx
+      pPath += `L ${xOf(xStart).toFixed(1)},${(y1Bot - (Imin/Imax)*panelH).toFixed(1)} `;
+      pPath += `L ${xOf(xStart + D).toFixed(1)},${(y1Bot - (Ipk/Imax)*panelH).toFixed(1)} `;
+      pPath += `L ${xOf(xStart + D).toFixed(1)},${y1Bot.toFixed(1)} `;
+      pPath += `L ${xOf(xStart + 1).toFixed(1)},${y1Bot.toFixed(1)} `;
+    } else {
+      // DCM: rises from 0 to Ipk during D, drops to 0 instantly, then zero until next cycle
+      pPath += `L ${xOf(xStart).toFixed(1)},${y1Bot.toFixed(1)} `;
+      pPath += `L ${xOf(xStart + D).toFixed(1)},${(y1Bot - (Ipk/Imax)*panelH).toFixed(1)} `;
+      pPath += `L ${xOf(xStart + D).toFixed(1)},${y1Bot.toFixed(1)} `;
+      pPath += `L ${xOf(xStart + 1).toFixed(1)},${y1Bot.toFixed(1)} `;
+    }
+  }
+  s += `<path d="${pPath}" fill="none" stroke="#a3e635" stroke-width="2"/>`;
+
+  // Secondary current
+  s += `<line x1="${M}" y1="${y2Bot}" x2="${W-M}" y2="${y2Bot}" stroke="#8f99a8"/>`;
+  s += `<text x="${M-6}" y="${y2Top+10}" text-anchor="end" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="11">I_sec</text>`;
+  s += `<text x="${M-6}" y="${y2Bot+4}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">0</text>`;
+  s += `<text x="${M-6}" y="${y2Top+24}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${Isec_pk.toFixed(1)} A</text>`;
+
+  let sPath = `M ${xOf(0).toFixed(1)},${y2Bot.toFixed(1)} `;
+  for(let cyc = 0; cyc < 2; cyc++){
+    const xStart = cyc;
+    if(mode === 'CCM'){
+      const Ismin = Math.max(0, Isec_pk * 0.6);
+      sPath += `L ${xOf(xStart + D).toFixed(1)},${y2Bot.toFixed(1)} `;
+      sPath += `L ${xOf(xStart + D).toFixed(1)},${(y2Bot - (Isec_pk/Imax)*panelH).toFixed(1)} `;
+      sPath += `L ${xOf(xStart + 1).toFixed(1)},${(y2Bot - (Ismin/Imax)*panelH).toFixed(1)} `;
+      sPath += `L ${xOf(xStart + 1).toFixed(1)},${y2Bot.toFixed(1)} `;
+    } else {
+      // DCM: I_sec is triangular falling
+      const Dtotal = Math.min(D * 2.5, 1);  // approximate sec conduction time
+      sPath += `L ${xOf(xStart + D).toFixed(1)},${y2Bot.toFixed(1)} `;
+      sPath += `L ${xOf(xStart + D).toFixed(1)},${(y2Bot - (Isec_pk/Imax)*panelH).toFixed(1)} `;
+      sPath += `L ${xOf(xStart + Dtotal).toFixed(1)},${y2Bot.toFixed(1)} `;
+      sPath += `L ${xOf(xStart + 1).toFixed(1)},${y2Bot.toFixed(1)} `;
+    }
+  }
+  s += `<path d="${sPath}" fill="none" stroke="#ffb86c" stroke-width="2"/>`;
+
+  // X axis labels (cycles)
+  s += `<text x="${xOf(0)}" y="${y2Bot+15}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">0</text>`;
+  s += `<text x="${xOf(D)}" y="${y2Bot+15}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">DT</text>`;
+  s += `<text x="${xOf(1)}" y="${y2Bot+15}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">T</text>`;
+  s += `<text x="${xOf(1+D)}" y="${y2Bot+15}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">T+DT</text>`;
+  s += `<text x="${xOf(2)}" y="${y2Bot+15}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">2T</text>`;
+
+  // Switch state strip at top
+  s += `<text x="${M-6}" y="${top}" text-anchor="end" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">SW</text>`;
+  for(let cyc = 0; cyc < 2; cyc++){
+    const x1 = xOf(cyc);
+    const x2 = xOf(cyc + D);
+    const x3 = xOf(cyc + 1);
+    s += `<rect x="${x1}" y="${top-8}" width="${x2-x1}" height="6" fill="#5ec8ff" opacity="0.8"/>`;
+    s += `<rect x="${x2}" y="${top-8}" width="${x3-x2}" height="6" fill="#1d232c" stroke="#5ec8ff" stroke-width="0.5"/>`;
+  }
+
+  svg.innerHTML = s;
+}
+
+render();
+</script>
+</body></html>

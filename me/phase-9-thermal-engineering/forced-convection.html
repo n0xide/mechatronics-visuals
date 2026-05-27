@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Forced Convection Correlations — visual</title>
+<style>
+:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,Segoe UI,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:14px 0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.control .val{font:600 13px ui-monospace,monospace;color:var(--accent3)}
+.control input[type=range]{width:100%;accent-color:var(--accent)}
+.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:12px ui-monospace,monospace}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;margin:14px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}.panel.note{border-left:3px solid var(--accent)}
+.panel h3{margin-top:0}
+.scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.score-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center}
+.score-card.hi{border-color:var(--accent3)}.score-card.lo{border-color:var(--warn)}
+.score-num{font:700 22px ui-monospace,Menlo,monospace;color:var(--accent3);margin:6px 0}
+.score-num.warn{color:var(--warn)}.score-num.mid{color:var(--accent2)}
+.score-lbl{color:var(--fg-dim);font-size:11px;font-family:ui-monospace,monospace;text-transform:uppercase;letter-spacing:.4px}
+.score-lbl.unit{text-transform:none;letter-spacing:0}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+.deriv b{color:var(--fg-bright)}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,monospace;color:var(--accent2)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>Forced Convection Correlations — Nu, Re, Pr and how to find h</h1>
+<p class="lede">Conduction is easy: <code>q = k·A·ΔT/L</code>. Convection is harder: the heat-transfer coefficient <i>h</i> depends on fluid properties, flow speed, geometry, and whether the flow is laminar or turbulent. Engineers use empirical <b>Nusselt-number correlations</b> — <code>Nu = h·L/k = C·Re^m·Pr^n</code> — to predict h from dimensionless numbers. This visual lets you pick a geometry, sweep air velocity and characteristic length, and watch h, the flow regime, and the resulting heat-transfer rate update live.</p>
+
+<div class="anchors">
+<span class="anchor"><b>Nu</b> = h·L/k (dimensionless h)</span>
+<span class="anchor"><b>Re</b> = V·L/ν (inertia vs viscous)</span>
+<span class="anchor"><b>Pr</b> = ν/α (momentum vs thermal diffusivity) — air ≈ 0.707</span>
+<span class="anchor"><b>Flat plate transition</b>: Re ≈ 5 × 10<sup>5</sup></span>
+<span class="anchor"><b>h_natural</b> ≈ 5-25 · <b>h_forced (low)</b> 25-250 · <b>h_forced (high)</b> 250-20k W/m²K</span>
+</div>
+
+<h2>Interactive — flow over your geometry</h2>
+
+<div class="controls">
+<div class="control"><label>Geometry</label><select id="geom" onchange="render()">
+  <option value="plate" selected>Flat plate (parallel flow)</option>
+  <option value="cyl">Cylinder in crossflow (Hilpert)</option>
+  <option value="sphere">Sphere in flow (Whitaker)</option>
+  <option value="finchan">Heat-sink fin channel (between fins)</option>
+</select></div>
+<div class="control"><label>Fluid</label><select id="fluid" onchange="render()">
+  <option value="air25" selected>Air at 25 °C</option>
+  <option value="air100">Air at 100 °C</option>
+  <option value="water25">Water at 25 °C</option>
+</select></div>
+<div class="control"><label>Velocity V (m/s)</label><input id="V" type="range" min="0.1" max="30" value="3" step="0.1" oninput="render()"><span class="val" id="vV">3.0</span></div>
+<div class="control"><label>Characteristic length L (mm)</label><input id="L" type="range" min="5" max="500" value="80" step="1" oninput="render()"><span class="val" id="vL">80</span></div>
+<div class="control"><label>Surface ΔT above fluid (K)</label><input id="dT" type="range" min="1" max="200" value="40" step="1" oninput="render()"><span class="val" id="vDT">40</span></div>
+<div class="control"><label>Surface area A (cm²)</label><input id="A" type="range" min="1" max="2000" value="64" step="1" oninput="render()"><span class="val" id="vA">64</span></div>
+</div>
+
+<div class="scoreboard">
+<div class="score-card"><div class="score-lbl">Reynolds Re</div><div class="score-num" id="vRe">—</div><div class="score-lbl" id="vRegime">—</div></div>
+<div class="score-card"><div class="score-lbl">Nusselt Nu</div><div class="score-num" id="vNu">—</div><div class="score-lbl unit" id="vCorr">—</div></div>
+<div class="score-card" id="hCard"><div class="score-lbl">h</div><div class="score-num" id="vH">—</div><div class="score-lbl unit">W / m²·K</div></div>
+<div class="score-card"><div class="score-lbl">Q dissipated</div><div class="score-num" id="vQ">—</div><div class="score-lbl unit">W</div></div>
+</div>
+
+<h2>Flow regime + h vs velocity</h2>
+<div class="figure"><svg id="curve" viewBox="0 0 900 320" width="100%"></svg></div>
+
+<h2>The correlations</h2>
+<table>
+<tr><th>Geometry</th><th>Correlation</th><th>Range</th><th>Notes</th></tr>
+<tr><td>Flat plate, laminar (avg)</td><td>Nu = 0.664 · Re<sup>0.5</sup> · Pr<sup>1/3</sup></td><td>Re &lt; 5×10<sup>5</sup>, Pr &gt; 0.6</td><td>Blasius solution; characteristic length = plate length L</td></tr>
+<tr><td>Flat plate, turbulent (avg)</td><td>Nu = 0.037 · Re<sup>0.8</sup> · Pr<sup>1/3</sup></td><td>5×10<sup>5</sup> &lt; Re &lt; 10<sup>7</sup></td><td>Tripped flow; mixed laminar+turbulent correction often added</td></tr>
+<tr><td>Cylinder (Hilpert)</td><td>Nu = C · Re<sup>m</sup> · Pr<sup>1/3</sup></td><td>0.4 &lt; Re &lt; 4×10<sup>5</sup></td><td>C, m vary by Re band: Re=40-4k → C=0.683, m=0.466; Re=4k-40k → C=0.193, m=0.618</td></tr>
+<tr><td>Sphere (Whitaker)</td><td>Nu = 2 + (0.4·Re<sup>0.5</sup> + 0.06·Re<sup>2/3</sup>)·Pr<sup>0.4</sup>·(µ/µ_s)<sup>0.25</sup></td><td>3.5 &lt; Re &lt; 7.6×10<sup>4</sup></td><td>Floor of 2 comes from pure conduction in a stagnant fluid; characteristic length = diameter</td></tr>
+<tr><td>Tube internal, laminar fully developed</td><td>Nu = 3.66 (T_s const) or 4.36 (q_s const)</td><td>Re &lt; 2300</td><td>Constant; flow doesn't influence Nu once developed</td></tr>
+<tr><td>Tube internal, turbulent (Dittus-Boelter)</td><td>Nu = 0.023 · Re<sup>0.8</sup> · Pr<sup>n</sup>  (n = 0.4 heating, 0.3 cooling)</td><td>Re &gt; 10<sup>4</sup>, 0.7 &lt; Pr &lt; 160</td><td>Workhorse for pipe flow / HVAC</td></tr>
+<tr><td>Heat-sink fin channel</td><td>Treat as developing flow between parallel plates</td><td>Re_Dh based on hydraulic diameter</td><td>Approximation: Nu_Dh ≈ 7.5 · Re<sup>0.2</sup> for laminar developing flow</td></tr>
+</table>
+
+<h2>The math behind it</h2>
+<div class="deriv">
+<span class="step">Three dimensionless numbers govern forced convection:</span>
+<span class="step">  <b>Re</b> = ρ·V·L / µ = V·L / ν   — ratio of inertia to viscous forces; tells you laminar vs turbulent</span>
+<span class="step">  <b>Pr</b> = ν / α = µ·c_p / k     — ratio of momentum to thermal diffusivity</span>
+<span class="step">  <b>Nu</b> = h·L / k               — dimensionless heat-transfer coefficient</span>
+<span class="step"></span>
+<span class="step">Pick the right correlation for geometry + regime, compute Nu, solve for h:</span>
+<span class="step">  <b>h = Nu · k / L</b></span>
+<span class="step"></span>
+<span class="step">Then Newton's law of cooling gives the heat transfer rate:</span>
+<span class="step">  <b>Q = h · A · ΔT</b>   (A = wetted area, ΔT = T_surface − T_fluid)</span>
+<span class="step"></span>
+<span class="step">Fluid properties evaluated at <b>film temperature</b>: T_film = (T_s + T_∞)/2.</span>
+<span class="step">Air at 25 °C:  ν = 1.56×10⁻⁵ m²/s · k = 0.0263 W/m·K · Pr = 0.707</span>
+<span class="step">Air at 100 °C: ν = 2.36×10⁻⁵ m²/s · k = 0.0314 W/m·K · Pr = 0.694</span>
+<span class="step">Water at 25 °C: ν = 8.93×10⁻⁷ m²/s · k = 0.607 W/m·K · Pr = 6.13</span>
+</div>
+
+<h2>Why correlations and not first principles?</h2>
+<div class="panel note">
+<p>The Navier-Stokes equations describe the velocity + temperature fields exactly, but closed-form solutions exist only for simple geometries (Blasius flat plate, Graetz pipe inlet, etc.). For everything else — heat-sink fins, fans blowing on PCBs, fluid past a wing — you need either:</p>
+<ul style="padding-left:18px;color:var(--fg-dim);font-size:12.5px">
+<li><b>Experimental correlations</b>: fit Nu = f(Re, Pr) to wind-tunnel data. Cheap, fast, accurate enough for design.</li>
+<li><b>CFD</b>: numerical solution of Navier-Stokes on a meshed domain. Accurate but slow and needs skill.</li>
+<li><b>Lumped thermal model</b>: pretend convection is just a resistance R_conv = 1/(h·A), use SPICE-like networks. Fast but coarse.</li>
+</ul>
+<p>For electronics cooling, correlations + lumped models are the workhorses. Spend the CFD budget on the boundary cases that matter (worst hot spot, end-of-life fan curve).</p>
+</div>
+
+<h2>Worked example — 100 W CPU on a heat-sink + 80 mm fan</h2>
+<div class="panel tip">
+<h3>Setup</h3>
+<p>An i7 CPU dissipating 100 W under load. Heat-sink: 80 × 80 mm footprint, 60 mm tall, 20 aluminum fins. An 80 mm fan delivers air at ~3 m/s through the fin channel. T_ambient = 25 °C. What's the chip temperature?</p>
+<h3>Reynolds + Nusselt</h3>
+<div class="deriv">
+<span class="step">Treat the fin channel as flat-plate flow with L = 80 mm = 0.080 m</span>
+<span class="step">Re = V·L / ν = 3 · 0.080 / 1.56e-5 = 15,400  (laminar — Re &lt; 5×10⁵)</span>
+<span class="step">Nu = 0.664 · 15400^0.5 · 0.707^(1/3) = 0.664 · 124.1 · 0.891 = 73.4</span>
+<span class="step">h = Nu · k / L = 73.4 · 0.0263 / 0.080 = 24.1 W/m²·K</span>
+</div>
+<h3>Total wetted area + temperature</h3>
+<div class="deriv">
+<span class="step">Fin area: 20 fins · 2 sides · (80 mm long × 60 mm tall) = 20 · 2 · 0.0048 = 0.192 m²</span>
+<span class="step">η_fin ≈ 0.85 (typical for Al, aspect ratio considered) → A_eff = 0.163 m²</span>
+<span class="step">Q = h · A · ΔT  →  100 = 24.1 · 0.163 · ΔT  →  ΔT = 25.5 K</span>
+<span class="step">T_chip = 25 + 25.5 = 50.5 °C  ✓ comfortable</span>
+</div>
+<h3>Sanity check via "h ≈ 25 W/m²K for low-speed forced air"</h3>
+<p>The rule-of-thumb matches the correlation result. If we tripled fan speed to 9 m/s, Re = 46,200, Nu = 127 (laminar still), h = 41.7 W/m²K — 73% more h for 200% more fan speed. Convection scales as ~V<sup>0.5</sup>; doubling fan rarely doubles cooling.</p>
+</div>
+
+<h2>How h ranges in practice</h2>
+<table>
+<tr><th>Situation</th><th>h (W/m²·K)</th><th>Driver</th></tr>
+<tr><td>Free convection, air, small surfaces (PCB)</td><td>5 - 15</td><td>Buoyancy-driven; ΔT&sup;0.25</td></tr>
+<tr><td>Free convection, air, large heatsink fins</td><td>10 - 25</td><td>Buoyancy at higher ΔT</td></tr>
+<tr><td>Forced convection, low speed (fan-blown air)</td><td>25 - 250</td><td>V·L primary; geometry secondary</td></tr>
+<tr><td>Forced convection, high speed (compressed air, jet)</td><td>250 - 1000</td><td>Approaching turbulent</td></tr>
+<tr><td>Forced water cooling (cold plate, microchannel)</td><td>500 - 20,000</td><td>Water's ~600× better k than air</td></tr>
+<tr><td>Boiling water (nucleate)</td><td>5,000 - 100,000</td><td>Phase-change latent heat</td></tr>
+<tr><td>Condensing steam</td><td>10,000 - 100,000</td><td>Phase change</td></tr>
+<tr><td>Refrigerant evaporation (R134a, R744)</td><td>1,000 - 30,000</td><td>Phase change at chosen T</td></tr>
+</table>
+
+<h2>Mistakes that bite</h2>
+<ul class="notice">
+<li><b>Wrong characteristic length</b> — flat plate uses plate length in flow direction; cylinder uses diameter; fin channel uses hydraulic diameter D_h = 4A/P. Pick correctly or Re is off by an order of magnitude.</li>
+<li><b>Property evaluation temperature</b> — use film temperature T_film = (T_s + T_∞)/2, not T_∞. Air's ν changes 50% from 25 °C to 100 °C.</li>
+<li><b>Mixing Nu local vs Nu average</b> — local Nu_x predicts h at position x along a plate; average Nu_L predicts the area-averaged h. Use average for design heat-load calcs.</li>
+<li><b>Transition region (Re ~ 10⁵)</b> — correlations break down between laminar and turbulent. Mixed correlation: Nu = 0.037 · Re^0.8 · Pr^(1/3) − 871·Pr^(1/3). Worth using for plates that cross the transition.</li>
+<li><b>"Just add a bigger fan" diminishing returns</b> — h ∝ V^0.5 for laminar, V^0.8 for turbulent. After turbulent transition, doubling V gives ~75% more h. The first fan upgrade pays back; the third rarely does.</li>
+<li><b>Forgetting fin efficiency</b> — h is computed for the fin surface but the fin tip is colder than the base, so effective area is less. Multiply by η_fin (or use fin-array formulas like tanh(mL)/(mL)).</li>
+<li><b>Neglecting radiation</b> — for surfaces above ~60 °C with low-speed flow, radiation can add 5-10 W/m²·K of effective h. Surface emissivity (matte black ≈ 0.95, polished Al ≈ 0.05) matters.</li>
+</ul>
+
+<h2>Cheat sheet — picking h for a back-of-envelope</h2>
+<table>
+<tr><th>Cooling style</th><th>Use h ≈</th><th>Typical Q for L=80 mm, ΔT=30 K</th></tr>
+<tr><td>Free convection (no fan)</td><td>10 W/m²K</td><td>~2 W per 80×80 mm surface</td></tr>
+<tr><td>Slow fan (1-2 m/s)</td><td>20 W/m²K</td><td>~4 W</td></tr>
+<tr><td>Standard PC fan (3-5 m/s)</td><td>40 W/m²K</td><td>~8 W per face — needs fins to multiply area</td></tr>
+<tr><td>Server fan or compressed air (10+ m/s)</td><td>100 W/m²K</td><td>~20 W per bare face</td></tr>
+<tr><td>Water-cooled cold plate</td><td>5000 W/m²K</td><td>~960 W</td></tr>
+</table>
+
+<footer>Cross-links: <a href="heat-sinks.html">Heat Sinks</a> · <a href="heat-transfer-modes.html">Heat Transfer Modes</a> · <a href="thermal-networks.html">Thermal Networks</a> · <a href="fin-efficiency.html">Fin Efficiency</a> · <a href="biot-transient.html">Biot &amp; Transient</a> · <a href="../../extras/heatsink-sizer.html">Heatsink Sizer</a></footer>
+
+</main>
+<script>
+const el = id => document.getElementById(id);
+
+// Fluid properties at given temp (film temp). Stored at "nominal."
+const FLUIDS = {
+  air25:   {nu: 1.56e-5, k: 0.0263, Pr: 0.707, label: 'Air 25 °C'},
+  air100:  {nu: 2.36e-5, k: 0.0314, Pr: 0.694, label: 'Air 100 °C'},
+  water25: {nu: 8.93e-7, k: 0.607,  Pr: 6.13,  label: 'Water 25 °C'}
+};
+
+function computeNu(geom, Re, Pr){
+  // returns {Nu, correlation_label, regime}
+  if(geom === 'plate'){
+    if(Re < 5e5){
+      return {Nu: 0.664 * Math.pow(Re, 0.5) * Math.pow(Pr, 1/3), corr: 'plate-laminar', regime: 'Laminar'};
+    } else {
+      return {Nu: 0.037 * Math.pow(Re, 0.8) * Math.pow(Pr, 1/3), corr: 'plate-turbulent', regime: 'Turbulent'};
+    }
+  }
+  if(geom === 'cyl'){
+    // Hilpert: C, m by Re range
+    let C, m;
+    if(Re < 4)      {C = 0.989; m = 0.330;}
+    else if(Re < 40){C = 0.911; m = 0.385;}
+    else if(Re < 4000){C = 0.683; m = 0.466;}
+    else if(Re < 4e4){C = 0.193; m = 0.618;}
+    else            {C = 0.027; m = 0.805;}
+    return {Nu: C * Math.pow(Re, m) * Math.pow(Pr, 1/3), corr: `cylinder Hilpert (Re band → C=${C}, m=${m})`, regime: Re > 2e5 ? 'Turbulent' : Re > 1000 ? 'Mixed' : 'Laminar'};
+  }
+  if(geom === 'sphere'){
+    // Whitaker, simplified (µ_ratio ≈ 1)
+    return {Nu: 2 + (0.4 * Math.pow(Re, 0.5) + 0.06 * Math.pow(Re, 2/3)) * Math.pow(Pr, 0.4), corr: 'sphere-Whitaker', regime: Re > 3e4 ? 'Turbulent' : 'Mixed'};
+  }
+  if(geom === 'finchan'){
+    // Developing flow between parallel plates: Nu_Dh ≈ 7.5 · Re^0.2 for laminar
+    if(Re < 2300){
+      return {Nu: 7.5 * Math.pow(Re, 0.2), corr: 'fin-channel-laminar (Nu = 7.5·Re^0.2)', regime: 'Laminar'};
+    } else {
+      // Dittus-Boelter for fully-developed turbulent
+      return {Nu: 0.023 * Math.pow(Re, 0.8) * Math.pow(Pr, 0.4), corr: 'fin-channel-turbulent (Dittus-Boelter)', regime: 'Turbulent'};
+    }
+  }
+  return {Nu: 0, corr: '', regime: ''};
+}
+
+function render(){
+  const geom = el('geom').value;
+  const fluidKey = el('fluid').value;
+  const fl = FLUIDS[fluidKey];
+  const V = parseFloat(el('V').value);
+  const L_mm = parseFloat(el('L').value);
+  const L = L_mm / 1000;
+  const dT = parseFloat(el('dT').value);
+  const A_cm2 = parseFloat(el('A').value);
+  const A = A_cm2 / 10000;  // m²
+
+  el('vV').textContent = V.toFixed(1);
+  el('vL').textContent = L_mm;
+  el('vDT').textContent = dT;
+  el('vA').textContent = A_cm2;
+
+  const Re = V * L / fl.nu;
+  const {Nu, corr, regime} = computeNu(geom, Re, fl.Pr);
+  const h = Nu * fl.k / L;
+  const Q = h * A * dT;
+
+  el('vRe').textContent = Re < 1000 ? Re.toFixed(0) : Re < 1e6 ? (Re/1000).toFixed(1) + 'k' : (Re/1e6).toFixed(2) + 'M';
+  el('vRegime').textContent = regime;
+  el('vNu').textContent = Nu < 100 ? Nu.toFixed(1) : Nu.toFixed(0);
+  el('vCorr').textContent = corr;
+  el('vH').textContent = h < 10 ? h.toFixed(2) : h.toFixed(1);
+  el('vQ').textContent = Q < 1 ? Q.toFixed(2) : Q < 100 ? Q.toFixed(1) : Q.toFixed(0);
+
+  // Color h card: green if h > 20, mid 5-20, warn < 5
+  const hCard = el('hCard');
+  const hNum = el('vH');
+  hCard.classList.remove('hi','lo');
+  hNum.classList.remove('warn','mid');
+  if(h > 100) hCard.classList.add('hi');
+  else if(h > 20) { hNum.classList.add('mid'); }
+  else { hNum.classList.add('warn'); }
+
+  drawCurve(geom, fluidKey, V, L);
+}
+
+function drawCurve(geom, fluidKey, Vactive, L){
+  const svg = el('curve');
+  const W = 900, H = 320, M = 60;
+  const fl = FLUIDS[fluidKey];
+
+  // X: velocity from 0.1 to 30 m/s (log)
+  // Y: h (W/m²·K), log
+  const xOf = lv => M + (lv - Math.log10(0.1)) * (W - 2*M) / (Math.log10(30) - Math.log10(0.1));
+  const yOf = lh => H - M - (lh - 0) * (H - 2*M - 30) / 4;  // h from 1 to 10000
+
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">h vs velocity at this L (log-log) — ${fl.label}</text>`;
+  // Axes
+  s += `<line x1="${M}" y1="${H-M}" x2="${W-M}" y2="${H-M}" stroke="#8f99a8"/>`;
+  s += `<line x1="${M}" y1="${M+8}" x2="${M}" y2="${H-M}" stroke="#8f99a8"/>`;
+  // X gridlines
+  for(let lv = -1; lv <= 1.5; lv += 0.5){
+    const x = xOf(lv);
+    s += `<line x1="${x}" y1="${M+8}" x2="${x}" y2="${H-M}" stroke="#2a313c"/>`;
+    const V = Math.pow(10, lv);
+    const label = V >= 1 ? V.toFixed(0) + ' m/s' : V.toFixed(2);
+    s += `<text x="${x}" y="${H-M+18}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${label}</text>`;
+  }
+  s += `<text x="${W/2}" y="${H-15}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">Velocity V</text>`;
+  // Y gridlines (h decades)
+  const hLabels = ['1','10','100','1k','10k'];
+  for(let lh = 0; lh <= 4; lh++){
+    const y = yOf(lh);
+    s += `<line x1="${M}" y1="${y}" x2="${W-M}" y2="${y}" stroke="#2a313c"/>`;
+    s += `<text x="${M-6}" y="${y+3}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${hLabels[lh]}</text>`;
+  }
+  s += `<text x="20" y="${H/2}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11" transform="rotate(-90 20 ${H/2})" text-anchor="middle">h (W/m²·K)</text>`;
+
+  // Draw the curve for all 4 geometries (active emphasised)
+  const GEOMS = ['plate','cyl','sphere','finchan'];
+  const COLORS = {plate:'#5ec8ff', cyl:'#ffb86c', sphere:'#a3e635', finchan:'#c084fc'};
+  const LABELS = {plate:'plate', cyl:'cylinder', sphere:'sphere', finchan:'fin channel'};
+
+  for(const g of GEOMS){
+    let path = '';
+    for(let lv = -1; lv <= Math.log10(30); lv += 0.05){
+      const V = Math.pow(10, lv);
+      const Re = V * L / fl.nu;
+      const {Nu} = computeNu(g, Re, fl.Pr);
+      const h = Nu * fl.k / L;
+      const lh = Math.log10(Math.max(0.1, h));
+      const x = xOf(lv), y = yOf(lh);
+      if(lh < 0 || lh > 4) continue;
+      path += (path ? 'L ' : 'M ') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+    }
+    const active = g === geom;
+    s += `<path d="${path}" fill="none" stroke="${COLORS[g]}" stroke-width="${active?2.5:1.3}" opacity="${active?1.0:0.45}"/>`;
+  }
+
+  // Marker for current V
+  const xActive = xOf(Math.log10(Vactive));
+  s += `<line x1="${xActive}" y1="${M+8}" x2="${xActive}" y2="${H-M}" stroke="#ff7b72" stroke-width="1.5" stroke-dasharray="4,2"/>`;
+  s += `<text x="${xActive+4}" y="${M+24}" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="11">V = ${Vactive.toFixed(1)} m/s</text>`;
+
+  // Legend at top-right
+  let lx = W - 200, ly = M + 8;
+  for(const g of GEOMS){
+    s += `<line x1="${lx}" y1="${ly}" x2="${lx+18}" y2="${ly}" stroke="${COLORS[g]}" stroke-width="${g===geom?2.5:1.3}"/>`;
+    s += `<text x="${lx+24}" y="${ly+4}" fill="${COLORS[g]}" font-family="ui-monospace,monospace" font-size="11" font-weight="${g===geom?600:400}">${LABELS[g]}</text>`;
+    ly += 16;
+  }
+
+  svg.innerHTML = s;
+}
+
+render();
+</script>
+</body></html>

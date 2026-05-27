@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Integrator Anti-Windup — visual</title>
+<style>
+:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,Segoe UI,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:14px 0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.control .val{font:600 13px ui-monospace,monospace;color:var(--accent3)}
+.control input[type=range]{width:100%;accent-color:var(--accent)}
+.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:12px ui-monospace,monospace}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;margin:14px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}.panel.note{border-left:3px solid var(--accent)}
+.panel h3{margin-top:0}
+.scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.score-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center}
+.score-card.hi{border-color:var(--accent3)}.score-card.lo{border-color:var(--warn)}
+.score-num{font:700 22px ui-monospace,Menlo,monospace;color:var(--accent3);margin:6px 0}
+.score-num.warn{color:var(--warn)}.score-num.mid{color:var(--accent2)}
+.score-lbl{color:var(--fg-dim);font-size:11px;font-family:ui-monospace,monospace;text-transform:uppercase;letter-spacing:.4px}
+.score-lbl.unit{text-transform:none;letter-spacing:0}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+.deriv b{color:var(--fg-bright)}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,monospace;color:var(--accent2)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>Integrator Anti-Windup — when actuator saturation breaks your PID</h1>
+<p class="lede">Every textbook PID assumes the actuator can produce whatever the controller demands. Real motors clip at their torque limit; real valves close at 0% and 100%; real DACs are bounded. When the integrator demands more than the actuator can deliver, error stays nonzero and <b>the integral term winds up to enormous values</b>. By the time the error finally reverses, the integrator is bloated and takes a long arc to wind back — producing massive overshoot. This visual simulates the problem live and compares three fixes: do-nothing, clamping, and back-calculation tracking.</p>
+
+<div class="anchors">
+<span class="anchor"><b>Cause</b>: PID I-term integrates while actuator saturates</span>
+<span class="anchor"><b>Symptom</b>: huge overshoot after large setpoint changes</span>
+<span class="anchor"><b>Clamping</b>: freeze I when sat + same-sign error</span>
+<span class="anchor"><b>Back-calc</b>: drive I toward what would give u_sat, with time constant T<sub>t</sub></span>
+<span class="anchor"><b>T<sub>t</sub> rule</b>: T<sub>t</sub> ≈ √(T<sub>i</sub>·T<sub>d</sub>) or 0.1-1× T<sub>i</sub></span>
+</div>
+
+<h2>Interactive — step response of a saturating plant</h2>
+<p>Plant model: <code>τ_p · dy/dt = u_actual</code> (first-order velocity-like plant). PID controller drives setpoint r → output y, but actuator is clamped to ±u_max.</p>
+
+<div class="controls">
+<div class="control"><label>Setpoint step r</label><input id="r" type="range" min="0.5" max="10" value="5" step="0.5" oninput="render()"><span class="val" id="vR">5</span></div>
+<div class="control"><label>Actuator limit u_max</label><input id="umax" type="range" min="0.5" max="5" value="2" step="0.1" oninput="render()"><span class="val" id="vUmax">2</span></div>
+<div class="control"><label>Plant time const τ_p (s)</label><input id="tp" type="range" min="0.2" max="3" value="1" step="0.1" oninput="render()"><span class="val" id="vTp">1.0</span></div>
+<div class="control"><label>K_p (proportional)</label><input id="kp" type="range" min="0.1" max="5" value="1.0" step="0.1" oninput="render()"><span class="val" id="vKp">1.0</span></div>
+<div class="control"><label>K_i (integral)</label><input id="ki" type="range" min="0" max="3" value="0.8" step="0.05" oninput="render()"><span class="val" id="vKi">0.8</span></div>
+<div class="control"><label>K_d (derivative)</label><input id="kd" type="range" min="0" max="2" value="0.2" step="0.05" oninput="render()"><span class="val" id="vKd">0.2</span></div>
+<div class="control"><label>Anti-windup strategy</label><select id="awu" onchange="render()">
+  <option value="none">None — raw PID</option>
+  <option value="clamp">Clamping (conditional integration)</option>
+  <option value="bc" selected>Back-calculation (tracking)</option>
+</select></div>
+<div class="control"><label>Tracking time T_t (s, for BC)</label><input id="tt" type="range" min="0.1" max="5" value="0.5" step="0.05" oninput="render()"><span class="val" id="vTt">0.5</span></div>
+</div>
+
+<div class="scoreboard">
+<div class="score-card" id="osCard"><div class="score-lbl">Overshoot</div><div class="score-num" id="vOs">—</div><div class="score-lbl unit">%</div></div>
+<div class="score-card"><div class="score-lbl">Settling time (2%)</div><div class="score-num" id="vTs">—</div><div class="score-lbl unit">s</div></div>
+<div class="score-card"><div class="score-lbl">Peak I-term magnitude</div><div class="score-num" id="vIpk">—</div><div class="score-lbl unit">—</div></div>
+<div class="score-card"><div class="score-lbl">Saturation duration</div><div class="score-num" id="vSat">—</div><div class="score-lbl unit">s</div></div>
+</div>
+
+<div class="figure"><svg id="plot" viewBox="0 0 900 360" width="100%"></svg></div>
+
+<h2>The math behind the three strategies</h2>
+<div class="deriv">
+<span class="step">PID:  u_pid = K_p·e + K_i·∫e dt + K_d·de/dt</span>
+<span class="step">Actuator:  u_actual = sat(u_pid, ±u_max)</span>
+<span class="step">Plant:  τ_p · dy/dt = u_actual</span>
+<span class="step"></span>
+<span class="step"><b>Strategy 1 — None (raw PID):</b></span>
+<span class="step">  Always integrate: dI/dt = K_i · e</span>
+<span class="step">  Even when u_pid is saturated and the actuator can't act on the extra demand.</span>
+<span class="step">  → I grows unbounded; large overshoot when error finally reverses.</span>
+<span class="step"></span>
+<span class="step"><b>Strategy 2 — Clamping (conditional integration):</b></span>
+<span class="step">  dI/dt = K_i · e   only when NOT(saturated AND e has same sign as sat direction)</span>
+<span class="step">  i.e. if u_pid &gt; u_max and e &gt; 0: freeze I  (likewise for negative side)</span>
+<span class="step">  Simple, no extra parameter, works well for most cases.</span>
+<span class="step">  Edge case: I can be stuck high if error never reverses (e.g., constant load).</span>
+<span class="step"></span>
+<span class="step"><b>Strategy 3 — Back-calculation (tracking, "Astrom-Hagglund"):</b></span>
+<span class="step">  dI/dt = K_i · e  +  (u_actual − u_pid) / T_t</span>
+<span class="step">  The second term is zero when not saturated (u_actual = u_pid).</span>
+<span class="step">  When saturated, it pulls I toward the value that would give u_pid = u_actual exactly.</span>
+<span class="step">  T_t = tracking time constant; smaller T_t = faster wind-down.</span>
+<span class="step">  Typical:  T_t ≈ √(T_i · T_d)  for ZN-tuned PID,  or 0.1·T_i to 1·T_i.</span>
+<span class="step"></span>
+<span class="step">Equivalent block diagram:  I-state is fed back with gain 1/T_t from the saturation block.</span>
+</div>
+
+<h2>Why windup matters in real systems</h2>
+<ul class="notice">
+<li><b>Motor torque saturation</b> — a position controller demands more torque than the motor can deliver during a fast setpoint step. Without anti-windup: 30-50% overshoot. With BC: smooth.</li>
+<li><b>Valve fully open / closed</b> — flow controller hits the mechanical end-stop. Integrator continues climbing for minutes; when load finally drops, valve closes far past setpoint and oscillates.</li>
+<li><b>Heater duty-cycle limited</b> — temperature controller wants 150% PWM. Saturated at 100%, error stays huge, integrator builds. When target reached, heater stays on for too long → overshoot.</li>
+<li><b>Battery current limit</b> — EV speed controller; high acceleration request hits the current limit. Integrator winds, then huge regen demand when target reached.</li>
+<li><b>Aircraft control surfaces</b> — historical accidents (the 1993 JAS 39 Gripen crash had elevator-channel windup as one contributing factor). Modern fly-by-wire all uses BC tracking.</li>
+</ul>
+
+<h2>Strategy comparison — when to pick which</h2>
+<table>
+<tr><th>Strategy</th><th>Cost</th><th>Behavior</th><th>Best for</th></tr>
+<tr><td><b>Do nothing</b></td><td>Free</td><td>Massive overshoot after sat; long settling</td><td>Only if actuator never saturates (rare)</td></tr>
+<tr><td><b>Clamping</b></td><td>Free (1 if statement)</td><td>I freezes during sat with same-sign error; resumes after</td><td>Simple regulators, no parameter to tune; default for most embedded code</td></tr>
+<tr><td><b>Back-calculation</b></td><td>One multiply + add</td><td>I tracks toward u_sat-consistent value with T_t time constant</td><td>Anywhere with frequent saturation; large multi-loop systems</td></tr>
+<tr><td><b>Conditional</b> (band)</td><td>Two if statements</td><td>I only updates when |e| &lt; threshold</td><td>Noise-prone systems where you don't want I from transients</td></tr>
+<tr><td><b>Position-form PID</b></td><td>Implementation choice</td><td>Recompute u from current state each tick; no separate I state</td><td>When you can store full history; rare in MCUs</td></tr>
+</table>
+
+<h2>Tuning T_t — practical guidance</h2>
+<div class="panel note">
+<p>The tracking time constant T_t determines how fast the integrator unwinds after saturation. Astrom-Hagglund's classic recipe:</p>
+<div class="deriv">
+<span class="step">T_t = √(T_i · T_d)   for PID</span>
+<span class="step">T_t = T_i             for PI (no derivative)</span>
+<span class="step">Where T_i = K_p / K_i,  T_d = K_d / K_p (in standard form)</span>
+</div>
+<p>Smaller T_t → faster unwind, but too small causes oscillation in the I-loop. Practical range: 0.1·T_i to T_i. If your system overshoots only modestly (5-10%), increase T_t. If it lingers in saturation, decrease.</p>
+<p>Rule of thumb: start with T_t = 0.5·T_i and tune ±50% by step-response.</p>
+</div>
+
+<h2>Worked example — robotic-arm joint position controller</h2>
+<div class="panel tip">
+<h3>Setup</h3>
+<p>Arm joint (arm-6dof-pa612 design): 100 N·m peak torque, 50 N·m continuous. Joint inertia 2 kg·m². PID position loop with K_p = 30, K_i = 8, K_d = 4. Commanded step: 90° in 0.5 s.</p>
+<h3>Without anti-windup</h3>
+<div class="deriv">
+<span class="step">Required peak torque (no limit) ≈ K_p·90° = 47 N·m   (just under continuous)</span>
+<span class="step">With dynamics + payload: demand briefly exceeds 100 N·m peak → saturation</span>
+<span class="step">During 200 ms saturation, ∫e ~ 90·0.2 = 18  →  K_i·∫e = 144 N·m of pent-up integral</span>
+<span class="step">After target reached, integrator drives motor backwards through equilibrium → 14° overshoot, 1.2 s settle</span>
+</div>
+<h3>With back-calculation (T_t = 0.5 s)</h3>
+<div class="deriv">
+<span class="step">During saturation: dI/dt = K_i·e + (u_sat − u_pid)/T_t  ≈ 8·e − 280/0.5  (huge negative)</span>
+<span class="step">I quickly stabilizes at value that would give u_pid = 100 N·m exactly — no excess buildup</span>
+<span class="step">Result: 2° overshoot, 0.6 s settle. Same K_p / K_i, no other change.</span>
+</div>
+</div>
+
+<h2>Common pitfalls</h2>
+<ul class="notice">
+<li><b>Saturating without anti-windup, ever</b> — the textbook setpoint-tracking simulations never saturate, so the textbook PID always "works." Real systems saturate within the first second of operation.</li>
+<li><b>Forgetting the direction of saturation</b> — clamping at +u_max should freeze I only when error is also positive. Negative error wants the actuator down, so I should still update. A naive "if saturated, freeze" deadlocks.</li>
+<li><b>T_t too small</b> — back-calculation with T_t → 0 creates a tight inner loop that can oscillate around u_sat. Increase T_t if you see chatter at the limit.</li>
+<li><b>Anti-windup on a non-PI controller</b> — pure P controllers don't need it (no integrator). LQR / state-feedback can need similar care if they have integral action.</li>
+<li><b>Setpoint slew-rate limiting hides the issue</b> — pre-filtering the setpoint to be reachable (slew-rate limit) avoids saturation, but if the disturbance comes from the load side, you still need anti-windup.</li>
+<li><b>Reset windup vs derivative kick</b> — different problems. Derivative kick is solved by computing dy/dt instead of de/dt (the "PI-D" form). Anti-windup is independent.</li>
+<li><b>Bumpless transfer</b> — switching from manual to auto mode with a non-zero I-term creates a bump. Initialize I from current u_manual: I_init = u_manual − K_p·e_init.</li>
+<li><b>Cascaded loops</b> — inner-loop (current) and outer-loop (velocity) both have integrators. Both need anti-windup, but the inner's saturation feeds back to the outer's setpoint, so apply tracking on the outer using inner's saturation state.</li>
+</ul>
+
+<h2>Cheat sheet — pick a strategy</h2>
+<table>
+<tr><th>System</th><th>Strategy</th><th>Why</th></tr>
+<tr><td>Simple temperature loop, small steps</td><td>Clamping</td><td>Rarely saturates; clamp is enough</td></tr>
+<tr><td>Motor position with fast steps</td><td>Back-calculation (T_t ≈ 0.5·T_i)</td><td>Frequent saturation during slewing</td></tr>
+<tr><td>Cascaded current → velocity → position</td><td>BC on each loop, sourcing sat from downstream</td><td>All three loops need awareness</td></tr>
+<tr><td>HVAC actuator (slow, infrequent step)</td><td>Clamping + setpoint slew-rate limit</td><td>Mild saturation; pre-filtering simpler</td></tr>
+<tr><td>Aircraft control surface</td><td>BC + redundant rate limiters</td><td>Safety-critical; rarely saturates but must be graceful when it does</td></tr>
+<tr><td>Multi-input MIMO LQR with integrator</td><td>Custom anti-windup design</td><td>Use Hippe / Hanus / observer-based methods</td></tr>
+</table>
+
+<footer>Cross-links: <a href="pid-explorer.html">PID Explorer</a> · <a href="pid-tuning.html">PID Tuning</a> · <a href="p-i-d-individually.html">P-I-D Individually</a> · <a href="open-closed-loop.html">Open / Closed Loop</a> · <a href="cascade-control.html">Cascade Control</a> · <a href="feed-forward.html">Feed-Forward</a></footer>
+
+</main>
+<script>
+const el = id => document.getElementById(id);
+
+function simulate(){
+  const r = parseFloat(el('r').value);
+  const umax = parseFloat(el('umax').value);
+  const tp = parseFloat(el('tp').value);
+  const Kp = parseFloat(el('kp').value);
+  const Ki = parseFloat(el('ki').value);
+  const Kd = parseFloat(el('kd').value);
+  const awu = el('awu').value;
+  const Tt = parseFloat(el('tt').value);
+
+  el('vR').textContent = r.toFixed(1);
+  el('vUmax').textContent = umax.toFixed(1);
+  el('vTp').textContent = tp.toFixed(1);
+  el('vKp').textContent = Kp.toFixed(2);
+  el('vKi').textContent = Ki.toFixed(2);
+  el('vKd').textContent = Kd.toFixed(2);
+  el('vTt').textContent = Tt.toFixed(2);
+
+  const dt = 0.005;  // 5 ms
+  const T_end = 15;
+  const N = Math.round(T_end / dt);
+
+  let y = 0, y_prev = 0, I = 0, e_prev = 0;
+  const t = [], yArr = [], uPidArr = [], uActArr = [], IArr = [], rArr = [];
+  let satTime = 0;
+  let Ipeak = 0;
+
+  for(let i = 0; i < N; i++){
+    const ti = i * dt;
+    const setpoint = ti < 0.5 ? 0 : r;
+    const e = setpoint - y;
+    const de = (e - e_prev) / dt;
+
+    // PID candidate
+    const u_pid = Kp * e + I + Kd * de;
+    const u_act = Math.max(-umax, Math.min(umax, u_pid));
+
+    // Integrator update with anti-windup
+    let dI;
+    if(awu === 'none'){
+      dI = Ki * e;
+    } else if(awu === 'clamp'){
+      const saturated = (u_pid > umax && e > 0) || (u_pid < -umax && e < 0);
+      dI = saturated ? 0 : Ki * e;
+    } else { // bc
+      dI = Ki * e + (u_act - u_pid) / Tt;
+    }
+    I += dI * dt;
+    Ipeak = Math.max(Ipeak, Math.abs(I));
+
+    // Plant: tau_p · dy/dt = u_act  ⇒  dy/dt = u_act / tau_p
+    const dy = u_act / tp;
+    y += dy * dt;
+
+    // Saturation detection
+    if(Math.abs(u_pid) > umax + 0.001) satTime += dt;
+
+    t.push(ti); yArr.push(y); uPidArr.push(u_pid); uActArr.push(u_act); IArr.push(I); rArr.push(setpoint);
+    e_prev = e;
+  }
+
+  // Compute metrics
+  const yMax = Math.max(...yArr);
+  const overshoot = Math.max(0, (yMax - r) / r) * 100;
+  // Settling: last time |y - r| > 0.02*r
+  let tSettle = T_end;
+  for(let i = N - 1; i >= 0; i--){
+    if(Math.abs(yArr[i] - rArr[i]) > 0.02 * r){
+      tSettle = t[i];
+      break;
+    }
+  }
+
+  el('vOs').textContent = overshoot.toFixed(1);
+  el('vTs').textContent = tSettle.toFixed(2);
+  el('vIpk').textContent = Ipeak.toFixed(2);
+  el('vSat').textContent = satTime.toFixed(2);
+
+  const osCard = el('osCard');
+  const osNum = el('vOs');
+  osCard.classList.remove('hi','lo');
+  osNum.classList.remove('warn','mid');
+  if(overshoot < 5) osCard.classList.add('hi');
+  else if(overshoot < 20) osNum.classList.add('mid');
+  else { osCard.classList.add('lo'); osNum.classList.add('warn'); }
+
+  return {t, yArr, uPidArr, uActArr, IArr, rArr, umax, Ipeak};
+}
+
+function drawPlot(data){
+  const svg = el('plot');
+  const W = 900, H = 360, M = 50;
+  const halfH = (H - 2*M - 40) / 2;
+  // Top panel: y(t), r(t)
+  const yTop1 = M + 10, yBot1 = yTop1 + halfH;
+  // Bottom panel: u_pid, u_act, I
+  const yTop2 = yBot1 + 30, yBot2 = yTop2 + halfH;
+
+  const T_end = data.t[data.t.length - 1];
+  const yMax = Math.max(...data.rArr) * 1.4;
+  const yMin = 0;
+  const xOf = ti => M + (ti / T_end) * (W - 2*M);
+  const y1Of = v => yBot1 - ((v - yMin) / (yMax - yMin)) * halfH;
+
+  const uMax_disp = Math.max(data.umax * 1.6, ...data.uPidArr.map(Math.abs), data.Ipeak) * 1.1;
+  const y2Of = v => (yBot2 + yTop2)/2 - (v / uMax_disp) * halfH/2;
+
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">Plant output (top) + controller signals (bottom)</text>`;
+
+  // Top panel axes
+  s += `<line x1="${M}" y1="${yBot1}" x2="${W-M}" y2="${yBot1}" stroke="#8f99a8"/>`;
+  s += `<line x1="${M}" y1="${yTop1-5}" x2="${M}" y2="${yBot1}" stroke="#8f99a8"/>`;
+  s += `<text x="${M-6}" y="${yTop1+5}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${yMax.toFixed(1)}</text>`;
+  s += `<text x="${M-6}" y="${y1Of(data.rArr[data.rArr.length-1])+3}" text-anchor="end" fill="#a3e635" font-family="ui-monospace,monospace" font-size="10">r=${data.rArr[data.rArr.length-1].toFixed(1)}</text>`;
+  // r line (setpoint)
+  let rPath = '';
+  for(let i = 0; i < data.t.length; i += 2){
+    rPath += (i === 0 ? 'M ' : 'L ') + xOf(data.t[i]).toFixed(1) + ',' + y1Of(data.rArr[i]).toFixed(1) + ' ';
+  }
+  s += `<path d="${rPath}" fill="none" stroke="#a3e635" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+  // y(t)
+  let yPath = '';
+  for(let i = 0; i < data.t.length; i += 2){
+    yPath += (i === 0 ? 'M ' : 'L ') + xOf(data.t[i]).toFixed(1) + ',' + y1Of(data.yArr[i]).toFixed(1) + ' ';
+  }
+  s += `<path d="${yPath}" fill="none" stroke="#5ec8ff" stroke-width="2.5"/>`;
+  // Legend top
+  s += `<text x="${W-M}" y="${yTop1+10}" text-anchor="end" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">y(t) output</text>`;
+  s += `<text x="${W-M}" y="${yTop1+25}" text-anchor="end" fill="#a3e635" font-family="ui-monospace,monospace" font-size="11">r(t) setpoint</text>`;
+
+  // Bottom panel axes
+  s += `<line x1="${M}" y1="${(yBot2+yTop2)/2}" x2="${W-M}" y2="${(yBot2+yTop2)/2}" stroke="#8f99a8"/>`;
+  s += `<line x1="${M}" y1="${yTop2}" x2="${M}" y2="${yBot2}" stroke="#8f99a8"/>`;
+  // u_max bands
+  s += `<line x1="${M}" y1="${y2Of(data.umax)}" x2="${W-M}" y2="${y2Of(data.umax)}" stroke="#ff7b72" stroke-width="1" stroke-dasharray="3,2"/>`;
+  s += `<line x1="${M}" y1="${y2Of(-data.umax)}" x2="${W-M}" y2="${y2Of(-data.umax)}" stroke="#ff7b72" stroke-width="1" stroke-dasharray="3,2"/>`;
+  s += `<text x="${W-M}" y="${y2Of(data.umax)-3}" text-anchor="end" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="10">±u_max = ±${data.umax}</text>`;
+  // u_pid (orange)
+  let pidPath = '';
+  for(let i = 0; i < data.t.length; i += 2){
+    pidPath += (i === 0 ? 'M ' : 'L ') + xOf(data.t[i]).toFixed(1) + ',' + y2Of(data.uPidArr[i]).toFixed(1) + ' ';
+  }
+  s += `<path d="${pidPath}" fill="none" stroke="#ffb86c" stroke-width="1.5"/>`;
+  // u_act (purple/lighter)
+  let actPath = '';
+  for(let i = 0; i < data.t.length; i += 2){
+    actPath += (i === 0 ? 'M ' : 'L ') + xOf(data.t[i]).toFixed(1) + ',' + y2Of(data.uActArr[i]).toFixed(1) + ' ';
+  }
+  s += `<path d="${actPath}" fill="none" stroke="#c084fc" stroke-width="2"/>`;
+  // I-term
+  let IPath = '';
+  for(let i = 0; i < data.t.length; i += 2){
+    IPath += (i === 0 ? 'M ' : 'L ') + xOf(data.t[i]).toFixed(1) + ',' + y2Of(data.IArr[i]).toFixed(1) + ' ';
+  }
+  s += `<path d="${IPath}" fill="none" stroke="#5ec8ff" stroke-width="1.5" stroke-dasharray="2,2"/>`;
+  // Legend bottom
+  s += `<text x="${W-M}" y="${yTop2+10}" text-anchor="end" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="11">u_PID (raw)</text>`;
+  s += `<text x="${W-M}" y="${yTop2+25}" text-anchor="end" fill="#c084fc" font-family="ui-monospace,monospace" font-size="11">u_act (saturated)</text>`;
+  s += `<text x="${W-M}" y="${yTop2+40}" text-anchor="end" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">I-term</text>`;
+
+  // X axis labels (time)
+  for(let ti = 0; ti <= T_end; ti += 2){
+    const x = xOf(ti);
+    s += `<line x1="${x}" y1="${yBot2}" x2="${x}" y2="${yBot2+5}" stroke="#8f99a8"/>`;
+    s += `<text x="${x}" y="${yBot2+18}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${ti}s</text>`;
+  }
+  s += `<text x="${W/2}" y="${H-10}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">time</text>`;
+
+  svg.innerHTML = s;
+}
+
+function render(){
+  const data = simulate();
+  drawPlot(data);
+}
+render();
+</script>
+</body></html>

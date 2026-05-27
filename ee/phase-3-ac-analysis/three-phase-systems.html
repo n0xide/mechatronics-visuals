@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Three-Phase Systems — visual</title>
+<style>
+:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,Segoe UI,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:14px 0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.control .val{font:600 13px ui-monospace,monospace;color:var(--accent3)}
+.control input[type=range]{width:100%;accent-color:var(--accent)}
+.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:12px ui-monospace,monospace}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;margin:14px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+.figure-grid{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+@media (max-width:760px){.figure-grid{grid-template-columns:1fr}}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}.panel.note{border-left:3px solid var(--accent)}
+.panel h3{margin-top:0}
+.scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:14px 0}
+.score-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center}
+.score-card.hi{border-color:var(--accent3)}.score-card.lo{border-color:var(--warn)}
+.score-num{font:700 20px ui-monospace,Menlo,monospace;color:var(--accent3);margin:6px 0}
+.score-num.warn{color:var(--warn)}.score-num.mid{color:var(--accent2)}
+.score-lbl{color:var(--fg-dim);font-size:11px;font-family:ui-monospace,monospace;text-transform:uppercase;letter-spacing:.4px}
+.score-lbl.unit{text-transform:none;letter-spacing:0}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+.deriv b{color:var(--fg-bright)}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,monospace;color:var(--accent2)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>Three-Phase Systems — Y, Δ, line vs phase, and why √3 keeps showing up</h1>
+<p class="lede">Three-phase power transmits ~3× more power than single-phase with the same conductor cross-section + insulation. Every industrial motor, every grid-tied inverter, every utility transformer is three-phase. The math has a single recurring constant — √3 ≈ 1.732 — that ties line-to-line voltage to line-to-neutral voltage, and total power to per-phase power. This visual shows the three sinusoids in time, the three phasors as vectors, computes V_LL / I_L / P / Q / S, draws balanced vs unbalanced neutral currents, and shows the rectified DC output of a 6-pulse bridge.</p>
+
+<div class="anchors">
+<span class="anchor"><b>V_LL = √3 · V_LN</b> (for Y connection)</span>
+<span class="anchor"><b>I_L = √3 · I_phase</b> (for Δ connection)</span>
+<span class="anchor"><b>P_3φ = √3 · V_LL · I_L · cos(φ)</b></span>
+<span class="anchor"><b>120°</b> phase shift between A, B, C</span>
+<span class="anchor"><b>I_N = 0</b> for balanced load (Y)</span>
+<span class="anchor"><b>V_DC, 6-pulse</b> = (3√2/π) · V_LL ≈ 1.35 · V_LL</span>
+</div>
+
+<h2>Interactive — sweep load + connection</h2>
+
+<div class="controls">
+<div class="control"><label>Line-to-neutral V<sub>LN</sub> (V RMS)</label><input id="Vln" type="range" min="50" max="400" value="120" step="5" oninput="render()"><span class="val" id="vVln">120</span></div>
+<div class="control"><label>Frequency f (Hz)</label><input id="f" type="range" min="30" max="400" value="60" step="1" oninput="render()"><span class="val" id="vF">60</span></div>
+<div class="control"><label>Load |Z| per phase (Ω)</label><input id="Z" type="range" min="1" max="100" value="10" step="0.5" oninput="render()"><span class="val" id="vZ">10</span></div>
+<div class="control"><label>Power factor cos(φ)</label><input id="pf" type="range" min="0.1" max="1" value="0.85" step="0.01" oninput="render()"><span class="val" id="vPf">0.85</span></div>
+<div class="control"><label>Connection</label><select id="conn" onchange="render()">
+  <option value="Y" selected>Y (Wye / Star, 4-wire)</option>
+  <option value="D">Δ (Delta, 3-wire)</option>
+</select></div>
+<div class="control"><label>Balance</label><select id="bal" onchange="render()">
+  <option value="bal" selected>Balanced</option>
+  <option value="unbalA">A overloaded (Z_A = ½·Z)</option>
+  <option value="lossB">B disconnected (open-phase)</option>
+</select></div>
+</div>
+
+<div class="scoreboard">
+<div class="score-card"><div class="score-lbl">V<sub>LL</sub> (line-line)</div><div class="score-num" id="vVll">—</div><div class="score-lbl unit">V RMS</div></div>
+<div class="score-card"><div class="score-lbl">I<sub>L</sub> (line)</div><div class="score-num" id="vIl">—</div><div class="score-lbl unit">A RMS</div></div>
+<div class="score-card"><div class="score-lbl">P<sub>3φ</sub> real</div><div class="score-num" id="vP">—</div><div class="score-lbl unit">W</div></div>
+<div class="score-card"><div class="score-lbl">Q<sub>3φ</sub> reactive</div><div class="score-num" id="vQ">—</div><div class="score-lbl unit">VAR</div></div>
+<div class="score-card" id="inCard"><div class="score-lbl">I<sub>N</sub> neutral</div><div class="score-num" id="vIn">—</div><div class="score-lbl unit">A RMS</div></div>
+<div class="score-card"><div class="score-lbl">V<sub>DC</sub> (6-pulse bridge)</div><div class="score-num" id="vVdc">—</div><div class="score-lbl unit">V</div></div>
+</div>
+
+<div class="figure"><svg id="time" viewBox="0 0 900 320" width="100%"></svg></div>
+<div class="figure-grid">
+<div class="figure"><svg id="phasor" viewBox="0 0 460 360" width="100%"></svg></div>
+<div class="figure"><svg id="rectified" viewBox="0 0 460 360" width="100%"></svg></div>
+</div>
+
+<h2>The math behind 3-phase</h2>
+<div class="deriv">
+<span class="step">Three sinusoids 120° apart (positive sequence A-B-C):</span>
+<span class="step">  v_A(t) = V_m · sin(ωt)</span>
+<span class="step">  v_B(t) = V_m · sin(ωt − 120°)</span>
+<span class="step">  v_C(t) = V_m · sin(ωt − 240°) = V_m · sin(ωt + 120°)</span>
+<span class="step"></span>
+<span class="step">Sum at any instant:  v_A + v_B + v_C = 0</span>
+<span class="step">⇒ If load is balanced, neutral current is also zero.</span>
+<span class="step"></span>
+<span class="step"><b>Y (wye) connection:</b></span>
+<span class="step">  V_phase = V_LN  (per-phase voltage to neutral)</span>
+<span class="step">  V_line  = V_LL = √3 · V_LN     ⇐ 3-phase magic</span>
+<span class="step">  I_phase = I_line = I_L</span>
+<span class="step"></span>
+<span class="step"><b>Δ (delta) connection:</b></span>
+<span class="step">  V_phase = V_LL    (across the delta winding)</span>
+<span class="step">  V_line  = V_LL    (same as winding)</span>
+<span class="step">  I_phase = I_LL / √3</span>
+<span class="step">  I_line  = √3 · I_phase</span>
+<span class="step"></span>
+<span class="step"><b>Power in either connection:</b></span>
+<span class="step">  P_3φ = √3 · V_LL · I_L · cos(φ)     [W]</span>
+<span class="step">  Q_3φ = √3 · V_LL · I_L · sin(φ)     [VAR]</span>
+<span class="step">  S_3φ = √3 · V_LL · I_L = √(P² + Q²)  [VA]</span>
+<span class="step"></span>
+<span class="step">Note: at any instant, p_3φ(t) is constant (for balanced sinusoidal). No 100/120 Hz ripple as in single-phase.</span>
+<span class="step">⇒ smaller bulk capacitor needed in 3-phase rectifiers; motors get smoother torque.</span>
+<span class="step"></span>
+<span class="step"><b>6-pulse full-bridge rectifier (B6 / Graetz):</b></span>
+<span class="step">  V_DC_avg = (3√2 / π) · V_LL  ≈  1.35 · V_LL</span>
+<span class="step">  Ripple frequency = 6 · f   (six commutations per fundamental cycle)</span>
+<span class="step">  Ripple amplitude (peak-peak before filter) ≈ V_LL · (1 − cos(30°)) ≈ 13.4% of V_LL_peak</span>
+</div>
+
+<h2>Why three phases instead of one?</h2>
+<table>
+<tr><th>Property</th><th>1-phase</th><th>3-phase</th></tr>
+<tr><td>Conductors for same P</td><td>2 (live + neutral)</td><td>3 or 4 (3 lines + opt. neutral) — uses 25% less copper for same power</td></tr>
+<tr><td>Instantaneous power</td><td>Pulses at 2f (zero crossings)</td><td>Constant — smooth motor torque, smaller filter caps</td></tr>
+<tr><td>Rotating magnetic field</td><td>Pulsating only — induction motor can't self-start without help</td><td>Naturally rotating — self-starting induction motors</td></tr>
+<tr><td>Voltage / amperage tradeoff</td><td>One value</td><td>Two: V_LN (electronics) and V_LL = √3·V_LN (motors)</td></tr>
+<tr><td>Power for given gauge</td><td>P = V·I·cos(φ)</td><td>P = √3·V_LL·I_L·cos(φ) — ~70% more for same V_LN</td></tr>
+<tr><td>Grid tie-in</td><td>One inverter</td><td>3 phase legs with coordinated PWM (SVPWM)</td></tr>
+</table>
+
+<h2>Y vs Δ — when to use which</h2>
+<table>
+<tr><th>Aspect</th><th>Y (wye / star)</th><th>Δ (delta)</th></tr>
+<tr><td>Has neutral?</td><td>Yes (center point)</td><td>No</td></tr>
+<tr><td>Common voltages</td><td>4-wire systems: 120/208 V (US res. high-leg), 230/400 V (EU)</td><td>3-wire systems: 480 V (US industrial), 415 V (motors)</td></tr>
+<tr><td>Per-phase voltage</td><td>V_LL / √3 (lower stress)</td><td>V_LL (full line voltage)</td></tr>
+<tr><td>Per-phase current</td><td>I_L (full line current)</td><td>I_L / √3 (lower stress)</td></tr>
+<tr><td>3rd harmonic behavior</td><td>Circulates in neutral; can be filtered</td><td>Circulates in the closed delta loop; doesn't leave</td></tr>
+<tr><td>Ground fault</td><td>Visible (current returns through neutral)</td><td>Harder to detect (no reference to ground)</td></tr>
+<tr><td>Motor starting</td><td>Y-start (low torque, low current), then Δ-run</td><td>Higher running torque + current</td></tr>
+<tr><td>Transformer primary common</td><td>Y for distribution (HV side often)</td><td>Δ for industrial loads (LV side often)</td></tr>
+</table>
+
+<h2>3-phase rectification — why DC drives love it</h2>
+<div class="panel note">
+<p>A 6-pulse diode bridge (B6, also called Graetz bridge) feeds DC from 3-phase. Twelve commutation points per cycle (six on positive half, six on negative half) make the unfiltered DC much smoother than single-phase. This is the input stage of every industrial VFD (variable frequency drive).</p>
+<h3>Key numbers (continuous-conduction mode)</h3>
+<div class="deriv">
+<span class="step">V_DC_avg  = (3·√2 / π) · V_LL  ≈ 1.35 · V_LL</span>
+<span class="step">V_DC_peak = √2 · V_LL                  (the actual line-line peak)</span>
+<span class="step">Ripple frequency  = 6·f                (360 Hz for 60 Hz grid; 300 Hz for 50 Hz)</span>
+<span class="step">Ripple peak-to-peak (unfiltered) ≈ 13.4% of V_DC_peak</span>
+<span class="step">For 480 V_LL grid:  V_DC ≈ 648 V (avg), 679 V (peak)</span>
+</div>
+<p>Compare to single-phase: V_DC_avg = (2√2/π)·V_AC ≈ 0.90·V_AC, ripple at 2f, ~100% peak-to-peak unfiltered. Three-phase needs only ~10% of the bulk capacitance of single-phase for the same ripple voltage.</p>
+</div>
+
+<h2>Unbalanced loads + the neutral</h2>
+<div class="panel warn">
+<p>A balanced 3-phase Y load draws equal current on each phase, with phases 120° apart — they vector-sum to zero, so the neutral conductor carries no current. The moment loads become unbalanced (one phase has more load than the others, or a single-phase load is added between one phase and neutral), the neutral conductor carries the residual.</p>
+<h3>Worst cases</h3>
+<ul style="padding-left:18px;color:var(--fg-dim);font-size:12.5px">
+<li><b>Single-phase load only</b>: I_N = I_phase (full current returns through neutral)</li>
+<li><b>Two phases loaded</b>: I_N = phasor sum; up to ~I_phase if loads are equal</li>
+<li><b>Non-linear loads (rectifiers, lighting ballasts)</b>: 3rd-harmonic currents <em>add</em> in the neutral (don't cancel like fundamental). A neutral that's sized for fundamental balance can overheat from triplen harmonics.</li>
+<li><b>Open phase (B disconnected)</b>: A and C carry the entire load; appliance motors see severely distorted voltage and may stall.</li>
+</ul>
+<h3>Practical rule</h3>
+<p>For modern data-center and office wiring (lots of non-linear loads), code requires the neutral to be sized <b>200% of the phase conductor</b> in extreme cases. NEC 220.61(C)(2) and similar.</p>
+</div>
+
+<h2>Worked example — 480V industrial chiller motor</h2>
+<div class="panel tip">
+<h3>Spec</h3>
+<p>Three-phase 480 V<sub>LL</sub>, 60 Hz grid. Motor nameplate: 50 hp, 0.85 PF lagging, 92% efficiency, Y-connected stator.</p>
+<h3>Run the math</h3>
+<div class="deriv">
+<span class="step">P_out = 50 hp × 746 W/hp = 37,300 W (mechanical)</span>
+<span class="step">P_in = P_out / η = 37,300 / 0.92 = 40,540 W (electrical real power)</span>
+<span class="step">S = P / cos(φ) = 40,540 / 0.85 = 47,700 VA</span>
+<span class="step">I_L = S / (√3 · V_LL) = 47,700 / (1.732 · 480) = 57.4 A</span>
+<span class="step">Q = √(S² − P²) = √(47700² − 40540²) = 25,180 VAR</span>
+<span class="step">V_LN = V_LL / √3 = 480 / 1.732 = 277 V (each phase to neutral)</span>
+</div>
+<p>For VFD with 6-pulse rectifier on 480V input: DC bus ≈ 1.35 · 480 = 648 V — exactly why standard IGBTs in industrial drives are 1200 V rated (~2× margin over operating).</p>
+</div>
+
+<h2>Common pitfalls</h2>
+<ul class="notice">
+<li><b>Confusing line and phase quantities</b> — for Y: V_LL = √3·V_LN, I_L = I_phase. For Δ: V_LL = V_phase, I_L = √3·I_phase. Halving these the wrong way gives 3× current overload predictions.</li>
+<li><b>Forgetting cos(φ)</b> — apparent power S in VA tells you wire size; real power P in W tells you the bill. Industrial loads with PF = 0.7 draw 43% more current than the W rating suggests.</li>
+<li><b>Phase rotation</b> — A-B-C (positive sequence) vs A-C-B (negative). Motors run backwards if rotation is reversed; some test equipment requires positive only. Always verify rotation before commissioning.</li>
+<li><b>Neutral oversized for harmonics</b> — non-linear loads (rectifiers, LED drivers) produce triplen harmonics that <em>add</em> in the neutral. A B-rated panel may need a doubled neutral.</li>
+<li><b>Single-phase load on a 3-phase circuit</b> — fine on a 4-wire Y system, but on a 3-wire Δ you must use line-to-line (V_LL voltage), not line-to-fake-neutral.</li>
+<li><b>Resonance with PFC capacitors</b> — adding power-factor correction caps can resonate with the source impedance + transformer leakage at a low harmonic (often 5th, 7th, 11th). Always model before installing &gt; 100 kVAR.</li>
+<li><b>"Half-bridge inverter" needs full DC bus</b> — when designing the inverter side, remember V_DC ≥ √2·V_LL (peak) is needed to reproduce line-line voltage at the output. Below that, you can't fully modulate.</li>
+<li><b>240 V split-phase ≠ 2-phase</b> — US residential is single-phase center-tapped (180° between L1 and L2, not 90°). Don't confuse with real 2-phase systems (now obsolete).</li>
+</ul>
+
+<h2>Cheat sheet — standard 3-phase voltage systems</h2>
+<table>
+<tr><th>System</th><th>V<sub>LN</sub></th><th>V<sub>LL</sub></th><th>Usage</th></tr>
+<tr><td>120 / 208 V (US 4-wire)</td><td>120 V</td><td>208 V</td><td>US commercial / office; lighting + receptacles</td></tr>
+<tr><td>277 / 480 V (US industrial)</td><td>277 V</td><td>480 V</td><td>US industrial motors, building HVAC, ballast lighting</td></tr>
+<tr><td>230 / 400 V (EU residential/commercial)</td><td>230 V</td><td>400 V</td><td>Most of Europe; single-phase outlets at 230 V LN</td></tr>
+<tr><td>240 / 415 V (UK industrial)</td><td>240 V</td><td>415 V</td><td>UK / older Commonwealth standards</td></tr>
+<tr><td>347 / 600 V (Canadian industrial)</td><td>347 V</td><td>600 V</td><td>Canadian commercial / industrial; HVAC standard</td></tr>
+<tr><td>2400 / 4160 V</td><td>2400 V</td><td>4160 V</td><td>Plant distribution, large motors (50-1000 hp)</td></tr>
+<tr><td>69 / 138 kV</td><td>69 kV</td><td>138 kV</td><td>Subtransmission lines</td></tr>
+</table>
+
+<footer>Cross-links: <a href="sinusoid-phasor-explorer.html">Sinusoid + Phasor</a> · <a href="phasor-rotation.html">Phasor Rotation</a> · <a href="power-factor-triangle.html">Power Factor</a> · <a href="rlc-resonance.html">RLC Resonance</a> · <a href="../phase-6-power-electronics/buck-converter.html">Buck Converter</a> · <a href="../../em/phase-3-motor-control/foc-overview.html">FOC Overview</a></footer>
+
+</main>
+<script>
+const el = id => document.getElementById(id);
+
+function render(){
+  const Vln = parseFloat(el('Vln').value);
+  const f = parseFloat(el('f').value);
+  const Z = parseFloat(el('Z').value);
+  const pf = parseFloat(el('pf').value);
+  const conn = el('conn').value;
+  const bal = el('bal').value;
+
+  el('vVln').textContent = Vln;
+  el('vF').textContent = f;
+  el('vZ').textContent = Z.toFixed(1);
+  el('vPf').textContent = pf.toFixed(2);
+
+  const Vll = Vln * Math.sqrt(3);
+  // Phase current magnitude (balanced):
+  let Iphase, Iline;
+  if(conn === 'Y'){
+    Iphase = Vln / Z;
+    Iline = Iphase;
+  } else {
+    Iphase = Vll / Z;
+    Iline = Iphase * Math.sqrt(3);
+  }
+
+  // Effective per-phase impedance for the unbalanced cases
+  let Z_A = Z, Z_B = Z, Z_C = Z;
+  if(bal === 'unbalA'){ Z_A = Z / 2; }
+  if(bal === 'lossB'){ Z_B = 1e12; }
+
+  // Per-phase currents for Y connection (use Vln/Z_x at 120° offsets)
+  // Phasors: A=Vln∠0°, B=Vln∠-120°, C=Vln∠+120°
+  const sin = Math.sin, cos = Math.cos, PI = Math.PI;
+  const phi = Math.acos(pf);  // lagging angle
+  const phaseRad = [0, -2*PI/3, 2*PI/3];
+  const Zs = [Z_A, Z_B, Z_C];
+  // Current at each phase: |V|/|Z| at angle (phaseV - phi)
+  const Iphasors = Zs.map((Zi, i) => ({
+    mag: Vln / Zi,
+    ang: phaseRad[i] - phi
+  }));
+
+  // Neutral current = -(I_A + I_B + I_C) (sum of phase currents, with sign for KCL)
+  let IN_real = 0, IN_imag = 0;
+  for(const ip of Iphasors){
+    IN_real += ip.mag * Math.cos(ip.ang);
+    IN_imag += ip.mag * Math.sin(ip.ang);
+  }
+  const IN_mag = Math.sqrt(IN_real*IN_real + IN_imag*IN_imag);
+
+  // Power
+  let P_total;
+  if(bal === 'bal'){
+    P_total = 3 * Vln * Iphase * pf;
+  } else {
+    // Sum per-phase real power
+    P_total = 0;
+    for(let i = 0; i < 3; i++){
+      P_total += Vln * Iphasors[i].mag * pf;  // V·I·cos(φ_v - φ_i) but we set I angle = phaseV - phi
+    }
+  }
+  const Q_total = Math.sqrt(3) * Vll * (bal === 'bal' ? Iline : (Iphasors[0].mag + Iphasors[1].mag + Iphasors[2].mag)/3 * (conn === 'Y' ? 1 : Math.sqrt(3))) * Math.sin(phi);
+  // Use balanced Iline for V_DC calc regardless
+  const Vdc = 1.35 * Vll;
+
+  el('vVll').textContent = Vll.toFixed(0);
+  el('vIl').textContent = Iline.toFixed(1);
+  el('vP').textContent = P_total < 1e3 ? P_total.toFixed(0) : (P_total/1e3).toFixed(2) + 'k';
+  el('vQ').textContent = Q_total < 1e3 ? Q_total.toFixed(0) : (Q_total/1e3).toFixed(2) + 'k';
+  el('vIn').textContent = IN_mag.toFixed(2);
+  el('vVdc').textContent = Vdc.toFixed(0);
+
+  const inCard = el('inCard');
+  const inNum = el('vIn');
+  inCard.classList.remove('hi','lo');
+  inNum.classList.remove('warn','mid');
+  if(IN_mag < 0.1) inCard.classList.add('hi');
+  else if(IN_mag < Iphase * 0.5) inNum.classList.add('mid');
+  else { inCard.classList.add('lo'); inNum.classList.add('warn'); }
+
+  drawTime(Vln, f, Iphasors);
+  drawPhasor(Vln, Vll, Iphasors, phi);
+  drawRectified(Vll, f);
+}
+
+function drawTime(Vln, f, Iphasors){
+  const svg = el('time');
+  const W = 900, H = 320, M = 50;
+  // Two periods
+  const T = 1 / f;
+  const tMax = 2 * T;
+  const Vmax = Vln * Math.sqrt(2);  // peak per phase
+  const xOf = t => M + (t / tMax) * (W - 2*M);
+  const yOf = v => H/2 - (v / Vmax) * (H - 2*M - 30) / 2;
+
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">Three-phase voltages — v_A, v_B, v_C (two cycles)</text>`;
+  // Zero line
+  s += `<line x1="${M}" y1="${H/2}" x2="${W-M}" y2="${H/2}" stroke="#8f99a8"/>`;
+  s += `<line x1="${M}" y1="${M+10}" x2="${M}" y2="${H-M}" stroke="#8f99a8"/>`;
+
+  // Three sinusoids
+  const colors = ['#5ec8ff', '#ffb86c', '#a3e635'];
+  const labels = ['A', 'B', 'C'];
+  const phases = [0, -2*Math.PI/3, 2*Math.PI/3];
+  for(let p = 0; p < 3; p++){
+    let path = '';
+    for(let i = 0; i <= 200; i++){
+      const t = (i / 200) * tMax;
+      const v = Vmax * Math.sin(2 * Math.PI * f * t + phases[p]);
+      const x = xOf(t), y = yOf(v);
+      path += (i === 0 ? 'M ' : 'L ') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+    }
+    s += `<path d="${path}" fill="none" stroke="${colors[p]}" stroke-width="2"/>`;
+    // Label at start
+    s += `<text x="${M+10+p*60}" y="${M+24}" fill="${colors[p]}" font-family="ui-monospace,monospace" font-size="12" font-weight="600">v_${labels[p]}</text>`;
+  }
+
+  // V_AB (line-to-line) overlay — Vab(t) = vA - vB
+  let abPath = '';
+  for(let i = 0; i <= 200; i++){
+    const t = (i / 200) * tMax;
+    const va = Vmax * Math.sin(2 * Math.PI * f * t);
+    const vb = Vmax * Math.sin(2 * Math.PI * f * t + phases[1]);
+    const vab = va - vb;
+    const x = xOf(t), y = yOf(vab);
+    abPath += (i === 0 ? 'M ' : 'L ') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+  }
+  s += `<path d="${abPath}" fill="none" stroke="#c084fc" stroke-width="1.5" stroke-dasharray="3,2"/>`;
+  s += `<text x="${M+200}" y="${M+24}" fill="#c084fc" font-family="ui-monospace,monospace" font-size="12">v_AB = √3 · V_LN (dashed)</text>`;
+
+  // V-axis labels
+  s += `<text x="${M-6}" y="${yOf(Vmax)+3}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">+${Vmax.toFixed(0)}</text>`;
+  s += `<text x="${M-6}" y="${yOf(-Vmax)+3}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">−${Vmax.toFixed(0)}</text>`;
+  s += `<text x="${M-6}" y="${H/2+3}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">0</text>`;
+  // T-axis labels
+  s += `<text x="${xOf(0)}" y="${H-M+15}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">0</text>`;
+  s += `<text x="${xOf(T)}" y="${H-M+15}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">T = ${(T*1000).toFixed(1)} ms</text>`;
+  s += `<text x="${xOf(2*T)}" y="${H-M+15}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">2T</text>`;
+
+  svg.innerHTML = s;
+}
+
+function drawPhasor(Vln, Vll, Iphasors, phi){
+  const svg = el('phasor');
+  const W = 460, H = 360;
+  const cx = W/2, cy = H/2 + 10;
+  const Vscale = (Math.min(W, H) / 2 - 60) / Vln;
+
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">Phasor diagram</text>`;
+  // Axes
+  s += `<line x1="40" y1="${cy}" x2="${W-40}" y2="${cy}" stroke="#2a313c"/>`;
+  s += `<line x1="${cx}" y1="40" x2="${cx}" y2="${H-30}" stroke="#2a313c"/>`;
+
+  // Three voltage phasors V_A, V_B, V_C
+  const phasors = [
+    {V: Vln, ang: 0, color: '#5ec8ff', label: 'V_A'},
+    {V: Vln, ang: -2*Math.PI/3, color: '#ffb86c', label: 'V_B'},
+    {V: Vln, ang: 2*Math.PI/3, color: '#a3e635', label: 'V_C'}
+  ];
+  for(const p of phasors){
+    const x = cx + p.V * Vscale * Math.cos(p.ang);
+    const y = cy - p.V * Vscale * Math.sin(p.ang);
+    s += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="${p.color}" stroke-width="2.5"/>`;
+    s += `<polygon points="${x},${y} ${x-6*Math.cos(p.ang)+3*Math.sin(p.ang)},${y+6*Math.sin(p.ang)+3*Math.cos(p.ang)} ${x-6*Math.cos(p.ang)-3*Math.sin(p.ang)},${y+6*Math.sin(p.ang)-3*Math.cos(p.ang)}" fill="${p.color}"/>`;
+    s += `<text x="${cx + (p.V+25) * Vscale * Math.cos(p.ang)}" y="${cy - (p.V+25) * Vscale * Math.sin(p.ang) + 4}" text-anchor="middle" fill="${p.color}" font-family="ui-monospace,monospace" font-size="12" font-weight="600">${p.label}</text>`;
+  }
+
+  // V_AB = V_A - V_B  (drawn as a phasor from V_B tip to V_A tip, then translated to origin)
+  // Magnitude = √3 · Vln, angle = 30° (positive sequence)
+  const Vab_mag = Vln * Math.sqrt(3);
+  const Vab_ang = Math.PI / 6;
+  const xAB = cx + Vab_mag * Vscale * Math.cos(Vab_ang);
+  const yAB = cy - Vab_mag * Vscale * Math.sin(Vab_ang);
+  s += `<line x1="${cx}" y1="${cy}" x2="${xAB}" y2="${yAB}" stroke="#c084fc" stroke-width="1.5" stroke-dasharray="3,2"/>`;
+  s += `<text x="${xAB+10}" y="${yAB+4}" fill="#c084fc" font-family="ui-monospace,monospace" font-size="11">V_AB = √3·V_LN</text>`;
+
+  // Origin label
+  s += `<circle cx="${cx}" cy="${cy}" r="3" fill="#fff"/>`;
+  s += `<text x="${cx-12}" y="${cy+14}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">N</text>`;
+
+  // Scale text
+  s += `<text x="20" y="${H-12}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">|V_LN| = ${Vln} V · |V_LL| = ${Vab_mag.toFixed(0)} V · angle V_AB = +30° vs V_A</text>`;
+
+  svg.innerHTML = s;
+}
+
+function drawRectified(Vll, f){
+  const svg = el('rectified');
+  const W = 460, H = 360, M = 40;
+  const T = 1 / f;
+  const tMax = 2 * T;
+  const Vpk = Vll * Math.sqrt(2);
+  const xOf = t => M + (t / tMax) * (W - 2*M);
+  const yOf = v => H - M - (v / (Vpk * 1.1)) * (H - 2*M - 30);
+
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">6-pulse bridge V_DC (unfiltered)</text>`;
+  // Axes
+  s += `<line x1="${M}" y1="${H-M}" x2="${W-M}" y2="${H-M}" stroke="#8f99a8"/>`;
+  s += `<line x1="${M}" y1="${M+30}" x2="${M}" y2="${H-M}" stroke="#8f99a8"/>`;
+
+  // 6 line-line voltages: vAB, vAC, vBC, vBA, vCA, vCB  (and their negatives)
+  // At each instant, V_DC = max of |vLL_xy| (across all six diodes)
+  // Compute V_DC(t) by sampling
+  let dcPath = '';
+  for(let i = 0; i <= 400; i++){
+    const t = (i / 400) * tMax;
+    const va = Math.sqrt(2) * (Vll/Math.sqrt(3)) * Math.sin(2 * Math.PI * f * t);
+    const vb = Math.sqrt(2) * (Vll/Math.sqrt(3)) * Math.sin(2 * Math.PI * f * t - 2*Math.PI/3);
+    const vc = Math.sqrt(2) * (Vll/Math.sqrt(3)) * Math.sin(2 * Math.PI * f * t + 2*Math.PI/3);
+    // V_DC = max - min of three phase voltages (envelope)
+    const vMax = Math.max(va, vb, vc);
+    const vMin = Math.min(va, vb, vc);
+    const vdc = vMax - vMin;
+    const x = xOf(t), y = yOf(vdc);
+    dcPath += (i === 0 ? 'M ' : 'L ') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+  }
+  s += `<path d="${dcPath}" fill="none" stroke="#a3e635" stroke-width="2.5"/>`;
+
+  // Average line
+  const Vdc_avg = (3 * Math.sqrt(2) / Math.PI) * Vll;
+  s += `<line x1="${M}" y1="${yOf(Vdc_avg)}" x2="${W-M}" y2="${yOf(Vdc_avg)}" stroke="#5ec8ff" stroke-width="1.5" stroke-dasharray="3,2"/>`;
+  s += `<text x="${W-M-4}" y="${yOf(Vdc_avg)-4}" text-anchor="end" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="10">V_DC_avg = ${Vdc_avg.toFixed(0)} V</text>`;
+  // Peak line
+  s += `<line x1="${M}" y1="${yOf(Vpk)}" x2="${W-M}" y2="${yOf(Vpk)}" stroke="#ffb86c" stroke-width="1" stroke-dasharray="2,3"/>`;
+  s += `<text x="${W-M-4}" y="${yOf(Vpk)-4}" text-anchor="end" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="10">V_peak = ${Vpk.toFixed(0)} V</text>`;
+
+  // Time markers (ripple period = T/6)
+  for(let k = 0; k <= 12; k++){
+    const t = (k / 12) * tMax;
+    const x = xOf(t);
+    s += `<line x1="${x}" y1="${H-M}" x2="${x}" y2="${H-M+4}" stroke="#8f99a8"/>`;
+  }
+  s += `<text x="${M}" y="${H-M+18}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">0</text>`;
+  s += `<text x="${xOf(T)}" y="${H-M+18}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">T</text>`;
+  s += `<text x="${xOf(2*T)}" y="${H-M+18}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">2T</text>`;
+
+  s += `<text x="${W/2}" y="${H-10}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">ripple = 6f = ${(6*f).toFixed(0)} Hz</text>`;
+
+  svg.innerHTML = s;
+}
+
+render();
+</script>
+</body></html>
