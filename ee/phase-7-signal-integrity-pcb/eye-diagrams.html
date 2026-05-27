@@ -314,7 +314,9 @@ function drawEye(V_rx_pp, sigma_mV, jitFrac, mask){
   // Y axis: ±V_rx_pp range, with margin
   const maxV = V_rx_pp * 0.7;
   const yOf = v => cy - v * (H - 2*M) / 2 / maxV;
-  const xOf = u => M + (u + 0.5) * (W - 2*M);
+  // x maps u in [0, 1] to the full plot width — bit transitions at u=0 and u=1,
+  // eye opening centered at u=0.5 = horizontal center of the plot.
+  const xOf = u => M + u * (W - 2*M);
 
   let s = '';
   // Axes
@@ -337,15 +339,16 @@ function drawEye(V_rx_pp, sigma_mV, jitFrac, mask){
     const prev = Math.random() > 0.5 ? 1 : -1;
     const curr = Math.random() > 0.5 ? 1 : -1;
     const next = Math.random() > 0.5 ? 1 : -1;
-    // Edges shift by jitter
-    const e1 = -0.05 + (Math.random() - 0.5) * 2 * jitFrac;
-    const e2 = 0.95 + (Math.random() - 0.5) * 2 * jitFrac;
+    // Edges shift by jitter — transitions nominally at u=0 (start) and u=1 (end)
+    const e1 = 0.0 + (Math.random() - 0.5) * 2 * jitFrac;
+    const e2 = 1.0 + (Math.random() - 0.5) * 2 * jitFrac;
     // Voltage noise on each segment
     const n = () => (Math.random() - 0.5) * 2 * sigma_mV;
     const Vp = prev * Vhi + n();
     const Vc = curr * Vhi + n();
     const Vn = next * Vhi + n();
 
+    // Trace spans well past the visible plot so SVG clips cleanly; viewBox shows u in [0, 1].
     let d = `M ${xOf(-0.5).toFixed(1)},${yOf(Vp).toFixed(1)} L ${xOf(e1).toFixed(1)},${yOf(Vp).toFixed(1)} `;
     if(prev !== curr){
       d += `L ${xOf(e1 + 0.05).toFixed(1)},${yOf(Vc).toFixed(1)} `;

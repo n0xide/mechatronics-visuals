@@ -31,9 +31,9 @@
     font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
 
   .tabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:18px;
-    overflow-x:auto;white-space:nowrap}
+    flex-wrap:wrap}
   .tab{background:transparent;color:var(--fg-dim);border:none;
-    padding:10px 16px;font:13px ui-monospace,Menlo,monospace;cursor:pointer;
+    padding:10px 14px;font:13px ui-monospace,Menlo,monospace;cursor:pointer;
     border-bottom:2px solid transparent;white-space:nowrap}
   .tab:hover{color:var(--fg)}
   .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
@@ -144,8 +144,8 @@
     <h2>Trace width for current (IPC-2221 / IPC-2152)</h2>
     <div class="anchors">
       <span class="anchor"><b>1 oz Cu</b> = 35 µm thick</span>
-      <span class="anchor"><b>1 A external</b> needs ~0.4 mm (16 mil) on 1 oz</span>
-      <span class="anchor"><b>3 A external</b> needs ~1.4 mm (55 mil) on 1 oz</span>
+      <span class="anchor"><b>1 A external</b> needs ~0.30 mm (12 mil) on 1 oz</span>
+      <span class="anchor"><b>3 A external</b> needs ~1.4 mm (54 mil) on 1 oz</span>
       <span class="anchor">External traces handle <b>2×</b> the current of internal traces (better cooling)</span>
     </div>
 
@@ -875,25 +875,29 @@ function traceWidthCalc(I, dT, oz, layer){
 
 function tw_draw(I, dT, oz, layer, W_mm){
   const svg = document.getElementById('tw-svg');
-  const baseY = 100;
-  // Show cross-section of trace on board
+  const baseY = 80;
+  // Show cross-section of trace on board.
+  // Copper thickness is exaggerated 5× for visibility — real µm value shown in label.
   const pxPerMm = 60;
   const w_px = Math.min(W_mm * pxPerMm, 400);
-  const t_px = Math.max(oz * 6, 3);
+  const t_px = Math.max(oz * 14, 14);  // min 14 px so the trace + label are readable
   let s = '';
   // board substrate
-  s += `<rect x="80" y="${baseY+t_px}" width="440" height="50" fill="#3a4500" stroke="#5a6a00"/>`;
-  s += `<text x="300" y="${baseY+t_px+30}" class="axis-label" text-anchor="middle">FR-4 substrate</text>`;
+  s += `<rect x="80" y="${baseY+t_px}" width="440" height="60" fill="#3a4500" stroke="#5a6a00"/>`;
+  s += `<text x="300" y="${baseY+t_px+40}" class="axis-label" text-anchor="middle">FR-4 substrate</text>`;
   // copper trace
   s += `<rect x="${300-w_px/2}" y="${baseY}" width="${w_px}" height="${t_px}" fill="#d4a574" stroke="#a37844"/>`;
-  // width annotation
+  // width annotation (above trace)
   s += `<line x1="${300-w_px/2}" y1="${baseY-15}" x2="${300+w_px/2}" y2="${baseY-15}" class="axis"/>`;
   s += `<line x1="${300-w_px/2}" y1="${baseY-20}" x2="${300-w_px/2}" y2="${baseY-10}" class="axis"/>`;
   s += `<line x1="${300+w_px/2}" y1="${baseY-20}" x2="${300+w_px/2}" y2="${baseY-10}" class="axis"/>`;
   s += `<text x="300" y="${baseY-22}" class="axis-label" text-anchor="middle">W = ${W_mm.toFixed(3)} mm = ${(W_mm*39.37).toFixed(1)} mil</text>`;
-  // thickness annotation
-  s += `<line x1="${300+w_px/2+10}" y1="${baseY}" x2="${300+w_px/2+10}" y2="${baseY+t_px}" class="axis"/>`;
-  s += `<text x="${300+w_px/2+15}" y="${baseY+t_px/2+4}" class="axis-label">t = ${(35*oz).toFixed(1)} µm (${oz} oz)</text>`;
+  // thickness annotation (right of trace, vertically centered, well clear of substrate)
+  const tArrowX = 300 + w_px/2 + 10;
+  s += `<line x1="${tArrowX}" y1="${baseY}" x2="${tArrowX}" y2="${baseY+t_px}" class="axis"/>`;
+  s += `<line x1="${tArrowX-4}" y1="${baseY}" x2="${tArrowX+4}" y2="${baseY}" class="axis"/>`;
+  s += `<line x1="${tArrowX-4}" y1="${baseY+t_px}" x2="${tArrowX+4}" y2="${baseY+t_px}" class="axis"/>`;
+  s += `<text x="${tArrowX+8}" y="${baseY+t_px/2+4}" class="axis-label">t = ${(35*oz).toFixed(1)} µm (${oz} oz, drawn 5× for scale)</text>`;
   // current arrow
   s += `<text x="${300}" y="${baseY-40}" fill="var(--accent3)" font-family="ui-monospace,monospace" font-size="13" text-anchor="middle">I = ${I.toFixed(1)} A, ΔT = ${dT} °C, ${layer}</text>`;
   svg.innerHTML = s;
