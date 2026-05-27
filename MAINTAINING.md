@@ -1,6 +1,6 @@
 # Maintaining this bundle
 
-This is the **published mirror** of HTML visuals from `mechatronics/study/docs/{ee,me,em}/visuals/` and `_extras/` in the source workspace. The source is canonical; this bundle is a derivative.
+This is the **published mirror** of HTML visuals from `mechatronics/study/docs/{ee,me,em}/visuals/` and `extras/` in the source workspace. The source is canonical; this bundle is a derivative.
 
 Live site: <https://n0xide.github.io/mechatronics-visuals/>
 
@@ -9,7 +9,7 @@ Live site: <https://n0xide.github.io/mechatronics-visuals/>
 - **Edit in the source workspace first**, then mirror the change into this bundle.
 - The bundle's `index.html` has a `VISUALS` data array that lists every visual by `{discipline, phase, filename, title, description}`. When you add/remove/rename a visual, update this array.
 - The folder layout here is flat: `ee/phase-N-xxx/file.html`. The source workspace nests under `docs/<disc>/visuals/phase-N-xxx/file.html` — drop the `docs/` and `visuals/` parts when mirroring.
-- The `_extras/` folder in the source becomes `extras/` here (leading underscore breaks GitHub Pages' Jekyll layer).
+- The source `extras/` folder mirrors directly to bundle `extras/` (it used to be named `_extras/` in source — the leading underscore was a convention violation; promoted on 2026-05-27).
 
 ## Before pushing — integrity checklist
 
@@ -57,6 +57,33 @@ All three should pass before `git push`.
 
 Every visual in this bundle has a footer link with `target="_top"` going back to `../../index.html`. That's how clicking "back" inside an iframe-loaded visual returns to the SPA shell at the top level. Preserve that pattern when adding new visuals — don't strip the `target="_top"`.
 
+## Cross-link path conventions (read before adding cross-track links)
+
+The bundle layout is flat — `visuals-spa/<track>/<phase>/file.html`. The source layout has an extra segment — `docs/<track>/visuals/<phase>/file.html`. **Cross-links use bundle-relative paths**, which means the same `href` string resolves correctly in the bundle but not in the source-direct view. This is intentional: the bundle is what gets served; source-direct browsing of cross-track links is a non-goal.
+
+Conventions for a visual at `<track>/<phase>/X.html`:
+
+| Target | href format | Source-direct works? |
+|---|---|---|
+| Same phase, same track | `Y.html` | yes |
+| Different phase, same track | `../phase-N-foo/Y.html` | yes |
+| Different track | `../../<track>/phase-N-foo/Y.html` | no (resolves to `docs/<track>/<phase>/<other-track>/...`) |
+| `extras/` from a phase visual | `../../extras/Y.html` | no (same reason) |
+| Another extras from extras | `Y.html` | yes |
+| Phase visual from an extras | `../<track>/phase-N-foo/Y.html` | no |
+
+Validate after editing: run `node mechatronics/study/_audit_links.js` from the study root. It walks every source `.html`, categorizes its links, and reports which resolve in source vs bundle. The "true orphans" line (broken in both) must stay at 0; the "break in source only" count is expected to grow as the catalog grows.
+
+## Special files — intentional source/bundle drift
+
+These three were promoted from `docs/_extras/` to `docs/extras/` but their **bundle copies are NOT verbatim mirrors of source**. The bundle versions were hand-rewritten to render correctly inside the SPA iframe (back-links use `target="_top"` and `../index.html`; phase-deep links use `../index.html#<disc>-<n>` anchors instead of `../<track>/phase-N-...md` paths). A naive `cp` from source over bundle for these files will clobber those rewrites and break the bundle.
+
+- `extras/study-path.html`
+- `extras/circuits-cookbook.html`
+- `extras/constants-units.html`
+
+If you edit the source of any of these, manually re-apply the link rewrites in the bundle copy (or skip the mirror and accept the drift). Long-term fix would be a build script that does the rewrites systematically, but for now both files are edited independently.
+
 ## Style is local
 
 This bundle uses a dark monospace theme — CSS variables `--bg`, `--accent`, `--ee`, `--me`, `--em`, `--extras`, etc. live inline in `index.html` and in each visual's `<style>` block.
@@ -81,7 +108,7 @@ These visuals are derived from a personal mechatronics study workspace. The sour
 
 ```
 <workspace-root>/mechatronics/study/docs/{ee,me,em}/visuals/
-<workspace-root>/mechatronics/study/docs/_extras/
+<workspace-root>/mechatronics/study/docs/extras/
 ```
 
 See `docs/publish-pattern.md` in the source workspace for the canonical round-trip workflow agents follow.
