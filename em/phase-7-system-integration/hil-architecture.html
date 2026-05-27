@@ -1,85 +1,132 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hardware-in-the-Loop (HiL) Architecture — visual</title>
-<style>:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
-*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,sans-serif}
-main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+<style>
+:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,Segoe UI,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
 h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
 h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px}
 .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
 .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
 .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
 .anchor b{color:var(--accent2)}
-.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:14px 0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.control .val{font:600 13px ui-monospace,monospace;color:var(--accent3)}
+.control input[type=range]{width:100%;accent-color:var(--accent)}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;margin:14px 0}
 .figure svg{display:block;max-width:100%;height:auto}
 table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
 th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left;vertical-align:top}
 th{background:var(--bg-elev2);color:var(--fg-bright)}
 ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
 .panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
-.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}.panel.note{border-left:3px solid var(--accent)}
 .panel h3{margin-top:0}
+.scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:14px 0}
+.score-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center}
+.score-card.hi{border-color:var(--accent3)}
+.score-card.lo{border-color:var(--warn)}
+.score-num{font:700 22px ui-monospace,Menlo,monospace;color:var(--accent3);margin:6px 0}
+.score-num.warn{color:var(--warn)}.score-num.mid{color:var(--accent2)}
+.score-lbl{color:var(--fg-dim);font-size:11px;font-family:ui-monospace,monospace;text-transform:uppercase;letter-spacing:.4px}
+.score-lbl.unit{text-transform:none;letter-spacing:0}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,monospace;color:var(--accent2)}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
 footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
 footer a{color:var(--accent)}
 </style></head><body><main>
 
-<h1>Hardware-in-the-Loop (HiL) Architecture</h1>
-<p class="lede">HiL is the test bench every safety-critical embedded engineer reaches for after unit tests but before physical-rig testing. The MCU under test runs its real firmware. The mechanical / physical world it controls is simulated on a separate, faster computer that exchanges I/O with the MCU in real time. Result: thousands of test scenarios per day, including fault injection that would damage real hardware.</p>
+<h1>Hardware-in-the-Loop (HIL) Architecture</h1>
+<p class="lede">HIL is the test bench every safety-critical embedded engineer reaches for after unit tests but before physical-rig testing. The MCU under test runs its real firmware. The mechanical / physical world it controls is simulated on a separate, faster computer that exchanges I/O with the MCU in real time. Result: thousands of test scenarios per day, including fault injection that would damage real hardware.</p>
 
 <div class="anchors">
-<span class="anchor"><b>Real-time loop</b>: typ 1-10 kHz, &lt; 1 ms latency</span>
-<span class="anchor"><b>Plant model</b>: simulation of motors, batteries, environment</span>
-<span class="anchor"><b>Faults</b>: stuck sensor, open phase, short, voltage sag, all reproducible</span>
-<span class="anchor"><b>Used in</b>: auto/aero industry standard, ISO 26262 mandates</span>
+<span class="anchor"><b>Plant rate</b>: 10-100× the DUT control rate</span>
+<span class="anchor"><b>Round-trip latency</b>: must fit inside one control period</span>
+<span class="anchor"><b>Faults</b>: stuck sensor, open phase, short, voltage sag — reproducible</span>
+<span class="anchor"><b>Used in</b>: automotive (ISO 26262), aero (DO-178C), rail</span>
 </div>
 
+<h2>Architecture — the closed loop</h2>
 <div class="figure">
-<svg viewBox="0 0 720 320" width="100%">
-<!-- Top row: simulator -->
-<rect x="40" y="40" width="300" height="100" fill="#1d232c" stroke="#5ec8ff" stroke-width="2" rx="6"/>
-<text x="190" y="62" text-anchor="middle" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="14" font-weight="600">REAL-TIME SIMULATOR</text>
-<text x="190" y="82" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="11">Plant model (motor, battery, environment)</text>
-<text x="190" y="100" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">Runs at 1-10 kHz on real-time OS</text>
-<text x="190" y="118" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">(Speedgoat, dSPACE, NI Veristand)</text>
-
-<!-- Bottom row: DUT -->
-<rect x="380" y="180" width="300" height="100" fill="#1d232c" stroke="#ffb86c" stroke-width="2" rx="6"/>
-<text x="530" y="202" text-anchor="middle" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="14" font-weight="600">DEVICE UNDER TEST</text>
-<text x="530" y="222" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="11">MCU running production firmware</text>
-<text x="530" y="240" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">No code modification; thinks it's real</text>
-<text x="530" y="258" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">(Real ECU, e.g., STM32G474)</text>
-
-<!-- I/O bridge -->
-<rect x="160" y="160" width="400" height="40" fill="#1d232c" stroke="#a3e635" stroke-width="2" rx="6"/>
-<text x="360" y="186" text-anchor="middle" fill="#a3e635" font-family="ui-monospace,monospace" font-size="12">I/O BRIDGE: D/A + A/D + CAN + serial + GPIO</text>
-
-<!-- Arrows -->
-<path d="M 190 140 L 190 160" stroke="#5ec8ff" stroke-width="2" fill="none" marker-end="url(#arrSim)"/>
+<svg viewBox="0 0 720 360" width="100%">
 <defs>
-<marker id="arrSim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-<path d="M0,0 L10,5 L0,10 z" fill="#5ec8ff"/>
-</marker>
-<marker id="arrDut" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-<path d="M0,0 L10,5 L0,10 z" fill="#ffb86c"/>
-</marker>
+<marker id="arrSim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5ec8ff"/></marker>
+<marker id="arrDut" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#ffb86c"/></marker>
 </defs>
-<path d="M 530 200 L 530 180" stroke="#ffb86c" stroke-width="2" fill="none" marker-end="url(#arrDut)"/>
+<rect x="40" y="20" width="300" height="100" fill="#1d232c" stroke="#5ec8ff" stroke-width="2" rx="6"/>
+<text x="190" y="42" text-anchor="middle" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="14" font-weight="600">REAL-TIME SIMULATOR</text>
+<text x="190" y="62" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="11">Plant model (motor, battery, environment)</text>
+<text x="190" y="80" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">Runs at 1-100 kHz on hard real-time OS</text>
+<text x="190" y="98" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">(Speedgoat, dSPACE, NI VeriStand, Typhoon)</text>
 
-<!-- Labels -->
-<text x="100" y="155" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">Sensor signals (V, I, position)</text>
-<text x="600" y="220" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">PWM, CAN, GPIO outputs</text>
+<rect x="160" y="160" width="400" height="40" fill="#1d232c" stroke="#a3e635" stroke-width="2" rx="6"/>
+<text x="360" y="186" text-anchor="middle" fill="#a3e635" font-family="ui-monospace,monospace" font-size="12">I/O BRIDGE: DAC + ADC + CAN + LIN + GPIO + PWM-capture</text>
+
+<rect x="380" y="240" width="300" height="100" fill="#1d232c" stroke="#ffb86c" stroke-width="2" rx="6"/>
+<text x="530" y="262" text-anchor="middle" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="14" font-weight="600">DEVICE UNDER TEST</text>
+<text x="530" y="282" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="11">MCU running production firmware</text>
+<text x="530" y="300" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">No code modification; thinks it's real</text>
+<text x="530" y="318" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">(Real ECU, e.g., STM32G474 / TI C28x)</text>
+
+<path d="M 190 120 L 190 158" stroke="#5ec8ff" stroke-width="2" fill="none" marker-end="url(#arrSim)"/>
+<path d="M 530 200 L 530 238" stroke="#ffb86c" stroke-width="2" fill="none" marker-end="url(#arrDut)"/>
+
+<text x="50" y="140" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">Sensor signals (V, I, position)</text>
+<text x="670" y="220" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">PWM / CAN / GPIO outputs</text>
 </svg>
+</div>
+
+<h2>Interactive — latency budget calculator</h2>
+<p>For the loop to close cleanly, the round-trip (plant → DAC → DUT → DAC → plant) must fit inside one control period of the DUT. As control rates rise, the budget shrinks fast.</p>
+
+<div class="controls">
+<div class="control"><label>DUT control freq (kHz)</label><input id="fctrl" type="range" min="0.1" max="200" value="10" step="0.1" oninput="render()"><span class="val" id="vFctrl">10</span></div>
+<div class="control"><label>Plant model freq (kHz)</label><input id="fplant" type="range" min="1" max="2000" value="100" step="1" oninput="render()"><span class="val" id="vFplant">100</span></div>
+<div class="control"><label>DAC settle + ADC sample (µs)</label><input id="tio" type="range" min="0.5" max="50" value="3" step="0.5" oninput="render()"><span class="val" id="vTio">3</span></div>
+<div class="control"><label>Bus transit (µs, e.g. CAN frame)</label><input id="tbus" type="range" min="0" max="200" value="10" step="1" oninput="render()"><span class="val" id="vTbus">10</span></div>
+<div class="control"><label>DUT compute (µs)</label><input id="tdut" type="range" min="1" max="500" value="20" step="1" oninput="render()"><span class="val" id="vTdut">20</span></div>
+<div class="control"><label>Plant integrator step (µs)</label><input id="tplant" type="range" min="0.1" max="200" value="5" step="0.1" oninput="render()"><span class="val" id="vTplant">5</span></div>
+</div>
+
+<div class="scoreboard">
+<div class="score-card"><div class="score-lbl">Control period T<sub>ctrl</sub></div><div class="score-num" id="tCtrl">—</div><div class="score-lbl unit">µs / cycle</div></div>
+<div class="score-card"><div class="score-lbl">Round-trip latency</div><div class="score-num" id="tRT">—</div><div class="score-lbl unit">µs / cycle</div></div>
+<div class="score-card" id="marginCard"><div class="score-lbl">Margin</div><div class="score-num" id="margin">—</div><div class="score-lbl unit" id="marginLabel">µs free per cycle</div></div>
+<div class="score-card" id="verdictCard"><div class="score-lbl">Verdict</div><div class="score-num" id="verdict" style="font-size:18px">—</div><div class="score-lbl" id="verdictNote">—</div></div>
+</div>
+
+<h3>Where the time goes — one cycle</h3>
+<div class="figure">
+<svg id="timing" viewBox="0 0 900 180" width="100%"></svg>
+</div>
+
+<h2>The math behind real-time</h2>
+<div class="deriv">
+<span class="step">Control period:  T_ctrl = 1 / f_ctrl</span>
+<span class="step">Round-trip latency:</span>
+<span class="step">  t_RT = t_DAC_settle + t_ADC_sample + t_bus_in + t_DUT_compute + t_bus_out + t_plant_step</span>
+<span class="step">Real-time requirement:  t_RT &lt; T_ctrl   (strict)</span>
+<span class="step">                        t_RT &lt; 0.5 · T_ctrl  (recommended — leaves headroom for jitter)</span>
+<span class="step">Plant fidelity:  f_plant ≥ 10 · f_ctrl   (Nyquist + safety margin)</span>
+<span class="step"></span>
+<span class="step">When t_RT &gt; T_ctrl: drop control freq, simplify plant, or offload fast dynamics to FPGA.</span>
+<span class="step">Common split: CPU at 100 µs step, FPGA at 1 µs step for inverter PWM + current loop.</span>
 </div>
 
 <h2>How it works — the signal flow</h2>
 <ul class="notice">
-<li><b>Plant model</b> on the simulator computes physical quantities: motor currents, voltages, encoder positions, temperatures. Updates at 1-10 kHz.</li>
-<li><b>I/O bridge</b> (real-time card with DACs + ADCs + digital I/O) converts model state into analog/digital signals the DUT sees as "real sensors". DAC outputs current, ADCs read what DUT commands.</li>
+<li><b>Plant model</b> on the simulator computes physical quantities: motor currents, voltages, encoder positions, temperatures. Updates at 10-100× the DUT control rate.</li>
+<li><b>I/O bridge</b> (real-time card with DACs + ADCs + digital I/O) converts model state into analog/digital signals the DUT sees as "real sensors." DACs drive the DUT's sensor pins; ADCs read what the DUT commands.</li>
 <li><b>DUT</b> runs the production firmware unchanged. From its perspective, it's connected to real hardware.</li>
-<li><b>DUT outputs</b> (PWM, CAN commands, GPIO) flow back through the I/O bridge into the simulator, closing the loop.</li>
+<li><b>DUT outputs</b> (PWM, CAN, GPIO) flow back through the I/O bridge into the simulator, closing the loop.</li>
 <li><b>Test sequencer</b> on the simulator side scripts scenarios: ramp the load, inject a sensor failure, drop the supply voltage. Logs everything for analysis.</li>
 </ul>
 
-<h2>Three levels of in-the-loop testing</h2>
+<h2>Four levels of in-the-loop testing</h2>
 <table>
 <tr><th>Level</th><th>Plant</th><th>Controller</th><th>When</th></tr>
 <tr><td>MIL — Model in the loop</td><td>Simulated plant</td><td>Simulated controller (e.g., Simulink model)</td><td>Early controller design; algorithm validation</td></tr>
@@ -102,28 +149,19 @@ footer a{color:var(--accent)}
 
 <h2>HIL hardware platforms</h2>
 <table>
-<tr><th>Platform</th><th>Use case</th><th>Cost</th></tr>
-<tr><td>dSPACE SCALEXIO / MicroAutoBox</td><td>Automotive ECU testing, motor control</td><td>$50k - $500k</td></tr>
-<tr><td>Speedgoat Performance</td><td>Aerospace, robotics, MATLAB workflow</td><td>$30k - $200k</td></tr>
-<tr><td>NI VeriStand + PXIe</td><td>General-purpose, LabVIEW workflow</td><td>$40k - $300k</td></tr>
-<tr><td>Typhoon HIL</td><td>Power electronics, microgrids</td><td>$20k - $100k</td></tr>
-<tr><td>OPAL-RT</td><td>Electrical / power systems with FPGA</td><td>$30k - $200k</td></tr>
-<tr><td>Custom: real-time Linux + analog I/O</td><td>Lab prototypes; flexible</td><td>$5k - $20k</td></tr>
+<tr><th>Platform</th><th>Use case</th><th>Loop rate (typ)</th><th>Cost (USD)</th></tr>
+<tr><td>dSPACE SCALEXIO / MicroAutoBox</td><td>Automotive ECU testing, motor control</td><td>10-200 kHz CPU; 1 MHz FPGA</td><td>$50k - $500k</td></tr>
+<tr><td>Speedgoat Performance / Mobile</td><td>Aerospace, robotics, MATLAB workflow</td><td>20-500 kHz</td><td>$30k - $200k</td></tr>
+<tr><td>NI VeriStand + PXIe</td><td>General-purpose, LabVIEW workflow</td><td>10-100 kHz; FPGA up to 1 MHz</td><td>$40k - $300k</td></tr>
+<tr><td>Typhoon HIL</td><td>Power electronics, microgrids, e-mobility</td><td>500 ns FPGA step (2 MHz)</td><td>$20k - $100k</td></tr>
+<tr><td>OPAL-RT eHS / OP4510</td><td>Electrical / power systems with FPGA</td><td>200 ns - 10 µs FPGA step</td><td>$30k - $200k</td></tr>
+<tr><td>Custom: real-time Linux + analog I/O</td><td>Lab prototypes; flexible</td><td>1-10 kHz (CPU-bound)</td><td>$5k - $20k</td></tr>
 </table>
 
-<h2>The math behind real-time</h2>
-<p>A HIL simulator must update faster than the DUT's control loop sees the world. If the DUT closes a 1 kHz current loop, the plant model must update at &gt; 10 kHz, ideally 20-100 kHz. This requires:</p>
-<ul class="notice">
-<li><b>Hard real-time OS</b>: VxWorks, QNX, RT-Linux (PREEMPT_RT), or bare-metal on FPGA</li>
-<li><b>Bounded interrupt latency</b>: typically &lt; 10 µs jitter</li>
-<li><b>Fixed-step solver</b>: ODE solver runs at the loop rate, no adaptive timestep</li>
-<li><b>FPGA accelerator for fast dynamics</b>: motor + inverter modeled at 1 MHz on FPGA, slower dynamics on CPU</li>
-</ul>
-
 <h2>Worked example — arm-6dof-pa612 joint controller HIL setup</h2>
-<div class="panel" style="border-left:3px solid var(--accent3)">
+<div class="panel tip">
 <h3>The goal</h3>
-<p>Validate the joint-controller firmware against 500 test scenarios before deploying to a $50k physical robot. Each scenario takes &lt; 30 s on the HIL bench; a full regression sweep runs in 4 hours overnight.</p>
+<p>Validate the joint-controller firmware against 500 test scenarios before deploying to a $1.5k prototype arm. Each scenario takes &lt; 30 s on the HIL bench; a full regression sweep runs overnight.</p>
 <h3>Setup</h3>
 <table>
 <tr><th>Layer</th><th>What's real</th><th>What's simulated</th></tr>
@@ -131,7 +169,7 @@ footer a{color:var(--accent)}
 <tr><td>Encoder feedback</td><td>SPI emulator board (FPGA generates AS5048A frames)</td><td>Mechanical position (from plant model)</td></tr>
 <tr><td>Phase currents</td><td>Inline DAC outputs to ADC inputs</td><td>Motor model with R, L, BEMF</td></tr>
 <tr><td>Bus supply</td><td>Programmable PSU (real)</td><td>—</td></tr>
-<tr><td>CAN bus</td><td>Real CAN tranceiver loopback</td><td>Other joint controllers (simulated)</td></tr>
+<tr><td>CAN-FD bus</td><td>Real transceiver in loopback to test harness</td><td>Other joint controllers (simulated)</td></tr>
 <tr><td>Plant model</td><td>—</td><td>6-DOF arm dynamics with PA612-CF link stiffness, payload, gravity, friction</td></tr>
 </table>
 <h3>Test scenarios run nightly</h3>
@@ -144,20 +182,153 @@ footer a{color:var(--accent)}
 <li>Stress: max-rate command stream over CAN at 1 kHz for 1 hour; check no deadline misses</li>
 <li>Collision: simulated end-effector contact with virtual wall; verify impedance limits</li>
 </ol>
-<p>Cost: ~$15k HIL bench + 1 month engineering. Saved: 6 months of physical-robot debugging + 3 hardware replacements at $8k each.</p>
+<p>Cost: ~$8k DIY HIL bench (PXIe + FPGA card) or ~$15k turnkey (Speedgoat baseline). Saves ~6 months of physical-robot debugging + several joint replacements after fault-injection-induced damage.</p>
 </div>
 
 <h2>Common pitfalls</h2>
 <ul class="notice">
 <li><b>Model fidelity</b> — your plant model must include real-world non-idealities: friction, backlash, sensor noise, computational delays. A too-clean model passes tests that real hardware fails.</li>
-<li><b>I/O latency</b> — DAC settle time, ADC sample-and-hold, bus arbitration. Total round-trip from sim output → DUT input → DUT output → sim input should be &lt; 1 PWM period.</li>
-<li><b>Real-time guarantees</b> — Windows + USB DAQ does not count as real-time. You'll see correct mean behavior but missed worst-cases.</li>
+<li><b>I/O latency</b> — DAC settle time, ADC sample-and-hold, bus arbitration. Total round-trip from sim output → DUT input → DUT output → sim input should fit inside one PWM period.</li>
+<li><b>Real-time guarantees</b> — Windows + USB DAQ does not count as real-time. You'll see correct mean behavior but missed worst-cases. Use PREEMPT_RT Linux or a deterministic kernel (QNX / VxWorks).</li>
 <li><b>Validation of the model itself</b> — HIL tests prove the firmware matches the model, not reality. Periodic correlation with physical-rig tests is mandatory.</li>
 <li><b>Test coverage</b> — 1000 random scenarios isn't comprehensive. Use combinatorial test design (pair-wise) or model-based test generation.</li>
-<li><b>Versioning</b> — HIL scenarios are themselves code. Treat the test scripts + plant model + firmware as a versioned set; one regression test failure must reproduce exactly later.</li>
+<li><b>Versioning</b> — HIL scenarios are themselves code. Treat the test scripts + plant model + firmware as a versioned set; one regression failure must reproduce exactly later.</li>
+<li><b>Numerical instability at the step boundary</b> — stiff plants (high-frequency dynamics, low damping) require small enough integrator steps to stay stable. Watch for explosive divergence — usually means step too large.</li>
 </ul>
 
-<footer>Cross-links: <a href="bringup-procedure.html">Bring-up Procedure</a> · <a href="debugging-tools.html">Debugging Tools</a> · <a href="data-flow-latency.html">Data Flow Latency</a> · <a href="distributed-vs-centralized.html">Distributed vs Centralized</a></footer>
+<h2>Cheat sheet — sizing your HIL bench</h2>
+<table>
+<tr><th>If DUT control loop is…</th><th>Plant should run at…</th><th>Latency budget</th><th>Hardware tier</th></tr>
+<tr><td>100 Hz (slow process control)</td><td>1-10 kHz</td><td>1 ms — generous</td><td>PC + USB DAQ acceptable</td></tr>
+<tr><td>1 kHz (typical motor speed loop)</td><td>10-50 kHz</td><td>500 µs — tight</td><td>PREEMPT_RT + PCIe DAQ</td></tr>
+<tr><td>10 kHz (FOC current loop)</td><td>100 kHz - 1 MHz</td><td>50 µs — very tight</td><td>Real-time CPU (Speedgoat) + fast ADC</td></tr>
+<tr><td>50 kHz (high-perf motor / power)</td><td>500 kHz - 5 MHz</td><td>10 µs — CPU edge</td><td>CPU + FPGA hybrid (Typhoon / OPAL-RT)</td></tr>
+<tr><td>&gt; 100 kHz (SiC inverter, RF)</td><td>1+ MHz</td><td>&lt; 5 µs — only FPGA</td><td>Pure FPGA (e.g., Typhoon)</td></tr>
+</table>
 
-</main><script>console.log('HIL Architecture loaded');</script>
+<footer>Cross-links: <a href="bringup-procedure.html">Bring-up Procedure</a> · <a href="debugging-tools.html">Debugging Tools</a> · <a href="data-flow-latency.html">Data Flow Latency</a> · <a href="distributed-vs-centralized.html">Distributed vs Centralized</a> · <a href="dfa-dfm-explorer.html">DFA/DFM Explorer</a></footer>
+
+</main>
+<script>
+const el = id => document.getElementById(id);
+
+function render(){
+  const fctrl = parseFloat(el('fctrl').value);   // kHz
+  const fplant = parseFloat(el('fplant').value); // kHz
+  const tio = parseFloat(el('tio').value);       // µs
+  const tbus = parseFloat(el('tbus').value);     // µs (one-way; round trip = 2x)
+  const tdut = parseFloat(el('tdut').value);     // µs
+  const tplant = parseFloat(el('tplant').value); // µs
+
+  el('vFctrl').textContent = fctrl;
+  el('vFplant').textContent = fplant;
+  el('vTio').textContent = tio;
+  el('vTbus').textContent = tbus;
+  el('vTdut').textContent = tdut;
+  el('vTplant').textContent = tplant;
+
+  const Tctrl = 1000 / fctrl;  // µs
+  // Round-trip = plant step + DAC settle (out) + bus out + DUT compute + bus back + ADC sample (in)
+  // Lump tio = DAC+ADC, count it once each direction (so 2x)
+  const Trt = tplant + tio + tbus + tdut + tbus + tio;
+
+  el('tCtrl').textContent = Tctrl.toFixed(1);
+  el('tRT').textContent = Trt.toFixed(1);
+
+  const margin = Tctrl - Trt;
+  el('margin').textContent = margin.toFixed(1);
+
+  // Verdict logic
+  const marginNum = el('margin');
+  const verdictNum = el('verdict');
+  marginNum.classList.remove('warn','mid');
+  verdictNum.classList.remove('warn','mid');
+  el('marginCard').classList.remove('lo');
+  el('verdictCard').classList.remove('lo');
+
+  let verdict, vNote, vClass;
+  if(margin < 0){
+    verdict = 'INFEASIBLE'; vClass = 'warn';
+    vNote = 'Loop will miss deadlines; slow down or offload to FPGA';
+    marginNum.classList.add('warn'); verdictNum.classList.add('warn');
+    el('marginCard').classList.add('lo'); el('verdictCard').classList.add('lo');
+  } else if(margin < Tctrl * 0.5){
+    verdict = 'TIGHT'; vClass = 'mid';
+    vNote = 'Works but no headroom for jitter — risky';
+    marginNum.classList.add('mid'); verdictNum.classList.add('mid');
+  } else {
+    verdict = 'OK'; vClass = '';
+    vNote = `${(margin/Tctrl*100).toFixed(0)}% slack for jitter + scope`;
+  }
+  el('verdict').textContent = verdict;
+  el('verdictNote').textContent = vNote;
+
+  // Also flag plant fidelity
+  if(fplant < fctrl * 10){
+    el('verdictNote').textContent += ' · plant too slow (need ≥10× ctrl)';
+    if(vClass !== 'warn'){ verdictNum.classList.add('mid'); }
+  }
+  el('marginLabel').textContent = margin >= 0 ? 'µs free per cycle' : 'µs OVER budget';
+
+  drawTiming(Tctrl, [
+    {l:'plant step', v:tplant, c:'#5ec8ff'},
+    {l:'DAC out', v:tio, c:'#ffb86c'},
+    {l:'bus →', v:tbus, c:'#a3e635'},
+    {l:'DUT compute', v:tdut, c:'#c084fc'},
+    {l:'bus ←', v:tbus, c:'#a3e635'},
+    {l:'ADC in', v:tio, c:'#ffb86c'},
+    {l:'idle / slack', v:Math.max(0, margin), c:'#2a313c'}
+  ], Trt);
+}
+
+function drawTiming(Tctrl, segs, Trt){
+  const svg = el('timing');
+  const W = 900, H = 180;
+  // Show timeline scaled so Tctrl spans 800 px (with 20 px padding each side)
+  const total = Math.max(Tctrl, Trt);
+  const scale = 860 / total;
+  let x = 20;
+  let html = '';
+  // Background timeline track
+  html += `<rect x="20" y="60" width="860" height="40" fill="#1d232c" stroke="#2a313c" rx="3"/>`;
+  // Segments
+  for(const s of segs){
+    const w = Math.max(0, s.v) * scale;
+    if(w > 0){
+      const isIdle = s.c === '#2a313c';
+      html += `<rect x="${x}" y="60" width="${w}" height="40" fill="${s.c}" opacity="${isIdle?0.3:0.85}" stroke="#0e1116" stroke-width="0.5"/>`;
+      if(w > 38){
+        html += `<text x="${x + w/2}" y="86" text-anchor="middle" fill="${isIdle?'#8f99a8':'#0e1116'}" font-family="ui-monospace,monospace" font-size="10" font-weight="600">${s.l}</text>`;
+      }
+    }
+    x += w;
+  }
+  // Tctrl boundary marker
+  const xCtrl = 20 + Tctrl * scale;
+  html += `<line x1="${xCtrl}" y1="40" x2="${xCtrl}" y2="120" stroke="#ff7b72" stroke-width="2" stroke-dasharray="4,2"/>`;
+  html += `<text x="${xCtrl}" y="35" text-anchor="middle" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="11" font-weight="600">T_ctrl = ${Tctrl.toFixed(1)} µs (deadline)</text>`;
+  // 0 µs marker
+  html += `<text x="20" y="130" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">0 µs</text>`;
+  // End marker (whichever is larger)
+  html += `<text x="880" y="130" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${total.toFixed(1)} µs</text>`;
+  // Legend below
+  html += `<g transform="translate(20,150)">`;
+  const lg = [
+    {l:'plant', c:'#5ec8ff'},
+    {l:'DAC/ADC', c:'#ffb86c'},
+    {l:'bus', c:'#a3e635'},
+    {l:'DUT', c:'#c084fc'}
+  ];
+  let lx = 0;
+  for(const it of lg){
+    html += `<rect x="${lx}" y="0" width="12" height="12" fill="${it.c}" opacity="0.85"/>`;
+    html += `<text x="${lx + 18}" y="10" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">${it.l}</text>`;
+    lx += 90;
+  }
+  html += `</g>`;
+  svg.innerHTML = html;
+}
+
+render();
+</script>
 </body></html>

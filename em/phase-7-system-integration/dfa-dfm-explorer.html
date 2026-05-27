@@ -1,152 +1,332 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DFA / DFM Explorer — visual</title>
-<style>:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
-*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,sans-serif}
-main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+<style>
+:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,Segoe UI,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
 h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
 h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px}
 .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
 .anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
 .anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
 .anchor b{color:var(--accent2)}
-.checks{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0}
-.check-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font:12px ui-monospace,monospace}
-.check-row:last-child{border-bottom:none}
-.check-row input{width:18px;height:18px;accent-color:var(--accent3)}
-.check-row .impact{margin-left:auto;color:var(--fg-dim);font-size:11px}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:14px 0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.control .val{font:600 13px ui-monospace,monospace;color:var(--accent3)}
+.control input[type=range]{width:100%;accent-color:var(--accent)}
+.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:12px ui-monospace,monospace}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;margin:14px 0}
+.figure svg{width:100%;height:auto;display:block}
 table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
 th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left;vertical-align:top}
 th{background:var(--bg-elev2);color:var(--fg-bright)}
 ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
 .panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
-.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}
-.score-box{background:var(--bg-elev);border:1px solid var(--accent);border-radius:8px;padding:18px;margin:14px 0;text-align:center}
-.score-num{font:700 36px ui-monospace,Menlo,monospace;color:var(--accent3);margin:8px 0}
-.score-lbl{color:var(--fg-dim);font-size:12px;font-family:ui-monospace,monospace}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}.panel.note{border-left:3px solid var(--accent)}
+.panel h3{margin-top:0}
+.scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:14px 0}
+.score-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center}
+.score-card.hi{border-color:var(--accent3)}
+.score-card.lo{border-color:var(--warn)}
+.score-num{font:700 28px ui-monospace,Menlo,monospace;color:var(--accent3);margin:6px 0}
+.score-num.warn{color:var(--warn)}.score-num.mid{color:var(--accent2)}
+.score-lbl{color:var(--fg-dim);font-size:11px;font-family:ui-monospace,monospace;text-transform:uppercase;letter-spacing:.4px}
+.parts-bar{display:flex;height:34px;border-radius:6px;overflow:hidden;border:1px solid var(--line);margin:10px 0}
+.parts-bar .seg{display:flex;align-items:center;justify-content:center;color:var(--bg);font:600 11px ui-monospace,monospace;padding:0 4px;min-width:0}
+.parts-bar .seg.keep{background:var(--accent3)}
+.parts-bar .seg.merge{background:var(--accent2)}
+.parts-bar .seg.elim{background:var(--warn)}
+.legend{display:flex;gap:14px;font:11px ui-monospace,monospace;color:var(--fg-dim);margin:6px 0 14px}
+.legend .swatch{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:middle}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,monospace;color:var(--accent2)}
 footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
 footer a{color:var(--accent)}
 </style></head><body><main>
 
 <h1>DFA / DFM Explorer — Design for Assembly + Manufacturability</h1>
-<p class="lede">DFA (Design for Assembly) reduces part count and makes parts easy to handle. DFM (Design for Manufacturability) makes each part easy to produce. The two together can drop a product's cost by 30-70 % AND its defect rate by 10× — same function, half the parts, half the assembly time. This is a checklist tool: toggle which DFA/DFM rules your design follows, watch the estimated assembly-time score change.</p>
+<p class="lede">DFA reduces part count and assembly time. DFM makes each part easy to produce. Together they routinely drop product cost 30-70 % and defect rate 10× — same function, half the parts. This visual implements the <b>Boothroyd-Dewhurst</b> method as an interactive calculator: build a virtual assembly part by part, watch handling time, insertion time, and DFA efficiency update live. Then compare against a redesign with consolidated parts.</p>
 
 <div class="anchors">
-<span class="anchor"><b>Boothroyd-Dewhurst DFA</b>: industry method</span>
-<span class="anchor"><b>Target</b>: minimize part count + handling time</span>
-<span class="anchor"><b>Typical savings</b>: 30-70 % cost</span>
-<span class="anchor"><b>Lewis (1990)</b>: IBM Proprinter cut 65 parts → 32 via DFA</span>
+<span class="anchor"><b>Method</b>: Boothroyd-Dewhurst DFA (UMass Amherst, 1980)</span>
+<span class="anchor"><b>3-test</b>: motion / material / access ⇒ keep part?</span>
+<span class="anchor"><b>η<sub>DFA</sub></b> = (3 s × N<sub>min</sub>) / T<sub>total</sub></span>
+<span class="anchor"><b>Target η<sub>DFA</sub></b>: &gt; 0.6 (60 %)</span>
+<span class="anchor"><b>IBM Proprinter</b> (1985): 65 → 32 parts, 27 → 3 min assembly</span>
 </div>
 
-<div class="score-box">
-<div class="score-lbl">DFA/DFM SCORE (out of 100)</div>
-<div class="score-num" id="score">0</div>
-<div class="score-lbl" id="scoreNote">Toggle checks below to compute</div>
+<h2>Interactive — Boothroyd-Dewhurst assembly time</h2>
+<p>Build a virtual assembly. <b>Each part</b> contributes a handling time (pick + orient) and an insertion time (place + secure). The Boothroyd-Dewhurst tables give base values; symmetry, size, access, and tool penalties stack on top.</p>
+
+<div class="controls">
+<div class="control"><label>Total parts in assembly</label><input id="N" type="range" min="2" max="60" value="12" step="1" oninput="render()"><span class="val" id="vN">12</span></div>
+<div class="control"><label>Theoretical-min parts (pass 3-test)</label><input id="Nmin" type="range" min="1" max="30" value="5" step="1" oninput="render()"><span class="val" id="vNmin">5</span></div>
+<div class="control"><label>Fasteners (screws, bolts)</label><input id="F" type="range" min="0" max="40" value="6" step="1" oninput="render()"><span class="val" id="vF">6</span></div>
+<div class="control"><label>Symmetry (avg α+β, °)</label><input id="sym" type="range" min="0" max="720" value="360" step="60" oninput="render()"><span class="val" id="vSym">360</span></div>
+<div class="control"><label>Avg part size</label><select id="size" onchange="render()">
+  <option value="tiny">Tiny (&lt; 2 mm)</option>
+  <option value="small">Small (2-6 mm)</option>
+  <option value="normal" selected>Normal (6-15 mm)</option>
+  <option value="large">Large (&gt; 15 mm)</option>
+</select></div>
+<div class="control"><label>Access during insertion</label><select id="access" onchange="render()">
+  <option value="open" selected>Open (top-down)</option>
+  <option value="restrict">Restricted view OR access</option>
+  <option value="hard">Both restricted</option>
+</select></div>
+<div class="control"><label>Self-locating features (chamfers, posts)</label><select id="loc" onchange="render()">
+  <option value="yes" selected>Yes — auto-aligns</option>
+  <option value="no">No — needs fixture/hand</option>
+</select></div>
+<div class="control"><label>Top-down (gravity) assembly</label><select id="td" onchange="render()">
+  <option value="yes" selected>Yes</option>
+  <option value="no">No — flipping required</option>
+</select></div>
 </div>
 
-<h2>DFA principles (assembly side)</h2>
-<div class="checks" id="dfaChecks"></div>
-
-<h2>DFM principles (per-part manufacturability)</h2>
-<div class="checks" id="dfmChecks"></div>
-
-<h2>The Boothroyd-Dewhurst DFA method</h2>
-<p>Originated at U. Mass. Amherst (Boothroyd 1980, Dewhurst joined 1985). The method scores each part on:</p>
-<table>
-<tr><th>Test</th><th>Question</th><th>Pass?</th></tr>
-<tr><td>1. Function</td><td>Does the part move during operation?</td><td>YES → keep as separate part</td></tr>
-<tr><td>2. Material</td><td>Must this part be a different material than adjacent parts?</td><td>YES → keep separate</td></tr>
-<tr><td>3. Assembly access</td><td>Must this part be separate to allow assembly of others?</td><td>YES → keep separate</td></tr>
-</table>
-<p>If ALL three answers are NO, the part is a candidate for elimination (merge into a neighboring part or remove entirely). This single rule typically halves the part count.</p>
-
-<h2>Worked example — pen redesign</h2>
-<div class="panel" style="border-left:3px solid var(--accent3)">
-<h3>Original ballpoint pen</h3>
-<p>8 parts: outer barrel, inner barrel, spring, ink cartridge, ball, clip, end cap, label. Assembly time ~25 seconds.</p>
-<h3>DFA analysis</h3>
-<table>
-<tr><th>Part</th><th>Moves?</th><th>Different material needed?</th><th>Access constraint?</th><th>Eliminate?</th></tr>
-<tr><td>Outer barrel</td><td>No</td><td>—</td><td>—</td><td>Keep</td></tr>
-<tr><td>Inner barrel</td><td>No</td><td>No (same as outer)</td><td>No</td><td><b>Merge with outer</b></td></tr>
-<tr><td>Spring</td><td>Yes (return)</td><td>—</td><td>—</td><td>Keep</td></tr>
-<tr><td>Cartridge</td><td>Yes (sliding)</td><td>—</td><td>—</td><td>Keep</td></tr>
-<tr><td>Ball</td><td>Yes (writes)</td><td>—</td><td>—</td><td>Keep</td></tr>
-<tr><td>Clip</td><td>Yes (clipping)</td><td>No (could be molded into barrel)</td><td>No</td><td><b>Mold into barrel</b></td></tr>
-<tr><td>End cap</td><td>No</td><td>No</td><td>Yes (assembly access for cartridge)</td><td>Keep</td></tr>
-<tr><td>Label</td><td>No</td><td>—</td><td>—</td><td><b>Pad-print onto barrel</b></td></tr>
-</table>
-<h3>Redesigned</h3>
-<p>5 parts: barrel (with integral clip + print), spring, cartridge, ball, end cap. Assembly time ~12 seconds — half. Cost ~40% lower.</p>
+<div class="scoreboard">
+<div class="score-card"><div class="score-lbl">Handling time / part</div><div class="score-num" id="tH">—</div><div class="score-lbl">seconds</div></div>
+<div class="score-card"><div class="score-lbl">Insertion time / part</div><div class="score-num" id="tI">—</div><div class="score-lbl">seconds</div></div>
+<div class="score-card"><div class="score-lbl">Total assembly time</div><div class="score-num" id="tTot">—</div><div class="score-lbl">seconds</div></div>
+<div class="score-card hi" id="effCard"><div class="score-lbl">DFA efficiency η</div><div class="score-num" id="eff">—</div><div class="score-lbl" id="effLabel">target &gt; 60 %</div></div>
 </div>
 
-<h2>DFM principles (per-part)</h2>
+<h3>Part-count breakdown</h3>
+<div class="parts-bar" id="partsBar"></div>
+<div class="legend">
+  <span><span class="swatch" style="background:var(--accent3)"></span>Theoretical-min parts (keep — pass 3-test)</span>
+  <span><span class="swatch" style="background:var(--accent2)"></span>Candidates to merge</span>
+  <span><span class="swatch" style="background:var(--warn)"></span>Fasteners</span>
+</div>
+
+<h2>The math behind the score</h2>
+<div class="deriv">
+<span class="step">Handling time per part (Boothroyd-Dewhurst table simplified):</span>
+<span class="step">  T_h = T_base + ΔT_symmetry + ΔT_size</span>
+<span class="step">    T_base = 1.5 s  (free fall pickup)</span>
+<span class="step">    ΔT_symmetry: α+β = 0°→ +0 s, 360° → +0.8 s, 720° → +1.5 s</span>
+<span class="step">    ΔT_size: tiny → +1.5 s, small → +0.5 s, normal → 0 s, large → +0.5 s</span>
+<span class="step"></span>
+<span class="step">Insertion time per part:</span>
+<span class="step">  T_i = T_base + ΔT_access + ΔT_loc + ΔT_td + ΔT_tool</span>
+<span class="step">    T_base = 1.5 s  (snap-in with chamfer)</span>
+<span class="step">    ΔT_access: open → 0, restricted → +1.5 s, both → +3 s</span>
+<span class="step">    ΔT_loc: self-locating → 0, none → +1 s</span>
+<span class="step">    ΔT_td: top-down → 0, flip required → +1.5 s</span>
+<span class="step">    Fasteners add an extra +3.5 s each (manual driver) on top of part T_h + T_i</span>
+<span class="step"></span>
+<span class="step">Total: T_total = N · (T_h + T_i) + F · 3.5</span>
+<span class="step">DFA efficiency: η = (3 s · N_min) / T_total  &nbsp;(3 s = theoretical minimum per essential part)</span>
+</div>
+
+<h2>The 3-test — when can a part be eliminated?</h2>
 <table>
-<tr><th>Process</th><th>Key DFM rule</th></tr>
-<tr><td>Injection molding</td><td>Uniform wall thickness ±25%; 1-3° draft on all walls; ribs ≤ 50% of wall thickness; no undercuts</td></tr>
-<tr><td>Sheet metal</td><td>Min bend radius = 1× material thickness; flanges &gt; 4× thickness; no narrow features &lt; 2× thickness</td></tr>
-<tr><td>CNC milling</td><td>Max depth = 6× tool diameter; internal corners need fillet (no sharp internal corners); pocket floors are flat (not rounded)</td></tr>
-<tr><td>CNC turning</td><td>L/D ratio &lt; 5 for unsupported; no internal corners narrower than smallest available tool</td></tr>
-<tr><td>FDM (3D print)</td><td>45° self-supporting overhang; bridge max 5 mm; first layer wide; orient strong axis along load</td></tr>
-<tr><td>Casting</td><td>Uniform thickness, draft angles, no thin features (sand) or sharp corners; gating + risers needed</td></tr>
+<tr><th>Test</th><th>Question</th><th>YES → keep separate</th></tr>
+<tr><td>1. Motion</td><td>Does the part move relative to its neighbors during operation?</td><td>Bearings, springs, hinges, sliders</td></tr>
+<tr><td>2. Material</td><td>Must it be a different material (electrical isolation, magnetic shielding, optical)?</td><td>Glass window, insulator, magnet</td></tr>
+<tr><td>3. Assembly access</td><td>Must it be separate to allow assembly of others?</td><td>End caps, access covers, lids</td></tr>
 </table>
+<p>If <b>all three answers are NO</b>, the part is a candidate for merging (combine geometry with neighbor) or elimination. This single rule typically halves the part count in legacy designs.</p>
+
+<h2>Worked example — IBM Proprinter (1985)</h2>
+<div class="panel tip">
+<h3>The redesign that defined DFA</h3>
+<p>IBM's classic dot-matrix printer rebuild — done with Boothroyd at UMass — is the canonical case study. Same function, two-thirds fewer parts, one-ninth assembly time.</p>
+<table>
+<tr><th>Metric</th><th>Original (1981)</th><th>Proprinter (1985)</th><th>Δ</th></tr>
+<tr><td>Parts</td><td>65</td><td>32</td><td>−51 %</td></tr>
+<tr><td>Fasteners (screws, clips)</td><td>~50</td><td>0 (all snap-fits)</td><td>−100 %</td></tr>
+<tr><td>Assembly time</td><td>27 min</td><td>3 min</td><td>−89 %</td></tr>
+<tr><td>Assembly defects / unit</td><td>~5</td><td>~0.3</td><td>−94 %</td></tr>
+<tr><td>Adjustment steps</td><td>12</td><td>0</td><td>−100 %</td></tr>
+</table>
+<h3>What changed</h3>
+<ul style="padding-left:18px;color:var(--fg-dim);font-size:12.5px">
+<li><b>All screws gone</b>: replaced by integral plastic snap-fits — chassis sub-assemblies clip together top-down</li>
+<li><b>Paper drive consolidated</b>: 11 parts (gears + bracket + shaft) → 3 parts</li>
+<li><b>Self-locating posts on chassis</b>: cards and motors drop into precision-molded pockets, no fixtures</li>
+<li><b>One-way orientation</b>: most parts are obviously asymmetric so they cannot be installed wrong</li>
+<li><b>No adjustments</b>: tolerance stacks chosen so the design self-aligns within ±0.3 mm without tweaking</li>
+</ul>
+</div>
+
+<h2>DFM principles — per-part manufacturability</h2>
+<table>
+<tr><th>Process</th><th>Key DFM rules</th></tr>
+<tr><td>Injection molding</td><td>Uniform wall thickness ±25 %, 1-3° draft on all walls, ribs ≤ 50-60 % of wall thickness (avoid sink marks), no undercuts (or use side-action), gate location away from cosmetic surfaces</td></tr>
+<tr><td>Sheet metal</td><td>Min bend radius = 1× material thickness, flanges &gt; 4× thickness, holes &gt; 1.5× thickness from a bend, no narrow features &lt; 2× thickness (cracks)</td></tr>
+<tr><td>CNC milling</td><td>Max pocket depth = 6× tool diameter, fillet ALL internal corners (≥ 1/8" radius for steel), pocket floors flat not rounded, avoid &lt; 30° walls (slow), tap-call tolerances per ANSI B1.1</td></tr>
+<tr><td>CNC turning</td><td>L/D ratio &lt; 5 for unsupported parts, no internal grooves narrower than smallest tool (typically 1.5 mm), thread length ≥ 1.5× diameter</td></tr>
+<tr><td>FDM / FFF 3D print</td><td>45° self-supporting overhang, bridges max ~5 mm unsupported, first layer wide, orient strong axis along load (Z is weakest), holes oriented vertically print better than horizontal</td></tr>
+<tr><td>SLA / DLP resin</td><td>Drain holes for hollow shells (≥ 4 mm dia), avoid large flat faces parallel to print plate (suction cup effect), wall thickness ≥ 1 mm for tough resin, 2 mm for standard</td></tr>
+<tr><td>Sand / die casting</td><td>Uniform thickness (≥ 3 mm sand, ≥ 1.5 mm die), 2-3° draft, generous fillets, no sharp internal corners, plan parting line + gating before geometry</td></tr>
+<tr><td>PCB (also DFM)</td><td>Min trace width 0.15 mm (6 mil) for standard fabs, min via 0.25 mm hole / 0.5 mm pad, teardrops on pad-trace junctions, 8-mil thermal relief on plane connections, fiducials for SMT placement</td></tr>
+</table>
+
+<h2>Visual — before / after consolidation</h2>
+<div class="figure">
+<svg id="ba" viewBox="0 0 900 320" xmlns="http://www.w3.org/2000/svg"></svg>
+</div>
 
 <h2>The 10× rules of thumb</h2>
+<div class="panel">
 <ul class="notice">
-<li><b>Eliminating a part saves 10× the cost of optimizing one</b> — focus on part-count reduction first.</li>
-<li><b>Mistakes caught at design save 10× compared to manufacturing fix, which saves 10× compared to field recall</b> — design phase is 1, manufacturing is 10, field is 100.</li>
-<li><b>1 fewer part = 1 fewer fastener + 1 fewer alignment step + 1 fewer inventory SKU + 1 fewer point of failure.</b></li>
+<li><b>Part elimination saves ~10× the cost of part optimization</b> — go after part count first, not draft angles. Halving the BOM beats shaving 5 % off injection cycle time.</li>
+<li><b>Defects detected at design = 1×, manufacturing = 10×, field = 100-1000×</b> — every hour of DFA review pays back in avoided ECOs and recalls.</li>
+<li><b>One fewer part = one fewer fastener + alignment step + inventory SKU + point of failure + line-down risk.</b> The savings cascade.</li>
+<li><b>Snap-fits beat screws economically below ~30,000 units lifetime</b>; above that, tooling for the integral feature pays back. Below 1,000 units, screws are cheaper.</li>
+<li><b>DFA score &gt; 0.4 is hard, &gt; 0.6 is excellent, &gt; 0.8 is exceptional</b> — Apple's MacBook is widely benchmarked at 0.7-0.8 thanks to integrated unibody chassis.</li>
+</ul>
+</div>
+
+<h2>Common pitfalls</h2>
+<ul class="notice">
+<li><b>Consolidating dissimilar materials</b> — you can <i>geometrically</i> merge a metal heat-sink and a plastic housing, but co-molding adds tooling cost that often exceeds the saved assembly step. Run the numbers.</li>
+<li><b>Going snap-fit on serviceable parts</b> — snaps that can't be reopened without breakage make field repair impossible. Use snap-fits only where service is rare or impossible anyway.</li>
+<li><b>Self-locating features only work if tolerances allow it</b> — a 0.05 mm pocket for a 0.1 mm-tolerance post will jam. Match feature tolerance to part tolerance + 50 % margin.</li>
+<li><b>"Standard part" trap</b> — using an off-the-shelf component to save BOM line work fails if the standard part has a non-standard footprint or a 26-week lead time. Verify supply + footprint before committing.</li>
+<li><b>Optimizing DFA on a 50-unit prototype</b> — DFA wins amortize over volume. For low-volume / one-off / hand-tool builds, ease-of-rework matters more than minimum part count.</li>
+<li><b>Forgetting electrostatic + cleanroom constraints</b> — snap-fits can generate static; press-fits can shed particles. Process compatibility comes before geometry consolidation.</li>
 </ul>
 
-<footer>Cross-links: <a href="../../me/phase-5-manufacturing/fdm-process.html">FDM Process</a> · <a href="../../me/phase-1-drawing-cad/cad-workflow.html">CAD Workflow</a> · <a href="../../extras/soldering-assembly.html">Soldering &amp; Assembly</a></footer>
+<h2>Cheat sheet — DFA / DFM moves ranked by ROI</h2>
+<table>
+<tr><th>Move</th><th>Effort</th><th>Typical saving</th></tr>
+<tr><td>Eliminate part (3-test pass)</td><td>Low</td><td>5-15 s assembly + part cost</td></tr>
+<tr><td>Replace screw with snap-fit</td><td>Medium (tool change)</td><td>3.5 s + screw cost + driver cost</td></tr>
+<tr><td>Add chamfer / lead-in for self-location</td><td>Low (CAD only)</td><td>1-2 s + fixture cost</td></tr>
+<tr><td>Make part obviously asymmetric (1-way)</td><td>Low</td><td>Eliminates wrong-orient defects</td></tr>
+<tr><td>Move to top-down assembly sequence</td><td>Medium (resequence)</td><td>~1.5 s/part + automation-ready</td></tr>
+<tr><td>Co-mold integral hinge / clip / label</td><td>High (tooling)</td><td>Eliminates 1+ parts each</td></tr>
+<tr><td>Loosen tolerance to ±0.2 from ±0.05</td><td>Low (callout change)</td><td>20-40 % machining cost</td></tr>
+<tr><td>Switch to standard fastener (M3 from custom)</td><td>Low</td><td>Inventory + lead time</td></tr>
+</table>
+
+<footer>Cross-links: <a href="../../me/phase-5-manufacturing/fdm-process.html">FDM Process</a> · <a href="../../me/phase-1-drawing-cad/cad-workflow.html">CAD Workflow</a> · <a href="../../me/phase-1-drawing-cad/dimensioning-tolerancing.html">Dimensioning &amp; Tolerancing</a> · <a href="../../extras/soldering-assembly.html">Soldering &amp; Assembly</a> · <a href="bringup-procedure.html">Bringup Procedure</a></footer>
 
 </main>
 <script>
-const DFA_CHECKS = [
-  {id:'parts_min', label:'Part count minimized (passes Boothroyd-Dewhurst 3-test)', score:15, note:'Each eliminated part: −8 s assembly'},
-  {id:'self_locating', label:'Self-locating features (chamfers, tapers, alignment posts)', score:8, note:'No fixture needed'},
-  {id:'no_orient', label:'Parts symmetric or obviously asymmetric (no wrong orientation possible)', score:7, note:'No mis-orientation defects'},
-  {id:'top_down', label:'Top-down assembly (gravity-assisted, no flipping)', score:8, note:'Faster + automation-friendly'},
-  {id:'no_fasteners', label:'Minimum fasteners (snap-fits, press-fits, integral hinges)', score:10, note:'Fasteners + drivers add 5+ s each'},
-  {id:'no_tools', label:'No special tools required (or single tool for all)', score:5, note:'Saves tool changes'},
-  {id:'modular', label:'Modular sub-assemblies (parallel build, easier QC)', score:5, note:'Decouples assembly steps'},
-];
+const el = id => document.getElementById(id);
 
-const DFM_CHECKS = [
-  {id:'process_match', label:'Each part designed for its manufacturing process (proper draft / fillets / DOC)', score:12, note:'No first-article failures'},
-  {id:'standard_parts', label:'Standard off-shelf parts (fasteners, washers) wherever possible', score:7, note:'No custom-fab cost'},
-  {id:'tolerances', label:'Loose tolerances except where function demands tight (Pareto: 80 % of features are ±0.2 mm)', score:8, note:'Avoid premium machining cost'},
-  {id:'one_setup', label:'Each machined part completes in one setup', score:6, note:'Eliminates flip-and-realign'},
-  {id:'plating_paint', label:'No plating / painting unless functional (cost + lead time)', score:5, note:'Plating doubles part cost'},
-  {id:'inspection', label:'Inspection / verification features built-in (test points, datum surfaces)', score:4, note:'Faster QC'},
-];
-
-function makeRow(check, prefix){
-  return `<div class="check-row">
-    <input type="checkbox" id="${prefix}_${check.id}" onchange="updateScore()">
-    <label for="${prefix}_${check.id}" style="cursor:pointer">${check.label}</label>
-    <span class="impact">+${check.score} · ${check.note}</span>
-  </div>`;
+function handlingTime(symDeg, sizeKey){
+  const Tbase = 1.5;
+  // Symmetry penalty: 0° = 0, 360° = 0.8, 720° = 1.5 (linear interp)
+  const symPen = (symDeg / 720) * 1.5;
+  const sizePen = {tiny:1.5, small:0.5, normal:0, large:0.5}[sizeKey];
+  return Tbase + symPen + sizePen;
 }
 
-document.getElementById('dfaChecks').innerHTML = DFA_CHECKS.map(c => makeRow(c, 'dfa')).join('');
-document.getElementById('dfmChecks').innerHTML = DFM_CHECKS.map(c => makeRow(c, 'dfm')).join('');
-
-function updateScore(){
-  let score = 0;
-  for(const c of DFA_CHECKS){
-    if(document.getElementById('dfa_' + c.id).checked) score += c.score;
-  }
-  for(const c of DFM_CHECKS){
-    if(document.getElementById('dfm_' + c.id).checked) score += c.score;
-  }
-  document.getElementById('score').textContent = score;
-  const note = score < 30 ? 'High improvement opportunity — many DFA/DFM wins remaining' :
-               score < 60 ? 'Decent design; room to consolidate further' :
-               score < 85 ? 'Strong DFA/DFM execution' :
-                           'Excellent — DFA/DFM mastered';
-  document.getElementById('scoreNote').textContent = note;
+function insertionTime(accessKey, locKey, tdKey){
+  const Tbase = 1.5;
+  const accessPen = {open:0, restrict:1.5, hard:3}[accessKey];
+  const locPen = locKey === 'yes' ? 0 : 1;
+  const tdPen = tdKey === 'yes' ? 0 : 1.5;
+  return Tbase + accessPen + locPen + tdPen;
 }
-window.updateScore = updateScore;
-updateScore();
+
+function render(){
+  const N = parseInt(el('N').value);
+  let Nmin = parseInt(el('Nmin').value);
+  if(Nmin > N){ Nmin = N; el('Nmin').value = Nmin; }
+  const F = parseInt(el('F').value);
+  const symDeg = parseInt(el('sym').value);
+  const sizeKey = el('size').value;
+  const accessKey = el('access').value;
+  const locKey = el('loc').value;
+  const tdKey = el('td').value;
+
+  el('vN').textContent = N;
+  el('vNmin').textContent = Nmin;
+  el('vF').textContent = F;
+  el('vSym').textContent = symDeg;
+
+  const Th = handlingTime(symDeg, sizeKey);
+  const Ti = insertionTime(accessKey, locKey, tdKey);
+  // Fastener time: each adds 3.5 s on top of any part it secures (separate from part counts).
+  const Ttotal = N * (Th + Ti) + F * 3.5;
+  // DFA efficiency: theoretical min = 3 s per essential part
+  const eff = (3 * Nmin) / Ttotal;
+
+  el('tH').textContent = Th.toFixed(1);
+  el('tI').textContent = Ti.toFixed(1);
+  el('tTot').textContent = Ttotal.toFixed(0) + ' s';
+
+  const effPct = eff * 100;
+  el('eff').textContent = effPct.toFixed(0) + ' %';
+  const effNum = el('eff');
+  effNum.classList.remove('warn','mid');
+  el('effCard').classList.remove('lo');
+  if(effPct < 30){ effNum.classList.add('warn'); el('effCard').classList.add('lo'); el('effLabel').textContent = 'high redesign opportunity'; }
+  else if(effPct < 60){ effNum.classList.add('mid'); el('effLabel').textContent = 'room to consolidate'; }
+  else { el('effLabel').textContent = effPct >= 80 ? 'exceptional — Apple-tier' : 'strong DFA execution'; }
+
+  // Parts bar: Nmin keep + (N - Nmin) merge + F fasteners
+  const merge = N - Nmin;
+  const total = N + F;
+  const segs = [
+    {cls:'keep', n:Nmin, lbl:Nmin + ' keep'},
+    {cls:'merge', n:merge, lbl:merge + ' merge'},
+    {cls:'elim', n:F, lbl:F + ' fasten'}
+  ];
+  el('partsBar').innerHTML = segs.filter(s => s.n > 0).map(s =>
+    `<div class="seg ${s.cls}" style="flex:${s.n}">${s.lbl}</div>`).join('');
+
+  drawBeforeAfter(N, Nmin, F);
+}
+
+function drawBeforeAfter(N, Nmin, F){
+  // Two side-by-side bins of dots: before (N + F parts, mixed) and after (Nmin parts, consolidated)
+  const svg = el('ba');
+  const W = 900, H = 320;
+  const colA = '#5ec8ff', colB = '#a3e635', colF = '#ff7b72', colMerge = '#ffb86c';
+
+  // Layout: left half = before, right half = after
+  function dotGrid(cx, cy, count, color, radius){
+    // Pack into a near-square grid
+    const cols = Math.ceil(Math.sqrt(count * 1.4));
+    const rows = Math.ceil(count / cols);
+    const spacing = Math.min(28, 120 / Math.max(cols, rows));
+    const x0 = cx - (cols - 1) * spacing / 2;
+    const y0 = cy - (rows - 1) * spacing / 2;
+    let out = '';
+    for(let i = 0; i < count; i++){
+      const r = Math.floor(i / cols), c = i % cols;
+      out += `<circle cx="${x0 + c * spacing}" cy="${y0 + r * spacing}" r="${radius}" fill="${color}" opacity="0.85"/>`;
+    }
+    return out;
+  }
+
+  let html = '';
+  // Background panels
+  html += `<rect x="20" y="20" width="420" height="280" fill="#161a21" stroke="#2a313c" rx="6"/>`;
+  html += `<rect x="460" y="20" width="420" height="280" fill="#161a21" stroke="#2a313c" rx="6"/>`;
+  // Titles
+  html += `<text x="230" y="48" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="14" font-weight="600">BEFORE — ${N + F} pieces</text>`;
+  html += `<text x="670" y="48" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="14" font-weight="600">AFTER — ${Nmin} pieces</text>`;
+  // Sub-titles with composition
+  html += `<text x="230" y="68" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">${Nmin} essential · ${N - Nmin} candidates · ${F} fasteners</text>`;
+  html += `<text x="670" y="68" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">consolidated — all snap-fits</text>`;
+  // Before dots
+  html += `<g>${dotGrid(165, 180, Nmin, colB, 7)}</g>`;
+  html += `<g>${dotGrid(265, 180, N - Nmin, colMerge, 7)}</g>`;
+  html += `<g>${dotGrid(355, 220, F, colF, 5)}</g>`;
+  // After dots (just the essential)
+  html += `<g>${dotGrid(670, 180, Nmin, colB, 9)}</g>`;
+  // Arrow
+  html += `<path d="M 442 170 L 458 170 L 458 162 L 478 174 L 458 186 L 458 178 L 442 178 Z" fill="${colA}"/>`;
+  // Metrics
+  const Th = parseFloat(el('tH').textContent);
+  const Ti = parseFloat(el('tI').textContent);
+  const Tbefore = N * (Th + Ti) + F * 3.5;
+  const Tafter = Nmin * (Th + Ti);
+  html += `<text x="230" y="280" text-anchor="middle" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="12">≈ ${Tbefore.toFixed(0)} s assembly</text>`;
+  html += `<text x="670" y="280" text-anchor="middle" fill="#a3e635" font-family="ui-monospace,monospace" font-size="12">≈ ${Tafter.toFixed(0)} s assembly  (−${Math.round(100*(1-Tafter/Tbefore))} %)</text>`;
+  svg.innerHTML = html;
+}
+
+render();
 </script>
 </body></html>
