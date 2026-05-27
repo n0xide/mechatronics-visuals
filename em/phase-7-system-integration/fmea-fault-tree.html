@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FMEA &amp; Fault Tree — visual</title>
+<style>
+:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,Segoe UI,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:14px 0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.control .val{font:600 13px ui-monospace,Menlo,Consolas,monospace;color:var(--accent3)}
+.control input[type=range]{width:100%;accent-color:var(--accent)}
+.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:12px ui-monospace,Menlo,Consolas,monospace}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;margin:14px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,Menlo,Consolas,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}.panel.note{border-left:3px solid var(--accent)}
+.panel h3{margin-top:0}
+.scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.score-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center}
+.score-card.hi{border-color:var(--accent3)}.score-card.lo{border-color:var(--warn)}
+.score-num{font:700 22px ui-monospace,Menlo,Consolas,monospace;color:var(--accent3);margin:6px 0}
+.score-num.warn{color:var(--warn)}.score-num.mid{color:var(--accent2)}
+.score-lbl{color:var(--fg-dim);font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace;text-transform:uppercase;letter-spacing:.4px}
+.score-lbl.unit{text-transform:none;letter-spacing:0}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+.deriv b{color:var(--fg-bright)}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--accent2)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,Consolas,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>FMEA &amp; Fault-Tree Analysis — finding failure paths before they find you</h1>
+<p class="lede">FMEA (Failure Mode and Effects Analysis) is bottom-up: list every component, ask "how can this fail?", score severity / occurrence / detection, action the high-RPN items. FTA (Fault-Tree Analysis) is top-down: pick a top hazard ("uncommanded motion"), break it into intermediate events via AND/OR gates, compute the probability from base-event rates. Together they're the safety-case backbone for ISO 26262 (auto), IEC 61508 (industrial), DO-178C (aero), and IEC 60601 (medical). This visual scores FMEA rows live, draws an editable fault tree, and walks the arm-6dof "uncommanded joint motion" case.</p>
+
+<div class="anchors">
+<span class="anchor"><b>RPN</b> = S × O × D (1-1000)</span>
+<span class="anchor"><b>Action threshold</b>: RPN &gt; 100 typical · &gt; 50 for safety-critical</span>
+<span class="anchor"><b>FTA gate</b>: AND multiplies, OR sums (small p)</span>
+<span class="anchor"><b>ASIL / SIL</b>: A-D / 1-4 by severity·exposure·controllability</span>
+<span class="anchor"><b>PFH</b>: probability of dangerous failure per hour</span>
+<span class="anchor"><b>Common-cause failure (CCF)</b>: one root → multiple "independent" branches</span>
+</div>
+
+<h2>Interactive 1 — FMEA row scorer</h2>
+<p>Pick a failure mode, slide S/O/D 1-10, watch RPN + action verdict. Then compare to the example row in the table below.</p>
+
+<div class="controls">
+<div class="control"><label>Failure mode</label><select id="fm" onchange="renderFmea()">
+  <option value="enc">Encoder reports stale value</option>
+  <option value="mosfet">Motor MOSFET shorted ON</option>
+  <option value="can">CAN bus stuck dominant</option>
+  <option value="fw">Firmware deadlock in ISR</option>
+  <option value="estop">E-stop button stuck pressed</option>
+  <option value="psu" selected>PSU 24V rail droops to 18V</option>
+  <option value="custom">Custom (use sliders)</option>
+</select></div>
+<div class="control"><label>Severity S (1=none, 10=safety-catastrophic)</label><input id="S" type="range" min="1" max="10" value="8" step="1" oninput="renderFmea()"><span class="val" id="vS">8</span></div>
+<div class="control"><label>Occurrence O (1=remote, 10=very high)</label><input id="O" type="range" min="1" max="10" value="3" step="1" oninput="renderFmea()"><span class="val" id="vO">3</span></div>
+<div class="control"><label>Detection D (1=detected always, 10=undetectable)</label><input id="D" type="range" min="1" max="10" value="4" step="1" oninput="renderFmea()"><span class="val" id="vD">4</span></div>
+</div>
+
+<div class="scoreboard">
+<div class="score-card" id="rpnCard"><div class="score-lbl">RPN = S × O × D</div><div class="score-num" id="vRpn">—</div><div class="score-lbl" id="vRpnNote">—</div></div>
+<div class="score-card"><div class="score-lbl">Action verdict</div><div class="score-num" id="vAct" style="font-size:14px">—</div><div class="score-lbl" id="vActNote">—</div></div>
+<div class="score-card"><div class="score-lbl">Likely ASIL (rough mapping)</div><div class="score-num" id="vAsil">—</div><div class="score-lbl unit">A-D</div></div>
+<div class="score-card"><div class="score-lbl">Suggested control</div><div class="score-num" id="vCtrl" style="font-size:12px">—</div><div class="score-lbl unit">to reduce RPN</div></div>
+</div>
+
+<h2>Interactive 2 — fault tree probability</h2>
+<p>Five base events with editable per-hour failure rates. The tree shows how they combine. Top event probability updates live.</p>
+
+<div class="controls">
+<div class="control"><label>P(encoder fail) /h</label><input id="pE" type="range" min="-9" max="-3" value="-6" step="0.1" oninput="renderTree()"><span class="val" id="vPE">10⁻⁶</span></div>
+<div class="control"><label>P(MOSFET driver fault) /h</label><input id="pM" type="range" min="-9" max="-3" value="-7" step="0.1" oninput="renderTree()"><span class="val" id="vPM">10⁻⁷</span></div>
+<div class="control"><label>P(firmware bug latches output) /h</label><input id="pF" type="range" min="-9" max="-3" value="-7" step="0.1" oninput="renderTree()"><span class="val" id="vPF">10⁻⁷</span></div>
+<div class="control"><label>P(watchdog also fails) /h</label><input id="pW" type="range" min="-9" max="-3" value="-5" step="0.1" oninput="renderTree()"><span class="val" id="vPW">10⁻⁵</span></div>
+<div class="control"><label>P(brake release fault) /h</label><input id="pB" type="range" min="-9" max="-3" value="-6" step="0.1" oninput="renderTree()"><span class="val" id="vPB">10⁻⁶</span></div>
+</div>
+
+<div class="scoreboard">
+<div class="score-card" id="topCard"><div class="score-lbl">P(top event) /h</div><div class="score-num" id="vTop">—</div><div class="score-lbl" id="vTopNote">SIL/ASIL target</div></div>
+<div class="score-card"><div class="score-lbl">MTBF top</div><div class="score-num" id="vMtbf">—</div><div class="score-lbl unit">years between events</div></div>
+<div class="score-card"><div class="score-lbl">Dominant cut-set</div><div class="score-num" id="vCut" style="font-size:12px">—</div><div class="score-lbl unit">highest contributor</div></div>
+</div>
+
+<div class="figure"><svg id="tree" viewBox="0 0 900 460" width="100%"></svg></div>
+
+<h2>FMEA — the bottom-up method</h2>
+<table>
+<tr><th>Step</th><th>What you produce</th><th>Worked row (PSU 24V droop)</th></tr>
+<tr><td>1. Item / function</td><td>Each component + its job</td><td>"24 V PSU rail powers joint controllers"</td></tr>
+<tr><td>2. Failure mode</td><td>How can it stop doing its job?</td><td>"Output voltage droops below UVLO threshold"</td></tr>
+<tr><td>3. Effect</td><td>What happens downstream / to the user?</td><td>"Joint controller resets mid-trajectory; motor coasts; possible collision"</td></tr>
+<tr><td>4. Cause</td><td>Why does this failure happen?</td><td>"Capacitor ESR aging; brown-out under inrush; PSU undersized"</td></tr>
+<tr><td>5. Severity S (1-10)</td><td>How bad is the effect? 10 = death</td><td>S = 8 (uncommanded coast in motion)</td></tr>
+<tr><td>6. Occurrence O (1-10)</td><td>How often does it happen? 10 = certain</td><td>O = 3 (rare with good PSU + margin)</td></tr>
+<tr><td>7. Detection D (1-10)</td><td>How likely will current controls catch it? 10 = never</td><td>D = 4 (UVLO detects but only after threshold; no predictive monitoring)</td></tr>
+<tr><td>8. RPN = S·O·D</td><td>Risk Priority Number, 1-1000</td><td>RPN = 8·3·4 = 96 → near action threshold</td></tr>
+<tr><td>9. Actions</td><td>Add controls to reduce S, O, or D (cannot reduce S below intrinsic)</td><td>Add bus voltage telemetry + warning at 22V (D: 4→2); RPN drops to 48</td></tr>
+<tr><td>10. Re-score</td><td>After actions, recompute RPN</td><td>RPN_new = 8·3·2 = 48 → acceptable</td></tr>
+</table>
+
+<h2>FTA — the top-down method</h2>
+<p>Start with the hazard (top event), use Boolean gates to break it into intermediate events, and stop at "base events" you can assign a numerical rate to. Then compute probabilities up the tree.</p>
+<div class="deriv">
+<span class="step">AND gate: <b>P(AND) = P(A) · P(B)</b>   (only triggers if BOTH inputs occur)</span>
+<span class="step">OR gate:  <b>P(OR) = P(A) + P(B) − P(A)·P(B)</b>   (≈ P(A) + P(B) for small p)</span>
+<span class="step"></span>
+<span class="step">Top event T comes from cut-sets — minimal combinations of base events that cause T.</span>
+<span class="step">For our arm-6dof "uncommanded joint motion":</span>
+<span class="step">  T = (encoder-stale OR fw-latched) AND (watchdog-fail) AND (brake-release-fault OR MOSFET-shorted)</span>
+<span class="step"></span>
+<span class="step">Why this AND structure: defense-in-depth.</span>
+<span class="step">  Each layer (sensor, fw, watchdog, brake) is independent → only fails when ALL bypass-protections fail.</span>
+<span class="step">  AND gates are GOOD in safety design — they multiply tiny probabilities into tinier ones.</span>
+<span class="step"></span>
+<span class="step">Watch for common-cause failure (CCF): if a single root (shared PSU, shared MCU, shared firmware bug) feeds two "independent" branches, the AND silently becomes an OR. β-factor models account for this.</span>
+</div>
+
+<h2>S, O, D scoring rubrics (automotive AIAG VDA harmonized)</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+<div>
+<h3>Severity (S)</h3>
+<table>
+<tr><th>S</th><th>Effect</th></tr>
+<tr><td>10</td><td>Hazardous w/o warning; loss of vehicle control; death</td></tr>
+<tr><td>9</td><td>Hazardous w/ warning; injury</td></tr>
+<tr><td>7-8</td><td>Loss of primary function; product unusable</td></tr>
+<tr><td>5-6</td><td>Loss of secondary function; degraded operation</td></tr>
+<tr><td>3-4</td><td>Annoyance; cosmetic; light degraded</td></tr>
+<tr><td>1-2</td><td>Negligible; user unaware</td></tr>
+</table>
+</div>
+<div>
+<h3>Occurrence (O)</h3>
+<table>
+<tr><th>O</th><th>Frequency / lifetime</th></tr>
+<tr><td>10</td><td>≥ 1 in 10  (≥ 10 %)</td></tr>
+<tr><td>9</td><td>1 in 50</td></tr>
+<tr><td>7-8</td><td>1 in 500</td></tr>
+<tr><td>5-6</td><td>1 in 5,000</td></tr>
+<tr><td>3-4</td><td>1 in 100,000</td></tr>
+<tr><td>1-2</td><td>≤ 1 in 1,000,000</td></tr>
+</table>
+</div>
+<div>
+<h3>Detection (D)</h3>
+<table>
+<tr><th>D</th><th>Likelihood current controls detect</th></tr>
+<tr><td>10</td><td>Absolutely no chance — no detection possible</td></tr>
+<tr><td>9</td><td>Very remote — not normally monitored</td></tr>
+<tr><td>7-8</td><td>Low — visual/manual inspection only</td></tr>
+<tr><td>5-6</td><td>Moderate — built-in self-test runs at boot</td></tr>
+<tr><td>3-4</td><td>High — continuous monitoring with alarm</td></tr>
+<tr><td>1-2</td><td>Almost certain — automatic mitigation in &lt; 100 ms</td></tr>
+</table>
+</div>
+</div>
+
+<h2>Worked example — arm-6dof-pa612 "uncommanded joint motion"</h2>
+<div class="panel tip">
+<h3>Top event (hazard)</h3>
+<p>The 6-DOF arm makes an unplanned motion that exceeds the SSM safety zone (per ISO 13855) with a human present. Severity assessment: S = 9 (potential injury at typical arm energies).</p>
+<h3>Fault tree decomposition</h3>
+<div class="deriv">
+<span class="step">Top event T: "uncommanded joint motion"</span>
+<span class="step">T ⇐ (motor energized when not commanded) AND (brake fails to hold)</span>
+<span class="step">  L_motor: motor energized when not commanded</span>
+<span class="step">    L_motor ⇐ (firmware bug latches PWM high) OR (MOSFET driver fault) OR (encoder commands runaway)</span>
+<span class="step">  L_brake: brake fails to hold</span>
+<span class="step">    L_brake ⇐ (brake release stuck) OR (brake supply lost during motion) OR (watchdog fails to trigger brake)</span>
+</div>
+<h3>Numerical example (typical rates)</h3>
+<div class="deriv">
+<span class="step">P(firmware latch) = 1e-7 /h  · P(MOSFET fault) = 5e-7 /h  · P(encoder runaway) = 2e-6 /h</span>
+<span class="step">  L_motor ≈ 1e-7 + 5e-7 + 2e-6 = 2.6e-6 /h</span>
+<span class="step">P(brake stuck) = 1e-6 /h  · P(brake supply lost) = 5e-6 /h  · P(watchdog fault) = 1e-5 /h</span>
+<span class="step">  L_brake ≈ 1.6e-5 /h</span>
+<span class="step"></span>
+<span class="step">T = L_motor · L_brake = 2.6e-6 · 1.6e-5 = <b>4.2e-11 /h</b></span>
+<span class="step">MTBF = 1/T = 2.4e10 h = 2.7 million years</span>
+<span class="step">PFH_d category: ASIL B (10⁻⁸ to 10⁻⁷ /h target) — well within budget</span>
+</div>
+<p>This is why brake + motor + watchdog are independent: knock out any one of these, even a faulty firmware that latches PWM high or a stuck-on MOSFET — the brake still holds the joint. Three layers of defense = three multiplied probabilities = vanishingly rare top event.</p>
+<h3>What kills this analysis (common-cause)</h3>
+<p>If the brake and motor share a single 24 V rail (one PSU), a PSU droop event fails both at once. The AND becomes effectively serial: T = P(PSU droop) = 1e-6 /h. MTBF = 114 years. Add a second backup rail for the brake → restore independence.</p>
+</div>
+
+<h2>How the standards map to RPN / PFH</h2>
+<table>
+<tr><th>Standard</th><th>Domain</th><th>Severity level</th><th>Typical PFH_d target (/h)</th></tr>
+<tr><td>ISO 26262</td><td>Automotive functional safety</td><td>ASIL A / B / C / D</td><td>10⁻⁶ / 10⁻⁷ / 10⁻⁷ / 10⁻⁸</td></tr>
+<tr><td>IEC 61508</td><td>Industrial process safety</td><td>SIL 1 / 2 / 3 / 4</td><td>10⁻⁶ / 10⁻⁷ / 10⁻⁸ / 10⁻⁹</td></tr>
+<tr><td>ISO 13849</td><td>Machinery safety (incl. cobots)</td><td>PL a / b / c / d / e</td><td>10⁻⁵ / 3·10⁻⁶ / 10⁻⁶ / 10⁻⁷ / 10⁻⁸</td></tr>
+<tr><td>DO-178C</td><td>Aviation software</td><td>DAL A / B / C / D / E</td><td>10⁻⁹ / 10⁻⁷ / 10⁻⁵ / 10⁻³ / N/A</td></tr>
+<tr><td>IEC 60601-1</td><td>Medical electrical</td><td>MoP1 / MoP2 (means of protection)</td><td>Risk-based + ISO 14971</td></tr>
+<tr><td>IEC 62304</td><td>Medical software</td><td>Class A / B / C</td><td>Lifecycle process, no PFH target</td></tr>
+</table>
+
+<h2>Common pitfalls</h2>
+<ul class="notice">
+<li><b>Score inflation / deflation</b> — without anchor examples, two engineers will score the same failure as RPN 30 and RPN 300. Always use a calibration table with specific examples for each S, O, D level.</li>
+<li><b>RPN tunnel vision</b> — fixing high-RPN items only. AIAG-VDA 2019 deprecated raw RPN; recommends Action Priority (AP) which considers each axis. A failure with S=10/O=1/D=1 has RPN=10 but you still need to mitigate it (cannot ignore catastrophic effects, however rare).</li>
+<li><b>Forgetting CCF</b> — shared power, shared MCU, shared firmware, shared sensor pulled from same lot. Apply β-factor: P(CCF) = β · P(single failure), β = 1-10 % typical.</li>
+<li><b>Static FMEA at design freeze</b> — FMEA is a living document. Update after every field failure, every ECO, every supplier change.</li>
+<li><b>Fault tree without environmental events</b> — temperature extreme, EMI, vibration, ESD all introduce failure modes not visible at room-temp bench. Include "environmental" base events with rates from MIL-HDBK-217 or FIDES.</li>
+<li><b>"Detection" credit before testing it works</b> — score D=2 only if the detection mechanism has been tested under the actual fault. Many BIT (built-in-test) routines miss the very faults they're meant to catch.</li>
+<li><b>Inherited assumptions in fault tree</b> — base-event rates inherited from a previous project may not apply (different vendor, different stress profile, different duty cycle). Re-evaluate.</li>
+<li><b>Confusing FMEA with FMECA</b> — FMECA adds Criticality analysis (often a more rigorous version of S·O). Both are valid; pick one and use consistently.</li>
+</ul>
+
+<h2>Cheat sheet — when to use what</h2>
+<table>
+<tr><th>Tool</th><th>Direction</th><th>When to reach for it</th></tr>
+<tr><td>Design FMEA (DFMEA)</td><td>Bottom-up</td><td>Early design phase, evaluating each subsystem block</td></tr>
+<tr><td>Process FMEA (PFMEA)</td><td>Bottom-up</td><td>Manufacturing / assembly process risks</td></tr>
+<tr><td>Service / Software FMEA</td><td>Bottom-up</td><td>Operations or code-level failure modes</td></tr>
+<tr><td>Fault Tree Analysis (FTA)</td><td>Top-down</td><td>Specific hazard you want to bound the probability of</td></tr>
+<tr><td>Event Tree Analysis (ETA)</td><td>Forward chain</td><td>Initial event → sequence of consequences (good for accidents)</td></tr>
+<tr><td>HAZOP</td><td>Guide-word brainstorm</td><td>Process-industry, "what if more / less / reverse / etc."</td></tr>
+<tr><td>STAMP / STPA</td><td>Systems-theoretic</td><td>Complex software-intensive systems, control-loop hazards (modern alternative to FTA for autonomy)</td></tr>
+</table>
+
+<footer>Cross-links: <a href="hil-architecture.html">HIL Architecture</a> · <a href="bringup-procedure.html">Bring-up Procedure</a> · <a href="../phase-8-robotics-mechatronics/hri-safety-zones.html">HRI Safety Zones</a> · <a href="../phase-6-power-management-em/estop-failsafe.html">E-Stop / Fail-Safe</a> · <a href="../../extras/standards-reference.html">Standards Reference</a></footer>
+
+</main>
+<script>
+const el = id => document.getElementById(id);
+
+const FAILURE_MODES = {
+  enc:    {S:7, O:5, D:6, ctrl:'CRC + age timer on encoder samples', asil:'B'},
+  mosfet: {S:9, O:2, D:5, ctrl:'Gate-driver desat detect + active brake', asil:'C'},
+  can:    {S:6, O:3, D:3, ctrl:'CAN bus-off recovery + WD timeout', asil:'B'},
+  fw:     {S:8, O:2, D:7, ctrl:'External watchdog + voting MCUs', asil:'C'},
+  estop:  {S:5, O:2, D:2, ctrl:'Dual-channel monitored estop circuit', asil:'A'},
+  psu:    {S:8, O:3, D:4, ctrl:'Bus telemetry + warning at 22V', asil:'B'},
+  custom: null
+};
+
+function renderFmea(){
+  const fmKey = el('fm').value;
+  if(fmKey !== 'custom'){
+    const fm = FAILURE_MODES[fmKey];
+    el('S').value = fm.S; el('O').value = fm.O; el('D').value = fm.D;
+  }
+  const S = parseInt(el('S').value);
+  const O = parseInt(el('O').value);
+  const D = parseInt(el('D').value);
+  el('vS').textContent = S; el('vO').textContent = O; el('vD').textContent = D;
+
+  const rpn = S * O * D;
+  el('vRpn').textContent = rpn;
+
+  const rpnCard = el('rpnCard');
+  const rpnNum = el('vRpn');
+  rpnCard.classList.remove('hi','lo');
+  rpnNum.classList.remove('warn','mid');
+  let rpnNote, action, actionNote;
+  if(rpn < 50 && S < 9){
+    rpnNote = 'acceptable';
+    action = 'ACCEPT';
+    actionNote = 'monitor; no action required';
+    rpnCard.classList.add('hi');
+  } else if(rpn < 100 && S < 9){
+    rpnNote = 'review';
+    action = 'REVIEW';
+    actionNote = 'consider preventive controls';
+    rpnNum.classList.add('mid');
+  } else if(S >= 9){
+    rpnNote = 'CATASTROPHIC S — must mitigate';
+    action = 'MITIGATE NOW';
+    actionNote = 'safety-critical, regardless of RPN';
+    rpnNum.classList.add('warn');
+    rpnCard.classList.add('lo');
+  } else {
+    rpnNote = 'high risk';
+    action = 'MITIGATE';
+    actionNote = 'add detection or reduce occurrence';
+    rpnNum.classList.add('warn');
+    rpnCard.classList.add('lo');
+  }
+  el('vRpnNote').textContent = rpnNote;
+  el('vAct').textContent = action;
+  el('vActNote').textContent = actionNote;
+
+  // ASIL rough mapping from S
+  const asil = S >= 9 ? 'D' : S >= 7 ? 'C' : S >= 5 ? 'B' : 'A';
+  el('vAsil').textContent = asil;
+
+  // Suggested control (from failure-mode preset)
+  const fm = FAILURE_MODES[fmKey];
+  el('vCtrl').textContent = fm ? fm.ctrl : 'depends on failure mode';
+}
+
+function renderTree(){
+  const pE = Math.pow(10, parseFloat(el('pE').value));
+  const pM = Math.pow(10, parseFloat(el('pM').value));
+  const pF = Math.pow(10, parseFloat(el('pF').value));
+  const pW = Math.pow(10, parseFloat(el('pW').value));
+  const pB = Math.pow(10, parseFloat(el('pB').value));
+
+  el('vPE').innerHTML = '10' + sup(parseFloat(el('pE').value).toFixed(1));
+  el('vPM').innerHTML = '10' + sup(parseFloat(el('pM').value).toFixed(1));
+  el('vPF').innerHTML = '10' + sup(parseFloat(el('pF').value).toFixed(1));
+  el('vPW').innerHTML = '10' + sup(parseFloat(el('pW').value).toFixed(1));
+  el('vPB').innerHTML = '10' + sup(parseFloat(el('pB').value).toFixed(1));
+
+  // Logic: T = (motor_active) AND (brake_fail)
+  // motor_active = pE OR pF OR pM
+  // brake_fail = pB OR (... — we use just pB AND pW for "brake holds unless watchdog also fails")
+  // Simplify: motor_active = pE + pF + pM
+  //          brake_fail = pB
+  //          watchdog_fail = pW
+  // T = motor_active * brake_fail * watchdog_fail  (3 AND'd layers)
+  const motor_active = pE + pF + pM;
+  const brake_fail = pB;
+  const wd_fail = pW;
+  const T = motor_active * brake_fail * wd_fail;
+  el('vTop').innerHTML = T.toExponential(1) + ' /h';
+
+  // Decide note based on T
+  const topCard = el('topCard');
+  topCard.classList.remove('hi','lo');
+  let asilTarget;
+  if(T < 1e-8){ asilTarget = 'ASIL D / SIL 4 ✓'; topCard.classList.add('hi'); }
+  else if(T < 1e-7){ asilTarget = 'ASIL C / SIL 3'; topCard.classList.add('hi'); }
+  else if(T < 1e-6){ asilTarget = 'ASIL B / SIL 2'; }
+  else if(T < 1e-5){ asilTarget = 'ASIL A / SIL 1'; topCard.classList.add('lo'); }
+  else { asilTarget = 'unsafe — no SIL credit'; topCard.classList.add('lo'); }
+  el('vTopNote').textContent = asilTarget;
+
+  // MTBF in years
+  const mtbf_h = 1 / T;
+  const mtbf_y = mtbf_h / 8760;
+  el('vMtbf').textContent = mtbf_y > 1e6 ? mtbf_y.toExponential(1) :
+                            mtbf_y > 1e3 ? (mtbf_y/1e3).toFixed(0) + 'k' :
+                            mtbf_y.toFixed(0);
+
+  // Dominant cut-set: which single base-event contributes most
+  const contribs = [
+    {name:'encoder', val: pE * brake_fail * wd_fail},
+    {name:'MOSFET', val: pM * brake_fail * wd_fail},
+    {name:'firmware', val: pF * brake_fail * wd_fail},
+    {name:'watchdog', val: motor_active * brake_fail * pW},
+    {name:'brake', val: motor_active * pB * wd_fail}
+  ];
+  contribs.sort((a,b) => b.val - a.val);
+  el('vCut').textContent = contribs[0].name;
+
+  drawTree(pE, pM, pF, pW, pB, T);
+}
+
+function sup(s){ return '<sup>' + s + '</sup>'; }
+
+function drawTree(pE, pM, pF, pW, pB, T){
+  const svg = el('tree');
+  const W = 900, H = 460;
+  // Helper to draw a box at (x,y) with width w, height h
+  function box(x, y, w, h, label, sublabel, color){
+    let s = `<rect x="${x-w/2}" y="${y-h/2}" width="${w}" height="${h}" fill="#1d232c" stroke="${color}" stroke-width="1.5" rx="4"/>`;
+    s += `<text x="${x}" y="${y-2}" text-anchor="middle" fill="${color}" font-family="ui-monospace,monospace" font-size="11" font-weight="600">${label}</text>`;
+    if(sublabel) s += `<text x="${x}" y="${y+12}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${sublabel}</text>`;
+    return s;
+  }
+  function andGate(x, y){
+    return `<path d="M ${x-18} ${y-12} L ${x-18} ${y+8} A 18 18 0 0 0 ${x+18} ${y+8} L ${x+18} ${y-12} Z" fill="#ff7b72" opacity="0.85"/>` +
+           `<text x="${x}" y="${y+4}" text-anchor="middle" fill="#0e1116" font-family="ui-monospace,monospace" font-size="10" font-weight="600">AND</text>`;
+  }
+  function orGate(x, y){
+    return `<path d="M ${x-20} ${y-12} Q ${x-12} ${y+4} ${x-20} ${y+12} L ${x+20} ${y+12} Q ${x+12} ${y+4} ${x+20} ${y-12} Q ${x} ${y-18} ${x-20} ${y-12} Z" fill="#ffb86c" opacity="0.85"/>` +
+           `<text x="${x}" y="${y+4}" text-anchor="middle" fill="#0e1116" font-family="ui-monospace,monospace" font-size="10" font-weight="600">OR</text>`;
+  }
+
+  let s = '';
+  // Top event
+  s += box(450, 30, 240, 36, 'TOP: uncommanded joint motion', T.toExponential(1) + ' /h', '#ff7b72');
+  // AND gate below top
+  s += andGate(450, 84);
+  s += `<line x1="450" y1="48" x2="450" y2="65" stroke="#ff7b72" stroke-width="1.5"/>`;
+
+  // Three intermediate boxes (motor_active, brake_fail, watchdog_fail) — actually 3 AND children
+  // motor_active at x=200, brake at x=450, watchdog at x=700
+  const motor_active = pE + pF + pM;
+  s += box(180, 150, 200, 36, 'motor energized', motor_active.toExponential(1) + ' /h', '#ffb86c');
+  s += box(450, 150, 200, 36, 'brake fails', pB.toExponential(1) + ' /h', '#ffb86c');
+  s += box(720, 150, 200, 36, 'watchdog fails', pW.toExponential(1) + ' /h', '#ffb86c');
+
+  // Lines from AND gate to three children
+  s += `<line x1="450" y1="100" x2="180" y2="132" stroke="#ff7b72" stroke-width="1"/>`;
+  s += `<line x1="450" y1="100" x2="450" y2="132" stroke="#ff7b72" stroke-width="1"/>`;
+  s += `<line x1="450" y1="100" x2="720" y2="132" stroke="#ff7b72" stroke-width="1"/>`;
+
+  // OR gate for motor_active
+  s += orGate(180, 220);
+  s += `<line x1="180" y1="168" x2="180" y2="200" stroke="#ffb86c" stroke-width="1"/>`;
+
+  // Base events for motor_active: encoder, firmware, MOSFET
+  s += box(80, 290, 110, 30, 'encoder', pE.toExponential(1), '#a3e635');
+  s += box(180, 290, 110, 30, 'firmware', pF.toExponential(1), '#a3e635');
+  s += box(285, 290, 110, 30, 'MOSFET', pM.toExponential(1), '#a3e635');
+  s += `<line x1="180" y1="240" x2="80" y2="275" stroke="#ffb86c" stroke-width="1"/>`;
+  s += `<line x1="180" y1="240" x2="180" y2="275" stroke="#ffb86c" stroke-width="1"/>`;
+  s += `<line x1="180" y1="240" x2="285" y2="275" stroke="#ffb86c" stroke-width="1"/>`;
+
+  // brake base event
+  s += box(450, 290, 110, 30, 'brake', pB.toExponential(1), '#a3e635');
+  s += `<line x1="450" y1="168" x2="450" y2="275" stroke="#ffb86c" stroke-width="1" stroke-dasharray="2,2"/>`;
+
+  // watchdog base event
+  s += box(720, 290, 110, 30, 'watchdog', pW.toExponential(1), '#a3e635');
+  s += `<line x1="720" y1="168" x2="720" y2="275" stroke="#ffb86c" stroke-width="1" stroke-dasharray="2,2"/>`;
+
+  // Legend at bottom
+  s += `<g transform="translate(40, 380)">`;
+  s += `<rect x="0" y="0" width="14" height="14" fill="#ff7b72" opacity="0.85"/><text x="20" y="11" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="11">AND gate (defense-in-depth)</text>`;
+  s += `<rect x="220" y="0" width="14" height="14" fill="#ffb86c" opacity="0.85"/><text x="240" y="11" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="11">OR gate (any one is enough)</text>`;
+  s += `<rect x="440" y="0" width="14" height="14" fill="none" stroke="#a3e635" stroke-width="1.5"/><text x="460" y="11" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="11">base event (assigned rate)</text>`;
+  s += `<rect x="660" y="0" width="14" height="14" fill="none" stroke="#ffb86c" stroke-width="1.5"/><text x="680" y="11" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="11">intermediate event</text>`;
+  s += `</g>`;
+  s += `<text x="450" y="430" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">T = (motor energized) · (brake fails) · (watchdog fails)  — three independent layers must all fail</text>`;
+
+  svg.innerHTML = s;
+}
+
+renderFmea();
+renderTree();
+</script>
+</body></html>

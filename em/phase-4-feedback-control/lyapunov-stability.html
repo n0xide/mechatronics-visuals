@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Lyapunov Stability — visual</title>
+<style>
+:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,Segoe UI,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:14px 0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.control .val{font:600 13px ui-monospace,Menlo,Consolas,monospace;color:var(--accent3)}
+.control input[type=range]{width:100%;accent-color:var(--accent)}
+.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:12px ui-monospace,Menlo,Consolas,monospace}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;margin:14px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+.figure-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:760px){.figure-grid{grid-template-columns:1fr}}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,Menlo,Consolas,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}.panel.note{border-left:3px solid var(--accent)}
+.panel h3{margin-top:0}
+.scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.score-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center}
+.score-card.hi{border-color:var(--accent3)}.score-card.lo{border-color:var(--warn)}
+.score-num{font:700 22px ui-monospace,Menlo,Consolas,monospace;color:var(--accent3);margin:6px 0}
+.score-num.warn{color:var(--warn)}.score-num.mid{color:var(--accent2)}
+.score-lbl{color:var(--fg-dim);font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace;text-transform:uppercase;letter-spacing:.4px}
+.score-lbl.unit{text-transform:none;letter-spacing:0}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+.deriv b{color:var(--fg-bright)}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--accent2)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,Consolas,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>Lyapunov Stability — proving "this nonlinear thing won't blow up"</h1>
+<p class="lede">Linear systems give you eigenvalues: if all real parts are negative, you're stable. For <i>nonlinear</i> systems — pendulums, friction, saturating actuators, anything with terms like <code>sin(θ)</code> or <code>x·y</code> — eigenvalues only describe behavior near one operating point. Lyapunov's method finds a scalar "energy-like" function V(x) of the state. If V is positive everywhere except the origin, and V decreases along every trajectory, the system is stable. No need to solve the equations of motion. This visual builds V for three example systems, plots the trajectory + level sets, and marks where V̇ flips sign.</p>
+
+<div class="anchors">
+<span class="anchor"><b>V(x)</b>: scalar "energy" — positive definite</span>
+<span class="anchor"><b>V̇(x) ≤ 0</b>: stable (Lyapunov)</span>
+<span class="anchor"><b>V̇(x) &lt; 0</b>: asymptotically stable</span>
+<span class="anchor"><b>LTI</b>: V = xᵀPx with A<sup>T</sup>P + PA = −Q</span>
+<span class="anchor"><b>LaSalle</b>: V̇ = 0 only at the origin → asymp. stable</span>
+<span class="anchor"><b>Region of attraction</b>: largest V-level set inside the stable region</span>
+</div>
+
+<h2>Interactive — pick a system, watch the trajectory cross V level sets</h2>
+<p>Three 2D autonomous systems. Pick one, set initial state (x₁₀, x₂₀), watch the trajectory spiral / converge / diverge. The dashed contours are level sets of V(x) — the trajectory crossing them inward = V̇ &lt; 0 = stable.</p>
+
+<div class="controls">
+<div class="control"><label>System</label><select id="sys" onchange="render()">
+  <option value="msd" selected>Mass-spring-damper (V = ½kx² + ½mv²)</option>
+  <option value="pendulum">Pendulum with friction (V = mgL(1−cosθ) + ½mL²θ̇²)</option>
+  <option value="vanderpol">Van der Pol (unstable origin, limit cycle)</option>
+</select></div>
+<div class="control"><label>x₁ initial</label><input id="x10" type="range" min="-3" max="3" value="2" step="0.1" oninput="render()"><span class="val" id="vX10">2.0</span></div>
+<div class="control"><label>x₂ initial</label><input id="x20" type="range" min="-3" max="3" value="1.5" step="0.1" oninput="render()"><span class="val" id="vX20">1.5</span></div>
+<div class="control"><label>Damping / friction (b)</label><input id="b" type="range" min="0" max="3" value="0.5" step="0.1" oninput="render()"><span class="val" id="vB">0.5</span></div>
+<div class="control"><label>Stiffness / gravity (k or g)</label><input id="k" type="range" min="0.2" max="5" value="2" step="0.1" oninput="render()"><span class="val" id="vK">2.0</span></div>
+<div class="control"><label>Sim time (s)</label><input id="tend" type="range" min="2" max="40" value="15" step="1" oninput="render()"><span class="val" id="vTend">15</span></div>
+</div>
+
+<div class="scoreboard">
+<div class="score-card" id="verdictCard"><div class="score-lbl">Stability verdict</div><div class="score-num" id="vVerdict" style="font-size:14px">—</div><div class="score-lbl" id="vNote">—</div></div>
+<div class="score-card"><div class="score-lbl">V(t=0)</div><div class="score-num" id="vV0">—</div><div class="score-lbl unit">initial "energy"</div></div>
+<div class="score-card"><div class="score-lbl">V(t=end)</div><div class="score-num" id="vVend">—</div><div class="score-lbl unit">final "energy"</div></div>
+<div class="score-card"><div class="score-lbl">Max |V̇| over trajectory</div><div class="score-num" id="vVdMax">—</div><div class="score-lbl unit">sign tells stability</div></div>
+</div>
+
+<div class="figure-grid">
+<div class="figure"><svg id="phase" viewBox="0 0 460 460" width="100%"></svg></div>
+<div class="figure"><svg id="timeplot" viewBox="0 0 460 460" width="100%"></svg></div>
+</div>
+
+<h2>The Lyapunov stability theorems</h2>
+<div class="deriv">
+<span class="step">Given autonomous system  ẋ = f(x), f(0) = 0  (origin is the equilibrium).</span>
+<span class="step"></span>
+<span class="step">A function V : ℝⁿ → ℝ is a <b>Lyapunov function candidate</b> if:</span>
+<span class="step">  • V(0) = 0</span>
+<span class="step">  • V(x) &gt; 0 for all x ≠ 0 in some neighborhood (positive definite)</span>
+<span class="step">  • V is continuously differentiable</span>
+<span class="step"></span>
+<span class="step">Compute the derivative along trajectories:</span>
+<span class="step">  <b>V̇(x) = ∇V(x) · f(x)</b>   (gradient of V dotted with the vector field)</span>
+<span class="step"></span>
+<span class="step"><b>Theorem (Lyapunov):</b></span>
+<span class="step">  V̇(x) ≤ 0  in a neighborhood ⇒ origin is <i>stable</i> (Lyapunov stable)</span>
+<span class="step">  V̇(x) &lt; 0  in a neighborhood (x ≠ 0) ⇒ origin is <i>asymptotically stable</i></span>
+<span class="step">  V̇(x) &gt; 0 somewhere ⇒ test fails (might still be stable — V is just the wrong candidate)</span>
+<span class="step"></span>
+<span class="step"><b>LaSalle's invariance principle:</b> if V̇ ≤ 0 and the largest invariant set inside {x : V̇ = 0} is just {0}, then the origin is asymptotically stable even though V̇ has zero crossings.</span>
+<span class="step"></span>
+<span class="step"><b>Region of attraction:</b> the largest sublevel set {x : V(x) ≤ c} contained in the region where V̇ &lt; 0 estimates how far from the origin you can start and still converge.</span>
+</div>
+
+<h2>Three worked systems</h2>
+
+<div class="panel tip">
+<h3>1. Mass-spring-damper (LTI, easy case)</h3>
+<div class="deriv">
+<span class="step">ẋ = v,  v̇ = −(k/m)x − (b/m)v</span>
+<span class="step">Candidate: <b>V(x, v) = ½kx² + ½mv²</b>  (total stored energy)</span>
+<span class="step">V̇ = kx·ẋ + mv·v̇ = kxv − kxv − bv² = <b>−bv²</b></span>
+<span class="step">V̇ ≤ 0 always; V̇ = 0 only when v = 0 (then by LaSalle, also x = 0 eventually).</span>
+<span class="step">⇒ asymptotically stable for any b &gt; 0, regardless of how large the initial energy is. <b>Global!</b></span>
+</div>
+</div>
+
+<div class="panel tip">
+<h3>2. Damped pendulum (nonlinear, can swing past upright)</h3>
+<div class="deriv">
+<span class="step">θ̈ = −(g/L)·sin(θ) − (b/(mL²))·θ̇</span>
+<span class="step">Candidate: <b>V(θ, θ̇) = mgL(1 − cos θ) + ½mL²θ̇²</b>  (PE + KE)</span>
+<span class="step">V̇ = mgL·sin(θ)·θ̇ + mL²θ̇·θ̈ = mgL·sin(θ)·θ̇ − mgL·sin(θ)·θ̇ − b·θ̇² = <b>−b·θ̇²</b></span>
+<span class="step">V̇ ≤ 0; LaSalle gives asymp. stability of the downward equilibrium.</span>
+<span class="step"><b>Region of attraction</b> bounded by V &lt; 2mgL (energy below the "over-the-top" threshold).</span>
+<span class="step">Start with too much energy ⇒ pendulum loops over the top, then settles. Not asymptotically stable to θ=0 globally; only inside the "first cup" of the energy landscape.</span>
+</div>
+</div>
+
+<div class="panel warn">
+<h3>3. Van der Pol (unstable origin, stable limit cycle)</h3>
+<div class="deriv">
+<span class="step">ẋ = v,  v̇ = µ(1 − x²)v − x   (µ &gt; 0)</span>
+<span class="step">Try V = ½x² + ½v² (kinetic + spring energy):</span>
+<span class="step">V̇ = xv + v[µ(1−x²)v − x] = µ(1 − x²)v²</span>
+<span class="step">V̇ &gt; 0 for |x| &lt; 1 (near origin) and V̇ &lt; 0 for |x| &gt; 1 ⇒ trajectories <em>spiral out</em> from the origin and <em>spiral in</em> from far away. They meet on a <b>limit cycle</b> (oscillator).</span>
+<span class="step">Lesson: V̇ &gt; 0 doesn't mean unbounded growth; it means the candidate V is wrong for this system. Energy still bounds the trajectory inside the cycle.</span>
+</div>
+</div>
+
+<h2>LTI shortcut — the Lyapunov equation</h2>
+<div class="panel note">
+<p>For linear ẋ = Ax: pick any symmetric positive-definite Q (often the identity), solve for symmetric P in:</p>
+<div class="deriv">
+<span class="step"><b>AᵀP + PA = −Q</b></span>
+</div>
+<p>If P is positive definite, then V = xᵀPx is a Lyapunov function and the system is asymptotically stable. If P comes out non-positive-definite, the system is unstable. <b>This is a one-shot test</b> — no eigenvalue computation needed (though equivalent for LTI). Useful when A is large or symbolic.</p>
+<p>MATLAB: <code>P = lyap(A', Q)</code>. Python: <code>scipy.linalg.solve_lyapunov(A.T, -Q)</code>.</p>
+</div>
+
+<h2>Where Lyapunov methods are bread-and-butter</h2>
+<table>
+<tr><th>Application</th><th>What V looks like</th></tr>
+<tr><td>Adaptive control (MRAC)</td><td>V = eᵀPe + θ̃ᵀΓ⁻¹θ̃ (tracking error + parameter error) — V̇ &lt; 0 designs the update law</td></tr>
+<tr><td>Sliding-mode control</td><td>V = ½s² (s = sliding surface) — drive V̇ &lt; 0 ⇒ s → 0 in finite time</td></tr>
+<tr><td>Backstepping (nonlinear)</td><td>Stage-by-stage V_i; each stage's controller cancels indefinite cross terms</td></tr>
+<tr><td>Synchronization (multi-agent)</td><td>V = ½ Σᵢⱼ (xᵢ − xⱼ)² (sum of pairwise distances) — V̇ &lt; 0 ⇒ consensus</td></tr>
+<tr><td>Robot impedance / Hogan</td><td>V = ½ ẋᵀMẋ + V_potential — passivity proofs of stability under contact</td></tr>
+<tr><td>Power-system stability</td><td>Energy function on the swing equation — equal-area criterion is a Lyapunov result</td></tr>
+<tr><td>Neural network training</td><td>V = ½‖θ − θ*‖² shows gradient descent converges if step size is small enough</td></tr>
+</table>
+
+<h2>Finding V — the dark art</h2>
+<table>
+<tr><th>System type</th><th>First V to try</th></tr>
+<tr><td>Mechanical (mass + spring + damper)</td><td>KE + PE: V = ½ q̇ᵀMq̇ + U(q)</td></tr>
+<tr><td>Electrical (LC + R)</td><td>½Li² + ½Cv²</td></tr>
+<tr><td>LTI (any ẋ = Ax)</td><td>xᵀPx with P from Lyapunov equation</td></tr>
+<tr><td>Quadratic w/ cross terms</td><td>SOS (Sum-Of-Squares) program (use SOSTOOLS, SeDuMi)</td></tr>
+<tr><td>Feedback-linearized</td><td>Squared tracking error: V = ½eᵀe</td></tr>
+<tr><td>Polynomial system</td><td>Polynomial V; convex optimization to find coeffs</td></tr>
+<tr><td>Tracking error of adaptive law</td><td>Quadratic in error + quadratic in parameter mismatch</td></tr>
+</table>
+
+<h2>Lyapunov stability is NOT</h2>
+<ul class="notice">
+<li><b>Necessary for stability.</b> A system can be stable but no easy V exists. Failing to find V doesn't prove instability — only finding one with V̇ ≥ 0 hints at it.</li>
+<li><b>Robust to model error.</b> Lyapunov stability of the model doesn't guarantee stability of the real system; use robust-control extensions (V̇ ≤ −ε ‖x‖² with margin).</li>
+<li><b>Tells you HOW the system settles.</b> Gives decay bounds (rate ≥ λ_min(Q)/λ_max(P) for LTI) but not the actual eigenstructure.</li>
+<li><b>Equivalent to BIBO.</b> Bounded-input-bounded-output is a different (input-output) view; Lyapunov is state-space + autonomous.</li>
+<li><b>Useful for limit cycles.</b> Pure Lyapunov gives equilibrium stability. For limit cycles, use Poincaré-Bendixson or compute the orbital stability via Floquet multipliers.</li>
+</ul>
+
+<h2>Common pitfalls</h2>
+<ul class="notice">
+<li><b>Forgetting positive definiteness</b> — a V that's positive in one direction but negative in another (e.g., V = x₁² − x₂²) isn't a valid candidate. Check eigenvalues of the Hessian for quadratic forms.</li>
+<li><b>Local vs global confusion</b> — a Lyapunov function with V̇ &lt; 0 in a neighborhood says nothing about far-away initial conditions. Estimate the region of attraction explicitly.</li>
+<li><b>V̇ along the wrong dynamics</b> — must use the closed-loop f(x), not just the plant or just the controller. Easy to mix these up in design problems.</li>
+<li><b>Discrete-time uses ΔV not V̇</b> — for x[k+1] = f(x[k]): need V(x[k+1]) − V(x[k]) &lt; 0 along trajectories. The continuous V̇ ≤ 0 result doesn't carry over.</li>
+<li><b>Hybrid / switched systems</b> — switching between stable subsystems can destabilize. Need multiple-Lyapunov-function (MLF) approach + dwell-time bounds.</li>
+<li><b>Asymptotic vs exponential stability</b> — V̇ ≤ −W(x) for some positive-definite W gives asymptotic. V̇ ≤ −c·V gives exponential (rate at least c). The latter is what you want for design — bounds the convergence rate.</li>
+<li><b>Numerical V̇ estimation</b> — when V is complicated, you may evaluate V̇ numerically along trajectories. Watch for sign changes that are actually integration noise, not true V̇ &gt; 0.</li>
+</ul>
+
+<h2>Cheat sheet</h2>
+<table>
+<tr><th>Quick check</th><th>Verdict</th></tr>
+<tr><td>V positive definite + V̇ negative semi-definite</td><td>Stable</td></tr>
+<tr><td>V pos def + V̇ negative definite (everywhere)</td><td>Asymptotically stable</td></tr>
+<tr><td>V pos def + V̇ negative semi-def + LaSalle: largest invariant set in {V̇=0} is {0}</td><td>Asymptotically stable</td></tr>
+<tr><td>V pos def + V̇ ≤ −c V</td><td>Exponentially stable, rate ≥ c/2</td></tr>
+<tr><td>V pos def + V̇ &gt; 0 in some open neighborhood of 0</td><td>UNSTABLE (Chetaev's theorem)</td></tr>
+<tr><td>Found V that's "almost" Lyapunov</td><td>Try a different V — failure to find ≠ instability</td></tr>
+<tr><td>System is LTI, eigenvalues all Re &lt; 0</td><td>Asymptotically stable — eigenvalue test sufficient</td></tr>
+</table>
+
+<footer>Cross-links: <a href="pid-explorer.html">PID Explorer</a> · <a href="state-space-survey.html">State-Space Survey</a> · <a href="anti-windup.html">Anti-Windup</a> · <a href="kalman-filter.html">Kalman Filter</a> · <a href="open-closed-loop.html">Open / Closed Loop</a></footer>
+
+</main>
+<script>
+const el = id => document.getElementById(id);
+
+function dynamics(sys, x1, x2, k, b){
+  // returns [dx1/dt, dx2/dt]
+  if(sys === 'msd'){
+    // mass-spring-damper: x1=position, x2=velocity, m=1
+    return [x2, -k * x1 - b * x2];
+  }
+  if(sys === 'pendulum'){
+    // x1=theta, x2=theta_dot, L=1, m=1, g = k slider
+    return [x2, -k * Math.sin(x1) - b * x2];
+  }
+  if(sys === 'vanderpol'){
+    // x1=x, x2=v, mu = b slider, k controls spring (set to 1 typically)
+    return [x2, b * (1 - x1*x1) * x2 - k*x1];
+  }
+  return [0, 0];
+}
+
+function Vfunc(sys, x1, x2, k){
+  if(sys === 'msd') return 0.5 * k * x1*x1 + 0.5 * x2*x2;
+  if(sys === 'pendulum') return k * (1 - Math.cos(x1)) + 0.5 * x2*x2;
+  if(sys === 'vanderpol') return 0.5 * x1*x1 + 0.5 * x2*x2;
+  return 0;
+}
+
+function simulate(sys, x10, x20, k, b, tend){
+  const dt = 0.01;
+  const N = Math.round(tend / dt);
+  let x1 = x10, x2 = x20;
+  const traj = [{t:0, x1, x2, V: Vfunc(sys,x1,x2,k)}];
+  for(let i = 0; i < N; i++){
+    // RK4
+    const [k1a, k1b] = dynamics(sys, x1, x2, k, b);
+    const [k2a, k2b] = dynamics(sys, x1 + dt/2*k1a, x2 + dt/2*k1b, k, b);
+    const [k3a, k3b] = dynamics(sys, x1 + dt/2*k2a, x2 + dt/2*k2b, k, b);
+    const [k4a, k4b] = dynamics(sys, x1 + dt*k3a, x2 + dt*k3b, k, b);
+    x1 += dt/6 * (k1a + 2*k2a + 2*k3a + k4a);
+    x2 += dt/6 * (k1b + 2*k2b + 2*k3b + k4b);
+    if(Math.abs(x1) > 100 || Math.abs(x2) > 100) break;  // diverged
+    traj.push({t:(i+1)*dt, x1, x2, V: Vfunc(sys,x1,x2,k)});
+  }
+  return traj;
+}
+
+function render(){
+  const sys = el('sys').value;
+  const x10 = parseFloat(el('x10').value);
+  const x20 = parseFloat(el('x20').value);
+  const k = parseFloat(el('k').value);
+  const b = parseFloat(el('b').value);
+  const tend = parseFloat(el('tend').value);
+
+  el('vX10').textContent = x10.toFixed(1);
+  el('vX20').textContent = x20.toFixed(1);
+  el('vK').textContent = k.toFixed(1);
+  el('vB').textContent = b.toFixed(1);
+  el('vTend').textContent = tend;
+
+  const traj = simulate(sys, x10, x20, k, b, tend);
+  const V0 = traj[0].V;
+  const Vend = traj[traj.length - 1].V;
+  el('vV0').textContent = V0.toFixed(2);
+  el('vVend').textContent = Vend.toFixed(2);
+
+  // Compute V_dot along trajectory (numerical)
+  let maxVdotAbs = 0;
+  let anyPositive = false, allNegative = true;
+  for(let i = 1; i < traj.length; i++){
+    const dV = (traj[i].V - traj[i-1].V) / 0.01;
+    if(Math.abs(dV) > maxVdotAbs) maxVdotAbs = Math.abs(dV);
+    if(dV > 1e-6) { anyPositive = true; allNegative = false; }
+  }
+  el('vVdMax').textContent = maxVdotAbs.toExponential(1);
+
+  // Verdict
+  let verdict, note, cls;
+  const settled = Math.abs(traj[traj.length-1].x1) < 0.05 && Math.abs(traj[traj.length-1].x2) < 0.05;
+  const diverged = Math.abs(traj[traj.length-1].x1) > 50 || Math.abs(traj[traj.length-1].x2) > 50;
+  if(diverged){ verdict='UNSTABLE'; note='trajectory diverges'; cls='lo'; }
+  else if(settled){ verdict='ASYMPTOTICALLY STABLE'; note='converges to origin'; cls='hi'; }
+  else if(sys === 'vanderpol'){ verdict='LIMIT CYCLE'; note='not Lyapunov-stable at origin'; cls=''; }
+  else { verdict='STABLE'; note='bounded; not converged in window'; cls=''; }
+  el('vVerdict').textContent = verdict;
+  el('vNote').textContent = note;
+  const verdictCard = el('verdictCard');
+  verdictCard.classList.remove('hi','lo');
+  if(cls) verdictCard.classList.add(cls);
+
+  drawPhase(sys, traj, k, b);
+  drawTime(traj);
+}
+
+function drawPhase(sys, traj, k, b){
+  const svg = el('phase');
+  const W = 460, H = 460, M = 40;
+  const range = 4;
+  const xOf = x => W/2 + x * (W/2 - M) / range;
+  const yOf = y => H/2 - y * (H/2 - M) / range;
+
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">Phase plane + V level sets</text>`;
+  // Axes
+  s += `<line x1="${M}" y1="${H/2}" x2="${W-M}" y2="${H/2}" stroke="#3a414c"/>`;
+  s += `<line x1="${W/2}" y1="${M}" x2="${W/2}" y2="${H-M}" stroke="#3a414c"/>`;
+  s += `<text x="${W-M}" y="${H/2-4}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">x₁</text>`;
+  s += `<text x="${W/2+6}" y="${M+10}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">x₂</text>`;
+
+  // V level sets (concentric ellipses for quadratic V)
+  if(sys === 'msd' || sys === 'vanderpol'){
+    for(const cV of [0.5, 1.5, 3.5, 7.0, 12.0]){
+      // For msd: V = ½k·x² + ½·v² = cV → x²/(2cV/k) + v²/(2cV) = 1
+      const rx = Math.sqrt(2*cV / k) * (W/2 - M) / range;
+      const ry = Math.sqrt(2*cV) * (H/2 - M) / range;
+      s += `<ellipse cx="${W/2}" cy="${H/2}" rx="${rx}" ry="${ry}" fill="none" stroke="#5ec8ff" stroke-width="0.5" stroke-dasharray="3,3" opacity="0.5"/>`;
+    }
+  } else if(sys === 'pendulum'){
+    // V = k(1-cos θ) + ½θ̇² — closed curves near origin, separatrix at V = 2k
+    for(const cV of [0.5, 1.5, 2.5, 4.0, 7.0]){
+      let path = '';
+      for(let theta = -Math.PI; theta < Math.PI; theta += 0.05){
+        const pe = k * (1 - Math.cos(theta));
+        if(pe >= cV) continue;
+        const ke = cV - pe;
+        if(ke < 0) continue;
+        const v = Math.sqrt(2*ke);
+        const x = xOf(theta), y_up = yOf(v), y_dn = yOf(-v);
+        path += (path ? 'L ' : 'M ') + x.toFixed(1) + ',' + y_up.toFixed(1) + ' ';
+      }
+      // bottom half
+      for(let theta = Math.PI; theta > -Math.PI; theta -= 0.05){
+        const pe = k * (1 - Math.cos(theta));
+        if(pe >= cV) continue;
+        const ke = cV - pe;
+        if(ke < 0) continue;
+        const v = Math.sqrt(2*ke);
+        const y_dn = yOf(-v);
+        path += 'L ' + xOf(theta).toFixed(1) + ',' + y_dn.toFixed(1) + ' ';
+      }
+      s += `<path d="${path}" fill="none" stroke="#5ec8ff" stroke-width="0.5" stroke-dasharray="3,3" opacity="0.5"/>`;
+    }
+    // Separatrix at V = 2k (over-the-top)
+    if(2*k < 4){
+      let sepPath = '';
+      for(let theta = -Math.PI; theta < Math.PI; theta += 0.05){
+        const pe = k * (1 - Math.cos(theta));
+        if(pe >= 2*k) continue;
+        const v = Math.sqrt(2*(2*k - pe));
+        sepPath += (sepPath ? 'L ' : 'M ') + xOf(theta).toFixed(1) + ',' + yOf(v).toFixed(1) + ' ';
+      }
+      s += `<path d="${sepPath}" fill="none" stroke="#ff7b72" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.7"/>`;
+      s += `<text x="${xOf(0)}" y="${yOf(Math.sqrt(4*k))-4}" text-anchor="middle" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="10">separatrix V = 2g</text>`;
+    }
+  }
+
+  // Trajectory
+  let path = '';
+  for(let i = 0; i < traj.length; i += 2){
+    const x = xOf(traj[i].x1), y = yOf(traj[i].x2);
+    if(Math.abs(traj[i].x1) > range || Math.abs(traj[i].x2) > range) continue;
+    path += (path ? 'L ' : 'M ') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+  }
+  s += `<path d="${path}" fill="none" stroke="#a3e635" stroke-width="2"/>`;
+  // Start point
+  s += `<circle cx="${xOf(traj[0].x1)}" cy="${yOf(traj[0].x2)}" r="5" fill="#a3e635" stroke="#fff" stroke-width="1.5"/>`;
+  s += `<text x="${xOf(traj[0].x1)+8}" y="${yOf(traj[0].x2)-6}" fill="#a3e635" font-family="ui-monospace,monospace" font-size="10">start</text>`;
+  // End point
+  const last = traj[traj.length - 1];
+  if(Math.abs(last.x1) < range && Math.abs(last.x2) < range){
+    s += `<circle cx="${xOf(last.x1)}" cy="${yOf(last.x2)}" r="4" fill="#ffb86c"/>`;
+  }
+  // Origin
+  s += `<circle cx="${W/2}" cy="${H/2}" r="3" fill="#fff"/>`;
+
+  svg.innerHTML = s;
+}
+
+function drawTime(traj){
+  const svg = el('timeplot');
+  const W = 460, H = 460, M = 50;
+  const tMax = traj[traj.length-1].t;
+  let Vmax = 0;
+  for(const p of traj) if(p.V > Vmax) Vmax = p.V;
+  if(Vmax < 0.1) Vmax = 0.1;
+
+  const xOf = t => M + t / tMax * (W - 2*M);
+  const yOf = v => H - M - v / Vmax * (H - 2*M - 30);
+
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">V(x(t)) — Lyapunov "energy" over time</text>`;
+  s += `<line x1="${M}" y1="${H-M}" x2="${W-M}" y2="${H-M}" stroke="#8f99a8"/>`;
+  s += `<line x1="${M}" y1="${M+30}" x2="${M}" y2="${H-M}" stroke="#8f99a8"/>`;
+
+  // V curve
+  let path = '';
+  for(let i = 0; i < traj.length; i += 2){
+    const x = xOf(traj[i].t), y = yOf(traj[i].V);
+    path += (i === 0 ? 'M ' : 'L ') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+  }
+  s += `<path d="${path}" fill="none" stroke="#5ec8ff" stroke-width="2.5"/>`;
+
+  // V̇ trace (numerical derivative)
+  let dpath = '';
+  let dMax = 0;
+  for(let i = 1; i < traj.length; i++){
+    const dV = (traj[i].V - traj[i-1].V) / 0.01;
+    if(Math.abs(dV) > dMax) dMax = Math.abs(dV);
+  }
+  if(dMax < 0.1) dMax = 0.1;
+  const yOfD = d => (H+M)/2 - 30 - d / dMax * 60;
+  // Zero-line for V̇
+  s += `<line x1="${M}" y1="${(H+M)/2 - 30}" x2="${W-M}" y2="${(H+M)/2 - 30}" stroke="#3a414c" stroke-dasharray="2,2"/>`;
+  for(let i = 1; i < traj.length; i += 2){
+    const dV = (traj[i].V - traj[i-1].V) / 0.01;
+    const x = xOf(traj[i].t), y = yOfD(dV);
+    dpath += (i === 1 ? 'M ' : 'L ') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+  }
+  s += `<path d="${dpath}" fill="none" stroke="#ffb86c" stroke-width="1.5" opacity="0.85"/>`;
+
+  // Axis labels
+  s += `<text x="${M-6}" y="${yOf(0)+3}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">0</text>`;
+  s += `<text x="${M-6}" y="${yOf(Vmax)+3}" text-anchor="end" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="10">V = ${Vmax.toFixed(1)}</text>`;
+  s += `<text x="${M-6}" y="${(H+M)/2 - 30 + 3}" text-anchor="end" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="10">V̇=0</text>`;
+  // X axis
+  for(let t = 0; t <= tMax; t += Math.max(1, Math.round(tMax/8))){
+    const x = xOf(t);
+    s += `<line x1="${x}" y1="${H-M}" x2="${x}" y2="${H-M+4}" stroke="#8f99a8"/>`;
+    s += `<text x="${x}" y="${H-M+16}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${t}s</text>`;
+  }
+  // Legend
+  s += `<text x="${W-M-4}" y="${M+45}" text-anchor="end" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">V(t)</text>`;
+  s += `<text x="${W-M-4}" y="${M+60}" text-anchor="end" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="11">V̇(t)</text>`;
+
+  svg.innerHTML = s;
+}
+
+render();
+</script>
+</body></html>

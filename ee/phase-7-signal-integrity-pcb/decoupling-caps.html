@@ -133,6 +133,32 @@
   </table>
   <p style="font-size:11px;color:var(--fg-dim)">Larger package = more inductance = lower SRF. That's why 0402 is preferred for high-speed decoupling.</p>
 
+  <h2>The math behind SRF</h2>
+  <p>A real capacitor is a series RLC: ideal C in series with parasitic ESL (lead inductance, package geometry) and ESR (loss). Impedance magnitude:</p>
+  <div style="background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)">
+    <span style="display:block;color:var(--fg)">|Z(f)| = √(ESR² + (ωL_ESL − 1/(ωC))²)</span>
+    <span style="display:block;color:var(--fg)">SRF: ω_SRF·L_ESL = 1/(ω_SRF·C)  ⇒  <b>f_SRF = 1 / (2π·√(L_ESL · C))</b></span>
+    <span style="display:block;color:var(--fg)">At SRF: |Z| = ESR (minimum)</span>
+    <span style="display:block;color:var(--fg)">Below SRF: capacitive — impedance drops as 1/(ωC)</span>
+    <span style="display:block;color:var(--fg)">Above SRF: inductive — impedance grows as ωL_ESL</span>
+  </div>
+
+  <h2>Worked example — STM32 100 MHz processor decoupling network</h2>
+  <div style="background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0">
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Spec</h3>
+    <p>Cortex-M7 at 200 MHz core (100 MHz I/O), peak transient current 200 mA on a 3.3 V rail. Target PDN impedance &lt; 20 mΩ across DC to 200 MHz.</p>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Single cap solutions</h3>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">100 nF alone (0402, ESL=0.8 nH): SRF = 1/(2π·√(0.8e-9·100e-9)) = 17.8 MHz</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">|Z| @ 100 MHz = 2π·100e6·0.8e-9 = 503 mΩ ← WAY above target. 100 nF alone fails above ~18 MHz.</div>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Paired network</h3>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">100 nF + 10 nF + 1 nF in parallel (all 0402, ESL=0.8 nH each)</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">SRFs: 17.8 MHz (100 nF) · 56 MHz (10 nF) · 178 MHz (1 nF) — staggered by ~3× each</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">@ 100 MHz: 10 nF contributes ~50 mΩ inductive, 1 nF contributes ~50 mΩ capacitive — parallel ≈ 25 mΩ</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Add 10 µF bulk (0805, ESL=1 nH, SRF=1.6 MHz) to cover the low frequencies</div>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Anti-resonance warning</h3>
+    <p>Between 100 nF (17.8 MHz) and 10 nF (56 MHz), the 100 nF is inductive while the 10 nF is still capacitive. They form a parallel LC tank at ~30 MHz. With low-ESR ceramics, the |Z| peak can hit 200-500 mΩ — worse than no cap at all in that band. Mitigations: stagger ratio ≤ 4× between adjacent caps, or use a deliberately higher-ESR cap (polymer tantalum) between the two to damp the resonance.</p>
+  </div>
+
   <h2>What to notice</h2>
   <ul class="notice">
     <li><b>Every cap is an inductor at some frequency</b>. The "decoupling cap" name only describes the bottom of the V.</li>
@@ -167,7 +193,7 @@
   </section>
 
   <footer>
-    Curriculum: <a target="_top" href="../../index.html">EE Phase 7 — Signal Integrity & PCB Design</a> ·
+    Curriculum: <a href="../../phase-7-signal-integrity-pcb.md">EE Phase 7 — Signal Integrity & PCB Design</a> ·
     Topic: Decoupling capacitors
   </footer>
 </main>

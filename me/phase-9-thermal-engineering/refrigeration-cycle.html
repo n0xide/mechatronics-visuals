@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Refrigeration Cycle — visual</title>
+<style>
+:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,Segoe UI,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:14px 0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.control .val{font:600 13px ui-monospace,Menlo,Consolas,monospace;color:var(--accent3)}
+.control input[type=range]{width:100%;accent-color:var(--accent)}
+.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:12px ui-monospace,Menlo,Consolas,monospace}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;margin:14px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+.figure-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:760px){.figure-grid{grid-template-columns:1fr}}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,Menlo,Consolas,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}.panel.note{border-left:3px solid var(--accent)}
+.panel h3{margin-top:0}
+.scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.score-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center}
+.score-card.hi{border-color:var(--accent3)}.score-card.lo{border-color:var(--warn)}
+.score-num{font:700 22px ui-monospace,Menlo,Consolas,monospace;color:var(--accent3);margin:6px 0}
+.score-num.warn{color:var(--warn)}.score-num.mid{color:var(--accent2)}
+.score-lbl{color:var(--fg-dim);font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace;text-transform:uppercase;letter-spacing:.4px}
+.score-lbl.unit{text-transform:none;letter-spacing:0}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+.deriv b{color:var(--fg-bright)}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--accent2)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,Consolas,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>Vapor-Compression Refrigeration Cycle — pumping heat from cold to hot</h1>
+<p class="lede">Every fridge, AC, heat pump, and EV battery cooler runs a variant of the vapor-compression cycle: a refrigerant evaporates at low pressure (absorbing heat from the cold space), is compressed (now hot vapor), condenses at high pressure (rejecting heat to the warm space), and expands back to low pressure (cooled liquid). This visual builds the cycle on a pressure-enthalpy diagram, computes COP from operating conditions, and shows how refrigerant choice and superheat/subcool change the performance.</p>
+
+<div class="anchors">
+<span class="anchor"><b>COP_cooling</b> = Q_evap / W_comp</span>
+<span class="anchor"><b>COP_heating</b> = Q_cond / W_comp = COP_cooling + 1</span>
+<span class="anchor"><b>Carnot ceiling</b>: COP_carnot = T_cold / (T_hot − T_cold)</span>
+<span class="anchor"><b>4 stages</b>: evap → compress → condense → expand</span>
+<span class="anchor"><b>Superheat</b>: 5-10 K · <b>Subcool</b>: 3-8 K typical</span>
+<span class="anchor"><b>Real COP</b>: 40-60% of Carnot for typical AC</span>
+</div>
+
+<h2>Interactive — pick operating conditions, see the cycle</h2>
+
+<div class="controls">
+<div class="control"><label>Refrigerant</label><select id="ref" onchange="render()">
+  <option value="R134a" selected>R-134a (legacy auto AC, GWP 1430)</option>
+  <option value="R1234yf">R-1234yf (modern auto AC, GWP 4)</option>
+  <option value="R32">R-32 (modern home AC, GWP 675)</option>
+  <option value="R410A">R-410A (current home AC, GWP 2088)</option>
+  <option value="R290">R-290 propane (heat pumps, GWP 3)</option>
+  <option value="R744">R-744 CO₂ (transcritical heat pumps, GWP 1)</option>
+</select></div>
+<div class="control"><label>Evaporator T (°C)</label><input id="Te" type="range" min="-30" max="15" value="-5" step="1" oninput="render()"><span class="val" id="vTe">-5</span></div>
+<div class="control"><label>Condenser T (°C)</label><input id="Tc" type="range" min="20" max="80" value="45" step="1" oninput="render()"><span class="val" id="vTc">45</span></div>
+<div class="control"><label>Superheat (K above sat vapor at evap)</label><input id="Sh" type="range" min="0" max="20" value="8" step="1" oninput="render()"><span class="val" id="vSh">8</span></div>
+<div class="control"><label>Subcool (K below sat liq at cond)</label><input id="Sc" type="range" min="0" max="15" value="5" step="1" oninput="render()"><span class="val" id="vSc">5</span></div>
+<div class="control"><label>Compressor isentropic η</label><input id="eta" type="range" min="0.5" max="0.95" value="0.75" step="0.01" oninput="render()"><span class="val" id="vEta">0.75</span></div>
+<div class="control"><label>Mass flow (kg/s)</label><input id="mdot" type="range" min="0.005" max="0.5" value="0.05" step="0.005" oninput="render()"><span class="val" id="vMdot">0.05</span></div>
+</div>
+
+<div class="scoreboard">
+<div class="score-card" id="copCard"><div class="score-lbl">COP cooling</div><div class="score-num" id="vCop">—</div><div class="score-lbl" id="vCopNote">—</div></div>
+<div class="score-card"><div class="score-lbl">COP Carnot ceiling</div><div class="score-num" id="vCopCarnot">—</div><div class="score-lbl unit">theoretical max</div></div>
+<div class="score-card"><div class="score-lbl">Q evaporator (cooling)</div><div class="score-num" id="vQe">—</div><div class="score-lbl unit">kW</div></div>
+<div class="score-card"><div class="score-lbl">W compressor</div><div class="score-num" id="vW">—</div><div class="score-lbl unit">kW (input)</div></div>
+<div class="score-card"><div class="score-lbl">Q condenser (rejected)</div><div class="score-num" id="vQc">—</div><div class="score-lbl unit">kW</div></div>
+<div class="score-card"><div class="score-lbl">η vs Carnot</div><div class="score-num" id="vEff">—</div><div class="score-lbl unit">% of theoretical</div></div>
+</div>
+
+<h3>P-h diagram (log pressure vs enthalpy)</h3>
+<div class="figure"><svg id="ph" viewBox="0 0 900 400" width="100%"></svg></div>
+
+<h2>The four stages</h2>
+<table>
+<tr><th>Stage</th><th>Process</th><th>What happens</th><th>Energy</th></tr>
+<tr><td>1→2 Compression</td><td>Isentropic (ideal)</td><td>Low-P vapor + slight superheat → high-P, much hotter vapor. Work added.</td><td>W_in = m·(h₂−h₁)</td></tr>
+<tr><td>2→3 Condensation</td><td>Isobaric heat rejection</td><td>Hot vapor → saturated → subcooled liquid in the condenser coil. Heat dumped to ambient/water.</td><td>Q_out = m·(h₂−h₃)</td></tr>
+<tr><td>3→4 Expansion</td><td>Isenthalpic throttle</td><td>Through TXV / capillary / EEV: high-P liquid → low-P liquid-vapor mix. Pressure drop, no work extracted (just lossy throttle).</td><td>h₄ = h₃</td></tr>
+<tr><td>4→1 Evaporation</td><td>Isobaric heat absorption</td><td>Low-P mix evaporates in the evaporator coil, absorbing heat from cold space. Comes out slightly superheated.</td><td>Q_in = m·(h₁−h₄)</td></tr>
+</table>
+
+<h2>The math behind COP</h2>
+<div class="deriv">
+<span class="step">Mass flow m_dot = mass of refrigerant per second circulating through the loop.</span>
+<span class="step">Specific enthalpies h₁, h₂, h₃, h₄ at the four state points (kJ/kg, from P-h chart or refrigerant table).</span>
+<span class="step"></span>
+<span class="step">Heat absorbed by evaporator (cooling effect):</span>
+<span class="step">  <b>Q_evap = m_dot · (h₁ − h₄)</b>    [kW]</span>
+<span class="step"></span>
+<span class="step">Work added by compressor (input):</span>
+<span class="step">  <b>W_comp = m_dot · (h₂_actual − h₁) = m_dot · (h₂_isentropic − h₁) / η_isen</b></span>
+<span class="step"></span>
+<span class="step">Heat rejected at condenser:</span>
+<span class="step">  <b>Q_cond = m_dot · (h₂ − h₃) = Q_evap + W_comp</b>   (energy balance)</span>
+<span class="step"></span>
+<span class="step"><b>COP_cooling = Q_evap / W_comp</b>    typical 2-5 for AC, 1.5-3 for low-T fridges</span>
+<span class="step"><b>COP_heating = Q_cond / W_comp = COP_cooling + 1</b>   typical 3-5 for heat pumps</span>
+<span class="step"></span>
+<span class="step">Theoretical maximum (Carnot):</span>
+<span class="step">  <b>COP_Carnot = T_cold / (T_hot − T_cold)</b>   (temperatures in Kelvin)</span>
+<span class="step"></span>
+<span class="step">Real systems: 40-60 % of Carnot — losses from compressor inefficiency, throttle (3→4 destroys ~10 % of theoretical), heat-exchanger ΔT.</span>
+</div>
+
+<h2>Why each piece exists</h2>
+<table>
+<tr><th>Component</th><th>Job</th><th>Failure mode</th></tr>
+<tr><td>Compressor</td><td>Move refrigerant + add the energy that drives the cycle</td><td>Liquid slugging (no superheat → liquid hits compressor → catastrophic damage)</td></tr>
+<tr><td>Condenser</td><td>Reject heat to outside; cool refrigerant from hot vapor to subcooled liquid</td><td>Dirty fins / dust → can't reject heat → high-pressure trip</td></tr>
+<tr><td>Expansion device (TXV / EEV / capillary)</td><td>Pressure drop from high to low side; meter refrigerant flow to match evap load</td><td>Wrong sizing → flood (too much) or starve (too little) evaporator</td></tr>
+<tr><td>Evaporator</td><td>Absorb heat from cold space; vaporize refrigerant + superheat slightly</td><td>Frost / ice blockage → no airflow → low suction pressure</td></tr>
+<tr><td>Receiver / accumulator</td><td>Buffer between stages, separate liquid from vapor</td><td>Charge migration during off-cycle</td></tr>
+<tr><td>Filter-drier</td><td>Remove moisture + acid + particles</td><td>Saturated → moisture in TXV → ice plug</td></tr>
+</table>
+
+<h2>Refrigerant comparison</h2>
+<table>
+<tr><th>Refrigerant</th><th>Class</th><th>GWP</th><th>ODP</th><th>Typical use</th><th>Notes</th></tr>
+<tr><td>R-12 (CFC)</td><td>HFC</td><td>10900</td><td>1.0</td><td>Banned</td><td>Old auto + dom; Montreal Protocol phase-out 1996</td></tr>
+<tr><td>R-22 (HCFC)</td><td>HCFC</td><td>1810</td><td>0.055</td><td>Legacy AC</td><td>Phase-out completed 2020 in US/EU</td></tr>
+<tr><td>R-134a (HFC)</td><td>HFC</td><td>1430</td><td>0</td><td>Auto AC, dom fridge</td><td>Phase-down 2024-2034 (Kigali)</td></tr>
+<tr><td>R-410A (HFC blend)</td><td>HFC blend</td><td>2088</td><td>0</td><td>Home AC</td><td>Higher pressure than R-22; replacement</td></tr>
+<tr><td>R-32 (HFC)</td><td>HFC</td><td>675</td><td>0</td><td>New home AC</td><td>Mildly flammable (A2L); replacing R-410A</td></tr>
+<tr><td>R-1234yf (HFO)</td><td>HFO</td><td>4</td><td>0</td><td>New auto AC since 2017</td><td>Low-GWP replacement for R-134a</td></tr>
+<tr><td>R-290 propane</td><td>Natural</td><td>3</td><td>0</td><td>EU heat pumps, fridges</td><td>Flammable (A3); &lt; 150 g charge limit for safety</td></tr>
+<tr><td>R-744 CO₂</td><td>Natural</td><td>1</td><td>0</td><td>Transcritical heat pumps, refrigeration cases</td><td>High pressure (8-12 MPa); transcritical above 31 °C critical point</td></tr>
+<tr><td>R-717 ammonia</td><td>Natural</td><td>0</td><td>0</td><td>Industrial</td><td>Toxic + corrosive; best η of any refrigerant</td></tr>
+</table>
+
+<h2>Worked example — bedroom mini-split AC sized for 3 kW cooling</h2>
+<div class="panel tip">
+<h3>Spec</h3>
+<p>Bedroom mini-split: cooling capacity 3 kW (10,000 BTU/h), indoor air 24 °C, outdoor 35 °C. Refrigerant R-32 (modern). Evaporator T ≈ 5 °C (cold enough to pull moisture), condenser T ≈ 50 °C. 8 K superheat, 5 K subcool, η_isen = 0.78 (rotary compressor).</p>
+<h3>Cycle calculation (using R-32 P-h chart)</h3>
+<div class="deriv">
+<span class="step">State 1 (evap outlet): T = 5 + 8 = 13 °C, P_evap ≈ 9 bar, h₁ ≈ 521 kJ/kg</span>
+<span class="step">State 2_isentropic (compressor outlet): P_cond ≈ 31 bar, h₂s ≈ 567 kJ/kg</span>
+<span class="step">State 2_actual: h₂ = h₁ + (h₂s−h₁)/η = 521 + 46/0.78 = 521 + 59 = 580 kJ/kg</span>
+<span class="step">State 3 (cond outlet): T = 50 − 5 = 45 °C, h₃ ≈ 269 kJ/kg (subcooled liquid)</span>
+<span class="step">State 4 (after throttle): h₄ = h₃ = 269 kJ/kg, mix at evap pressure</span>
+<span class="step"></span>
+<span class="step">Mass flow: m_dot = Q_evap / (h₁−h₄) = 3 / (521 − 269) = 3 / 252 = 0.0119 kg/s = 12 g/s</span>
+<span class="step">W_comp = m_dot · (h₂−h₁) = 0.0119 · 59 = 0.70 kW</span>
+<span class="step">Q_cond = m_dot · (h₂−h₃) = 0.0119 · 311 = 3.70 kW</span>
+<span class="step">COP_cooling = Q_evap / W_comp = 3 / 0.70 = <b>4.29</b>   (matches SEER ~15 BTU/Wh)</span>
+<span class="step">COP_Carnot = (5+273) / (50−5) = 278 / 45 = 6.18 (theoretical max)</span>
+<span class="step">η vs Carnot = 4.29 / 6.18 = 69 % — solid for a residential unit.</span>
+</div>
+<p>For a heating-mode heat pump using the same hardware: COP_heating = COP_cooling + 1 = 5.29. That's why heat pumps win over resistive electric heat (which has COP = 1) by 4-5×.</p>
+</div>
+
+<h2>Transcritical CO₂ — the special case</h2>
+<div class="panel note">
+<p>R-744 (CO₂) has a critical point at 31 °C / 7.4 MPa. When the heat-rejection side exceeds 31 °C — which is most of the time in summer — the refrigerant doesn't condense, it just cools as a supercritical fluid (no phase change). This is <b>transcritical</b> operation:</p>
+<ul style="padding-left:18px;color:var(--fg-dim);font-size:12.5px">
+<li>The high-side "condenser" becomes a gas-cooler — heat exchange with no phase change → ΔT across coil is variable, not fixed</li>
+<li>System operates at much higher pressure: 8-12 MPa vs ~2 MPa for R-410A</li>
+<li>Larger components, thicker tubing, special compressors needed</li>
+<li>But: zero ODP, GWP = 1, abundant cheap natural refrigerant</li>
+<li>Used in: supermarket refrigeration (Europe), commercial heat pumps, future EV cooling</li>
+</ul>
+</div>
+
+<h2>Common pitfalls</h2>
+<ul class="notice">
+<li><b>Liquid slugging</b> — if superheat = 0 or negative (liquid drops in suction line), the compressor tries to compress liquid (incompressible) and self-destructs. Always size the TXV bulb for ≥ 3 K superheat margin.</li>
+<li><b>Wrong refrigerant retrofit</b> — R-22 to R-410A requires NEW compressor (higher pressure), often new coils. Cannot just swap refrigerant. Lubricant compatibility matters too (POE oil vs mineral).</li>
+<li><b>Air in the system</b> — non-condensable gases raise high-side pressure dramatically; system runs hot, COP drops, compressor cycles on thermal. Always pull deep vacuum (&lt; 500 µm Hg) for ≥ 30 min before charging.</li>
+<li><b>Moisture</b> — refrigerant + water → acid (especially with R-410A POE oil hygroscopic). Eats motor windings; opens hermetic compressor. Hence the filter-drier in every loop.</li>
+<li><b>Subcool too low</b> — flash gas at TXV inlet, erratic flow control, hunting; raise charge or add receiver.</li>
+<li><b>Overcharging</b> — flooded condenser, high head pressure, high power draw, possibly liquid slugging on start. Always weigh charge per manufacturer spec.</li>
+<li><b>Glide</b> — zeotropic blends (R-407C) shift composition through phase change. The "saturation temperature" changes during evap/cond. Causes apparent superheat where there's actually subcool, etc. Use the dew-point and bubble-point temperatures from the manufacturer's chart.</li>
+<li><b>Ignoring pipe pressure drops</b> — long line-sets between indoor and outdoor units cause 1-3 K saturation temperature loss per 10 m. Reduces effective ΔT, hurts COP.</li>
+</ul>
+
+<h2>Cheat sheet — rules of thumb</h2>
+<table>
+<tr><th>System</th><th>Typical COP (cooling)</th><th>Typical COP (heating)</th><th>Refrigerant</th></tr>
+<tr><td>Window AC (small)</td><td>2.5-3.0</td><td>—</td><td>R-32 or R-410A</td></tr>
+<tr><td>Mini-split / multi-split</td><td>3.5-5.0 (SEER 15-25)</td><td>3.5-4.5</td><td>R-32 / R-1234yf</td></tr>
+<tr><td>Central residential AC</td><td>3.0-4.5 (SEER 13-20)</td><td>3.0-4.0</td><td>R-410A / R-32</td></tr>
+<tr><td>Auto AC</td><td>1.5-2.5 (small, hot under-hood)</td><td>—</td><td>R-1234yf / R-134a</td></tr>
+<tr><td>Domestic fridge (~−5 °C)</td><td>1.5-2.5</td><td>—</td><td>R-600a / R-134a</td></tr>
+<tr><td>Heat pump (air-source)</td><td>—</td><td>3.5-5.0 (HSPF 9-14)</td><td>R-410A / R-32 / R-454B</td></tr>
+<tr><td>Heat pump (ground/water)</td><td>—</td><td>4.0-6.0</td><td>R-410A / R-32</td></tr>
+<tr><td>Industrial freezer (−25 °C)</td><td>1.0-1.5</td><td>—</td><td>R-404A / R-448A / R-717</td></tr>
+</table>
+
+<footer>Cross-links: <a href="forced-convection.html">Forced Convection</a> · <a href="biot-transient.html">Biot &amp; Transient</a> · <a href="heat-transfer-modes.html">Heat Transfer Modes</a> · <a href="thermal-networks.html">Thermal Networks</a> · <a href="heat-sinks.html">Heat Sinks</a> · <a href="../../extras/heatsink-sizer.html">Heatsink Sizer</a></footer>
+
+</main>
+<script>
+const el = id => document.getElementById(id);
+
+// Refrigerant property approximations — simplified linear fits good for the operating range typical in AC/heat-pump apps.
+// h_g_at_T_evap: saturated vapor enthalpy at T (°C), kJ/kg
+// h_f_at_T_cond: saturated liquid enthalpy at T (°C), kJ/kg
+// cp_v: vapor specific heat (kJ/kg·K), used for superheat
+// cp_l: liquid specific heat (kJ/kg·K), used for subcool
+// P_sat(T): saturation pressure at T (bar) — simplified Antoine
+const REFRIGERANTS = {
+  R134a: {h_g0: 398, dh_g_dT: 0.55, h_f0: 200, dh_f_dT: 1.4, cp_v: 0.96, cp_l: 1.42, P_a: 4.07, P_b: -1212, P_c: 247},
+  R1234yf:{h_g0: 357, dh_g_dT: 0.51, h_f0: 188, dh_f_dT: 1.45, cp_v: 0.93, cp_l: 1.41, P_a: 4.27, P_b: -1290, P_c: 250},
+  R32:   {h_g0: 510, dh_g_dT: 0.78, h_f0: 200, dh_f_dT: 1.94, cp_v: 1.51, cp_l: 1.93, P_a: 4.27, P_b: -1156, P_c: 248},
+  R410A: {h_g0: 426, dh_g_dT: 0.62, h_f0: 200, dh_f_dT: 1.71, cp_v: 1.13, cp_l: 1.71, P_a: 4.34, P_b: -1267, P_c: 250},
+  R290:  {h_g0: 568, dh_g_dT: 1.10, h_f0: 200, dh_f_dT: 2.55, cp_v: 1.75, cp_l: 2.55, P_a: 4.07, P_b: -1148, P_c: 248},
+  R744:  {h_g0: 432, dh_g_dT: 1.42, h_f0: 200, dh_f_dT: 2.7, cp_v: 1.4,  cp_l: 2.8,  P_a: 4.74, P_b: -1175, P_c: 273}
+};
+
+function h_g_sat(ref, T_C){ return ref.h_g0 + ref.dh_g_dT * T_C; }
+function h_f_sat(ref, T_C){ return ref.h_f0 + ref.dh_f_dT * T_C; }
+function P_sat(ref, T_C){
+  // simplified Antoine: log10(P) = A + B/(C + T_C); P in bar
+  return Math.pow(10, ref.P_a + ref.P_b / (ref.P_c + T_C));
+}
+
+function render(){
+  const refKey = el('ref').value;
+  const ref = REFRIGERANTS[refKey];
+  const Te = parseFloat(el('Te').value);
+  const Tc = parseFloat(el('Tc').value);
+  const Sh = parseFloat(el('Sh').value);
+  const Sc = parseFloat(el('Sc').value);
+  const eta = parseFloat(el('eta').value);
+  const mdot = parseFloat(el('mdot').value);
+
+  el('vTe').textContent = Te;
+  el('vTc').textContent = Tc;
+  el('vSh').textContent = Sh;
+  el('vSc').textContent = Sc;
+  el('vEta').textContent = eta.toFixed(2);
+  el('vMdot').textContent = mdot.toFixed(3);
+
+  // State 1: saturated vapor at Te + superheat
+  const h1 = h_g_sat(ref, Te) + ref.cp_v * Sh;
+  const P_e = P_sat(ref, Te);
+  // State 2_isentropic: at P_cond — approximation: assume T2s such that h2s = h1 + cp_v * (T2s - T1_eff)
+  // Simpler: use empirical h2s ≈ h_g_sat(Tc) + cp_v * (T2s - Tc) with isentropic compression giving extra superheat
+  // Rough: h2s = h_g_sat(Tc) + cp_v * (T2s_approx - Tc), where T2s_approx ≈ Tc + 30K typical
+  // Use: dh_compression_isen = (h_g_sat(Tc) − h1) + cp_v * 30
+  // Better: estimate dh_isen as proportional to (Tc - Te) ratio (cleaner approximation)
+  const h2s = h_g_sat(ref, Tc) + ref.cp_v * 25;  // ~25 K superheat at compressor outlet typical
+  const dh_isen = h2s - h1;
+  const dh_actual = dh_isen / eta;
+  const h2 = h1 + dh_actual;
+  const P_c = P_sat(ref, Tc);
+
+  // State 3: subcooled liquid at Tc
+  const h3 = h_f_sat(ref, Tc) - ref.cp_l * Sc;
+  // State 4: same enthalpy as 3 (throttle)
+  const h4 = h3;
+
+  // Quantities
+  const Q_evap = mdot * (h1 - h4);  // kW
+  const W_comp = mdot * (h2 - h1);
+  const Q_cond = mdot * (h2 - h3);
+  const COP_cool = Q_evap / W_comp;
+  const COP_carnot = (Te + 273.15) / (Tc - Te);
+  const eff_pct = (COP_cool / COP_carnot) * 100;
+
+  el('vCop').textContent = COP_cool.toFixed(2);
+  el('vCopCarnot').textContent = COP_carnot.toFixed(2);
+  el('vQe').textContent = Q_evap.toFixed(2);
+  el('vW').textContent = W_comp.toFixed(2);
+  el('vQc').textContent = Q_cond.toFixed(2);
+  el('vEff').textContent = eff_pct.toFixed(0);
+
+  const copCard = el('copCard');
+  copCard.classList.remove('hi','lo');
+  if(COP_cool > 4) copCard.classList.add('hi');
+  else if(COP_cool < 2) copCard.classList.add('lo');
+
+  const copNote = COP_cool > 4 ? 'excellent (mini-split AC tier)' :
+                  COP_cool > 3 ? 'good (typical AC)' :
+                  COP_cool > 2 ? 'modest (low-T fridge)' :
+                  'poor — check ops conditions';
+  el('vCopNote').textContent = copNote;
+
+  drawPh(ref, refKey, Te, Tc, h1, h2, h3, h4, P_e, P_c);
+}
+
+function drawPh(ref, refKey, Te, Tc, h1, h2, h3, h4, P_e, P_c){
+  const svg = el('ph');
+  const W = 900, H = 400, M = 60;
+  // X: enthalpy (150-600 kJ/kg)
+  // Y: pressure (1-100 bar, log)
+  const hMin = 150, hMax = 600;
+  const pMin = 1, pMax = 100;
+  const xOf = h => M + (h - hMin) / (hMax - hMin) * (W - 2*M);
+  const yOf = p => H - M - (Math.log10(p) - Math.log10(pMin)) / (Math.log10(pMax) - Math.log10(pMin)) * (H - 2*M - 30);
+
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">P-h diagram — ${refKey}, T_evap=${Te}°C, T_cond=${Tc}°C</text>`;
+
+  // Axes
+  s += `<line x1="${M}" y1="${H-M}" x2="${W-M}" y2="${H-M}" stroke="#8f99a8"/>`;
+  s += `<line x1="${M}" y1="${M+30}" x2="${M}" y2="${H-M}" stroke="#8f99a8"/>`;
+
+  // Saturation curves (rough envelope shape)
+  // Liquid side: h_f(T) vs P_sat(T) for T = -40 to 80
+  let satLiq = '', satVap = '';
+  for(let T = -40; T <= 80; T += 2){
+    const hf = h_f_sat(ref, T);
+    const hg = h_g_sat(ref, T);
+    const p = P_sat(ref, T);
+    if(p < pMin || p > pMax || hf < hMin || hf > hMax || hg < hMin || hg > hMax) continue;
+    satLiq += (satLiq ? 'L ' : 'M ') + xOf(hf).toFixed(1) + ',' + yOf(p).toFixed(1) + ' ';
+    satVap += (satVap ? 'L ' : 'M ') + xOf(hg).toFixed(1) + ',' + yOf(p).toFixed(1) + ' ';
+  }
+  s += `<path d="${satLiq}" fill="none" stroke="#5ec8ff" stroke-width="1.5" opacity="0.7"/>`;
+  s += `<path d="${satVap}" fill="none" stroke="#ffb86c" stroke-width="1.5" opacity="0.7"/>`;
+  s += `<text x="${W-M-4}" y="${M+45}" text-anchor="end" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="10">sat liquid (left) · vapor (right) ── two-phase between</text>`;
+
+  // Cycle 1→2→3→4
+  const p1 = P_e, p2 = P_c, p3 = P_c, p4 = P_e;
+  // 1→2: compression (rising P, increasing h)
+  s += `<line x1="${xOf(h1)}" y1="${yOf(p1)}" x2="${xOf(h2)}" y2="${yOf(p2)}" stroke="#a3e635" stroke-width="2"/>`;
+  // 2→3: condensation (constant P, decreasing h)
+  s += `<line x1="${xOf(h2)}" y1="${yOf(p2)}" x2="${xOf(h3)}" y2="${yOf(p3)}" stroke="#a3e635" stroke-width="2"/>`;
+  // 3→4: throttle (constant h, falling P)
+  s += `<line x1="${xOf(h3)}" y1="${yOf(p3)}" x2="${xOf(h4)}" y2="${yOf(p4)}" stroke="#a3e635" stroke-width="2" stroke-dasharray="3,2"/>`;
+  // 4→1: evaporation (constant P, increasing h)
+  s += `<line x1="${xOf(h4)}" y1="${yOf(p4)}" x2="${xOf(h1)}" y2="${yOf(p1)}" stroke="#a3e635" stroke-width="2"/>`;
+
+  // State point markers
+  const states = [
+    {h: h1, p: p1, label: '1', desc: 'evap out'},
+    {h: h2, p: p2, label: '2', desc: 'comp out'},
+    {h: h3, p: p3, label: '3', desc: 'cond out'},
+    {h: h4, p: p4, label: '4', desc: 'throttle out'}
+  ];
+  for(const st of states){
+    s += `<circle cx="${xOf(st.h)}" cy="${yOf(st.p)}" r="5" fill="#fff" stroke="#a3e635" stroke-width="2"/>`;
+    s += `<text x="${xOf(st.h)+10}" y="${yOf(st.p)-8}" fill="#a3e635" font-family="ui-monospace,monospace" font-size="11" font-weight="600">${st.label}</text>`;
+    s += `<text x="${xOf(st.h)+10}" y="${yOf(st.p)+5}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="9">${st.desc}</text>`;
+  }
+
+  // Process labels along the cycle
+  s += `<text x="${(xOf(h1)+xOf(h2))/2}" y="${(yOf(p1)+yOf(p2))/2 - 6}" text-anchor="middle" fill="#a3e635" font-family="ui-monospace,monospace" font-size="10">compress</text>`;
+  s += `<text x="${(xOf(h2)+xOf(h3))/2}" y="${yOf(p2) - 6}" text-anchor="middle" fill="#a3e635" font-family="ui-monospace,monospace" font-size="10">condense (heat out)</text>`;
+  s += `<text x="${(xOf(h3)+xOf(h4))/2}" y="${(yOf(p3)+yOf(p4))/2 - 4}" text-anchor="middle" fill="#a3e635" font-family="ui-monospace,monospace" font-size="10">throttle</text>`;
+  s += `<text x="${(xOf(h4)+xOf(h1))/2}" y="${yOf(p4) + 14}" text-anchor="middle" fill="#a3e635" font-family="ui-monospace,monospace" font-size="10">evaporate (heat in)</text>`;
+
+  // X axis labels (enthalpy)
+  for(let h = 200; h <= 600; h += 100){
+    const x = xOf(h);
+    s += `<line x1="${x}" y1="${H-M}" x2="${x}" y2="${H-M+4}" stroke="#8f99a8"/>`;
+    s += `<text x="${x}" y="${H-M+16}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${h}</text>`;
+  }
+  s += `<text x="${W/2}" y="${H-10}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">enthalpy h (kJ/kg)</text>`;
+  // Y axis (log)
+  for(const p of [1, 3, 10, 30, 100]){
+    if(p < pMin || p > pMax) continue;
+    const y = yOf(p);
+    s += `<line x1="${M-4}" y1="${y}" x2="${M}" y2="${y}" stroke="#8f99a8"/>`;
+    s += `<text x="${M-6}" y="${y+3}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${p}</text>`;
+  }
+  s += `<text x="20" y="${H/2}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11" transform="rotate(-90 20 ${H/2})" text-anchor="middle">P (bar, log)</text>`;
+
+  svg.innerHTML = s;
+}
+
+render();
+</script>
+</body></html>

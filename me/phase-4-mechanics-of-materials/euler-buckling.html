@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Euler Buckling — visual</title>
+<style>
+:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,Segoe UI,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:14px 0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.control .val{font:600 13px ui-monospace,Menlo,Consolas,monospace;color:var(--accent3)}
+.control input[type=range]{width:100%;accent-color:var(--accent)}
+.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:12px ui-monospace,Menlo,Consolas,monospace}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;margin:14px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+.figure-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:760px){.figure-grid{grid-template-columns:1fr}}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,Menlo,Consolas,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}.panel.note{border-left:3px solid var(--accent)}
+.panel h3{margin-top:0}
+.scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.score-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center}
+.score-card.hi{border-color:var(--accent3)}.score-card.lo{border-color:var(--warn)}
+.score-num{font:700 22px ui-monospace,Menlo,Consolas,monospace;color:var(--accent3);margin:6px 0}
+.score-num.warn{color:var(--warn)}.score-num.mid{color:var(--accent2)}
+.score-lbl{color:var(--fg-dim);font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace;text-transform:uppercase;letter-spacing:.4px}
+.score-lbl.unit{text-transform:none;letter-spacing:0}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+.deriv b{color:var(--fg-bright)}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--accent2)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,Consolas,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>Euler Buckling — when slender columns fail by bending, not crushing</h1>
+<p class="lede">A short stout column under compression fails when stress reaches yield (σ = P/A &gt; σ_y). A long slender column fails much sooner — by suddenly bowing sideways at a critical load far below the material's compressive strength. Euler (1744) showed this critical load depends only on geometry + elastic modulus, not on yield strength. <code>P_cr = π²·E·I / (K·L)²</code>. The longer or thinner the column, the lower P_cr. This visual computes P_cr for any end-fixity, compares to yield, and shows the boundary between buckling-governed and yield-governed failure on the slenderness-stress curve.</p>
+
+<div class="anchors">
+<span class="anchor"><b>P_cr</b> = π²·E·I / (K·L)²  (Euler)</span>
+<span class="anchor"><b>K</b>: end-fixity factor (0.5 fix-fix, 1 pin-pin, 2 free-fix)</span>
+<span class="anchor"><b>L_e</b> = K·L (effective length)</span>
+<span class="anchor"><b>r</b> = √(I/A)  radius of gyration</span>
+<span class="anchor"><b>SR</b> = L_e / r (slenderness ratio)</span>
+<span class="anchor"><b>SR_critical</b> ≈ π·√(E/σ_y) — boundary between elastic and inelastic regimes</span>
+</div>
+
+<h2>Interactive — pick column geometry, end-fixity, material</h2>
+
+<div class="controls">
+<div class="control"><label>Cross-section</label><select id="cs" onchange="render()">
+  <option value="circular" selected>Solid round (diameter d)</option>
+  <option value="tube">Hollow round tube (d_outer, t)</option>
+  <option value="square">Solid square (side a)</option>
+  <option value="rect">Rectangle (b × h, weak axis)</option>
+  <option value="iBeam">I-beam (approximate)</option>
+</select></div>
+<div class="control"><label>Primary dimension d / a / h (mm)</label><input id="d" type="range" min="2" max="100" value="20" step="0.5" oninput="render()"><span class="val" id="vD">20.0</span></div>
+<div class="control"><label>Secondary dim (tube wall t · rect b) (mm)</label><input id="d2" type="range" min="1" max="50" value="3" step="0.5" oninput="render()"><span class="val" id="vD2">3.0</span></div>
+<div class="control"><label>Length L (mm)</label><input id="L" type="range" min="50" max="3000" value="800" step="10" oninput="render()"><span class="val" id="vL">800</span></div>
+<div class="control"><label>End fixity</label><select id="fix" onchange="render()">
+  <option value="0.5">Fixed-Fixed  (K = 0.5)</option>
+  <option value="0.7">Fixed-Pinned (K = 0.7)</option>
+  <option value="1.0" selected>Pinned-Pinned (K = 1.0)</option>
+  <option value="2.0">Fixed-Free / cantilever (K = 2.0)</option>
+</select></div>
+<div class="control"><label>Material</label><select id="mat" onchange="render()">
+  <option value="steel" selected>Steel 1018 (E=200 GPa, σ_y=370 MPa)</option>
+  <option value="alum">Aluminum 6061-T6 (E=69 GPa, σ_y=276 MPa)</option>
+  <option value="ti">Titanium Grade 5 (E=114 GPa, σ_y=830 MPa)</option>
+  <option value="cf">Carbon-fiber unidirectional (E=140 GPa, σ_y=600 MPa eff.)</option>
+  <option value="pla">PLA 3D-print (E=3.5 GPa, σ_y=50 MPa)</option>
+  <option value="pa12cf">PA12-CF (E=6 GPa, σ_y=80 MPa)</option>
+  <option value="wood">Pine wood (E=12 GPa, σ_y=40 MPa compression-parallel)</option>
+</select></div>
+<div class="control"><label>Applied load P (kN)</label><input id="P" type="range" min="0.1" max="100" value="5" step="0.1" oninput="render()"><span class="val" id="vP">5.0</span></div>
+<div class="control"><label>Safety factor target n</label><input id="n" type="range" min="1" max="5" value="2" step="0.1" oninput="render()"><span class="val" id="vN">2.0</span></div>
+</div>
+
+<div class="scoreboard">
+<div class="score-card"><div class="score-lbl">P_cr Euler</div><div class="score-num" id="vPcr">—</div><div class="score-lbl unit">kN (critical load)</div></div>
+<div class="score-card"><div class="score-lbl">P_yield</div><div class="score-num" id="vPy">—</div><div class="score-lbl unit">kN (σ_y · A)</div></div>
+<div class="score-card"><div class="score-lbl">Governing mode</div><div class="score-num" id="vMode" style="font-size:14px">—</div><div class="score-lbl" id="vModeNote">—</div></div>
+<div class="score-card"><div class="score-lbl">Slenderness L_e / r</div><div class="score-num" id="vSR">—</div><div class="score-lbl unit">vs critical SR_c</div></div>
+<div class="score-card" id="margCard"><div class="score-lbl">Margin vs applied P</div><div class="score-num" id="vMarg">—</div><div class="score-lbl" id="vMargNote">—</div></div>
+<div class="score-card"><div class="score-lbl">Max safe P @ n</div><div class="score-num" id="vPsafe">—</div><div class="score-lbl unit">kN at target SF</div></div>
+</div>
+
+<div class="figure-grid">
+<div class="figure"><svg id="column" viewBox="0 0 460 460" width="100%"></svg></div>
+<div class="figure"><svg id="srcurve" viewBox="0 0 460 460" width="100%"></svg></div>
+</div>
+
+<h2>The Euler formula derivation</h2>
+<div class="deriv">
+<span class="step">Pin-pin column of length L under axial compression P. Assume buckled shape y(x).</span>
+<span class="step">Bending moment at any section: M(x) = −P·y(x)</span>
+<span class="step">Beam equation: E·I·y″(x) = M(x) = −P·y(x)</span>
+<span class="step">Rearrange: y″ + (P/EI)·y = 0     — linear ODE with constant coefficients</span>
+<span class="step">Let k² = P/(EI). General solution: y(x) = A·sin(kx) + B·cos(kx)</span>
+<span class="step"></span>
+<span class="step">Boundary conditions for pin-pin: y(0) = 0, y(L) = 0</span>
+<span class="step">y(0) = 0 → B = 0</span>
+<span class="step">y(L) = 0 → A·sin(kL) = 0</span>
+<span class="step">  Non-trivial solution requires sin(kL) = 0, i.e., kL = nπ for n = 1, 2, 3, ...</span>
+<span class="step">  Smallest: kL = π → k² = π²/L² → P = π²EI/L²</span>
+<span class="step"></span>
+<span class="step"><b>P_cr = π²·E·I / L²</b>   (pin-pin)</span>
+<span class="step"></span>
+<span class="step">Other end conditions: replace L with effective length L_e = K·L:</span>
+<span class="step"><b>P_cr = π²·E·I / (K·L)²</b></span>
+<span class="step"></span>
+<span class="step">Critical stress: σ_cr = P_cr / A = π²·E / (L_e/r)²   where r = √(I/A)</span>
+<span class="step">Slenderness ratio: SR = L_e / r</span>
+<span class="step"></span>
+<span class="step">Transition slenderness (Euler vs Johnson regime):</span>
+<span class="step">  SR_c = π·√(2E/σ_y)   (factor of 2 for Johnson formula)</span>
+<span class="step">  Above SR_c: pure elastic Euler buckling</span>
+<span class="step">  Below SR_c: inelastic — use Johnson parabolic σ = σ_y·[1 − σ_y/(4π²E)·(SR)²]</span>
+</div>
+
+<h2>End-fixity factors</h2>
+<table>
+<tr><th>End conditions</th><th>K (theoretical)</th><th>K (recommended design)</th><th>P_cr factor vs pin-pin</th></tr>
+<tr><td>Fixed-Fixed (both clamped)</td><td>0.5</td><td>0.65</td><td>4×</td></tr>
+<tr><td>Fixed-Pinned (one clamp, one pin)</td><td>0.7</td><td>0.80</td><td>2×</td></tr>
+<tr><td>Pinned-Pinned (rotation free both ends)</td><td>1.0</td><td>1.0</td><td>1× (baseline)</td></tr>
+<tr><td>Fixed-Free (cantilever, free top)</td><td>2.0</td><td>2.1</td><td>0.25×</td></tr>
+<tr><td>Fixed-Pinned with sway</td><td>1.0</td><td>1.2</td><td>0.7×</td></tr>
+<tr><td>Fixed-Fixed with sway</td><td>1.0</td><td>1.2</td><td>0.7×</td></tr>
+</table>
+<p class="lede">"Recommended design" values (AISC, ASIC) account for real-world end conditions never being perfectly fixed. Always use the worse-case recommended factor unless you have a hard-mounted bolted plate.</p>
+
+<h2>Cross-section properties (for the calculator)</h2>
+<table>
+<tr><th>Shape</th><th>Area A</th><th>I (min, about weak axis)</th><th>r = √(I/A)</th></tr>
+<tr><td>Solid round, dia d</td><td>π·d²/4</td><td>π·d⁴/64</td><td>d/4</td></tr>
+<tr><td>Hollow tube, OD d, wall t</td><td>π·(d·t − t²) ≈ π·d·t (thin wall)</td><td>π·(d⁴ − (d−2t)⁴)/64</td><td>≈ d/2·√(1 − (1−2t/d)⁴) / 2 — high r per gram</td></tr>
+<tr><td>Solid square, side a</td><td>a²</td><td>a⁴/12</td><td>a/√12 = a·0.289</td></tr>
+<tr><td>Rectangle b × h</td><td>b·h</td><td>min(b·h³/12, h·b³/12) = h·b³/12 if b &lt; h (weak axis)</td><td>b/√12 (weak axis)</td></tr>
+<tr><td>I-beam (approx)</td><td>complex; use handbook</td><td>flange-dominated; weak-axis much less stiff</td><td>often given as r_x, r_y separately</td></tr>
+</table>
+
+<h2>Worked example — 3D-printed PA12-CF arm support strut</h2>
+<div class="panel tip">
+<h3>Setup</h3>
+<p>arm-6dof-pa612 base column: PA12-CF (Markforged equivalent), printed solid round, 14 mm dia, 600 mm tall, fixed at base, free at top (cantilever, worst case K = 2). Supports robotic arm weight + dynamic loads ≈ 200 N (20 kg equivalent).</p>
+<h3>Run the calculation</h3>
+<div class="deriv">
+<span class="step">A = π·14²/4 = 154 mm²</span>
+<span class="step">I = π·14⁴/64 = 1886 mm⁴</span>
+<span class="step">r = √(I/A) = √(1886/154) = 3.50 mm = d/4 ✓</span>
+<span class="step">L_e = K·L = 2 · 600 = 1200 mm</span>
+<span class="step">SR = L_e / r = 1200 / 3.5 = 343 — VERY slender</span>
+<span class="step"></span>
+<span class="step">E_PA12-CF = 6000 MPa (continuous-fiber print, parallel-to-grain)</span>
+<span class="step">σ_y_PA12-CF ≈ 80 MPa compression</span>
+<span class="step">SR_c = π·√(2·6000/80) = π·√150 = 38</span>
+<span class="step">SR (343) ≫ SR_c (38) ⇒ purely elastic Euler regime</span>
+<span class="step"></span>
+<span class="step">P_cr = π²·E·I / (K·L)² = π²·6000·1886 / 1200² = π²·6000·1886/1.44e6 = 77.6 N</span>
+<span class="step">P_yield = σ_y · A = 80·154 = 12,320 N = 12.3 kN</span>
+<span class="step"></span>
+<span class="step"><b>Governing failure: BUCKLING at 77.6 N — far below the 200 N applied load!</b></span>
+<span class="step">Factor of safety at applied P: 77.6 / 200 = 0.39 (already under 1.0, failure imminent)</span>
+</div>
+<h3>Design fixes</h3>
+<ul style="padding-left:18px;color:var(--fg-dim);font-size:12.5px">
+<li><b>Bigger diameter</b>: P_cr scales as d⁴. Doubling to 28 mm dia: P_cr = 77.6 · 2⁴ = 1242 N (margin 6.2× over 200 N). Works.</li>
+<li><b>Shorter length</b>: P_cr scales as 1/L². Drop to 400 mm: P_cr = 77.6 · (600/400)² = 175 N. Still marginal.</li>
+<li><b>Better end-fixity</b>: bolt the top to a fixed brace (K=0.5 instead of 2): P_cr scales as 1/K². Goes from 77.6 to 77.6·(2/0.5)² = 1242 N. Best fix mechanically.</li>
+<li><b>Switch to aluminum tube</b>: 14 mm OD, 2 mm wall: A = 75 mm², I = 1490 mm⁴, E_Al = 69,000 MPa. P_cr = π²·69000·1490/1.44e6 = 706 N. 3.5× margin over 200 N. Works.</li>
+</ul>
+</div>
+
+<h2>The slenderness vs stress curve (Euler-Johnson)</h2>
+<div class="panel note">
+<p>Real columns don't follow Euler all the way — at low slenderness ratios, material yielding sets in <em>before</em> the elastic Euler load. The transition point SR_c divides two regimes:</p>
+<div class="deriv">
+<span class="step">SR &gt; SR_c (slender):  σ_cr = π²·E / SR²   (Euler, elastic buckling)</span>
+<span class="step">SR &lt; SR_c (intermediate):  σ_cr = σ_y · [1 − σ_y/(4π²E) · SR²]  (Johnson parabola)</span>
+<span class="step">SR very small (stub):  σ_cr ≈ σ_y   (pure yielding, no buckling)</span>
+<span class="step">SR_c = π·√(2E/σ_y)</span>
+</div>
+<p>The Johnson formula was derived to smoothly bridge from σ_y at SR=0 to the Euler curve at SR=SR_c, where the two equations meet tangentially. Most building / aircraft / civil codes use Euler + Johnson + an inelastic modifier (CRC, AISC E3).</p>
+</div>
+
+<h2>Geometric efficiency — why tubes beat rods</h2>
+<table>
+<tr><th>Cross-section (same A=100 mm²)</th><th>I (mm⁴)</th><th>r (mm)</th><th>Relative P_cr</th></tr>
+<tr><td>Solid round, d=11.3 mm</td><td>800</td><td>2.83</td><td>1.0 (baseline)</td></tr>
+<tr><td>Solid square, side 10 mm</td><td>833</td><td>2.89</td><td>1.04</td></tr>
+<tr><td>Tube OD 20 mm, ID 18 mm (t=1)</td><td>2,765</td><td>5.26</td><td>3.45</td></tr>
+<tr><td>Tube OD 30 mm, ID 28.6 mm (t=0.7)</td><td>6,335</td><td>7.95</td><td>7.92</td></tr>
+<tr><td>Tube OD 40 mm, ID 38.4 mm (t=0.8)</td><td>14,800</td><td>12.2</td><td>18.5</td></tr>
+</table>
+<p>Doubling the outer diameter while keeping material the same (thinning the wall to maintain area) raises P_cr ~20×. This is why bicycle frames, drone arms, scaffolding, and aircraft spars are tubes, not rods. <b>Caveat:</b> tubes can fail by local wall buckling (crushing inward) before global Euler — keep t/d ratio &gt; 1/30 for thin-wall safety.</p>
+
+<h2>Common pitfalls</h2>
+<ul class="notice">
+<li><b>Wrong axis</b> — rectangular sections have two different I values (about the strong and weak axis). Buckling always picks the smaller, so use I_min unless the column is restrained against buckling about one axis.</li>
+<li><b>K factor optimism</b> — "fixed" requires zero rotation at the boundary. A bolted plate to a thin shelf provides only partial fixity; use a higher K than ideal (or assume pin-pin).</li>
+<li><b>Initial crookedness</b> — Euler assumes a perfectly straight column. Real columns have ~L/1000 initial curvature, which reduces the effective P_cr by 10-30 % at long slenderness. Use Robertson curves (Eurocode 3) for steel.</li>
+<li><b>Tube wall buckling (local)</b> — thin-walled tubes (t/d &lt; 1/30) crush locally (Crippling) at much lower loads than global Euler predicts. Different failure mode, different formula (Donnell shell buckling).</li>
+<li><b>I-beam minor-axis buckling</b> — when an I-beam is loaded along its major axis but not restrained against minor-axis buckling, it can twist + bend sideways. Lateral-torsional buckling — needs Eurocode 3 §6.3.</li>
+<li><b>Concentric vs eccentric loading</b> — pure axial is rare. Even small eccentricity creates a bending moment that combines with buckling. Use secant formula or interaction equation for combined.</li>
+<li><b>Plastic Euler at intermediate SR</b> — using pure Euler in the inelastic range gives unconservatively high P_cr. The Johnson parabola is mandatory below SR_c.</li>
+<li><b>Forgetting dynamic loads</b> — vibration, impact, and seismic loads cause peak P much higher than steady state. Add a dynamic amplification factor (1.5-3×).</li>
+<li><b>3D-printed parts</b> — print direction matters: PLA / PA12 print along Z has 50-70% the modulus of the print plane. Orient the column so the LONG axis is in-plane.</li>
+</ul>
+
+<h2>Cheat sheet — when to worry about buckling</h2>
+<table>
+<tr><th>If SR (L_e/r) is…</th><th>Failure mode</th><th>Use formula</th></tr>
+<tr><td>&lt; 20</td><td>Pure yielding</td><td>σ = σ_y (ignore buckling)</td></tr>
+<tr><td>20 - SR_c</td><td>Inelastic buckling</td><td>Johnson parabola</td></tr>
+<tr><td>&gt; SR_c</td><td>Elastic Euler buckling</td><td>P_cr = π²EI/(KL)²</td></tr>
+<tr><td>&gt; 200</td><td>Very slender — initial-crookedness sensitive</td><td>Eurocode 3 / Robertson buckling curves</td></tr>
+</table>
+<table>
+<tr><th>To raise P_cr…</th><th>Effect</th></tr>
+<tr><td>Increase E (material)</td><td>Linear: steel 3× stiffer than aluminum</td></tr>
+<tr><td>Increase I (cross-section)</td><td>Linear: doubling d (solid round) → 16×</td></tr>
+<tr><td>Reduce L</td><td>Inverse square: half L → 4×</td></tr>
+<tr><td>Improve end fixity (lower K)</td><td>Inverse square: K from 2 to 0.5 → 16×</td></tr>
+<tr><td>Brace at midspan</td><td>Effective L_e halved → 4× (most efficient retrofit)</td></tr>
+</table>
+
+<footer>Cross-links: <a href="axial-stress-strain.html">Axial Stress &amp; Strain</a> · <a href="beam-deflection.html">Beam Deflection</a> · <a href="mohrs-circle.html">Mohr's Circle</a> · <a href="failure-theories.html">Failure Theories</a> · <a href="pressure-vessel.html">Pressure Vessel</a> · <a href="../phase-2-materials-science/material-classes.html">Material Classes</a></footer>
+
+</main>
+<script>
+const el = id => document.getElementById(id);
+
+const MATS = {
+  steel:  {E: 200e9, sy: 370e6, label: 'Steel 1018'},
+  alum:   {E: 69e9,  sy: 276e6, label: 'Al 6061-T6'},
+  ti:     {E: 114e9, sy: 830e6, label: 'Ti Gr 5'},
+  cf:     {E: 140e9, sy: 600e6, label: 'CF unidir'},
+  pla:    {E: 3.5e9, sy: 50e6,  label: 'PLA 3D print'},
+  pa12cf: {E: 6e9,   sy: 80e6,  label: 'PA12-CF'},
+  wood:   {E: 12e9,  sy: 40e6,  label: 'Pine'}
+};
+
+function csProps(cs, d, d2){
+  // returns {A_mm2, I_mm4, label}
+  if(cs === 'circular'){
+    const A = Math.PI * d*d / 4;
+    const I = Math.PI * Math.pow(d, 4) / 64;
+    return {A, I, label: `solid round d=${d}mm`};
+  }
+  if(cs === 'tube'){
+    const di = Math.max(0.1, d - 2*d2);
+    const A = Math.PI * (d*d - di*di) / 4;
+    const I = Math.PI * (Math.pow(d,4) - Math.pow(di,4)) / 64;
+    return {A, I, label: `tube OD=${d}mm t=${d2}mm`};
+  }
+  if(cs === 'square'){
+    const A = d*d;
+    const I = Math.pow(d, 4) / 12;
+    return {A, I, label: `square side=${d}mm`};
+  }
+  if(cs === 'rect'){
+    const b = Math.min(d, d2), h = Math.max(d, d2);
+    const A = b * h;
+    // weak axis: I = h·b³/12
+    const I = h * Math.pow(b, 3) / 12;
+    return {A, I, label: `rect ${b}×${h}mm (weak)`};
+  }
+  if(cs === 'iBeam'){
+    // Rough I-beam: web b×h thin + 2 flanges. Approximate I as A*(h/2)² + Aw*(h_w²/12)
+    const tf = d2, h = d, b_f = d * 0.6, t_w = d2 * 0.6;
+    const A_f = b_f * tf, A_w = (h - 2*tf) * t_w;
+    const A = 2*A_f + A_w;
+    const I = 2 * A_f * Math.pow((h - tf)/2, 2) + t_w * Math.pow(h - 2*tf, 3) / 12;
+    return {A, I, label: `I-beam h=${d}, tf=${d2}`};
+  }
+  return {A: 0, I: 0, label: ''};
+}
+
+function render(){
+  const cs = el('cs').value;
+  const d = parseFloat(el('d').value);
+  const d2 = parseFloat(el('d2').value);
+  const L = parseFloat(el('L').value);
+  const K = parseFloat(el('fix').value);
+  const matKey = el('mat').value;
+  const mat = MATS[matKey];
+  const P_kN = parseFloat(el('P').value);
+  const n = parseFloat(el('n').value);
+
+  el('vD').textContent = d.toFixed(1);
+  el('vD2').textContent = d2.toFixed(1);
+  el('vL').textContent = L;
+  el('vP').textContent = P_kN.toFixed(1);
+  el('vN').textContent = n.toFixed(1);
+
+  const {A, I} = csProps(cs, d, d2);  // mm², mm⁴
+  const r = Math.sqrt(I / A);  // mm
+  const Le = K * L;  // mm
+  const SR = Le / r;
+
+  // Convert for the Euler calc (use SI): E in Pa, I in m⁴, L in m
+  const E = mat.E;
+  const I_m4 = I * 1e-12;
+  const Le_m = Le * 1e-3;
+  const Pcr_N = Math.PI * Math.PI * E * I_m4 / (Le_m * Le_m);
+  const Pcr_kN = Pcr_N / 1000;
+
+  // P_yield
+  const A_m2 = A * 1e-6;
+  const Py_N = mat.sy * A_m2;
+  const Py_kN = Py_N / 1000;
+
+  // SR_c (transition)
+  const SR_c = Math.PI * Math.sqrt(2 * E / mat.sy);
+
+  // Governing failure
+  let mode, modeNote;
+  if(SR > SR_c){
+    if(Pcr_kN < Py_kN){
+      mode = 'BUCKLING';
+      modeNote = `elastic Euler (SR=${SR.toFixed(0)} > SR_c=${SR_c.toFixed(0)})`;
+    } else {
+      mode = 'YIELDING';
+      modeNote = 'unlikely combination';
+    }
+  } else {
+    // Johnson regime
+    const sigJ = mat.sy * (1 - mat.sy / (4 * Math.PI*Math.PI * E) * SR*SR);
+    const PJ_kN = sigJ * A_m2 / 1000;
+    if(PJ_kN < Py_kN){
+      mode = 'INELASTIC BUCK';
+      modeNote = `Johnson (SR=${SR.toFixed(0)} &lt; SR_c=${SR_c.toFixed(0)})`;
+    } else {
+      mode = 'YIELDING';
+      modeNote = `short column (SR=${SR.toFixed(0)})`;
+    }
+  }
+
+  el('vPcr').textContent = Pcr_kN < 1 ? Pcr_kN.toFixed(3) :
+                           Pcr_kN < 100 ? Pcr_kN.toFixed(1) :
+                           Pcr_kN.toFixed(0);
+  el('vPy').textContent = Py_kN < 1 ? Py_kN.toFixed(3) :
+                          Py_kN < 100 ? Py_kN.toFixed(1) :
+                          Py_kN.toFixed(0);
+  el('vMode').textContent = mode;
+  el('vModeNote').innerHTML = modeNote;
+  el('vSR').textContent = SR.toFixed(0) + ' / ' + SR_c.toFixed(0);
+
+  const P_govern = Math.min(Pcr_kN, Py_kN);
+  const margin = P_govern / P_kN;
+  el('vMarg').textContent = margin >= 100 ? '> 100×' : margin.toFixed(2) + '×';
+  const margCard = el('margCard');
+  const margNum = el('vMarg');
+  margCard.classList.remove('hi','lo');
+  margNum.classList.remove('warn','mid');
+  let margNote;
+  if(margin >= n){ margNote = `meets SF target n=${n}`; margCard.classList.add('hi'); }
+  else if(margin >= 1){ margNote = `under SF target — risky`; margNum.classList.add('mid'); }
+  else { margNote = '⚠ already FAILED at applied P'; margNum.classList.add('warn'); margCard.classList.add('lo'); }
+  el('vMargNote').textContent = margNote;
+
+  const Psafe_kN = P_govern / n;
+  el('vPsafe').textContent = Psafe_kN < 1 ? Psafe_kN.toFixed(3) : Psafe_kN.toFixed(2);
+
+  drawColumn(L, d, K, mode);
+  drawSRCurve(E, mat.sy, SR, Pcr_N/A_m2);
+}
+
+function drawColumn(L_mm, d_mm, K, mode){
+  const svg = el('column');
+  const W = 460, H = 460, M = 40;
+
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">Column + buckled mode shape (K=${K})</text>`;
+
+  // Column drawn vertically, scaled to fit
+  const colY0 = 40, colY1 = H - 50;
+  const colH = colY1 - colY0;
+  const colWidth = Math.max(8, Math.min(40, d_mm * 0.5));
+
+  // Apply load arrow at top
+  s += `<polygon points="${W/2},${colY0-25} ${W/2-8},${colY0-12} ${W/2+8},${colY0-12}" fill="#ff7b72"/>`;
+  s += `<line x1="${W/2}" y1="${colY0-40}" x2="${W/2}" y2="${colY0-15}" stroke="#ff7b72" stroke-width="2"/>`;
+  s += `<text x="${W/2+12}" y="${colY0-28}" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="12">P</text>`;
+
+  // Column outline (buckled if in BUCKLING mode)
+  let path = '';
+  for(let i = 0; i <= 50; i++){
+    const t = i / 50;
+    const y = colY0 + t * colH;
+    let dx = 0;
+    if(mode === 'BUCKLING' || mode === 'INELASTIC BUCK'){
+      // Buckled mode shape depends on K
+      // K=0.5 (fix-fix): symmetric about midpoint, S-shape (full sine)
+      // K=0.7 (fix-pin): asymmetric
+      // K=1.0 (pin-pin): half-sine
+      // K=2.0 (fix-free): quarter-sine
+      const amp = 30;
+      if(K === 0.5) dx = amp * Math.sin(2*Math.PI*t);
+      else if(K === 0.7) dx = amp * (Math.sin(Math.PI*t*1.4) - 0.3*t);
+      else if(K === 1.0) dx = amp * Math.sin(Math.PI*t);
+      else dx = amp * (1 - Math.cos(Math.PI*t/2));
+    }
+    const cx = W/2 + dx;
+    path += (i === 0 ? 'M ' : 'L ') + cx.toFixed(1) + ',' + y.toFixed(1) + ' ';
+  }
+  // Draw two-sided outline
+  let leftPath = '', rightPath = '';
+  for(let i = 0; i <= 50; i++){
+    const t = i / 50;
+    const y = colY0 + t * colH;
+    let dx = 0;
+    if(mode === 'BUCKLING' || mode === 'INELASTIC BUCK'){
+      const amp = 30;
+      if(K === 0.5) dx = amp * Math.sin(2*Math.PI*t);
+      else if(K === 0.7) dx = amp * (Math.sin(Math.PI*t*1.4) - 0.3*t);
+      else if(K === 1.0) dx = amp * Math.sin(Math.PI*t);
+      else dx = amp * (1 - Math.cos(Math.PI*t/2));
+    }
+    leftPath += (i === 0 ? 'M ' : 'L ') + (W/2 + dx - colWidth/2).toFixed(1) + ',' + y.toFixed(1) + ' ';
+    rightPath += (i === 0 ? 'M ' : 'L ') + (W/2 + dx + colWidth/2).toFixed(1) + ',' + y.toFixed(1) + ' ';
+  }
+  const colColor = mode === 'BUCKLING' || mode === 'INELASTIC BUCK' ? '#ff7b72' : '#a3e635';
+  s += `<path d="${leftPath}" fill="none" stroke="${colColor}" stroke-width="3"/>`;
+  s += `<path d="${rightPath}" fill="none" stroke="${colColor}" stroke-width="3"/>`;
+  // Centerline (dashed reference)
+  s += `<line x1="${W/2}" y1="${colY0}" x2="${W/2}" y2="${colY1}" stroke="#3a414c" stroke-dasharray="3,3"/>`;
+
+  // End supports
+  // Top support based on K
+  if(K === 0.5 || K === 0.7){
+    // Fixed top: hatched fill
+    for(let i = 0; i < 6; i++){
+      s += `<line x1="${W/2 - 40 + i*15}" y1="${colY0 - 6}" x2="${W/2 - 40 + i*15 + 8}" y2="${colY0 + 2}" stroke="#dde3ec" stroke-width="1"/>`;
+    }
+    s += `<line x1="${W/2-50}" y1="${colY0}" x2="${W/2+50}" y2="${colY0}" stroke="#dde3ec" stroke-width="2"/>`;
+  } else if(K === 1.0){
+    // Pin top: small triangle
+    s += `<polygon points="${W/2-8},${colY0-2} ${W/2+8},${colY0-2} ${W/2},${colY0-12}" fill="none" stroke="#dde3ec" stroke-width="1.5"/>`;
+    s += `<circle cx="${W/2}" cy="${colY0}" r="3" fill="#dde3ec"/>`;
+  }
+  // Bottom: always fixed
+  for(let i = 0; i < 6; i++){
+    s += `<line x1="${W/2 - 40 + i*15}" y1="${colY1 + 4}" x2="${W/2 - 40 + i*15 + 8}" y2="${colY1 + 12}" stroke="#dde3ec" stroke-width="1"/>`;
+  }
+  s += `<line x1="${W/2-50}" y1="${colY1}" x2="${W/2+50}" y2="${colY1}" stroke="#dde3ec" stroke-width="2"/>`;
+
+  // Annotations
+  s += `<text x="${W/2 + 60}" y="${colY0 + 20}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">L = ${L_mm} mm</text>`;
+  s += `<text x="${W/2 + 60}" y="${colY0 + 36}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">L_e = K·L = ${(K*L_mm).toFixed(0)} mm</text>`;
+  s += `<text x="${W/2 + 60}" y="${colY0 + 52}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">d = ${d_mm} mm</text>`;
+  if(mode === 'BUCKLING' || mode === 'INELASTIC BUCK'){
+    s += `<text x="${W/2}" y="${H-20}" text-anchor="middle" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="12" font-weight="600">⚠ Buckling-governed failure</text>`;
+  }
+
+  svg.innerHTML = s;
+}
+
+function drawSRCurve(E, sy, currentSR, currentSigma){
+  const svg = el('srcurve');
+  const W = 460, H = 460, M = 50;
+  const SR_max = 300;
+  const sigma_max = sy * 1.15;
+  const xOf = sr => M + sr / SR_max * (W - 2*M);
+  const yOf = sig => H - M - sig / sigma_max * (H - 2*M - 30);
+
+  const SR_c = Math.PI * Math.sqrt(2 * E / sy);
+
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">Critical stress vs slenderness ratio</text>`;
+  s += `<line x1="${M}" y1="${H-M}" x2="${W-M}" y2="${H-M}" stroke="#8f99a8"/>`;
+  s += `<line x1="${M}" y1="${M+30}" x2="${M}" y2="${H-M}" stroke="#8f99a8"/>`;
+
+  // Yield line (horizontal)
+  s += `<line x1="${M}" y1="${yOf(sy)}" x2="${W-M}" y2="${yOf(sy)}" stroke="#ffb86c" stroke-width="1" stroke-dasharray="3,2" opacity="0.5"/>`;
+  s += `<text x="${W-M-4}" y="${yOf(sy)-4}" text-anchor="end" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="10">σ_y = ${(sy/1e6).toFixed(0)} MPa</text>`;
+
+  // Johnson parabola (SR=0 to SR_c)
+  let jPath = '';
+  for(let sr = 0; sr <= SR_c; sr += 2){
+    const sig = sy * (1 - sy / (4 * Math.PI*Math.PI * E) * sr*sr);
+    const x = xOf(sr), y = yOf(sig);
+    jPath += (jPath ? 'L ' : 'M ') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+  }
+  s += `<path d="${jPath}" fill="none" stroke="#a3e635" stroke-width="2"/>`;
+
+  // Euler curve (SR_c to SR_max)
+  let ePath = '';
+  for(let sr = SR_c; sr <= SR_max; sr += 2){
+    const sig = Math.PI*Math.PI * E / (sr*sr);
+    if(sig > sigma_max) continue;
+    const x = xOf(sr), y = yOf(sig);
+    ePath += (ePath ? 'L ' : 'M ') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+  }
+  s += `<path d="${ePath}" fill="none" stroke="#5ec8ff" stroke-width="2"/>`;
+
+  // Transition marker
+  s += `<line x1="${xOf(SR_c)}" y1="${M+30}" x2="${xOf(SR_c)}" y2="${H-M}" stroke="#c084fc" stroke-width="1" stroke-dasharray="3,2"/>`;
+  s += `<text x="${xOf(SR_c)+4}" y="${M+45}" fill="#c084fc" font-family="ui-monospace,monospace" font-size="11">SR_c = ${SR_c.toFixed(0)}</text>`;
+
+  // Current operating point
+  if(currentSR <= SR_max && currentSigma <= sigma_max){
+    s += `<circle cx="${xOf(currentSR)}" cy="${yOf(currentSigma)}" r="5" fill="#fff" stroke="#ff7b72" stroke-width="2"/>`;
+    s += `<text x="${xOf(currentSR)+8}" y="${yOf(currentSigma)-6}" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="11">your column</text>`;
+  } else {
+    s += `<text x="${W/2}" y="${M+70}" text-anchor="middle" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="11">column off-chart (SR=${currentSR.toFixed(0)})</text>`;
+  }
+
+  // Region labels
+  s += `<text x="${xOf(SR_c/2)}" y="${M+60}" text-anchor="middle" fill="#a3e635" font-family="ui-monospace,monospace" font-size="10">Johnson (inelastic)</text>`;
+  s += `<text x="${xOf((SR_c+SR_max)/2)}" y="${M+60}" text-anchor="middle" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="10">Euler (elastic)</text>`;
+
+  // Axis labels
+  for(let sr = 0; sr <= SR_max; sr += 50){
+    const x = xOf(sr);
+    s += `<line x1="${x}" y1="${H-M}" x2="${x}" y2="${H-M+4}" stroke="#8f99a8"/>`;
+    s += `<text x="${x}" y="${H-M+16}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${sr}</text>`;
+  }
+  s += `<text x="${W/2}" y="${H-12}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">SR = L_e / r</text>`;
+  s += `<text x="20" y="${H/2}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11" transform="rotate(-90 20 ${H/2})" text-anchor="middle">σ_cr (Pa)</text>`;
+
+  svg.innerHTML = s;
+}
+
+render();
+</script>
+</body></html>

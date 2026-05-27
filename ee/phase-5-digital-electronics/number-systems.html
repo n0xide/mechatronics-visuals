@@ -226,6 +226,28 @@
     <li><b>Little-endian feels backwards in a hex dump</b> — but it lets the CPU read a byte, word, or dword from the same address without changing the starting offset. That's the engineering trade.</li>
   </ul>
 
+  <h2>Worked example — reading an MPU6050 accelerometer X-axis register pair</h2>
+  <div style="background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0">
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">The hardware</h3>
+    <p>MPU6050 (InvenSense IMU): X-axis acceleration is stored as a signed 16-bit integer split across two 8-bit registers: <code>ACCEL_XOUT_H</code> (0x3B) holds bits [15:8], <code>ACCEL_XOUT_L</code> (0x3C) holds bits [7:0]. Default range = ±2 g, so each LSB = 2 g / 32,768 = 61 µg.</p>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Raw I²C read</h3>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">ACCEL_XOUT_H (0x3B) = 0xF8</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">ACCEL_XOUT_L (0x3C) = 0x40</div>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Step 1: Assemble (big-endian — MPU6050 is high-byte-first)</h3>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">raw = (0xF8 &lt;&lt; 8) | 0x40 = 0xF840 = 1111 1000 0100 0000₂ = 63,552 unsigned</div>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Step 2: Interpret as signed int16 (MSB=1 → negative)</h3>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Two's-complement: signed = unsigned − 2¹⁶ = 63552 − 65536 = <b>−1984</b></div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Or: flip all bits + 1 → 0x07BF + 1 = 0x07C0 = 1984, then negate → −1984 ✓</div>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Step 3: Scale to physical units</h3>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">accel_g = −1984 / 16384 = <b>−0.121 g</b>   (16384 = 2¹⁵/2g · 2g = LSBs per 1g at ±2g range)</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">accel_m_s2 = −0.121 · 9.81 = <b>−1.19 m/s²</b>   (slight negative X tilt)</div>
+    <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">In C</h3>
+    <pre style="background:var(--bg-elev2);padding:8px 12px;margin:6px 0;border-radius:3px;font:12px ui-monospace,monospace;color:var(--accent);overflow-x:auto">int16_t raw = (int16_t)((buf[0] &lt;&lt; 8) | buf[1]);  // cast to int16 = sign-extend
+float g = raw / 16384.0f;                          // scale per datasheet
+float a_ms2 = g * 9.80665f;                        // SI units</pre>
+    <p>Common bug: <code>uint16_t raw = ...</code> then implicit promotion to int treats it as unsigned 63,552, giving accel ≈ +3.88 g. Always cast to <code>int16_t</code> first if the source is a signed register.</p>
+  </div>
+
   <h2>Cheat sheet</h2>
   <section class="cheatsheet">
     <div class="cheat-card memorize">
@@ -262,8 +284,7 @@
   </section>
 
   <footer>
-    Curriculum: <a target="_top" href="../../index.html">EE Phase 5 — Digital Electronics</a> ·
-    Topic: Number Systems
+    Cross-links: <a href="boolean-algebra.html">Boolean Algebra</a> · <a href="logic-families-level-shift.html">Logic Families &amp; Level Shift</a> · <a href="setup-hold-metastability.html">Setup/Hold</a> · <a href="../phase-8-embedded-protocols/spi-timing.html">SPI Timing</a> · <a href="../phase-8-embedded-protocols/i2c-protocol.html">I²C Protocol</a> · <a href="../phase-8-embedded-protocols/adc-explorer.html">ADC</a>
   </footer>
 </main>
 <script>

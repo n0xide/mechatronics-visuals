@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LLC Resonant Converter — visual</title>
+<style>
+:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,Segoe UI,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:14px 0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.control .val{font:600 13px ui-monospace,Menlo,Consolas,monospace;color:var(--accent3)}
+.control input[type=range]{width:100%;accent-color:var(--accent)}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;margin:14px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,Menlo,Consolas,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}.panel.note{border-left:3px solid var(--accent)}
+.panel h3{margin-top:0}
+.scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.score-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center}
+.score-card.hi{border-color:var(--accent3)}.score-card.lo{border-color:var(--warn)}
+.score-num{font:700 22px ui-monospace,Menlo,Consolas,monospace;color:var(--accent3);margin:6px 0}
+.score-num.warn{color:var(--warn)}.score-num.mid{color:var(--accent2)}
+.score-lbl{color:var(--fg-dim);font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace;text-transform:uppercase;letter-spacing:.4px}
+.score-lbl.unit{text-transform:none;letter-spacing:0}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+.deriv b{color:var(--fg-bright)}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--accent2)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,Consolas,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>LLC Resonant Converter — soft-switching for 95-97% efficiency</h1>
+<p class="lede">The LLC is the workhorse for server PSUs, EV chargers, and high-end audio amps in the 100 W to 3 kW range. Two resonant elements (L_r + C_r) make a series tank, a parallel magnetizing inductance L_m provides voltage regulation through frequency. The trick: tank impedance lets the MOSFETs switch at zero voltage (ZVS), eliminating turn-on loss. Efficiencies 95-97 % at full load are standard. This visual shows the gain curve M(F_n), the three operating regions, and what tilts the curve as L_m/L_r changes.</p>
+
+<div class="anchors">
+<span class="anchor"><b>f_r1</b> = 1 / (2π√(L_r·C_r)) — series resonance</span>
+<span class="anchor"><b>f_r2</b> = 1 / (2π√((L_r+L_m)·C_r)) — second resonance</span>
+<span class="anchor"><b>k</b> = L_m / L_r (typ 4-7)</span>
+<span class="anchor"><b>Q</b> = √(L_r/C_r) / R_ac — load Q</span>
+<span class="anchor"><b>ZVS</b> at f_sw &gt; f_r1; ZCS impossible at high Q</span>
+<span class="anchor"><b>Gain</b> M = V_out / (V_in/2N) — 0.5 to 1.5 typical</span>
+</div>
+
+<h2>Interactive — voltage gain M(F_n) sweep</h2>
+<p>The gain curve depends on the normalized frequency F_n = f_sw / f_r1, the inductance ratio k = L_m/L_r, and the loaded quality factor Q. The converter regulates by sliding f_sw along this curve.</p>
+
+<div class="controls">
+<div class="control"><label>L_r (µH, resonant inductor)</label><input id="Lr" type="range" min="5" max="200" value="35" step="1" oninput="render()"><span class="val" id="vLr">35</span></div>
+<div class="control"><label>C_r (nF, resonant cap)</label><input id="Cr" type="range" min="10" max="500" value="68" step="2" oninput="render()"><span class="val" id="vCr">68</span></div>
+<div class="control"><label>L_m (µH, magnetizing)</label><input id="Lm" type="range" min="50" max="2000" value="200" step="10" oninput="render()"><span class="val" id="vLm">200</span></div>
+<div class="control"><label>V_in (V DC bus)</label><input id="Vin" type="range" min="100" max="500" value="400" step="5" oninput="render()"><span class="val" id="vVin">400</span></div>
+<div class="control"><label>V_out (V)</label><input id="Vout" type="range" min="5" max="48" value="12" step="0.5" oninput="render()"><span class="val" id="vVout">12</span></div>
+<div class="control"><label>Transformer N = N_p/N_s</label><input id="N" type="range" min="1" max="30" value="16" step="0.5" oninput="render()"><span class="val" id="vN">16</span></div>
+<div class="control"><label>Load R_load (Ω)</label><input id="Rl" type="range" min="0.1" max="20" value="1.44" step="0.05" oninput="render()"><span class="val" id="vRl">1.44</span></div>
+<div class="control"><label>f_sw operating point (kHz)</label><input id="fsw" type="range" min="50" max="500" value="100" step="2" oninput="render()"><span class="val" id="vFsw">100</span></div>
+</div>
+
+<div class="scoreboard">
+<div class="score-card"><div class="score-lbl">f_r1 (series)</div><div class="score-num" id="vFr1">—</div><div class="score-lbl unit">kHz</div></div>
+<div class="score-card"><div class="score-lbl">f_r2 (full tank)</div><div class="score-num" id="vFr2">—</div><div class="score-lbl unit">kHz</div></div>
+<div class="score-card"><div class="score-lbl">k = L_m / L_r</div><div class="score-num" id="vK">—</div><div class="score-lbl unit">ratio</div></div>
+<div class="score-card"><div class="score-lbl">Q (loaded)</div><div class="score-num" id="vQ">—</div><div class="score-lbl unit">at f_r1</div></div>
+<div class="score-card"><div class="score-lbl">Required gain M</div><div class="score-num" id="vMreq">—</div><div class="score-lbl unit">to hit V_out</div></div>
+<div class="score-card" id="modeCard"><div class="score-lbl">Operating region</div><div class="score-num" id="vRegion" style="font-size:14px">—</div><div class="score-lbl" id="vRegionNote">—</div></div>
+</div>
+
+<div class="figure"><svg id="gain" viewBox="0 0 900 380" width="100%"></svg></div>
+
+<h2>The gain equation</h2>
+<div class="deriv">
+<span class="step">Using First-Harmonic Approximation (FHA), the tank looks like a series-parallel network:</span>
+<span class="step">  V_out · 2N / V_in = |M(F_n, k, Q)|</span>
+<span class="step"></span>
+<span class="step"><b>M(F_n, k, Q) = 1 / √( ( (1 + 1/k − 1/(k·F_n²))² + Q²·(F_n − 1/F_n)² ) )</b></span>
+<span class="step">  F_n = f_sw / f_r1     normalized frequency</span>
+<span class="step">  k   = L_m / L_r       inductance ratio (typically 4-7)</span>
+<span class="step">  Q   = √(L_r/C_r) / R_ac   loaded quality factor</span>
+<span class="step">  R_ac = 8·N² / π² · R_load   reflected load (FHA approximation)</span>
+<span class="step"></span>
+<span class="step">Key frequencies:</span>
+<span class="step">  f_r1 = 1 / (2π·√(L_r·C_r))                  series resonance — gain = 1 always</span>
+<span class="step">  f_r2 = 1 / (2π·√((L_r + L_m)·C_r))           second resonance — gain peak at no-load</span>
+<span class="step"></span>
+<span class="step">Three operating regions:</span>
+<span class="step">  f_sw &gt; f_r1  : ZVS, M &lt; 1 (buck-mode), input impedance inductive ✓ preferred region</span>
+<span class="step">  f_sw = f_r1  : unity gain regardless of load (the magic point)</span>
+<span class="step">  f_r2 &lt; f_sw &lt; f_r1 : ZVS, M &gt; 1 (boost-mode), still safe</span>
+<span class="step">  f_sw &lt; f_r2  : ZCS region — body-diode hard switching; AVOID (kills efficiency + EMI)</span>
+</div>
+
+<h2>Why LLC? — vs the alternatives</h2>
+<table>
+<tr><th>Topology</th><th>η (typ)</th><th>Soft-switching</th><th>Range V_in/V_out</th><th>Best for</th></tr>
+<tr><td>Flyback</td><td>85-92 %</td><td>QR only at light load</td><td>Wide (5:1+)</td><td>&lt; 100 W, simple, cheap</td></tr>
+<tr><td>Forward (2-switch)</td><td>90-94 %</td><td>Reset winding hard-switch</td><td>Narrow (2:1)</td><td>100-400 W</td></tr>
+<tr><td>Half-bridge</td><td>88-94 %</td><td>Hard-switching</td><td>2-3:1</td><td>Mid-power industrial</td></tr>
+<tr><td><b>LLC</b></td><td><b>95-97 %</b></td><td><b>Full ZVS on primary, ZCS on secondary</b></td><td><b>Narrow (1.5:1)</b></td><td><b>200-3000 W high-η PSU, server, EV charger</b></td></tr>
+<tr><td>Phase-shifted full-bridge</td><td>93-96 %</td><td>ZVS</td><td>2-3:1</td><td>500 W - 5 kW high-power</td></tr>
+<tr><td>Active-clamp flyback</td><td>92-95 %</td><td>ZVS</td><td>Wide</td><td>USB-PD GaN bricks 65-240 W</td></tr>
+</table>
+
+<h2>Tank design — picking L_r, L_m, C_r</h2>
+<div class="panel note">
+<h3>Step 1: pick f_r1 from EMI + magnetics</h3>
+<p>Higher f_r1 = smaller magnetics + faster transient response, but higher gate-drive + core loss. Typical:</p>
+<ul style="padding-left:18px;color:var(--fg-dim);font-size:12.5px">
+<li>100-150 kHz: standard server PSUs, ferrite cores, MOSFETs work cheap</li>
+<li>200-300 kHz: high-density chargers, planar transformers</li>
+<li>400-1000 kHz: GaN-based, integrated-magnetics designs</li>
+</ul>
+<h3>Step 2: pick k = L_m / L_r</h3>
+<p>k = 4-7 typical. Smaller k → wider gain range (better at handling V_in transients), but more magnetizing current and worse light-load efficiency. Larger k → narrower gain range (works only near f_r1) but better efficiency.</p>
+<h3>Step 3: pick Q from load Q tables</h3>
+<p>Q_max at full load is usually 0.3-0.6. The "peak gain" of the curve must exceed the max required gain at min V_in, with margin. Standard LLC design tables (Yang 2003, Lee 2010) give the relationship between k, Q_max, and required M_max.</p>
+<h3>Step 4: solve for L_r, L_m, C_r</h3>
+<p>Given f_r1, k, Q_max, R_ac at full load:</p>
+<div class="deriv">
+<span class="step">L_r = Q · R_ac / (2π · f_r1)</span>
+<span class="step">C_r = 1 / (2π · f_r1)² / L_r</span>
+<span class="step">L_m = k · L_r</span>
+</div>
+</div>
+
+<h2>Worked example — 240 W server PSU rectifier (12 V output from 400 V bus)</h2>
+<div class="panel tip">
+<h3>Specs</h3>
+<p>Server PSU: 400 V DC bus → 12 V / 20 A = 240 W output. Target η ≥ 96 %. Pick f_r1 = 100 kHz, k = 5.7, Q_max = 0.4 at full load.</p>
+<h3>Compute reflected load</h3>
+<div class="deriv">
+<span class="step">N = N_p / N_s. For LLC at unity gain, V_out = V_in / (2N) → N = V_in/(2·V_out) = 400/24 = 16.67. Pick N = 16.</span>
+<span class="step">R_load = 12² / 240 = 0.6 Ω</span>
+<span class="step">R_ac = (8/π²) · N² · R_load = 0.811 · 256 · 0.6 = 124.5 Ω</span>
+</div>
+<h3>Resonant tank</h3>
+<div class="deriv">
+<span class="step">L_r = Q·R_ac / (2π·f_r1) = 0.4 · 124.5 / (2π · 100e3) = 79.3 µH → use 75 µH</span>
+<span class="step">C_r = 1 / ((2π·100e3)² · 75e-6) = 33.8 nF → use 33 nF C0G ceramic</span>
+<span class="step">f_r1_actual = 1/(2π·√(75e-6·33e-9)) = 101.1 kHz ✓</span>
+<span class="step">L_m = k·L_r = 5.7 · 75 = 427 µH → integrated into transformer</span>
+</div>
+<h3>Verify operating range</h3>
+<div class="deriv">
+<span class="step">f_r2 = 1/(2π·√((75+427)·33e-9·1e-6)) = 39.2 kHz</span>
+<span class="step">Operating: f_sw = 100 kHz (right at f_r1) at nominal → M = 1 exactly</span>
+<span class="step">Low-line (350V): F_n drops to ~0.85 → M rises to ~1.14 → V_out stays at 12 V ✓</span>
+<span class="step">No-load: F_n rises to ~1.3 (M drops); controller skips pulses below 30 % load</span>
+</div>
+<p>Controller: TI UCC256301 or NXP MC56F LLC. Synchronous rectifier on secondary picks up the remaining 1-2 % efficiency.</p>
+</div>
+
+<h2>Where things go wrong</h2>
+<ul class="notice">
+<li><b>Falling into ZCS region (f_sw &lt; f_r2)</b> — at no-load + low V_in, the controller may push frequency way down. Body diodes hard-switch, ringing destroys MOSFETs. Always include a min-frequency clamp.</li>
+<li><b>Magnetizing-current sizing too small</b> — L_m needs enough magnetizing current to charge C_oss of the MOSFETs during dead time for ZVS. Rule: I_mag(peak) ≥ V_in · C_oss / t_dead.</li>
+<li><b>Light-load efficiency cliff</b> — at &lt; 20 % load, magnetizing-current loss dominates. Use burst-mode controller (skip-pulse) to reduce f_eff at light load.</li>
+<li><b>Tolerance stack</b> — L_r tolerance ±10 %, C_r ±5 % means f_r1 has ±7-8 % variation. Design margin into the gain curve, especially at the gain peak.</li>
+<li><b>Transformer leakage IS L_r</b> — modern designs use the transformer's leakage inductance as L_r (no external inductor). Tightly controlled by transformer construction; "integrated magnetics".</li>
+<li><b>Forgetting body diode reverse recovery</b> — at high Q + load step, secondary diode reverse-recovery currents flow back through the resonant tank and cause oscillation. Use SiC diodes or synchronous MOSFETs.</li>
+<li><b>FHA approximation breaks at high gain</b> — actual peak gain is ~10-15 % below what FHA predicts. Production design uses time-domain simulation (PSIM, LTspice) or vendor tools (TI Power Designer) for accuracy.</li>
+</ul>
+
+<h2>Cheat sheet</h2>
+<table>
+<tr><th>If…</th><th>Try…</th></tr>
+<tr><td>Need wider V_in range</td><td>Lower k (more magnetizing current trade)</td></tr>
+<tr><td>Need tighter efficiency at full load</td><td>Higher k (less circulating current)</td></tr>
+<tr><td>Output voltage regulation drifts</td><td>Check tank Q, may need adaptive dead-time controller</td></tr>
+<tr><td>Hard-switching observed at light load</td><td>Add burst mode / minimum f clamp / boost magnetizing</td></tr>
+<tr><td>Peak gain insufficient at low-line</td><td>Lower f_r1 or use smaller k; or add boost pre-stage</td></tr>
+<tr><td>EMI peaks at f_sw harmonics</td><td>Spread-spectrum the f_sw, or add input common-mode choke</td></tr>
+<tr><td>Need &gt; 1 kW</td><td>Switch to interleaved LLC (2-3 phases) for ripple cancellation</td></tr>
+</table>
+
+<footer>Cross-links: <a href="flyback-converter.html">Flyback Converter</a> · <a href="buck-converter.html">Buck</a> · <a href="boost-converter.html">Boost</a> · <a href="synchronous-rectification.html">Sync Rect</a> · <a href="gate-drivers.html">Gate Drivers</a> · <a href="pfc-boost.html">PFC Boost</a></footer>
+
+</main>
+<script>
+const el = id => document.getElementById(id);
+
+function gainM(Fn, k, Q){
+  // FHA gain magnitude (Yang 2003)
+  // M = 1 / sqrt( (1 + 1/k − 1/(k·Fn²))² + Q²·(Fn − 1/Fn)² )
+  const a = 1 + 1/k - 1/(k * Fn * Fn);
+  const b = Q * (Fn - 1/Fn);
+  return 1 / Math.sqrt(a*a + b*b);
+}
+
+function render(){
+  const Lr = parseFloat(el('Lr').value) * 1e-6;
+  const Cr = parseFloat(el('Cr').value) * 1e-9;
+  const Lm = parseFloat(el('Lm').value) * 1e-6;
+  const Vin = parseFloat(el('Vin').value);
+  const Vout = parseFloat(el('Vout').value);
+  const N = parseFloat(el('N').value);
+  const Rl = parseFloat(el('Rl').value);
+  const fsw = parseFloat(el('fsw').value) * 1e3;
+
+  el('vLr').textContent = (Lr*1e6).toFixed(0);
+  el('vCr').textContent = (Cr*1e9).toFixed(0);
+  el('vLm').textContent = (Lm*1e6).toFixed(0);
+  el('vVin').textContent = Vin;
+  el('vVout').textContent = Vout;
+  el('vN').textContent = N;
+  el('vRl').textContent = Rl.toFixed(2);
+  el('vFsw').textContent = (fsw/1e3).toFixed(0);
+
+  const fr1 = 1 / (2 * Math.PI * Math.sqrt(Lr * Cr));
+  const fr2 = 1 / (2 * Math.PI * Math.sqrt((Lr + Lm) * Cr));
+  const k = Lm / Lr;
+  const Rac = (8 / (Math.PI * Math.PI)) * N * N * Rl;
+  const Q = Math.sqrt(Lr / Cr) / Rac;
+  const Mreq = (Vout * 2 * N) / Vin;
+
+  el('vFr1').textContent = (fr1/1e3).toFixed(0);
+  el('vFr2').textContent = (fr2/1e3).toFixed(0);
+  el('vK').textContent = k.toFixed(1);
+  el('vQ').textContent = Q.toFixed(2);
+  el('vMreq').textContent = Mreq.toFixed(2);
+
+  const Fn = fsw / fr1;
+  const M_at_fsw = gainM(Fn, k, Q);
+
+  // Region determination
+  let region, note, cls;
+  if(fsw > fr1){
+    region = 'ZVS · buck (preferred)';
+    note = 'inductive tank · soft-switching ✓';
+    cls = 'hi';
+  } else if(fsw > fr2){
+    region = 'ZVS · boost';
+    note = 'still safe · gain > 1';
+    cls = '';
+  } else {
+    region = 'ZCS · capacitive';
+    note = '⚠ avoid — body-diode hard-switching';
+    cls = 'lo';
+  }
+  el('vRegion').textContent = region;
+  el('vRegionNote').textContent = note;
+  const modeCard = el('modeCard');
+  modeCard.classList.remove('hi','lo');
+  if(cls) modeCard.classList.add(cls);
+
+  drawGain(fr1, fr2, k, Q, fsw, Mreq);
+}
+
+function drawGain(fr1, fr2, k, Q, fsw, Mreq){
+  const svg = el('gain');
+  const W = 900, H = 380, M = 60;
+
+  // X: f_sw (kHz, log)
+  const fMin = fr2 * 0.5, fMax = fr1 * 3;
+  const xOf = f => M + (Math.log10(f) - Math.log10(fMin)) * (W - 2*M) / (Math.log10(fMax) - Math.log10(fMin));
+  // Y: gain M (0 to ~2)
+  const Mmax = 2.0;
+  const yOf = m => H - M - Math.min(m, Mmax) * (H - 2*M - 30) / Mmax;
+
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">LLC voltage gain M vs f_sw  (k = ${k.toFixed(1)}, Q = ${Q.toFixed(2)})</text>`;
+  // Axes
+  s += `<line x1="${M}" y1="${H-M}" x2="${W-M}" y2="${H-M}" stroke="#8f99a8"/>`;
+  s += `<line x1="${M}" y1="${M+30}" x2="${M}" y2="${H-M}" stroke="#8f99a8"/>`;
+
+  // Region shading: ZCS region (f < fr2) red, ZVS-boost (fr2..fr1) yellow, ZVS-buck (>fr1) green
+  s += `<rect x="${xOf(fMin)}" y="${M+30}" width="${xOf(fr2)-xOf(fMin)}" height="${H-2*M-30}" fill="#ff7b72" opacity="0.10"/>`;
+  s += `<rect x="${xOf(fr2)}" y="${M+30}" width="${xOf(fr1)-xOf(fr2)}" height="${H-2*M-30}" fill="#ffb86c" opacity="0.10"/>`;
+  s += `<rect x="${xOf(fr1)}" y="${M+30}" width="${xOf(fMax)-xOf(fr1)}" height="${H-2*M-30}" fill="#a3e635" opacity="0.10"/>`;
+
+  // Frequency markers
+  s += `<line x1="${xOf(fr1)}" y1="${M+30}" x2="${xOf(fr1)}" y2="${H-M}" stroke="#5ec8ff" stroke-width="1.5" stroke-dasharray="3,2"/>`;
+  s += `<text x="${xOf(fr1)+4}" y="${M+45}" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">f_r1 = ${(fr1/1e3).toFixed(0)} kHz</text>`;
+  s += `<line x1="${xOf(fr2)}" y1="${M+30}" x2="${xOf(fr2)}" y2="${H-M}" stroke="#ff7b72" stroke-width="1.5" stroke-dasharray="3,2"/>`;
+  s += `<text x="${xOf(fr2)+4}" y="${M+60}" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="11">f_r2 = ${(fr2/1e3).toFixed(0)} kHz</text>`;
+
+  // M=1 line
+  s += `<line x1="${M}" y1="${yOf(1)}" x2="${W-M}" y2="${yOf(1)}" stroke="#8f99a8" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+  s += `<text x="${W-M-4}" y="${yOf(1)-4}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">M = 1</text>`;
+
+  // Required-gain line
+  s += `<line x1="${M}" y1="${yOf(Mreq)}" x2="${W-M}" y2="${yOf(Mreq)}" stroke="#c084fc" stroke-width="1" stroke-dasharray="4,3"/>`;
+  s += `<text x="${W-M-4}" y="${yOf(Mreq)-4}" text-anchor="end" fill="#c084fc" font-family="ui-monospace,monospace" font-size="10">required M = ${Mreq.toFixed(2)}</text>`;
+
+  // Gain curve at current Q
+  let path = '';
+  const N_PTS = 200;
+  for(let i = 0; i <= N_PTS; i++){
+    const logF = Math.log10(fMin) + (i / N_PTS) * (Math.log10(fMax) - Math.log10(fMin));
+    const f = Math.pow(10, logF);
+    const Fn = f / fr1;
+    const m = gainM(Fn, k, Q);
+    const x = xOf(f), y = yOf(m);
+    path += (i === 0 ? 'M ' : 'L ') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+  }
+  s += `<path d="${path}" fill="none" stroke="#a3e635" stroke-width="2.5"/>`;
+
+  // Also draw 3 dimmed curves at other Q values for context
+  for(const Q_ctx of [0.1, 0.5, 1.0]){
+    if(Math.abs(Q_ctx - Q) < 0.05) continue;
+    let p2 = '';
+    for(let i = 0; i <= N_PTS; i++){
+      const logF = Math.log10(fMin) + (i / N_PTS) * (Math.log10(fMax) - Math.log10(fMin));
+      const f = Math.pow(10, logF);
+      const Fn = f / fr1;
+      const m = gainM(Fn, k, Q_ctx);
+      const x = xOf(f), y = yOf(Math.min(m, Mmax));
+      p2 += (i === 0 ? 'M ' : 'L ') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+    }
+    s += `<path d="${p2}" fill="none" stroke="#5ec8ff" stroke-width="1" opacity="0.3"/>`;
+  }
+
+  // f_sw operating point marker
+  const xOp = xOf(fsw);
+  const yOp = yOf(gainM(fsw/fr1, k, Q));
+  s += `<circle cx="${xOp}" cy="${yOp}" r="6" fill="#ffb86c" stroke="#fff" stroke-width="1.5"/>`;
+  s += `<text x="${xOp}" y="${yOp-12}" text-anchor="middle" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="11">f_sw = ${(fsw/1e3).toFixed(0)} kHz</text>`;
+
+  // X axis decade labels
+  for(let lf = Math.ceil(Math.log10(fMin)); lf <= Math.log10(fMax); lf++){
+    const f = Math.pow(10, lf);
+    const x = xOf(f);
+    s += `<line x1="${x}" y1="${H-M}" x2="${x}" y2="${H-M+4}" stroke="#8f99a8"/>`;
+    const lbl = f >= 1e6 ? (f/1e6) + ' MHz' : (f/1e3) + ' kHz';
+    s += `<text x="${x}" y="${H-M+16}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${lbl}</text>`;
+  }
+  // Y axis labels
+  for(const m of [0, 0.5, 1.0, 1.5, 2.0]){
+    const y = yOf(m);
+    s += `<line x1="${M-4}" y1="${y}" x2="${M}" y2="${y}" stroke="#8f99a8"/>`;
+    s += `<text x="${M-6}" y="${y+3}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${m.toFixed(1)}</text>`;
+  }
+  s += `<text x="20" y="${H/2}" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11" transform="rotate(-90 20 ${H/2})" text-anchor="middle">Gain M</text>`;
+  s += `<text x="${W/2}" y="${H-12}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">Switching frequency</text>`;
+
+  // Region labels
+  s += `<text x="${(xOf(fMin)+xOf(fr2))/2}" y="${H-M-6}" text-anchor="middle" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="10">ZCS (avoid)</text>`;
+  s += `<text x="${(xOf(fr2)+xOf(fr1))/2}" y="${H-M-6}" text-anchor="middle" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="10">ZVS boost</text>`;
+  s += `<text x="${(xOf(fr1)+xOf(fMax))/2}" y="${H-M-6}" text-anchor="middle" fill="#a3e635" font-family="ui-monospace,monospace" font-size="10">ZVS buck (preferred)</text>`;
+
+  svg.innerHTML = s;
+}
+
+render();
+</script>
+</body></html>
