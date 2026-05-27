@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gain Scheduling — visual</title>
+<style>
+:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,Segoe UI,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:14px 0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.control .val{font:600 13px ui-monospace,Menlo,Consolas,monospace;color:var(--accent3)}
+.control input[type=range]{width:100%;accent-color:var(--accent)}
+.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:12px ui-monospace,Menlo,Consolas,monospace}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;margin:14px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+.figure-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:760px){.figure-grid{grid-template-columns:1fr}}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,Menlo,Consolas,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}.panel.note{border-left:3px solid var(--accent)}
+.panel h3{margin-top:0}
+.scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.score-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center}
+.score-card.hi{border-color:var(--accent3)}.score-card.lo{border-color:var(--warn)}
+.score-num{font:700 22px ui-monospace,Menlo,Consolas,monospace;color:var(--accent3);margin:6px 0}
+.score-num.warn{color:var(--warn)}.score-num.mid{color:var(--accent2)}
+.score-lbl{color:var(--fg-dim);font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace;text-transform:uppercase;letter-spacing:.4px}
+.score-lbl.unit{text-transform:none;letter-spacing:0}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--accent2)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,Consolas,monospace}
+footer a{color:var(--accent)}
+.share{font-size:11px;color:var(--fg-dim);margin-top:6px}
+.share a{color:var(--accent);cursor:pointer}
+</style></head><body><main>
+
+<h1>Gain Scheduling — different PID for each operating point</h1>
+<p class="lede">A plant whose dynamics change with operating condition (motor with variable inertia, aircraft at different altitudes, robot at different payloads) can't be tuned with one fixed PID. Gain scheduling switches between pre-tuned PID sets indexed by a measured <i>scheduling variable</i> — usually altitude, speed, or load. It's the workhorse technique for nonlinear control before resorting to MPC or adaptive control. This visual sweeps the scheduling variable through a simulated mass-variable robot arm, shows fixed-PID degradation vs scheduled-PID tracking, and walks through both interpolation strategies.</p>
+
+<div class="anchors">
+<span class="anchor"><b>Scheduling variable</b>: measurable parameter that captures the dynamics change</span>
+<span class="anchor"><b>Operating points</b>: 3-7 typical grid for design</span>
+<span class="anchor"><b>Interpolation</b>: bilinear most common; LPV for guarantees</span>
+<span class="anchor"><b>vs Adaptive</b>: scheduling is open-loop on parameters; adaptive identifies online</span>
+<span class="anchor"><b>vs Robust</b>: scheduling exploits the schedule; robust assumes worst-case</span>
+</div>
+
+<h2>Interactive — robot arm with variable payload</h2>
+<p>A robot joint's effective inertia changes 4× from no payload to 10 kg payload. A single PID tuned for the middle either rings at low payload or sluggish at high payload. Gain scheduling reads the payload (or estimates it) and selects PID gains from a table.</p>
+
+<div class="controls">
+<div class="control"><label>Current payload (kg)</label><input id="payload" type="range" min="0" max="10" value="3" step="0.5" oninput="render()"><span class="val" id="vPayload">3.0</span></div>
+<div class="control"><label>Setpoint step (rad)</label><input id="setpoint" type="range" min="0.1" max="2" value="1" step="0.1" oninput="render()"><span class="val" id="vSetpoint">1.0</span></div>
+<div class="control"><label>Strategy</label><select id="strategy" onchange="render()">
+  <option value="fixed-low">Fixed PID (tuned for 0 kg)</option>
+  <option value="fixed-mid" selected>Fixed PID (tuned for 5 kg, "compromise")</option>
+  <option value="fixed-high">Fixed PID (tuned for 10 kg)</option>
+  <option value="scheduled-nearest">Scheduled (nearest-neighbor)</option>
+  <option value="scheduled-linear">Scheduled (linear interp)</option>
+</select></div>
+<div class="control"><label>Simulation time (s)</label><input id="tend" type="range" min="1" max="10" value="4" step="0.5" oninput="render()"><span class="val" id="vTend">4.0</span></div>
+</div>
+
+<div class="scoreboard">
+<div class="score-card"><div class="score-lbl">Effective inertia J(m)</div><div class="score-num" id="vJ">—</div><div class="score-lbl unit">kg·m²</div></div>
+<div class="score-card"><div class="score-lbl">K_p used</div><div class="score-num" id="vKp">—</div><div class="score-lbl unit">selected</div></div>
+<div class="score-card"><div class="score-lbl">K_i used</div><div class="score-num" id="vKi">—</div><div class="score-lbl unit">selected</div></div>
+<div class="score-card"><div class="score-lbl">K_d used</div><div class="score-num" id="vKd">—</div><div class="score-lbl unit">selected</div></div>
+<div class="score-card" id="overshoot"><div class="score-lbl">Overshoot</div><div class="score-num" id="vOs">—</div><div class="score-lbl unit">%</div></div>
+<div class="score-card"><div class="score-lbl">Settling time (2%)</div><div class="score-num" id="vTs">—</div><div class="score-lbl unit">s</div></div>
+</div>
+
+<div class="figure-grid">
+<div class="figure"><svg id="response" viewBox="0 0 460 320" width="100%"></svg></div>
+<div class="figure"><svg id="schedule" viewBox="0 0 460 320" width="100%"></svg></div>
+</div>
+
+<h2>The scheduling design recipe</h2>
+<div class="deriv">
+<span class="step">1. <b>Pick the scheduling variable σ</b>. It must:</span>
+<span class="step">     • Be measurable (or estimable) in real time</span>
+<span class="step">     • Capture the dominant dynamic variation</span>
+<span class="step">     • Vary slowly compared to closed-loop bandwidth (decade slower is the rule of thumb)</span>
+<span class="step"></span>
+<span class="step">2. <b>Choose operating points σ_i</b> covering the expected range (3-7 typical)</span>
+<span class="step"></span>
+<span class="step">3. <b>Tune a PID at each σ_i</b> independently (Ziegler-Nichols, model-based, or by hand)</span>
+<span class="step">    → table of (σ_i, K_p_i, K_i_i, K_d_i)</span>
+<span class="step"></span>
+<span class="step">4. <b>Pick an interpolation method</b>:</span>
+<span class="step">     • <b>Nearest-neighbor</b>: simplest, but produces gain "jumps" at boundaries (transients)</span>
+<span class="step">     • <b>Linear interpolation</b>: smooth between adjacent points; standard for slowly-varying σ</span>
+<span class="step">     • <b>Bilinear</b> (2-D scheduling): when 2 variables matter (altitude + Mach)</span>
+<span class="step">     • <b>LPV (Linear Parameter-Varying)</b>: design that explicitly guarantees stability across σ — uses LMI tools (LMI toolbox)</span>
+<span class="step"></span>
+<span class="step">5. <b>Validate at off-design points</b>: gain-scheduling is NOT guaranteed stable unless designed with LPV. Run linearization at intermediate σ values and check eigenvalues.</span>
+<span class="step"></span>
+<span class="step">6. <b>Add rate limits + slew on K_p/K_i/K_d</b>: prevent sudden gain changes that can excite resonances. Typical: rate-limit K change to 10 %/sample.</span>
+</div>
+
+<h2>When to use what</h2>
+<table>
+<tr><th>Approach</th><th>Tune effort</th><th>Online cost</th><th>Stability guarantee</th><th>Best for</th></tr>
+<tr><td><b>Fixed PID</b> (single set)</td><td>1× (one tune)</td><td>None</td><td>By design</td><td>LTI plant; small parameter variation (&lt; 20 %)</td></tr>
+<tr><td><b>Robust H_∞ / µ-synthesis</b></td><td>3× (multiple weights)</td><td>None</td><td>Worst-case bounded</td><td>Bounded uncertainty; conservative; SISO or small MIMO</td></tr>
+<tr><td><b>Gain scheduling</b></td><td>3-7× (per op point)</td><td>1 lookup + interp / sample</td><td>Pointwise OK; intermediate untested</td><td>Known parameter trajectory; slow variation</td></tr>
+<tr><td><b>LPV control</b></td><td>1× (LMI synthesis)</td><td>1 matrix product / sample</td><td>Polytopic guarantee</td><td>Larger parameter variation; safety-critical</td></tr>
+<tr><td><b>Adaptive (MRAC / self-tuning)</b></td><td>1× (algorithm)</td><td>Identification + control</td><td>Lyapunov-stable, slow convergence</td><td>Unknown parameters at startup; persistently-exciting input</td></tr>
+<tr><td><b>MPC (predictive)</b></td><td>1× (model)</td><td>QP per sample</td><td>Asymptotic if model is right</td><td>Constraints matter; multi-input; non-time-critical</td></tr>
+</table>
+
+<h2>Worked example — autopilot at three altitudes</h2>
+<div class="panel tip">
+<h3>Aircraft pitch dynamics</h3>
+<p>Pitch attitude θ vs elevator δ_e: G_θδ(s) = K_α / (s² + 2ζω_n·s + ω_n²). Both ω_n and ζ change with dynamic pressure q = ½·ρ·V². At low altitude (sea level, high q), short-period mode is fast (ω_n ≈ 4 rad/s, ζ ≈ 0.4). At 40,000 ft (1/4 the density), ω_n drops to 2 rad/s and ζ to 0.2 — much more lightly damped, prone to PIO (pilot-induced oscillation).</p>
+<h3>Scheduled PID</h3>
+<table>
+<tr><th>Altitude (ft)</th><th>q (Pa)</th><th>K_p</th><th>K_i</th><th>K_d</th></tr>
+<tr><td>0 (sea level)</td><td>~5,000</td><td>2.5</td><td>0.8</td><td>0.4</td></tr>
+<tr><td>10,000</td><td>~3,500</td><td>3.5</td><td>1.0</td><td>0.5</td></tr>
+<tr><td>25,000</td><td>~1,800</td><td>5.0</td><td>1.2</td><td>0.7</td></tr>
+<tr><td>40,000</td><td>~750</td><td>7.5</td><td>1.5</td><td>1.1</td></tr>
+</table>
+<p>K_p grows ~3× from sea level to 40 kft to compensate for the loss of natural damping. K_d grows even more, since at high altitude the controller must supply most of the damping itself. Real aircraft (F-16, A320) use scheduled control surface gains driven by air data (altitude + Mach number).</p>
+</div>
+
+<h2>Common pitfalls</h2>
+<ul class="notice">
+<li><b>Scheduling on a fast variable</b> — if σ changes faster than the closed-loop bandwidth, gain transients excite the very dynamics you're trying to control. Slow σ down with a low-pass filter or pick a different variable.</li>
+<li><b>Sparse operating-point grid</b> — only 3 op points across a 10× parameter range leaves big interpolation errors. Linear interp on a curved K(σ) is biased. Add more points or use spline.</li>
+<li><b>Stability not guaranteed mid-range</b> — gain scheduling is "pointwise stable" but the trajectory between points can destabilize if σ varies fast. LPV provides actual guarantees.</li>
+<li><b>Bumpless transfer broken</b> — switching PID sets without preserving the integrator state causes step jumps in u. Always re-initialize I from the current u when switching: I_new = u_current − K_p_new·e − K_d_new·de.</li>
+<li><b>Choosing σ that doesn't matter</b> — scheduling on engine RPM when the actual variation is from cooling-fluid temperature wastes lookup tables. Profile your plant to find the dominant σ.</li>
+<li><b>Wind-up across schedule</b> — integrator built up at one σ may saturate when σ changes (lower actuator headroom). Combine with anti-windup (see <a href="anti-windup.html">anti-windup visual</a>).</li>
+<li><b>Schedule vs trim</b> — different concepts: trim cancels steady-state inputs (gravity, friction), scheduling tunes the dynamic response. Need both for full nonlinear control.</li>
+</ul>
+
+<h2>Cheat sheet — diagnosing whether you need scheduling</h2>
+<table>
+<tr><th>If…</th><th>Try…</th></tr>
+<tr><td>Single PID rings at one end, lags at other</td><td>Gain scheduling on the varying parameter</td></tr>
+<tr><td>Plant nonlinearity is &lt; 20 %</td><td>Robust control (single tune with margin)</td></tr>
+<tr><td>Parameter unknown at startup</td><td>Adaptive (MRAC / self-tuning)</td></tr>
+<tr><td>Constraints (force/torque limits) matter</td><td>MPC</td></tr>
+<tr><td>Plant strongly nonlinear (sin, cos terms)</td><td>Feedback linearization + scheduled PID</td></tr>
+<tr><td>Schedule variable hard to measure directly</td><td>Estimate via observer; schedule on the estimate</td></tr>
+<tr><td>Need formal stability guarantee</td><td>LPV synthesis with LMI tools</td></tr>
+</table>
+
+<footer>Cross-links: <a href="pid-explorer.html">PID Explorer</a> · <a href="anti-windup.html">Anti-Windup</a> · <a href="lyapunov-stability.html">Lyapunov Stability</a> · <a href="state-space-survey.html">State-Space Survey</a> · <a href="kalman-filter.html">Kalman Filter</a></footer>
+
+<div class="share">Share this configuration: <a id="shareLink" onclick="copyShare()">copy link</a></div>
+
+</main>
+<script>
+const el = id => document.getElementById(id);
+const SLIDERS = ['payload','setpoint','strategy','tend'];
+
+function loadHash(){ const p = new URLSearchParams(location.hash.slice(1)); for(const id of SLIDERS){ const v = p.get(id); if(v !== null) el(id).value = v; }}
+function saveHash(){ const p = new URLSearchParams(); for(const id of SLIDERS){ p.set(id, el(id).value); } history.replaceState(null,'','#'+p.toString()); }
+function copyShare(){ navigator.clipboard?.writeText(location.href); const a = el('shareLink'); const o = a.textContent; a.textContent='copied ✓'; setTimeout(()=>a.textContent=o,1500); }
+window.copyShare = copyShare;
+
+// Inertia model: J(m) = J_link + m · L² (point mass at end), J_link = 0.5 kg·m², L = 0.7 m
+function J_of(m){ return 0.5 + m * 0.7 * 0.7; }
+
+// Pre-tuned PID gains at 3 op points (0, 5, 10 kg). Roughly: K_p ∝ J, K_i ∝ J, K_d ∝ sqrt(J)
+const OP_POINTS = [
+  {m: 0,  Kp: 40,  Ki: 12, Kd: 8},
+  {m: 5,  Kp: 70,  Ki: 20, Kd: 13},
+  {m: 10, Kp: 100, Ki: 28, Kd: 17}
+];
+
+function pidFor(strategy, m){
+  if(strategy === 'fixed-low') return OP_POINTS[0];
+  if(strategy === 'fixed-mid') return OP_POINTS[1];
+  if(strategy === 'fixed-high') return OP_POINTS[2];
+  if(strategy === 'scheduled-nearest'){
+    // Pick closest op point
+    let best = OP_POINTS[0], bestD = Infinity;
+    for(const op of OP_POINTS){ const d = Math.abs(op.m - m); if(d < bestD){ bestD = d; best = op; } }
+    return best;
+  }
+  if(strategy === 'scheduled-linear'){
+    // Linear interp between bracketing op points
+    for(let i = 0; i < OP_POINTS.length - 1; i++){
+      const a = OP_POINTS[i], b = OP_POINTS[i+1];
+      if(m >= a.m && m <= b.m){
+        const t = (m - a.m) / (b.m - a.m);
+        return {Kp: a.Kp + t*(b.Kp - a.Kp), Ki: a.Ki + t*(b.Ki - a.Ki), Kd: a.Kd + t*(b.Kd - a.Kd)};
+      }
+    }
+    return m < 0 ? OP_POINTS[0] : OP_POINTS[OP_POINTS.length - 1];
+  }
+}
+
+function simulate(m, setpoint, gains, tend){
+  const J = J_of(m);
+  const dt = 0.005;
+  const N = Math.round(tend / dt);
+  let theta = 0, omega = 0, I = 0, e_prev = 0;
+  const traj = [];
+  for(let i = 0; i < N; i++){
+    const t = i * dt;
+    const e = setpoint - theta;
+    const de = (e - e_prev) / dt;
+    I += gains.Ki * e * dt;
+    // Anti-windup: clamp integrator
+    I = Math.max(-50, Math.min(50, I));
+    const tau = gains.Kp * e + I + gains.Kd * de;
+    // Saturate actuator
+    const tau_sat = Math.max(-30, Math.min(30, tau));
+    // Plant: J·θ̈ = τ_sat (no damping)
+    const alpha = tau_sat / J;
+    omega += alpha * dt;
+    theta += omega * dt;
+    traj.push({t, theta, omega, tau: tau_sat});
+    e_prev = e;
+  }
+  return traj;
+}
+
+function render(){
+  saveHash();
+  const m = parseFloat(el('payload').value);
+  const setpoint = parseFloat(el('setpoint').value);
+  const strategy = el('strategy').value;
+  const tend = parseFloat(el('tend').value);
+
+  el('vPayload').textContent = m.toFixed(1);
+  el('vSetpoint').textContent = setpoint.toFixed(1);
+  el('vTend').textContent = tend.toFixed(1);
+
+  const J = J_of(m);
+  const gains = pidFor(strategy, m);
+  el('vJ').textContent = J.toFixed(2);
+  el('vKp').textContent = gains.Kp.toFixed(1);
+  el('vKi').textContent = gains.Ki.toFixed(1);
+  el('vKd').textContent = gains.Kd.toFixed(1);
+
+  const traj = simulate(m, setpoint, gains, tend);
+
+  // Compute metrics
+  const peak = Math.max(...traj.map(p => p.theta));
+  const overshoot = Math.max(0, (peak - setpoint) / setpoint) * 100;
+  let tSettle = tend;
+  for(let i = traj.length - 1; i >= 0; i--){
+    if(Math.abs(traj[i].theta - setpoint) > 0.02 * setpoint){ tSettle = traj[i].t; break; }
+  }
+  el('vOs').textContent = overshoot.toFixed(0);
+  el('vTs').textContent = tSettle.toFixed(2);
+
+  const osCard = el('overshoot');
+  osCard.classList.remove('hi','lo');
+  if(overshoot < 5) osCard.classList.add('hi');
+  else if(overshoot > 25) osCard.classList.add('lo');
+
+  drawResponse(traj, setpoint);
+  drawSchedule(m, gains, strategy);
+}
+
+function drawResponse(traj, setpoint){
+  const svg = el('response');
+  const W = 460, H = 320, M = 50;
+  const tMax = traj[traj.length-1].t;
+  const yMax = Math.max(setpoint * 1.5, ...traj.map(p => p.theta));
+  const xOf = t => M + t / tMax * (W - 2*M);
+  const yOf = y => H - M - y / yMax * (H - 2*M - 30);
+
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">Step response θ(t)</text>`;
+  s += `<line x1="${M}" y1="${H-M}" x2="${W-M}" y2="${H-M}" stroke="#8f99a8"/>`;
+  s += `<line x1="${M}" y1="${M+30}" x2="${M}" y2="${H-M}" stroke="#8f99a8"/>`;
+  // Setpoint line
+  s += `<line x1="${M}" y1="${yOf(setpoint)}" x2="${W-M}" y2="${yOf(setpoint)}" stroke="#a3e635" stroke-dasharray="3,2" opacity="0.6"/>`;
+  s += `<text x="${W-M-4}" y="${yOf(setpoint)-4}" text-anchor="end" fill="#a3e635" font-family="ui-monospace,monospace" font-size="10">setpoint ${setpoint.toFixed(1)}</text>`;
+  // Response
+  let path = '';
+  for(let i = 0; i < traj.length; i += 2){
+    const x = xOf(traj[i].t), y = yOf(traj[i].theta);
+    path += (i === 0 ? 'M ' : 'L ') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+  }
+  s += `<path d="${path}" fill="none" stroke="#5ec8ff" stroke-width="2.5"/>`;
+  s += `<text x="${M-6}" y="${yOf(0)+3}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">0</text>`;
+  for(let t = 0; t <= tMax; t += 1){
+    const x = xOf(t);
+    s += `<line x1="${x}" y1="${H-M}" x2="${x}" y2="${H-M+4}" stroke="#8f99a8"/>`;
+    s += `<text x="${x}" y="${H-M+16}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${t}s</text>`;
+  }
+  svg.innerHTML = s;
+}
+
+function drawSchedule(m, gains, strategy){
+  const svg = el('schedule');
+  const W = 460, H = 320, M = 50;
+  // Show K_p(m) curve with op points and current operating m
+  const mMax = 12;
+  const Kmax = 120;
+  const xOf = mm => M + mm / mMax * (W - 2*M);
+  const yOf = k => H - M - k / Kmax * (H - 2*M - 30);
+
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">Gain schedule K_p vs payload</text>`;
+  s += `<line x1="${M}" y1="${H-M}" x2="${W-M}" y2="${H-M}" stroke="#8f99a8"/>`;
+  s += `<line x1="${M}" y1="${M+30}" x2="${M}" y2="${H-M}" stroke="#8f99a8"/>`;
+
+  // Draw scheduling curve based on strategy
+  let curve = '';
+  for(let mm = 0; mm <= mMax; mm += 0.2){
+    const g = pidFor(strategy, mm);
+    const x = xOf(mm), y = yOf(g.Kp);
+    curve += (curve ? 'L ' : 'M ') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+  }
+  s += `<path d="${curve}" fill="none" stroke="#5ec8ff" stroke-width="2"/>`;
+
+  // Op points
+  for(const op of OP_POINTS){
+    s += `<circle cx="${xOf(op.m)}" cy="${yOf(op.Kp)}" r="5" fill="#a3e635" stroke="#fff" stroke-width="1.5"/>`;
+    s += `<text x="${xOf(op.m)}" y="${yOf(op.Kp)-10}" text-anchor="middle" fill="#a3e635" font-family="ui-monospace,monospace" font-size="10">K=${op.Kp}</text>`;
+  }
+
+  // Current point
+  s += `<circle cx="${xOf(m)}" cy="${yOf(gains.Kp)}" r="6" fill="#ffb86c" stroke="#fff" stroke-width="2"/>`;
+  s += `<text x="${xOf(m)+10}" y="${yOf(gains.Kp)+4}" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="11">current</text>`;
+
+  // Axis labels
+  for(let mm = 0; mm <= mMax; mm += 2){
+    const x = xOf(mm);
+    s += `<text x="${x}" y="${H-M+15}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${mm}</text>`;
+  }
+  s += `<text x="${W/2}" y="${H-12}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">payload (kg)</text>`;
+  s += `<text x="${M-6}" y="${yOf(0)+3}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">0</text>`;
+  s += `<text x="${M-6}" y="${yOf(100)+3}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">100</text>`;
+  svg.innerHTML = s;
+}
+
+loadHash();
+render();
+</script>
+</body></html>

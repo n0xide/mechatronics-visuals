@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Snubber Deep-Dive — visual</title>
+<style>
+:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,Segoe UI,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:14px 0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.control .val{font:600 13px ui-monospace,Menlo,Consolas,monospace;color:var(--accent3)}
+.control input[type=range]{width:100%;accent-color:var(--accent)}
+.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:12px ui-monospace,Menlo,Consolas,monospace}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;margin:14px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,Menlo,Consolas,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}.panel.note{border-left:3px solid var(--accent)}
+.panel h3{margin-top:0}
+.scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.score-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center}
+.score-card.hi{border-color:var(--accent3)}.score-card.lo{border-color:var(--warn)}
+.score-num{font:700 22px ui-monospace,Menlo,Consolas,monospace;color:var(--accent3);margin:6px 0}
+.score-num.warn{color:var(--warn)}.score-num.mid{color:var(--accent2)}
+.score-lbl{color:var(--fg-dim);font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace;text-transform:uppercase;letter-spacing:.4px}
+.score-lbl.unit{text-transform:none;letter-spacing:0}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+.deriv b{color:var(--fg-bright)}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--accent2)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,Consolas,monospace}
+footer a{color:var(--accent)}
+.share{font-size:11px;color:var(--fg-dim);margin-top:6px}
+.share a{color:var(--accent);cursor:pointer}
+</style></head><body><main>
+
+<h1>Snubber Deep-Dive — clamping leakage-inductance spikes</h1>
+<p class="lede">When a switch (MOSFET, IGBT) interrupts current in a transformer or inductor, the magnetic energy stored in <b>leakage inductance</b> (the part that didn't couple to the secondary) has nowhere to go. Voltage spikes 100-500 V above the operating point until either: the snubber absorbs it, a body diode reverse-recovers, or the silicon dies. This visual sizes three snubber topologies — RCD, TVS clamp, and active clamp — from the same inputs (L_lk, I_pk, f_sw, V_clamp), shows the energy budget, and quantifies the efficiency hit of each.</p>
+
+<div class="anchors">
+<span class="anchor"><b>E_lk</b> = ½·L_lk·I_pk² per cycle</span>
+<span class="anchor"><b>P_lk</b> = E_lk · f_sw (dissipated by passive snubber)</span>
+<span class="anchor"><b>V_clamp</b> typ 1.5-2× reflected V_or for flyback</span>
+<span class="anchor"><b>RCD</b>: cheap, dissipative · <b>TVS</b>: compact, hot · <b>Active clamp</b>: recycles energy</span>
+<span class="anchor"><b>Leakage</b>: typ 1-5 % of L_p for hand-wound transformers, 0.5-1 % for planar</span>
+</div>
+
+<h2>Interactive — size all 3 topologies from the same operating point</h2>
+
+<div class="controls">
+<div class="control"><label>V_in (DC bus, V)</label><input id="Vin" type="range" min="20" max="400" value="380" step="5" oninput="render()"><span class="val" id="vVin">380</span></div>
+<div class="control"><label>Reflected V_or = N·V_out (V)</label><input id="Vor" type="range" min="20" max="200" value="125" step="5" oninput="render()"><span class="val" id="vVor">125</span></div>
+<div class="control"><label>L_lk leakage (µH)</label><input id="Llk" type="range" min="0.5" max="50" value="5" step="0.5" oninput="render()"><span class="val" id="vLlk">5</span></div>
+<div class="control"><label>I_pk primary (A)</label><input id="Ipk" type="range" min="0.5" max="20" value="2.5" step="0.1" oninput="render()"><span class="val" id="vIpk">2.5</span></div>
+<div class="control"><label>f_sw (kHz)</label><input id="fsw" type="range" min="25" max="500" value="100" step="5" oninput="render()"><span class="val" id="vFsw">100</span></div>
+<div class="control"><label>V_clamp target (V above V_or)</label><input id="dVclamp" type="range" min="30" max="300" value="120" step="10" oninput="render()"><span class="val" id="vDVclamp">120</span></div>
+<div class="control"><label>Switch V_DS rating (V)</label><input id="Vds" type="range" min="100" max="1200" value="700" step="50" oninput="render()"><span class="val" id="vVds">700</span></div>
+<div class="control"><label>P_out (W, for % loss calc)</label><input id="Pout" type="range" min="5" max="500" value="65" step="5" oninput="render()"><span class="val" id="vPout">65</span></div>
+</div>
+
+<div class="scoreboard">
+<div class="score-card"><div class="score-lbl">E_lk per cycle</div><div class="score-num" id="vElk">—</div><div class="score-lbl unit">µJ</div></div>
+<div class="score-card"><div class="score-lbl">P_lk leakage power</div><div class="score-num" id="vPlk">—</div><div class="score-lbl unit">W</div></div>
+<div class="score-card" id="vdsCard"><div class="score-lbl">V_DS peak (clamped)</div><div class="score-num" id="vVdsPk">—</div><div class="score-lbl unit">V (vs rating)</div></div>
+<div class="score-card"><div class="score-lbl">% loss to leakage (passive)</div><div class="score-num" id="vLossPct">—</div><div class="score-lbl unit">% of P_out</div></div>
+</div>
+
+<h3>RCD snubber sizing (the cheap default)</h3>
+<div class="scoreboard">
+<div class="score-card"><div class="score-lbl">R_snub</div><div class="score-num" id="vRsnub">—</div><div class="score-lbl unit">Ω</div></div>
+<div class="score-card"><div class="score-lbl">C_snub</div><div class="score-num" id="vCsnub">—</div><div class="score-lbl unit">nF</div></div>
+<div class="score-card"><div class="score-lbl">D snubber diode I_avg</div><div class="score-num" id="vDi">—</div><div class="score-lbl unit">mA</div></div>
+<div class="score-card"><div class="score-lbl">R_snub power rating</div><div class="score-num" id="vRsnubP">—</div><div class="score-lbl unit">W minimum</div></div>
+</div>
+
+<div class="figure"><svg id="schematic" viewBox="0 0 900 320" width="100%"></svg></div>
+<div class="figure"><svg id="wave" viewBox="0 0 900 300" width="100%"></svg></div>
+
+<h2>The leakage-energy math</h2>
+<div class="deriv">
+<span class="step">Energy stored in leakage inductance at switch-off:</span>
+<span class="step">  <b>E_lk = ½ · L_lk · I_pk²</b>   [J per switching cycle]</span>
+<span class="step"></span>
+<span class="step">Average power that the snubber must absorb (passive case):</span>
+<span class="step">  <b>P_lk = E_lk · f_sw</b>   [W]</span>
+<span class="step"></span>
+<span class="step">When switch opens at I_pk, voltage across L_lk would ring up to (theoretically) infinity if unclamped. With clamp at voltage V_clamp_total = V_in + V_or + V_clamp_excess:</span>
+<span class="step">  Energy in clamp = ½ · L_lk · I_pk² (all of it, since current must go to zero)</span>
+<span class="step">  Plus: continued leakage current discharges into the clamp at (V_clamp_excess) until current = 0</span>
+<span class="step"></span>
+<span class="step"><b>RCD snubber sizing:</b></span>
+<span class="step">  Pick V_clamp_excess (capacitor's ripple voltage, typical 10-30 V on top of average)</span>
+<span class="step">  R_snub determines dissipation: P_lk = V_clamp_excess² / R_snub</span>
+<span class="step">  ⇒ R_snub = V_clamp_excess² / P_lk</span>
+<span class="step">  C_snub holds the clamp voltage between cycles: τ = R·C should be 5-20× T_sw</span>
+<span class="step">  ⇒ C_snub = (5 to 20) · T_sw / R_snub</span>
+<span class="step"></span>
+<span class="step"><b>TVS clamp:</b> single Zener / TVS rated at V_clamp_total. Absorbs E_lk in each pulse. Dissipates same P_lk as RCD, but in the silicon. Use TVS rated &gt; 5 × P_lk peak power.</span>
+<span class="step"></span>
+<span class="step"><b>Active clamp:</b> series cap + auxiliary MOSFET on the high side. The cap stores the leakage energy then releases it back through the magnetizing path at the next cycle. Roughly recovers 70-90 % of E_lk; the remainder is switching loss in the aux MOSFET. Typical efficiency improvement: +1-3 %.</span>
+</div>
+
+<h2>The three topologies side-by-side</h2>
+<table>
+<tr><th>Snubber</th><th>Component count</th><th>Energy disposition</th><th>η impact</th><th>EMI</th><th>Cost</th><th>Use when</th></tr>
+<tr><td><b>RCD (R + C + D)</b></td><td>3 (or 4 with TVS limiter)</td><td>All E_lk → heat in R</td><td>−1 to −3 %</td><td>Low (soft clamp shape)</td><td>$0.10 - $0.50</td><td>&lt; 30 W default; first-cut prototype</td></tr>
+<tr><td><b>TVS Zener clamp</b></td><td>1-2 (TVS + opt. blocking diode)</td><td>All E_lk → heat in TVS</td><td>−1 to −3 % (similar)</td><td>Medium (sharper clamp edge)</td><td>$0.30 - $2 (depending on power)</td><td>Compact / cost-sensitive designs; consumer adapters</td></tr>
+<tr><td><b>Active clamp</b></td><td>4+ (Q_aux, C, isol gate drive)</td><td>~80 % E_lk → recycled to V_in</td><td>+1 to +3 % vs RCD</td><td>Low (true ZVS turn-on)</td><td>$2 - $8 (extra MOSFET + driver)</td><td>&gt; 65 W; efficiency-critical (USB-PD, server PSU); GaN-based</td></tr>
+<tr><td><b>Saturable reactor</b></td><td>1 (small ferrite bead in series)</td><td>Limits dI/dt at switch-off, reducing E_lk_effective</td><td>−0.5 to −1 %</td><td>Low</td><td>$0.20 - $1</td><td>Add-on to any other clamp; useful at high I_pk</td></tr>
+</table>
+
+<h2>RCD design walkthrough</h2>
+<div class="panel tip">
+<h3>1. Pick V_clamp_total (the limit you'll allow V_DS to reach)</h3>
+<p>V_clamp_total = V_in + V_or + V_clamp_excess. Choose so that V_DS_peak + 20 % margin ≤ MOSFET V_DS rating. Example: 700 V SiC MOSFET, V_in = 380 V, V_or = 125 V → V_clamp_excess_max = 700·0.8 − 380 − 125 = 55 V. Pick V_clamp_excess = 50 V.</p>
+<h3>2. R from average dissipation</h3>
+<div class="deriv">
+<span class="step">P_lk = ½ · L_lk · I_pk² · f_sw</span>
+<span class="step">R = (V_clamp_excess)² / P_lk</span>
+<span class="step">Power rating ≥ 2 × P_lk (conservative for thermal margin)</span>
+</div>
+<h3>3. C from ripple</h3>
+<div class="deriv">
+<span class="step">Allow ~10 % ripple on V_clamp_excess across one cycle</span>
+<span class="step">ΔV = E_lk / (C · V_clamp_excess)</span>
+<span class="step">ΔV ≤ 0.1 · V_clamp_excess  ⇒  C ≥ 10 · E_lk / V_clamp_excess²</span>
+</div>
+<h3>4. Pick D (the snubber diode)</h3>
+<p>Reverse-recovery matters — fast or ultrafast diode rated for V_clamp_total + 20 %, average current ≥ 2 × I_lk_avg (typically 100-500 mA). MUR series or SiC Schottky.</p>
+</div>
+
+<h2>Why active clamp wins above 65 W</h2>
+<div class="panel note">
+<p>Active clamp adds an auxiliary MOSFET (Q_aux) and clamp capacitor (C_clamp) in series across the primary winding. When the main switch (Q1) turns off:</p>
+<ol style="padding-left:18px;color:var(--fg-dim);font-size:12.5px">
+<li>Leakage current dumps into C_clamp through Q_aux's body diode → C_clamp voltage rises (clamping V_DS)</li>
+<li>Q_aux turns on at zero current (ZCS) — no turn-on loss</li>
+<li>Magnetizing current reverses, charges back through Q_aux, partially recovering the leakage energy</li>
+<li>Q_aux turns off when current reaches zero (ZCS again)</li>
+<li>Main switch Q1 turns on at zero voltage (ZVS) thanks to the previous leakage-discharge cycle pre-resonating C_oss</li>
+</ol>
+<p>Net: leakage energy that would have been heat in an RCD now circulates between L_lk and C_clamp, with only ESR + transistor on-state losses. Typical efficiency gain over RCD: 1-3 percentage points. At 65 W, that's 1-2 W less to dissipate. At 1 kW, 10-30 W. Worth the cost above ~65 W.</p>
+<p>Modern GaN-based USB-PD bricks (Apple 65W, Anker GanPrime) almost all use active clamp. ICs: TI UCC28780, ON NCP1568, Power Integrations InnoSwitch.</p>
+</div>
+
+<h2>Worked example — 65 W USB-PD flyback (PD 3.0)</h2>
+<div class="panel tip">
+<h3>Spec</h3>
+<p>Universal-input USB-PD charger: 90-264 V AC → ~380 V DC bus (after PFC + bulk) → 20 V / 3.25 A = 65 W. Flyback with N = 6, L_p = 800 µH, L_lk = 4 % of L_p = 32 µH. Wait, that's high — typical hand-wound is 1.5-3 %. For this example let's use L_lk = 16 µH (2 %). I_pk = 1.5 A (at high-line). f_sw = 100 kHz. 700 V SiC MOSFET.</p>
+<h3>RCD design</h3>
+<div class="deriv">
+<span class="step">E_lk = ½ · 16e-6 · 1.5² = 18 µJ per cycle</span>
+<span class="step">P_lk = 18e-6 · 100e3 = 1.8 W ← lost to heat in the snubber</span>
+<span class="step">V_or = 6 · (20 + 0.5) = 123 V (reflected output + diode drop)</span>
+<span class="step">V_clamp_total budget: 700 · 0.8 = 560 V max → V_clamp_excess = 560 − 380 − 123 = 57 V</span>
+<span class="step">R_snub = 57² / 1.8 = 1805 Ω → use 1.8 kΩ, 3 W rated</span>
+<span class="step">C_snub = 10 · 18e-6 / 57² = 55 nF → use 47 nF, 200 V film cap (margin for ripple)</span>
+<span class="step">Diode: UR2J (UF4007 fast-recovery, 600 V, 2 A avg) — ample for 250 mA avg</span>
+</div>
+<h3>Active-clamp alternative</h3>
+<div class="deriv">
+<span class="step">Replaces R + 1.8 W heat with Q_aux (e.g., 600 V GaN, 20 mΩ) + 100 nF C_clamp + isolated gate drive</span>
+<span class="step">Power recovered: 80 % of 1.8 W = 1.44 W back to V_in → only 0.36 W lost</span>
+<span class="step">Efficiency: 1.8 / 65 = 2.8 % point improvement (from ~92 % → ~94.5 %)</span>
+<span class="step">Cost adder: ~$1.50 (Q_aux + driver IC); 65 W charger BoM ~$5 — adds 30 %</span>
+<span class="step">Worth it for premium chargers (Anker Nano Prime); skip for entry-level (Apple base brick)</span>
+</div>
+</div>
+
+<h2>Common pitfalls</h2>
+<ul class="notice">
+<li><b>No snubber at all</b> — even on a bench prototype with light load, leakage spikes will kill the switch within hours. Always include at least a TVS during bring-up.</li>
+<li><b>Snubber under-rated for power</b> — R selected for nominal load, then a step-load doubles I_pk → 4× E_lk → R cooks. Always design for worst-case I_pk (current limit threshold).</li>
+<li><b>Diode reverse-recovery rings</b> — slow Si diode (1N400x) recovers slowly and rings the leakage loop. Always use fast / ultrafast / SiC Schottky in snubber position.</li>
+<li><b>RCD discharges through MOSFET</b> — when MOSFET turns on, R_snub × τ_RC could be longer than t_on, leaving residual voltage. Design τ_RC = R·C ≤ 5 · T_sw.</li>
+<li><b>Active clamp at light load</b> — at &lt; 20 % load, magnetizing current may not be enough to fully discharge C_oss for ZVS. Controller drops to burst mode (skip cycles) to maintain conditions.</li>
+<li><b>Asymmetric clamp on push-pull</b> — symmetrical topology needs matched snubbers per leg; one cold + one hot → uneven loss + premature failure.</li>
+<li><b>Sat reactor saturation point</b> — designed for nominal current; transient current saturates it, removes the dI/dt limit → leakage spike returns.</li>
+<li><b>Loop layout</b> — keep the snubber loop (D, R, C) short. Long traces add ~10 nH/cm parasitic, which COUPLES BACK to the primary as additional ringing.</li>
+</ul>
+
+<h2>Cheat sheet — pick a snubber by use case</h2>
+<table>
+<tr><th>Application</th><th>Recommended snubber</th></tr>
+<tr><td>Prototype / bench (any power)</td><td>TVS clamp (single component, cheap, easy)</td></tr>
+<tr><td>&lt; 30 W consumer adapter</td><td>RCD (simplest production design)</td></tr>
+<tr><td>30-65 W USB charger</td><td>RCD with optimized C, accept 2-3 % loss</td></tr>
+<tr><td>65-150 W USB-PD / power tool</td><td>Active clamp (GaN-friendly, +2 % η)</td></tr>
+<tr><td>&gt; 150 W server PSU / EV charger</td><td>Active clamp mandatory, or move to LLC topology</td></tr>
+<tr><td>Industrial drive (IGBT inverter)</td><td>RCD per IGBT + bulk DC link bus-bar layout</td></tr>
+<tr><td>Motor brake (regen)</td><td>Brake chopper (R only across bus + transistor switch)</td></tr>
+<tr><td>Relay coil / MOV across motor</td><td>Freewheeling diode + bleeder (poor man's snubber)</td></tr>
+</table>
+
+<footer>Cross-links: <a href="flyback-converter.html">Flyback Converter</a> · <a href="llc-resonant.html">LLC Resonant</a> · <a href="gate-drivers.html">Gate Drivers</a> · <a href="synchronous-rectification.html">Sync Rectification</a> · <a href="../phase-7-signal-integrity-pcb/decoupling-caps.html">Decoupling Caps</a></footer>
+
+<div class="share">Share this configuration: <a id="shareLink" onclick="copyShare()">copy link</a></div>
+
+</main>
+<script>
+const el = id => document.getElementById(id);
+const SLIDERS = ['Vin','Vor','Llk','Ipk','fsw','dVclamp','Vds','Pout'];
+
+function loadHashState(){
+  const params = new URLSearchParams(location.hash.slice(1));
+  for(const id of SLIDERS){
+    const v = params.get(id);
+    if(v !== null) el(id).value = v;
+  }
+}
+function saveHashState(){
+  const params = new URLSearchParams();
+  for(const id of SLIDERS){ params.set(id, el(id).value); }
+  history.replaceState(null, '', '#' + params.toString());
+}
+function copyShare(){
+  navigator.clipboard?.writeText(location.href);
+  const a = el('shareLink'); const orig = a.textContent;
+  a.textContent = 'copied ✓'; setTimeout(() => { a.textContent = orig; }, 1500);
+}
+window.copyShare = copyShare;
+
+function render(){
+  saveHashState();
+  const Vin = parseFloat(el('Vin').value);
+  const Vor = parseFloat(el('Vor').value);
+  const Llk = parseFloat(el('Llk').value) * 1e-6;
+  const Ipk = parseFloat(el('Ipk').value);
+  const fsw = parseFloat(el('fsw').value) * 1e3;
+  const dVclamp = parseFloat(el('dVclamp').value);
+  const Vds = parseFloat(el('Vds').value);
+  const Pout = parseFloat(el('Pout').value);
+
+  el('vVin').textContent = Vin;
+  el('vVor').textContent = Vor;
+  el('vLlk').textContent = (Llk * 1e6).toFixed(1);
+  el('vIpk').textContent = Ipk.toFixed(1);
+  el('vFsw').textContent = (fsw/1e3).toFixed(0);
+  el('vDVclamp').textContent = dVclamp;
+  el('vVds').textContent = Vds;
+  el('vPout').textContent = Pout;
+
+  const Elk = 0.5 * Llk * Ipk * Ipk;  // J
+  const Plk = Elk * fsw;
+  const VdsPk = Vin + Vor + dVclamp;
+  const lossPct = (Plk / Pout) * 100;
+
+  el('vElk').textContent = (Elk * 1e6).toFixed(1);
+  el('vPlk').textContent = Plk.toFixed(2);
+  el('vVdsPk').textContent = VdsPk.toFixed(0);
+  el('vLossPct').textContent = lossPct.toFixed(2);
+
+  const vdsCard = el('vdsCard');
+  const vdsNum = el('vVdsPk');
+  vdsCard.classList.remove('hi','lo');
+  vdsNum.classList.remove('warn','mid');
+  const headroom = Vds - VdsPk;
+  if(headroom > Vds * 0.2){ vdsCard.classList.add('hi'); }
+  else if(headroom > 0){ vdsNum.classList.add('mid'); }
+  else { vdsCard.classList.add('lo'); vdsNum.classList.add('warn'); }
+
+  // RCD sizing
+  const Rsnub = (dVclamp * dVclamp) / Plk;
+  const Csnub = 10 * Elk / (dVclamp * dVclamp);  // F
+  const Di_avg = Plk / dVclamp;  // diode avg current
+  el('vRsnub').textContent = Rsnub < 1e3 ? Rsnub.toFixed(0) : (Rsnub/1e3).toFixed(2) + 'k';
+  el('vCsnub').textContent = (Csnub * 1e9).toFixed(0);
+  el('vDi').textContent = (Di_avg * 1e3).toFixed(0);
+  el('vRsnubP').textContent = (Plk * 2).toFixed(1);
+
+  drawSchematic();
+  drawWave(Vin, Vor, dVclamp, Vds);
+}
+
+function drawSchematic(){
+  const svg = el('schematic');
+  const W = 900, H = 320;
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">RCD snubber across the primary</text>`;
+  // V_in source
+  s += `<line x1="80" y1="60" x2="80" y2="260" stroke="#dde3ec" stroke-width="1.5"/>`;
+  s += `<line x1="60" y1="60" x2="100" y2="60" stroke="#dde3ec" stroke-width="2"/>`;
+  s += `<line x1="68" y1="260" x2="92" y2="260" stroke="#dde3ec" stroke-width="2.5"/>`;
+  s += `<text x="40" y="160" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">V_in</text>`;
+  // Top rail
+  s += `<line x1="80" y1="60" x2="400" y2="60" stroke="#dde3ec" stroke-width="1.5"/>`;
+  // Primary winding (vertical)
+  s += `<path d="M 400 60 Q 415 80 400 100 Q 385 120 400 140 Q 415 160 400 180 Q 385 200 400 220" stroke="#a3e635" stroke-width="2" fill="none"/>`;
+  s += `<text x="355" y="145" fill="#a3e635" font-family="ui-monospace,monospace" font-size="11">L_p + L_lk</text>`;
+  s += `<circle cx="412" cy="60" r="3" fill="#a3e635"/>`;
+  // To MOSFET
+  s += `<line x1="400" y1="220" x2="400" y2="240" stroke="#dde3ec" stroke-width="1.5"/>`;
+  s += `<rect x="380" y="240" width="40" height="30" fill="#1d232c" stroke="#ffb86c" stroke-width="1.5" rx="3"/>`;
+  s += `<text x="400" y="260" text-anchor="middle" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="11">Q1</text>`;
+  s += `<line x1="400" y1="270" x2="400" y2="290" stroke="#dde3ec" stroke-width="1.5"/>`;
+  // Bottom rail
+  s += `<line x1="80" y1="290" x2="400" y2="290" stroke="#dde3ec" stroke-width="1.5"/>`;
+  // RCD snubber across the primary (between V_in and drain)
+  // Diode (cathode toward V_in)
+  s += `<line x1="500" y1="60" x2="500" y2="100" stroke="#dde3ec" stroke-width="1.5"/>`;
+  s += `<polygon points="490,108 510,108 500,95" fill="#ff7b72"/>`;
+  s += `<line x1="490" y1="108" x2="510" y2="108" stroke="#ff7b72" stroke-width="2"/>`;
+  s += `<text x="515" y="103" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="11">D</text>`;
+  s += `<line x1="500" y1="120" x2="500" y2="160" stroke="#dde3ec" stroke-width="1.5"/>`;
+  // Snubber cap + R in parallel
+  s += `<line x1="500" y1="160" x2="540" y2="160" stroke="#dde3ec" stroke-width="1.5"/>`;
+  s += `<line x1="540" y1="148" x2="540" y2="172" stroke="#dde3ec" stroke-width="2"/>`;
+  s += `<line x1="555" y1="142" x2="555" y2="178" stroke="#dde3ec" stroke-width="2"/>`;
+  s += `<text x="565" y="158" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">C_snub</text>`;
+  // R parallel to C
+  s += `<line x1="500" y1="180" x2="540" y2="180" stroke="#dde3ec" stroke-width="1.5"/>`;
+  s += `<path d="M 540 180 L 543 175 L 547 185 L 551 175 L 555 185 L 559 175 L 563 185 L 567 175 L 571 185 L 575 180" stroke="#ffb86c" stroke-width="1.5" fill="none"/>`;
+  s += `<text x="585" y="184" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="11">R_snub</text>`;
+  // Tie back to drain
+  s += `<line x1="500" y1="240" x2="500" y2="290" stroke="#dde3ec" stroke-width="0"/>`;
+  s += `<line x1="500" y1="240" x2="420" y2="240" stroke="#dde3ec" stroke-width="1.5"/>`;
+  // Bridge top of snubber to top rail
+  s += `<line x1="500" y1="60" x2="500" y2="100" stroke="#dde3ec" stroke-width="1.5"/>`;
+
+  // Annotations
+  s += `<text x="650" y="80" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="12">RCD = D + C + R in parallel,</text>`;
+  s += `<text x="650" y="98" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="12">connected V_in to drain.</text>`;
+  s += `<text x="650" y="130" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">When Q1 opens, leakage current</text>`;
+  s += `<text x="650" y="146" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">flows through D into C_snub,</text>`;
+  s += `<text x="650" y="162" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">capping V_DS. R bleeds the</text>`;
+  s += `<text x="650" y="178" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">energy as heat between cycles.</text>`;
+  s += `<text x="650" y="210" fill="#a3e635" font-family="ui-monospace,monospace" font-size="11">For active clamp:</text>`;
+  s += `<text x="650" y="226" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">replace D + R with Q_aux + C_clamp</text>`;
+  s += `<text x="650" y="242" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">+ floating gate driver — energy</text>`;
+  s += `<text x="650" y="258" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">circulates instead of dissipating.</text>`;
+
+  svg.innerHTML = s;
+}
+
+function drawWave(Vin, Vor, dVclamp, Vds_rating){
+  const svg = el('wave');
+  const W = 900, H = 300, M = 50;
+  const Vmax = Math.max(Vds_rating, Vin + Vor + dVclamp) * 1.15;
+  const yOf = v => H - M - v / Vmax * (H - 2*M - 30);
+
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">V_DS waveform (one switching cycle with + without snubber)</text>`;
+  s += `<line x1="${M}" y1="${H-M}" x2="${W-M}" y2="${H-M}" stroke="#8f99a8"/>`;
+  s += `<line x1="${M}" y1="${M+30}" x2="${M}" y2="${H-M}" stroke="#8f99a8"/>`;
+
+  // Y reference lines
+  s += `<line x1="${M}" y1="${yOf(Vin)}" x2="${W-M}" y2="${yOf(Vin)}" stroke="#5ec8ff" stroke-dasharray="3,2" opacity="0.5"/>`;
+  s += `<text x="${W-M-4}" y="${yOf(Vin)-4}" text-anchor="end" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="10">V_in = ${Vin} V</text>`;
+  s += `<line x1="${M}" y1="${yOf(Vin+Vor)}" x2="${W-M}" y2="${yOf(Vin+Vor)}" stroke="#a3e635" stroke-dasharray="3,2" opacity="0.5"/>`;
+  s += `<text x="${W-M-4}" y="${yOf(Vin+Vor)-4}" text-anchor="end" fill="#a3e635" font-family="ui-monospace,monospace" font-size="10">V_in + V_or = ${Vin+Vor} V (steady)</text>`;
+  s += `<line x1="${M}" y1="${yOf(Vds_rating)}" x2="${W-M}" y2="${yOf(Vds_rating)}" stroke="#ff7b72" stroke-dasharray="3,2" opacity="0.7"/>`;
+  s += `<text x="${W-M-4}" y="${yOf(Vds_rating)-4}" text-anchor="end" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="10">MOSFET V_DS rating = ${Vds_rating} V</text>`;
+
+  // Unclamped (peak goes 2-3× V_or above rated — visible only if it exceeds rating)
+  const peakUnclamped = Math.min(Vmax, Vin + Vor * 3);
+  let unc = `M ${M},${yOf(0)} L 200,${yOf(0)} L 215,${yOf(Vin+Vor)} L 230,${yOf(peakUnclamped)} L 245,${yOf(Vin+Vor)} L 280,${yOf(Vin+Vor)} L 295,${yOf(Vin+Vor*1.6)} L 310,${yOf(Vin+Vor)} L 340,${yOf(Vin+Vor)} L 355,${yOf(Vin+Vor*1.3)} L 370,${yOf(Vin+Vor)} L 600,${yOf(Vin+Vor)} L 615,${yOf(0)} L ${W-M},${yOf(0)}`;
+  s += `<path d="${unc}" stroke="#ff7b72" stroke-width="1.5" fill="none" opacity="0.8" stroke-dasharray="3,2"/>`;
+  s += `<text x="240" y="${yOf(peakUnclamped)-6}" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="10">unclamped ring</text>`;
+
+  // Clamped (with snubber)
+  const peakClamped = Vin + Vor + dVclamp;
+  let clm = `M ${M},${yOf(0)} L 200,${yOf(0)} L 215,${yOf(Vin+Vor)} L 230,${yOf(peakClamped)} L 250,${yOf(peakClamped)} L 270,${yOf(Vin+Vor)} L 600,${yOf(Vin+Vor)} L 615,${yOf(0)} L ${W-M},${yOf(0)}`;
+  s += `<path d="${clm}" stroke="#a3e635" stroke-width="2.5" fill="none"/>`;
+  s += `<text x="280" y="${yOf(peakClamped)-6}" fill="#a3e635" font-family="ui-monospace,monospace" font-size="10">clamped (V_in + V_or + ${dVclamp}V)</text>`;
+
+  // Time axis
+  s += `<text x="200" y="${H-M+14}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">Q1 off</text>`;
+  s += `<text x="615" y="${H-M+14}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">Q1 on</text>`;
+  s += `<text x="${W/2}" y="${H-12}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">time (one switching cycle)</text>`;
+
+  svg.innerHTML = s;
+}
+
+loadHashState();
+render();
+</script>
+</body></html>

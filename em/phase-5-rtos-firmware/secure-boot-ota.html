@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Secure Boot &amp; OTA — visual</title>
+<style>
+:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,Segoe UI,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:14px 0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.control .val{font:600 13px ui-monospace,Menlo,Consolas,monospace;color:var(--accent3)}
+.control input[type=range]{width:100%;accent-color:var(--accent)}
+.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:12px ui-monospace,Menlo,Consolas,monospace}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;margin:14px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,Menlo,Consolas,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}.panel.note{border-left:3px solid var(--accent)}
+.panel h3{margin-top:0}
+.scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.score-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center}
+.score-card.hi{border-color:var(--accent3)}.score-card.lo{border-color:var(--warn)}
+.score-num{font:700 22px ui-monospace,Menlo,Consolas,monospace;color:var(--accent3);margin:6px 0}
+.score-num.warn{color:var(--warn)}.score-num.mid{color:var(--accent2)}
+.score-lbl{color:var(--fg-dim);font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace;text-transform:uppercase;letter-spacing:.4px}
+.score-lbl.unit{text-transform:none;letter-spacing:0}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--accent2)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,Consolas,monospace}
+footer a{color:var(--accent)}
+.share{font-size:11px;color:var(--fg-dim);margin-top:6px}
+.share a{color:var(--accent);cursor:pointer}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+</style></head><body><main>
+
+<h1>Secure Boot &amp; OTA — chain of trust + safe field updates</h1>
+<p class="lede">An IoT device in the field is an attack surface. Unsigned firmware lets anyone flash a backdoor. No rollback protection lets attackers downgrade to a known-vulnerable old version. No A/B partitions means a botched update bricks the device. Modern embedded systems solve all three with a <b>secure-boot chain of trust</b> (silicon root key → bootloader → app, each verifying the next), plus an <b>OTA update protocol</b> with A/B partitions, signed manifests, and rollback counters. This visual walks the boot chain, simulates an OTA update with verification + rollback, and breaks down threat models.</p>
+
+<div class="anchors">
+<span class="anchor"><b>Chain of trust</b>: ROM → SBL → bootloader → app</span>
+<span class="anchor"><b>Public-key crypto</b>: ECDSA-P256 / RSA-2048 / Ed25519</span>
+<span class="anchor"><b>A/B partition</b>: two slots, swap roles on update</span>
+<span class="anchor"><b>Rollback counter</b>: monotonic, prevents downgrade attacks</span>
+<span class="anchor"><b>MCUboot</b>: open-source bootloader (Zephyr default)</span>
+</div>
+
+<h2>Interactive — simulated OTA update with verification</h2>
+<p>Pick a scenario, choose verification options, run the update. Watch which steps catch which attacks.</p>
+
+<div class="controls">
+<div class="control"><label>Scenario</label><select id="scenario" onchange="render()">
+  <option value="happy" selected>Happy path — valid update</option>
+  <option value="corrupt">Corrupted download (bit flip mid-transfer)</option>
+  <option value="forged">Forged image (attacker-signed with wrong key)</option>
+  <option value="downgrade">Downgrade attack (valid old image, newer-version device)</option>
+  <option value="brick">Update fails mid-flash (power loss)</option>
+  <option value="bad-app">Update succeeds but app crashes on first boot</option>
+</select></div>
+<div class="control"><label>Cryptographic algorithm</label><select id="crypto" onchange="render()">
+  <option value="none">None (insecure)</option>
+  <option value="hash">Hash-only (SHA-256, integrity but not auth)</option>
+  <option value="ecdsa" selected>ECDSA-P256 (recommended)</option>
+  <option value="rsa">RSA-2048</option>
+  <option value="ed25519">Ed25519 (fast, modern)</option>
+</select></div>
+<div class="control"><label>Use A/B partitions?</label><select id="ab" onchange="render()">
+  <option value="yes" selected>Yes (recover from bad update)</option>
+  <option value="no">No (in-place replace)</option>
+</select></div>
+<div class="control"><label>Rollback counter?</label><select id="rollback" onchange="render()">
+  <option value="yes" selected>Yes (downgrade protection)</option>
+  <option value="no">No</option>
+</select></div>
+<div class="control"><label>Boot-test before commit?</label><select id="boottest" onchange="render()">
+  <option value="yes" selected>Yes (revert if no health check)</option>
+  <option value="no">No</option>
+</select></div>
+</div>
+
+<div class="scoreboard">
+<div class="score-card" id="outcomeCard"><div class="score-lbl">Outcome</div><div class="score-num" id="vOutcome" style="font-size:14px">—</div><div class="score-lbl" id="vOutcomeNote">—</div></div>
+<div class="score-card"><div class="score-lbl">Caught at step</div><div class="score-num" id="vCaught">—</div><div class="score-lbl unit">in the chain</div></div>
+<div class="score-card"><div class="score-lbl">Device state after</div><div class="score-num" id="vState" style="font-size:14px">—</div><div class="score-lbl unit">running which slot</div></div>
+<div class="score-card"><div class="score-lbl">Cycles to verify</div><div class="score-num" id="vCycles">—</div><div class="score-lbl unit">CPU (typical)</div></div>
+</div>
+
+<div class="figure"><svg id="bootchain" viewBox="0 0 900 280" width="100%"></svg></div>
+<div class="figure"><svg id="updateflow" viewBox="0 0 900 360" width="100%"></svg></div>
+
+<h2>The chain of trust</h2>
+<table>
+<tr><th>Stage</th><th>Role</th><th>What it verifies</th><th>Where the key lives</th></tr>
+<tr><td>1. ROM bootloader (immutable)</td><td>Burned at fab; cannot be changed</td><td>Verifies the secondary bootloader signature with the public key fused into hardware (eFuse / OTP)</td><td>Root public-key hash in eFuse (one-time programmable)</td></tr>
+<tr><td>2. SBL (Secondary Bootloader)</td><td>Updateable bootloader (rare updates)</td><td>Verifies the main bootloader / firmware signature</td><td>Public key embedded in SBL (which was itself ROM-verified)</td></tr>
+<tr><td>3. Bootloader (e.g., MCUboot)</td><td>The "loader of last resort" — also handles OTA</td><td>Verifies application image signature + checks rollback counter + selects A or B slot</td><td>Public key embedded in MCUboot binary</td></tr>
+<tr><td>4. Application</td><td>The actual firmware</td><td>(Optional) verifies signed configuration / data updates at runtime</td><td>App's own keys for runtime data verification</td></tr>
+</table>
+<p style="font-size:12px;color:var(--fg-dim)">Each stage verifies the NEXT one before transferring control. If any verification fails, the chain breaks and the device stays in the previous (known-good) state. The ROM bootloader is the <b>root of trust</b> — its key cannot be changed, so its trust must be absolute (compromised root = compromised device, forever).</p>
+
+<h2>Cryptographic primitives — what each gives you</h2>
+<table>
+<tr><th>Primitive</th><th>Purpose</th><th>Signature size</th><th>Verify time (Cortex-M4 @ 100 MHz)</th></tr>
+<tr><td>SHA-256 hash</td><td>Integrity only (detect bit flips, but not forgery)</td><td>32 bytes</td><td>~30 ms for 100 KB</td></tr>
+<tr><td>HMAC-SHA256 (shared secret)</td><td>Authenticity + integrity (requires shared secret)</td><td>32 bytes</td><td>~30 ms + HMAC overhead</td></tr>
+<tr><td>RSA-2048 signature</td><td>Public-key auth (large signatures, slow verify)</td><td>256 bytes</td><td>~500 ms</td></tr>
+<tr><td>ECDSA-P256 signature</td><td>Public-key auth, much smaller</td><td>64 bytes</td><td>~150 ms (HW accelerated: ~10 ms)</td></tr>
+<tr><td>Ed25519 signature</td><td>Modern, fastest signing + verify</td><td>64 bytes</td><td>~30 ms (pure software)</td></tr>
+<tr><td>AES-256-GCM</td><td>Encryption + authentication (for confidentiality)</td><td>16-byte tag</td><td>~10 ms / 100 KB with HW accel</td></tr>
+</table>
+
+<h2>A/B partition update flow</h2>
+<div class="panel note">
+<p>Memory map: two equal slots in flash. Slot A holds the running firmware; Slot B receives the new image. Once verified, the bootloader marks B as "primary" and reboots into it. If B fails its boot health check, the bootloader falls back to A.</p>
+<div class="deriv">
+<span class="step">1. App requests new firmware → download into Slot B (currently inactive)</span>
+<span class="step">2. App writes "boot from B (test mode)" flag in non-volatile metadata</span>
+<span class="step">3. Reboot. MCUboot:</span>
+<span class="step">     a. Reads metadata → "boot test from B"</span>
+<span class="step">     b. Verifies B's signature against MCUboot's embedded public key</span>
+<span class="step">     c. Checks rollback counter ≥ device's last counter</span>
+<span class="step">     d. If all pass, jumps into B (still in "test mode")</span>
+<span class="step">4. New app boots. Within N seconds, it must call mcuboot_image_ok() to confirm health.</span>
+<span class="step">     • If yes: MCUboot promotes B to primary slot, retains A as fallback</span>
+<span class="step">     • If no (timeout or app crashes): next reboot → MCUboot reverts to A</span>
+<span class="step">5. (Optional) A is now "next slot" for the following update</span>
+</div>
+<p>Atomicity: every step is restartable. Lose power mid-step → metadata still consistent → bootloader picks up where it left off. No combination of failures leaves an unbootable device.</p>
+</div>
+
+<h2>The rollback counter — preventing downgrade</h2>
+<div class="panel warn">
+<p>Without rollback protection, an attacker who finds a vulnerability in firmware v1.0 can: (a) signal your OTA server to deliver "v1.0" again, (b) the device verifies the signature (still valid since you used the same key), (c) installs v1.0, (d) attacker exploits the known vulnerability. Defense: a monotonically-increasing rollback counter stored in OTP / fuses / RPMC.</p>
+<div class="deriv">
+<span class="step">Each firmware image is signed with a manifest including (version, rollback_counter, image_hash).</span>
+<span class="step">Bootloader rejects any image with rollback_counter &lt; device.current_counter</span>
+<span class="step">On successful boot of new image, device increments its counter to match.</span>
+<span class="step">If rollback counter is in eFuse (OTP), it's truly irreversible.</span>
+<span class="step">If in regular flash, it's tamper-resistant only — physical attacker with chip-level access could potentially revert.</span>
+</div>
+</div>
+
+<h2>Real-world MCU options</h2>
+<table>
+<tr><th>Platform</th><th>HW security</th><th>Bootloader</th><th>Notes</th></tr>
+<tr><td>STM32 (L4 / WB / U5)</td><td>RDP level 2, OTP, PCROP, TrustZone (M33), STSAFE</td><td>STM32CubeProgrammer + custom or MCUboot</td><td>L5/U5 have full TrustZone-M33</td></tr>
+<tr><td>ESP32 / ESP32-S3</td><td>eFuse, secure-boot v2, flash encryption, AES + ECC HW</td><td>Espressif bootloader (built-in)</td><td>Strong out-of-box; widely deployed</td></tr>
+<tr><td>nRF52 / nRF53</td><td>APPROTECT, KMU, CryptoCell (AES + SHA + ECDSA)</td><td>MCUboot (Zephyr standard)</td><td>BLE / Thread / Matter focus; FOTA flow well-documented</td></tr>
+<tr><td>RP2040 / RP2350</td><td>RP2350: ARM TrustZone, signed boot, OTP</td><td>RP2350: ARM-mbed boot 2 / TrustZone-aware</td><td>RP2040 has NO secure boot</td></tr>
+<tr><td>NXP LPC55Sxx / RT11xx</td><td>PUF, dedicated security MCU core, ECDSA in HW</td><td>NXP MCUBoot / SBL</td><td>Industrial-grade security</td></tr>
+<tr><td>i.MX RT</td><td>HAB (High Assurance Boot), CAAM crypto</td><td>NXP HAB-signed images</td><td>iMX RT crossover MCUs</td></tr>
+<tr><td>SiFive / RISC-V (LowRISC OpenTitan)</td><td>True open-source root of trust</td><td>OpenTitan reference</td><td>Reference design for chip vendors</td></tr>
+<tr><td>Raspberry Pi 4/5 (Linux)</td><td>Optionally OP-TEE TrustZone</td><td>Boot ROM → bootcode.bin → U-Boot → Linux kernel</td><td>Compose your own chain</td></tr>
+</table>
+
+<h2>Worked example — STM32U5 firmware update over BLE</h2>
+<div class="panel tip">
+<h3>Setup</h3>
+<p>STM32U585 (Cortex-M33 with TrustZone), 2 MB flash split into 512 KB Boot + 512 KB Slot A + 512 KB Slot B + 512 KB User Data. Firmware ~200 KB. ECDSA-P256 signatures with public key hash burned into eFuse OTP.</p>
+<h3>OTA download (BLE GATT)</h3>
+<div class="deriv">
+<span class="step">App receives 200 KB firmware in ~512-byte chunks over BLE (1 MB/s effective at BLE 4.2)</span>
+<span class="step">Each chunk written to Slot B as it arrives — flash time ~30 ms / chunk × 400 chunks = 12 s total download</span>
+<span class="step">CRC32 on each chunk for transport integrity (link-layer integrity is also present)</span>
+<span class="step">After last chunk, app writes "boot-test from B" flag + reboots</span>
+</div>
+<h3>Boot-time verification (MCUboot)</h3>
+<div class="deriv">
+<span class="step">1. ROM verifies Boot binary's signature against eFuse public-key hash (~5 ms with HW SHA + ECDSA)</span>
+<span class="step">2. Boot reads metadata → "test mode from B"</span>
+<span class="step">3. Boot reads B's image-trailer manifest (image_hash + ECDSA signature + version + rollback_counter)</span>
+<span class="step">4. Boot computes SHA-256 over Slot B image (~60 ms for 200 KB on M33)</span>
+<span class="step">5. Boot verifies ECDSA-P256 signature on (hash || version || rollback_counter) — ~10 ms with HW</span>
+<span class="step">6. Boot checks rollback_counter ≥ device.counter (compare two 32-bit words)</span>
+<span class="step">7. All pass → jump into Slot B (still in "test mode")</span>
+<span class="step">Total verify time: ~75 ms — invisible to user</span>
+</div>
+<h3>Commit or revert</h3>
+<div class="deriv">
+<span class="step">New app starts. Within 30 seconds it must call mcuboot_image_ok() — typically after passing internal self-test + connecting to MQTT broker</span>
+<span class="step">If yes: metadata updated, B is primary. Device.counter incremented from N to N+1.</span>
+<span class="step">If no (app crashes, watchdog resets): next boot → MCUboot reverts to A. App and rollback_counter unchanged.</span>
+<span class="step">App reports update status (success / reverted) over BLE/cellular at next opportunity.</span>
+</div>
+</div>
+
+<h2>Common pitfalls</h2>
+<ul class="notice">
+<li><b>Hardcoding the verification key in updateable code</b> — the public key MUST be in immutable storage (ROM / eFuse). If attackers can flash a new MCUboot with their key, they own the chain.</li>
+<li><b>Skipping rollback counter</b> — "I have signatures" isn't enough. Attackers can replay older valid versions to exploit known bugs.</li>
+<li><b>Boot-test without watchdog</b> — if the new image just hangs (not crashes), the device sits broken until manually reset. Use a hardware watchdog that triggers a revert on timeout.</li>
+<li><b>Single-slot update with no recovery</b> — power loss during flash erase = bricked device. Always A/B or have a recovery bootloader.</li>
+<li><b>OTA over unencrypted transport</b> — even if the image is signed, exposing the binary lets attackers reverse-engineer your code. Encrypt in transit (TLS, BLE bonded link).</li>
+<li><b>SBL / Bootloader is too privileged</b> — if the SBL stays resident, it's a permanent attack surface. Use ARM TrustZone or RISC-V PMP to isolate it; better, exit to non-secure world after boot.</li>
+<li><b>Forgetting to clear keys after boot</b> — private signing keys belong on a build server, never on the device. Even ephemeral keys should be wiped after use.</li>
+<li><b>Trusting your own crypto</b> — don't implement ECDSA / Ed25519 from scratch. Use a vendor-reviewed library (mbedTLS, wolfSSL, Cifra, libsodium-embedded).</li>
+<li><b>OTA server unaudited</b> — most attacks happen at the server, not the device. Sign images in a hardware-security-module (HSM); never let the server-side store the signing key in plain text.</li>
+<li><b>Public-key revocation</b> — if your build infra is compromised, every device with that key is permanently vulnerable. Plan a key-rotation scheme (e.g., 2-of-3 quorum keys with hardware HSM).</li>
+</ul>
+
+<h2>Cheat sheet — decision tree</h2>
+<table>
+<tr><th>Question</th><th>Answer determines</th></tr>
+<tr><td>Does the device handle PII, payments, or safety functions?</td><td>YES → secure boot mandatory; NO → consider integrity-only (still recommended)</td></tr>
+<tr><td>Will firmware update happen in the field?</td><td>YES → MCUboot or vendor OTA stack; NO → simpler boot, only initial-flash protection</td></tr>
+<tr><td>Power-loss tolerance required?</td><td>YES → A/B partitions mandatory; NO → in-place upgrade (risky)</td></tr>
+<tr><td>Threat model includes physical attacker?</td><td>YES → tamper-resistant key storage (eFuse + flash encryption); NO → flash encryption alone is sufficient</td></tr>
+<tr><td>Volume &gt; 100k units?</td><td>YES → invest in HSM-based signing infra; NO → secure-software signing OK with auditable process</td></tr>
+<tr><td>Regulatory (medical, automotive)?</td><td>YES → must meet IEC 62304 / ISO 26262 (cybersecurity addenda)</td></tr>
+</table>
+
+<footer>Cross-links: <a href="reset-brownout.html">Reset / Brownout</a> · <a href="task-scheduling.html">Task Scheduling</a> · <a href="../phase-7-system-integration/bringup-procedure.html">Bring-up Procedure</a> · <a href="../phase-7-system-integration/fmea-fault-tree.html">FMEA &amp; Fault Tree</a> · <a href="../../extras/standards-reference.html">Standards Reference</a></footer>
+
+<div class="share">Share this configuration: <a id="shareLink" onclick="copyShare()">copy link</a></div>
+
+</main>
+<script>
+const el = id => document.getElementById(id);
+const SLIDERS = ['scenario','crypto','ab','rollback','boottest'];
+function loadHash(){ const p = new URLSearchParams(location.hash.slice(1)); for(const id of SLIDERS){ const v = p.get(id); if(v !== null) el(id).value = v; }}
+function saveHash(){ const p = new URLSearchParams(); for(const id of SLIDERS){ p.set(id, el(id).value); } history.replaceState(null,'','#'+p.toString()); }
+function copyShare(){ navigator.clipboard?.writeText(location.href); const a = el('shareLink'); const o = a.textContent; a.textContent='copied ✓'; setTimeout(()=>a.textContent=o,1500); }
+window.copyShare = copyShare;
+
+function render(){
+  saveHash();
+  const scenario = el('scenario').value;
+  const crypto = el('crypto').value;
+  const ab = el('ab').value === 'yes';
+  const rollback = el('rollback').value === 'yes';
+  const boottest = el('boottest').value === 'yes';
+
+  // Decide outcome per scenario × controls
+  let outcome, caught, state, note, cls;
+  const cycles = {none:0, hash:30, ecdsa:150, rsa:500, ed25519:30}[crypto] + 30;
+
+  if(scenario === 'happy'){
+    outcome = 'SUCCESS'; caught = 'n/a'; state = 'Slot B (new)'; note = 'update committed'; cls = 'hi';
+  } else if(scenario === 'corrupt'){
+    if(crypto === 'none'){ outcome = 'BRICKED'; caught = 'never'; state = 'corrupted'; note = '⚠ no integrity check'; cls = 'lo'; }
+    else { outcome = 'REJECTED', caught = 'hash check'; state = ab ? 'Slot A (revert)' : 'previous'; note = 'integrity caught flip'; cls = 'hi'; }
+  } else if(scenario === 'forged'){
+    if(crypto === 'none' || crypto === 'hash'){ outcome = 'COMPROMISED'; caught = 'never'; state = 'attacker code'; note = '⚠ no signature check'; cls = 'lo'; }
+    else { outcome = 'REJECTED'; caught = 'signature verify'; state = ab ? 'Slot A' : 'previous'; note = 'crypto auth caught it'; cls = 'hi'; }
+  } else if(scenario === 'downgrade'){
+    if(!rollback){ outcome = 'COMPROMISED'; caught = 'never'; state = 'old vuln version'; note = '⚠ no rollback counter'; cls = 'lo'; }
+    else { outcome = 'REJECTED'; caught = 'rollback counter'; state = ab ? 'Slot A' : 'current'; note = 'counter < device → reject'; cls = 'hi'; }
+  } else if(scenario === 'brick'){
+    if(!ab){ outcome = 'BRICKED'; caught = 'too late'; state = 'half-flashed'; note = '⚠ no recovery slot'; cls = 'lo'; }
+    else { outcome = 'RECOVERED'; caught = 'A/B mechanism'; state = 'Slot A (untouched)'; note = 'B incomplete, ignored'; cls = 'hi'; }
+  } else if(scenario === 'bad-app'){
+    if(!boottest){ outcome = 'STUCK BAD'; caught = 'never'; state = 'Slot B (crashing)'; note = '⚠ no health check'; cls = 'lo'; }
+    else if(!ab){ outcome = 'BRICKED'; caught = 'after timeout'; state = 'crashing repeatedly'; note = 'no fallback slot'; cls = 'lo'; }
+    else { outcome = 'REVERTED'; caught = 'boot-test timeout'; state = 'Slot A (auto-revert)'; note = 'safe revert after timeout'; cls = 'hi'; }
+  }
+
+  el('vOutcome').textContent = outcome;
+  el('vOutcomeNote').textContent = note;
+  el('vCaught').textContent = caught;
+  el('vState').textContent = state;
+  el('vCycles').textContent = cycles + ' ms';
+
+  const card = el('outcomeCard');
+  card.classList.remove('hi','lo');
+  if(cls) card.classList.add(cls);
+  if(cls === 'lo') el('vOutcome').classList.add('warn');
+  else el('vOutcome').classList.remove('warn');
+
+  drawBootChain(crypto);
+  drawUpdateFlow(scenario, ab, rollback, boottest, outcome);
+}
+
+function drawBootChain(crypto){
+  const svg = el('bootchain');
+  const W = 900, H = 280;
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">Chain of trust (each stage verifies the next)</text>`;
+  const stages = [
+    {label: 'ROM Boot', color: '#5ec8ff', x: 80, sub: 'silicon, immutable'},
+    {label: 'SBL', color: '#5ec8ff', x: 270, sub: 'updateable (rare)'},
+    {label: 'MCUboot', color: '#ffb86c', x: 460, sub: 'OTA-handling'},
+    {label: 'App (Slot A or B)', color: '#a3e635', x: 670, sub: 'firmware'}
+  ];
+  for(let i = 0; i < stages.length; i++){
+    const stg = stages[i];
+    s += `<rect x="${stg.x - 70}" y="100" width="140" height="60" fill="#1d232c" stroke="${stg.color}" stroke-width="2" rx="6"/>`;
+    s += `<text x="${stg.x}" y="130" text-anchor="middle" fill="${stg.color}" font-family="ui-monospace,monospace" font-size="14" font-weight="600">${stg.label}</text>`;
+    s += `<text x="${stg.x}" y="148" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${stg.sub}</text>`;
+    if(i < stages.length - 1){
+      const next = stages[i+1];
+      s += `<line x1="${stg.x + 70}" y1="130" x2="${next.x - 70}" y2="130" stroke="#dde3ec" stroke-width="1.5"/>`;
+      s += `<polygon points="${next.x - 73},124 ${next.x - 73},136 ${next.x - 67},130" fill="#dde3ec"/>`;
+      const cryptoLabel = crypto === 'none' ? 'no verify' : crypto === 'hash' ? 'SHA-256' : crypto;
+      s += `<text x="${(stg.x + next.x)/2}" y="120" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">verifies via ${cryptoLabel}</text>`;
+    }
+  }
+  // Key location annotations
+  s += `<text x="80" y="190" text-anchor="middle" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="10">root key</text>`;
+  s += `<text x="80" y="205" text-anchor="middle" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="10">in eFuse</text>`;
+  s += `<text x="270" y="190" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">SBL key</text>`;
+  s += `<text x="270" y="205" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">in SBL binary</text>`;
+  s += `<text x="460" y="190" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">app key</text>`;
+  s += `<text x="460" y="205" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">in MCUboot binary</text>`;
+  // Trust annotation
+  s += `<text x="${W/2}" y="245" text-anchor="middle" fill="#a3e635" font-family="ui-monospace,monospace" font-size="11">Any failed verification → halt, refuse to chain. The whole device's security rests on the ROM's immutable root key.</text>`;
+
+  svg.innerHTML = s;
+}
+
+function drawUpdateFlow(scenario, ab, rollback, boottest, outcome){
+  const svg = el('updateflow');
+  const W = 900, H = 360;
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">OTA update flow (${ab ? 'A/B partitions' : 'in-place'})</text>`;
+
+  // Draw memory map on left
+  const mapX = 60, mapY = 60;
+  s += `<text x="${mapX}" y="${mapY - 10}" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">Flash map</text>`;
+  s += `<rect x="${mapX}" y="${mapY}" width="120" height="40" fill="#1d232c" stroke="#ffb86c" stroke-width="1.5"/>`;
+  s += `<text x="${mapX + 60}" y="${mapY + 25}" text-anchor="middle" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="11">Bootloader</text>`;
+  s += `<rect x="${mapX}" y="${mapY + 50}" width="120" height="70" fill="#1d232c" stroke="#a3e635" stroke-width="1.5"/>`;
+  s += `<text x="${mapX + 60}" y="${mapY + 80}" text-anchor="middle" fill="#a3e635" font-family="ui-monospace,monospace" font-size="11">Slot A</text>`;
+  s += `<text x="${mapX + 60}" y="${mapY + 96}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">current app</text>`;
+  if(ab){
+    s += `<rect x="${mapX}" y="${mapY + 130}" width="120" height="70" fill="#1d232c" stroke="#5ec8ff" stroke-width="1.5" stroke-dasharray="3,2"/>`;
+    s += `<text x="${mapX + 60}" y="${mapY + 160}" text-anchor="middle" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">Slot B</text>`;
+    s += `<text x="${mapX + 60}" y="${mapY + 176}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">new image</text>`;
+  }
+  s += `<rect x="${mapX}" y="${mapY + 210}" width="120" height="30" fill="#1d232c" stroke="#c084fc" stroke-width="1"/>`;
+  s += `<text x="${mapX + 60}" y="${mapY + 229}" text-anchor="middle" fill="#c084fc" font-family="ui-monospace,monospace" font-size="10">metadata</text>`;
+
+  // Steps on right
+  const stepX = 250, stepY = 60;
+  const steps = [
+    'Download to Slot B',
+    'Write boot-test flag',
+    'Reboot',
+    'Verify signature',
+    'Check rollback counter',
+    'Jump into Slot B',
+    boottest ? 'Boot-test (timeout: revert)' : 'Commit unconditionally',
+    'App calls mcuboot_image_ok()',
+    'Mark Slot B as primary'
+  ];
+  const cancelledAfter = {
+    'corrupt': 4, 'forged': 4, 'downgrade': 5, 'brick': 1, 'bad-app': boottest ? 7 : 8, 'happy': steps.length
+  }[scenario];
+
+  for(let i = 0; i < steps.length; i++){
+    const y = stepY + i * 32;
+    const cancelled = i > cancelledAfter;
+    const fillColor = cancelled ? '#3a414c' : (i === cancelledAfter && scenario !== 'happy' ? '#ff7b72' : '#1d232c');
+    const stroke = cancelled ? '#2a313c' : (i === cancelledAfter && scenario !== 'happy' ? '#ff7b72' : '#a3e635');
+    s += `<rect x="${stepX}" y="${y}" width="600" height="26" fill="${fillColor}" stroke="${stroke}" stroke-width="1" rx="3"/>`;
+    const textColor = cancelled ? '#5a6470' : '#dde3ec';
+    s += `<text x="${stepX + 10}" y="${y + 17}" fill="${textColor}" font-family="ui-monospace,monospace" font-size="11">${i+1}. ${steps[i]}</text>`;
+    if(i === cancelledAfter && scenario !== 'happy'){
+      s += `<text x="${stepX + 590}" y="${y + 17}" text-anchor="end" fill="#fff" font-family="ui-monospace,monospace" font-size="10" font-weight="600">⛔ ${outcome}</text>`;
+    }
+  }
+  svg.innerHTML = s;
+}
+
+loadHash();
+render();
+</script>
+</body></html>

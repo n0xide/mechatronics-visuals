@@ -74,6 +74,34 @@ Conventions for a visual at `<track>/<phase>/X.html`:
 
 Validate after editing: run `node mechatronics/study/_audit_links.js` from the study root. It walks every source `.html`, categorizes its links, and reports which resolve in source vs bundle. The "true orphans" line (broken in both) must stay at 0; the "break in source only" count is expected to grow as the catalog grows.
 
+## Deep-linking — URL-hash state pattern
+
+Visuals built in May 2026 round 4 onward support shareable URLs: every slider value is encoded in the URL hash, so you can paste a link and land at the exact configuration. The pattern is ~12 lines of JS per visual.
+
+```js
+const SLIDERS = ['sliderId1','sliderId2','dropdownId',...];   // ID list of state-bearing controls
+
+function loadHash(){
+  const params = new URLSearchParams(location.hash.slice(1));
+  for(const id of SLIDERS){
+    const v = params.get(id);
+    if(v !== null) document.getElementById(id).value = v;
+  }
+}
+function saveHash(){
+  const params = new URLSearchParams();
+  for(const id of SLIDERS){ params.set(id, document.getElementById(id).value); }
+  history.replaceState(null, '', '#' + params.toString());
+}
+
+// In render(): call saveHash() first
+// On script load: loadHash() then render()
+```
+
+Add a "Share this configuration: [copy link]" affordance to the page (CSS class `.share` already styled). Helpful for teaching and bug reports — `<a onclick="navigator.clipboard?.writeText(location.href)">`.
+
+Visuals with this pattern as of 2026-05-27: snubber-deep, gain-scheduling, imu-fusion, composites-laminate, secure-boot-ota, llc-resonant, refrigeration-cycle, fmea-fault-tree, lyapunov-stability, euler-buckling. To add to an existing visual, copy the helper functions + add the SLIDERS list at the top of `<script>`.
+
 ## Special files — intentional source/bundle drift
 
 These three were promoted from `docs/_extras/` to `docs/extras/` but their **bundle copies are NOT verbatim mirrors of source**. The bundle versions were hand-rewritten to render correctly inside the SPA iframe (back-links use `target="_top"` and `../index.html`; phase-deep links use `../index.html#<disc>-<n>` anchors instead of `../<track>/phase-N-...md` paths). A naive `cp` from source over bundle for these files will clobber those rewrites and break the bundle.

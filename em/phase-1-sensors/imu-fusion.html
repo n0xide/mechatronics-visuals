@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IMU Sensor Fusion — visual</title>
+<style>
+:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,Segoe UI,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--fg-bright);margin:18px 0 6px;text-transform:uppercase;letter-spacing:.4px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:14px 0;display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.control .val{font:600 13px ui-monospace,Menlo,Consolas,monospace;color:var(--accent3)}
+.control input[type=range]{width:100%;accent-color:var(--accent)}
+.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;font:12px ui-monospace,Menlo,Consolas,monospace}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;margin:14px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,Menlo,Consolas,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}.panel.note{border-left:3px solid var(--accent)}
+.panel h3{margin-top:0}
+.scoreboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.score-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center}
+.score-num{font:700 22px ui-monospace,Menlo,Consolas,monospace;color:var(--accent3);margin:6px 0}
+.score-num.warn{color:var(--warn)}.score-num.mid{color:var(--accent2)}
+.score-lbl{color:var(--fg-dim);font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace;text-transform:uppercase;letter-spacing:.4px}
+.score-lbl.unit{text-transform:none;letter-spacing:0}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,Menlo,Consolas,monospace;color:var(--accent2)}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,Consolas,monospace}
+footer a{color:var(--accent)}
+.share{font-size:11px;color:var(--fg-dim);margin-top:6px}
+.share a{color:var(--accent);cursor:pointer}
+</style></head><body><main>
+
+<h1>IMU Sensor Fusion — combining accel + gyro + mag into stable orientation</h1>
+<p class="lede">A single IMU axis can't tell you orientation. Accelerometer gives gravity (slow, low-noise tilt) but is corrupted by linear acceleration. Gyroscope gives instantaneous angular rate (fast, drifts) but integrates the bias error into unbounded angle drift. Magnetometer gives heading (slow, distorted by ferrous metal). <b>Sensor fusion</b> combines them, getting each one's strengths and rejecting each one's weaknesses. This visual simulates a 1-axis IMU walking through a 10-second trajectory with realistic sensor noise + bias, and runs three fusion algorithms in parallel: raw gyro integration (drifts), complementary filter (cheap), and Mahony PI filter (a-step-up).</p>
+
+<div class="anchors">
+<span class="anchor"><b>Complementary</b>: θ = α·(θ_prev + ω·Δt) + (1−α)·θ_accel</span>
+<span class="anchor"><b>α</b> = τ/(τ+Δt); τ = 0.1 to 2 s typical</span>
+<span class="anchor"><b>Mahony PI</b>: error · K_p + ∫error · K_i correct the gyro</span>
+<span class="anchor"><b>Madgwick</b>: gradient-descent on quaternion error</span>
+<span class="anchor"><b>EKF/UKF</b>: full state estimator; CPU-heavy</span>
+<span class="anchor"><b>Gyro bias</b>: typical 0.01-1 °/s; integrated → ° drift / minute</span>
+</div>
+
+<h2>Interactive — true tilt + 3 fusion strategies overlaid</h2>
+
+<div class="controls">
+<div class="control"><label>True tilt motion (deg amplitude)</label><input id="amp" type="range" min="5" max="60" value="30" step="5" oninput="render()"><span class="val" id="vAmp">30</span></div>
+<div class="control"><label>True motion freq (Hz)</label><input id="freq" type="range" min="0.1" max="2.0" value="0.5" step="0.1" oninput="render()"><span class="val" id="vFreq">0.5</span></div>
+<div class="control"><label>Gyro bias (°/s)</label><input id="bias" type="range" min="0" max="2" value="0.5" step="0.05" oninput="render()"><span class="val" id="vBias">0.5</span></div>
+<div class="control"><label>Gyro noise σ (°/s)</label><input id="gnoise" type="range" min="0" max="5" value="0.5" step="0.1" oninput="render()"><span class="val" id="vGnoise">0.5</span></div>
+<div class="control"><label>Accel noise σ (g)</label><input id="anoise" type="range" min="0" max="0.5" value="0.05" step="0.01" oninput="render()"><span class="val" id="vAnoise">0.05</span></div>
+<div class="control"><label>Linear accel disturbance (g, brief)</label><input id="disturb" type="range" min="0" max="2" value="0" step="0.1" oninput="render()"><span class="val" id="vDisturb">0.0</span></div>
+<div class="control"><label>Comp filter α (gyro weight)</label><input id="alpha" type="range" min="0.5" max="0.999" value="0.98" step="0.001" oninput="render()"><span class="val" id="vAlpha">0.980</span></div>
+<div class="control"><label>Mahony K_p (proportional)</label><input id="Kp" type="range" min="0.1" max="5" value="1.0" step="0.1" oninput="render()"><span class="val" id="vKp">1.0</span></div>
+</div>
+
+<div class="scoreboard">
+<div class="score-card"><div class="score-lbl">Drift — raw gyro</div><div class="score-num warn" id="vDgyro">—</div><div class="score-lbl unit">deg @ end</div></div>
+<div class="score-card"><div class="score-lbl">RMS error — comp filter</div><div class="score-num mid" id="vEcomp">—</div><div class="score-lbl unit">deg</div></div>
+<div class="score-card"><div class="score-lbl">RMS error — Mahony</div><div class="score-num" id="vEmahony">—</div><div class="score-lbl unit">deg</div></div>
+<div class="score-card"><div class="score-lbl">RMS error — accel-only</div><div class="score-num mid" id="vEaccel">—</div><div class="score-lbl unit">deg</div></div>
+</div>
+
+<div class="figure"><svg id="trace" viewBox="0 0 900 380" width="100%"></svg></div>
+
+<h2>The three estimators side-by-side</h2>
+<div class="deriv">
+<span class="step">Raw gyro integration (worst baseline):</span>
+<span class="step">  θ_gyro[k+1] = θ_gyro[k] + ω_meas · Δt</span>
+<span class="step">  Drift = (bias + noise mean) · t → unbounded</span>
+<span class="step"></span>
+<span class="step">Accel-only (high-pass through linear-accel noise):</span>
+<span class="step">  θ_accel = atan2(ax, az)   (1-axis tilt model)</span>
+<span class="step">  Bounded but noisy + corrupted whenever sensor accelerates linearly</span>
+<span class="step"></span>
+<span class="step">Complementary filter (low-pass accel + high-pass gyro):</span>
+<span class="step">  <b>θ[k+1] = α · (θ[k] + ω · Δt) + (1 − α) · θ_accel</b></span>
+<span class="step">  α = τ / (τ + Δt); τ = filter time constant (typ 0.5-2 s)</span>
+<span class="step">  Trusts gyro at high freq, accel at low freq; cheap (3 mul + 1 add per sample)</span>
+<span class="step"></span>
+<span class="step">Mahony PI filter (better when bias is non-zero):</span>
+<span class="step">  Cross-product error: e = a_meas × a_predicted    (a_predicted = R·[0,0,1])</span>
+<span class="step">  ω_corrected = ω_meas + K_p · e + K_i · ∫e dt</span>
+<span class="step">  Quaternion update: q[k+1] = q[k] + ½ · q[k] ⊗ [0, ω_corrected] · Δt</span>
+<span class="step"></span>
+<span class="step">Madgwick (a more aggressive grad-descent variant):</span>
+<span class="step">  Same data, but step direction chosen by gradient of an objective function</span>
+<span class="step">  Slightly faster convergence + less compute (no integral state)</span>
+</div>
+
+<h2>Comparison — which fusion when?</h2>
+<table>
+<tr><th>Algorithm</th><th>States</th><th>CPU / sample</th><th>Bias handling</th><th>Best for</th></tr>
+<tr><td>Raw gyro integration</td><td>1 (angle)</td><td>~3 ops</td><td>None — drifts</td><td>Short-term-only (&lt; 1 s)</td></tr>
+<tr><td>Accel-only tilt</td><td>0 (memoryless)</td><td>~5 ops (atan2)</td><td>N/A (no integration)</td><td>Static (level + stationary)</td></tr>
+<tr><td>Complementary filter</td><td>1 (angle)</td><td>~5 ops</td><td>Partial (high-pass on gyro)</td><td>Hobby drones, IoT devices, &lt; 10° accuracy</td></tr>
+<tr><td>Mahony PI</td><td>3 (quaternion + I-state)</td><td>~30 ops</td><td>Explicit (integral term)</td><td>Robotics, AHRS, 1-3° accuracy</td></tr>
+<tr><td>Madgwick</td><td>4 (quaternion)</td><td>~50 ops</td><td>Via β tuning</td><td>9-DoF (with mag), &lt; 1° accuracy possible</td></tr>
+<tr><td>EKF (Extended Kalman)</td><td>7+ (quat + bias + accel)</td><td>~500 ops (matrix mult)</td><td>Estimated as state</td><td>Survey-grade, INS, autonomous vehicles</td></tr>
+<tr><td>UKF (Unscented Kalman)</td><td>same</td><td>~2000 ops (sigma points)</td><td>Better for nonlinear</td><td>Aerospace, low-rate sensors</td></tr>
+</table>
+
+<h2>Sensor characteristics — what each gives you</h2>
+<table>
+<tr><th>Sensor</th><th>Measures</th><th>Bandwidth</th><th>Noise</th><th>Bias</th><th>Fails when</th></tr>
+<tr><td>3-axis accel (MEMS)</td><td>Specific force (g + linear)</td><td>DC - 50 Hz useful</td><td>50-500 µg/√Hz</td><td>2-50 mg (stable)</td><td>Robot accelerates linearly (vibration, motion) → false gravity</td></tr>
+<tr><td>3-axis gyro (MEMS)</td><td>Angular rate</td><td>DC - 200 Hz</td><td>0.005-0.05 °/s/√Hz</td><td>0.01-1 °/s (drifts w/ temp)</td><td>Long stationary periods (bias integrates)</td></tr>
+<tr><td>3-axis mag</td><td>Magnetic field (heading)</td><td>DC - 50 Hz</td><td>~150 nT/√Hz</td><td>Hard + soft iron offsets</td><td>Near ferrous metal (motors, batteries, steel)</td></tr>
+<tr><td>Barometer (BMP)</td><td>Altitude (relative)</td><td>DC - 10 Hz</td><td>~10 cm RMS</td><td>Weather drift</td><td>Wind gust, doors closing</td></tr>
+<tr><td>GPS (when available)</td><td>Position (absolute)</td><td>1-10 Hz</td><td>1-5 m CEP</td><td>Multipath, ionosphere</td><td>Indoor, urban canyon</td></tr>
+</table>
+
+<h2>The complementary-filter math in detail</h2>
+<div class="panel note">
+<p>The complementary filter works because gyro and accel have <i>complementary</i> noise spectra: gyro is good at high frequencies (it's integrated, so DC bias drifts), accel is good at low frequencies (gravity is DC, but vibration adds high-freq noise). A simple first-order low-pass on accel + high-pass on gyro, summed, recovers the true angle.</p>
+<div class="deriv">
+<span class="step">In discrete time:</span>
+<span class="step">  θ[k] = α · (θ[k−1] + ω_meas · Δt) + (1 − α) · θ_accel</span>
+<span class="step"></span>
+<span class="step">Choose α = τ / (τ + Δt):</span>
+<span class="step">  Δt = sample period (e.g., 10 ms)</span>
+<span class="step">  τ = time constant (e.g., 1 s) ⇒ α = 1 / 1.01 = 0.990</span>
+<span class="step"></span>
+<span class="step">High α (≈ 1) trusts gyro: smooth, fast response, but bias drifts in slowly</span>
+<span class="step">Low α (e.g., 0.9) trusts accel: noisy from vibration, but bias-free</span>
+<span class="step">Sweet spot: 0.95-0.99 for typical drone / robot applications</span>
+</div>
+<p>Pros: 5 ops per sample, embedded-friendly, intuitive tuning.<br>
+Cons: assumes static accel = gravity (false during fast motion); doesn't model bias explicitly.</p>
+</div>
+
+<h2>Worked example — drone roll-axis fusion</h2>
+<div class="panel tip">
+<h3>Setup</h3>
+<p>250-class racing drone, MPU6050 IMU at 1 kHz update. Gyro bias post-calibration: ±0.3 °/s. Accel noise: 5 mg RMS. Sample period Δt = 1 ms.</p>
+<h3>Choose τ</h3>
+<div class="deriv">
+<span class="step">Pick τ = 0.5 s (typical for drone) → α = 0.5 / 0.501 = 0.998</span>
+<span class="step">High-pass corner: 1/(2π·τ) = 0.32 Hz — anything below this is dominated by accel</span>
+<span class="step">After 10 s of stationary hovering: gyro drift contribution = bias · (1−α) · t = 0.3 · 0.002 · 10 = 0.006° ✓</span>
+<span class="step">During a 0.5 s 90°/s yaw maneuver: tracking error &lt; 1° (gyro-dominated, no accel correction)</span>
+</div>
+<h3>If using Mahony instead</h3>
+<div class="deriv">
+<span class="step">K_p = 1.0, K_i = 0.05 (typical published values)</span>
+<span class="step">Steady-state bias error: ε_ss = ω_bias · K_i ⁻¹ ⇒ ε = 0.3/0.05 = 6 °/s correction, settles in ~1 s</span>
+<span class="step">After convergence: drift &lt; 0.05° per minute (bias explicitly tracked)</span>
+<span class="step">CPU cost: ~30 multiplies per sample at 1 kHz = 30k MAC/s — trivial for STM32 F4</span>
+</div>
+</div>
+
+<h2>Common pitfalls</h2>
+<ul class="notice">
+<li><b>Sample timing jitter</b> — fusion assumes Δt is constant. If your sensor read is in a low-priority task that gets preempted, Δt varies, and integrated angle drifts even more. Use DMA + timer-triggered sampling.</li>
+<li><b>Forgetting accel-corruption during motion</b> — α=0.98 is fine when stationary; during a hard turn, the centripetal accel masquerades as tilt, and the filter rotates the estimate the wrong way. Gate the accel update: skip it when |a| not ≈ 1 g.</li>
+<li><b>Mag interference</b> — motor currents, batteries, and steel frame all distort the field. Calibrate after mounting (not on the bench) and verify with a "spin test" rotating the device.</li>
+<li><b>Quaternion normalization</b> — every update, ‖q‖ drifts from 1.0 due to floating-point. Re-normalize each cycle: q /= ‖q‖.</li>
+<li><b>Gimbal lock</b> — Euler-angle (roll/pitch/yaw) representation singular at pitch = ±90°. Use quaternions internally, convert to Euler only for human display.</li>
+<li><b>Initial-condition convergence</b> — Mahony/Madgwick converge from any initial quaternion, but slowly. Initialize from a 0.5-1 s static average of accel to start near the true tilt.</li>
+<li><b>Temperature drift on gyro bias</b> — re-zero bias at startup (assume device stationary) and ideally during use (when angular rate is below noise floor). MEMS gyros drift ~0.5 °/s per °C.</li>
+<li><b>Different sample rates</b> — accel often 50-200 Hz, gyro 1 kHz, mag 50 Hz, GPS 10 Hz. Fusion runs at gyro rate; other sensors update when fresh data arrives. Need a state flag per sensor.</li>
+</ul>
+
+<h2>Cheat sheet — picking a fusion approach</h2>
+<table>
+<tr><th>Need…</th><th>Use…</th></tr>
+<tr><td>&lt; 5° accuracy, hobby device, embedded</td><td>Complementary filter, α = 0.98</td></tr>
+<tr><td>2° accuracy, drone or arm, &gt; 100 Hz update</td><td>Mahony PI (K_p=1, K_i=0.05)</td></tr>
+<tr><td>&lt; 1° accuracy, 9-DoF + mag</td><td>Madgwick (β = 0.04)</td></tr>
+<tr><td>0.1° accuracy, INS, GNSS-aided</td><td>EKF (gyro bias + accel bias states)</td></tr>
+<tr><td>Highly nonlinear (acrobatic flight)</td><td>UKF or particle filter</td></tr>
+<tr><td>Just a tilt-compensated compass</td><td>Accel + mag, atan2 + correction (no integration)</td></tr>
+</table>
+
+<footer>Cross-links: <a href="../phase-8-robotics-mechatronics/complementary-filter.html">Complementary Filter (broader)</a> · <a href="../phase-4-feedback-control/kalman-filter.html">Kalman Filter</a> · <a href="adc-input-protection.html">ADC Input Protection</a> · <a href="../phase-8-robotics-mechatronics/slam-occupancy-grid.html">SLAM &amp; Occupancy</a></footer>
+
+<div class="share">Share this configuration: <a id="shareLink" onclick="copyShare()">copy link</a></div>
+
+</main>
+<script>
+const el = id => document.getElementById(id);
+const SLIDERS = ['amp','freq','bias','gnoise','anoise','disturb','alpha','Kp'];
+function loadHash(){ const p = new URLSearchParams(location.hash.slice(1)); for(const id of SLIDERS){ const v = p.get(id); if(v !== null) el(id).value = v; }}
+function saveHash(){ const p = new URLSearchParams(); for(const id of SLIDERS){ p.set(id, el(id).value); } history.replaceState(null,'','#'+p.toString()); }
+function copyShare(){ navigator.clipboard?.writeText(location.href); const a = el('shareLink'); const o = a.textContent; a.textContent='copied ✓'; setTimeout(()=>a.textContent=o,1500); }
+window.copyShare = copyShare;
+
+function gauss(sigma){ // Box-Muller
+  const u1 = Math.random(), u2 = Math.random();
+  return sigma * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+}
+
+function simulate(amp, freq, bias, gnoise, anoise, disturb, alpha, Kp){
+  const Ki = 0.05;
+  const dt = 0.01, tend = 10;
+  const N = Math.round(tend / dt);
+  let theta_true = 0, omega_true = 0;
+  let theta_gyro = 0;
+  let theta_comp = 0;
+  // Mahony state: theta + integral of error
+  let theta_mahony = 0, intErr = 0;
+  const traj = [];
+  for(let i = 0; i < N; i++){
+    const t = i * dt;
+    // True motion: sinusoidal tilt
+    theta_true = amp * Math.PI/180 * Math.sin(2 * Math.PI * freq * t);
+    omega_true = amp * Math.PI/180 * 2 * Math.PI * freq * Math.cos(2 * Math.PI * freq * t);
+
+    // Measurements
+    const omega_meas = omega_true + bias * Math.PI/180 + gauss(gnoise * Math.PI/180);
+    // Accel = gravity + linear disturbance
+    let linAccelX = 0;
+    if(disturb > 0 && t > 3 && t < 4){ linAccelX = disturb * 9.81; }
+    // Project gravity onto sensor frame: a = R^T · [g, 0]; for 1D tilt: ax = g·sin(θ), az = g·cos(θ)
+    const g = 9.81;
+    const ax_true = g * Math.sin(theta_true) + linAccelX;
+    const az_true = g * Math.cos(theta_true);
+    const ax = ax_true + gauss(anoise * g);
+    const az = az_true + gauss(anoise * g);
+    const theta_accel = Math.atan2(ax, az);
+
+    // 1. Raw gyro integration
+    theta_gyro += omega_meas * dt;
+    // 2. Complementary filter
+    theta_comp = alpha * (theta_comp + omega_meas * dt) + (1 - alpha) * theta_accel;
+    // 3. Mahony PI
+    const err = Math.sin(theta_accel - theta_mahony);  // small-angle error
+    intErr += err * dt;
+    const omega_corrected = omega_meas + Kp * err + Ki * intErr;
+    theta_mahony += omega_corrected * dt;
+
+    traj.push({
+      t,
+      true_deg: theta_true * 180/Math.PI,
+      gyro_deg: theta_gyro * 180/Math.PI,
+      comp_deg: theta_comp * 180/Math.PI,
+      mahony_deg: theta_mahony * 180/Math.PI,
+      accel_deg: theta_accel * 180/Math.PI
+    });
+  }
+  return traj;
+}
+
+function render(){
+  saveHash();
+  const amp = parseFloat(el('amp').value);
+  const freq = parseFloat(el('freq').value);
+  const bias = parseFloat(el('bias').value);
+  const gnoise = parseFloat(el('gnoise').value);
+  const anoise = parseFloat(el('anoise').value);
+  const disturb = parseFloat(el('disturb').value);
+  const alpha = parseFloat(el('alpha').value);
+  const Kp = parseFloat(el('Kp').value);
+
+  el('vAmp').textContent = amp;
+  el('vFreq').textContent = freq.toFixed(1);
+  el('vBias').textContent = bias.toFixed(2);
+  el('vGnoise').textContent = gnoise.toFixed(1);
+  el('vAnoise').textContent = anoise.toFixed(2);
+  el('vDisturb').textContent = disturb.toFixed(1);
+  el('vAlpha').textContent = alpha.toFixed(3);
+  el('vKp').textContent = Kp.toFixed(1);
+
+  const traj = simulate(amp, freq, bias, gnoise, anoise, disturb, alpha, Kp);
+
+  // Compute drift / RMS errors
+  const drift_gyro = traj[traj.length-1].gyro_deg - traj[traj.length-1].true_deg;
+  let sumSqComp = 0, sumSqMahony = 0, sumSqAccel = 0;
+  for(const p of traj){
+    sumSqComp += (p.comp_deg - p.true_deg)**2;
+    sumSqMahony += (p.mahony_deg - p.true_deg)**2;
+    sumSqAccel += (p.accel_deg - p.true_deg)**2;
+  }
+  const rmsComp = Math.sqrt(sumSqComp / traj.length);
+  const rmsMahony = Math.sqrt(sumSqMahony / traj.length);
+  const rmsAccel = Math.sqrt(sumSqAccel / traj.length);
+
+  el('vDgyro').textContent = drift_gyro.toFixed(0);
+  el('vEcomp').textContent = rmsComp.toFixed(1);
+  el('vEmahony').textContent = rmsMahony.toFixed(2);
+  el('vEaccel').textContent = rmsAccel.toFixed(1);
+
+  drawTrace(traj);
+}
+
+function drawTrace(traj){
+  const svg = el('trace');
+  const W = 900, H = 380, M = 50;
+  const tMax = traj[traj.length-1].t;
+  const yAll = traj.flatMap(p => [p.true_deg, p.gyro_deg, p.comp_deg, p.mahony_deg]);
+  const yMax = Math.max(...yAll, 50);
+  const yMin = Math.min(...yAll, -50);
+  const xOf = t => M + t / tMax * (W - 2*M);
+  const yOf = y => H - M - (y - yMin) / (yMax - yMin) * (H - 2*M - 40);
+
+  let s = '';
+  s += `<text x="${W/2}" y="22" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">θ estimates over 10 s</text>`;
+  s += `<line x1="${M}" y1="${H-M}" x2="${W-M}" y2="${H-M}" stroke="#8f99a8"/>`;
+  s += `<line x1="${M}" y1="${M+30}" x2="${M}" y2="${H-M}" stroke="#8f99a8"/>`;
+  // Zero line
+  s += `<line x1="${M}" y1="${yOf(0)}" x2="${W-M}" y2="${yOf(0)}" stroke="#3a414c" stroke-dasharray="2,3"/>`;
+
+  const series = [
+    {key: 'true_deg', color: '#a3e635', width: 3, label: 'true', dash: ''},
+    {key: 'gyro_deg', color: '#ff7b72', width: 1.2, label: 'gyro only', dash: '4,2'},
+    {key: 'accel_deg', color: '#c084fc', width: 0.8, label: 'accel only', dash: '2,2'},
+    {key: 'comp_deg', color: '#ffb86c', width: 1.8, label: 'complementary', dash: ''},
+    {key: 'mahony_deg', color: '#5ec8ff', width: 1.8, label: 'Mahony', dash: ''}
+  ];
+
+  for(const ser of series){
+    let p = '';
+    for(let i = 0; i < traj.length; i += 2){
+      const x = xOf(traj[i].t), y = yOf(traj[i][ser.key]);
+      p += (i === 0 ? 'M ' : 'L ') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+    }
+    const dashAttr = ser.dash ? ` stroke-dasharray="${ser.dash}"` : '';
+    s += `<path d="${p}" fill="none" stroke="${ser.color}" stroke-width="${ser.width}"${dashAttr}/>`;
+  }
+  // Legend
+  let lx = W - 200, ly = M + 8;
+  for(const ser of series){
+    s += `<rect x="${lx}" y="${ly-8}" width="14" height="3" fill="${ser.color}"/>`;
+    s += `<text x="${lx+20}" y="${ly-3}" fill="${ser.color}" font-family="ui-monospace,monospace" font-size="10">${ser.label}</text>`;
+    ly += 14;
+  }
+  // Y axis labels
+  s += `<text x="${M-6}" y="${yOf(yMax)+3}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${yMax.toFixed(0)}°</text>`;
+  s += `<text x="${M-6}" y="${yOf(yMin)+3}" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${yMin.toFixed(0)}°</text>`;
+  // X axis labels
+  for(let t = 0; t <= tMax; t += 2){
+    const x = xOf(t);
+    s += `<text x="${x}" y="${H-M+16}" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">${t}s</text>`;
+  }
+  svg.innerHTML = s;
+}
+
+loadHash();
+render();
+</script>
+</body></html>
