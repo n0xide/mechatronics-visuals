@@ -86,7 +86,7 @@
     <button data-p="crit">Critically damped (ζ = 1.0)</button>
     <button data-p="over">Overdamped (ζ = 3.0)</button>
     <button data-p="opt">Optimal (ζ = 0.707)</button>
-    <button data-p="buck">Switch-mode LC filter</button>
+    <button data-p="buck">Inrush ringing (series R-L-C)</button>
     <button data-p="reset">Reset</button>
   </div>
 
@@ -126,22 +126,22 @@
     </tbody>
   </table>
 
-  <h2>Worked example — buck converter output filter ringing</h2>
+  <h2>Worked example — series RLC current-sense damping</h2>
   <div class="worked">
     <h3>The setup</h3>
-    <p>Buck converter output LC: L = 22 µH, C = 100 µF. Output is feeding a 1 Ω load (typical for a 12 V → 3.3 V 3 A buck). The switch closes at t = 0; what does V_out look like before the steady-state PWM kicks in?</p>
+    <p>Inrush limiter for a 24 V supply: a series R-L-C path between rail and bulk cap. R = 1 Ω, L = 22 µH, C = 100 µF. When the supply hot-plugs at t = 0, the bulk cap charges through L; the resistor damps the LC ring. What's the inrush current waveform?</p>
 
-    <h3>Compute ζ</h3>
+    <h3>Compute ζ for series RLC</h3>
     <span class="eq">ω_n = 1/√(LC) = 1/√(22·10⁻⁶ · 100·10⁻⁶) = 1/√(2.2·10⁻⁹) = <b>21,320 rad/s</b> ≈ 3.39 kHz</span>
-    <span class="eq">ζ = R/2 · √(C/L) = 0.5 · √(100/22) = 0.5 · 2.13 = <b>1.07</b>  <span class="annot">(just over critical)</span></span>
-    <span class="eq">Regime: slightly overdamped. No ringing, but slow response (~ 2 ms to settle).</span>
+    <span class="eq">ζ_series = R/2 · √(C/L) = 0.5 · √(100/22) = 0.5 · 2.13 = <b>1.07</b>  <span class="annot">(just over critical)</span></span>
+    <span class="eq">Regime: slightly overdamped — no ringing on V_C; current rise ~ 2 ms to peak then decay.</span>
 
-    <h3>What if R drops to 0.1 Ω (heavier load)?</h3>
-    <span class="eq">ζ = 0.05 · 2.13 = <b>0.107</b>  <span class="annot">(underdamped)</span></span>
+    <h3>What if R drops to 0.1 Ω (less inrush resistor)?</h3>
+    <span class="eq">ζ = 0.05 · 2.13 = <b>0.107</b>  <span class="annot">(severely underdamped)</span></span>
     <span class="eq">ω_d = 21,320 · √(1 − 0.0114) = 21,200 rad/s = 3.37 kHz</span>
-    <span class="eq">%OS = exp(−π · 0.107 / √(1 − 0.0114))·100 = <b>71 %!</b>  <span class="annot">(V_out overshoots to 1.71 × V_step)</span></span>
-    <span class="eq">t_settle ≈ 4 / (0.107 · 21,320) = <b>1.76 ms</b> — bad for a fast load step</span>
-    <p>The control loop bandwidth must be set to damp this resonance. In practice, you add a feedforward zero or a Type 3 compensator that adds phase margin near ω_n. This is why control-loop design for buck converters always starts with computing the output LC's ω_n and damping.</p>
+    <span class="eq">%OS = exp(−π · 0.107 / √(1 − 0.0114))·100 = <b>71 %</b>  <span class="annot">(V_C overshoots to 1.71 × V_step)</span></span>
+    <span class="eq">t_settle ≈ 4 / (0.107 · 21,320) = <b>1.76 ms</b> — long current oscillations stress the supply</span>
+    <p>For a real <b>buck converter output</b> (L in series, C and R_load in parallel) the damping flips: <span class="eq">ζ_parallel = 1/(2R) · √(L/C)</span> — heavier load (lower R) actually <em>increases</em> damping. With L=22 µH, C=100 µF, R_load=1 Ω that gives ζ = 0.235 (underdamped, ~47 % overshoot); dropping R to 0.1 Ω gives ζ = 2.35 (overdamped, no overshoot). See the buck-specific note in the cheat-sheet — the series formula above only applies when R, L, C are all in series.</p>
   </div>
 
   <h2>Worked example — picking ζ for a positioning servo</h2>
@@ -175,7 +175,7 @@
   <div class="crosslink">
     <h4>Real uses</h4>
     <ul style="margin:4px 0;padding-left:18px;color:var(--fg-dim);font-size:12px">
-      <li><b style="color:var(--fg)">Switch-mode output filters</b> — every buck, boost, buck-boost output LC has a step response; control loop must damp it.</li>
+      <li><b style="color:var(--fg)">Switch-mode output filters</b> — every buck, boost, buck-boost output LC has a step response; control loop must damp it. Note: a buck output is L in series with (C ∥ R_load), so use the <em>parallel</em> formula ζ = 1/(2R)·√(L/C) — heavier load is more damped, opposite of the series formula on this page.</li>
       <li><b style="color:var(--fg)">PLL / Phase-locked loops</b> — 2nd-order loop filter with damping ratio ζ chosen at 0.7 for clean phase locking.</li>
       <li><b style="color:var(--fg)">Crossover networks (audio)</b> — 2nd-order Butterworth/Linkwitz-Riley use ζ to set the −3 dB shape.</li>
       <li><b style="color:var(--fg)">Closed-loop op-amp transient</b> — when an op-amp is compensated for stability, it shows a 2nd-order step response with overshoot dictated by phase margin (which maps to ζ).</li>
