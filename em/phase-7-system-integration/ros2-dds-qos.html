@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ROS 2 DDS QoS Profiles — visual</title>
+<style>:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,Segoe UI,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+h3{font:600 13px/1.3 ui-monospace,Menlo,monospace;color:var(--accent2);margin:14px 0 6px;text-transform:uppercase;letter-spacing:.5px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+table{border-collapse:collapse;width:100%;font-size:12.5px;margin:10px 0}
+th,td{padding:6px 9px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+td code{background:var(--bg-elev2);padding:1px 4px;border-radius:3px;color:var(--accent2);font-size:11.5px}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}.panel.note{border-left:3px solid var(--accent)}
+.picker{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:14px 0}
+.picker h3{margin-top:0}
+.picker .scenarios{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin:10px 0}
+.picker .scenarios button{background:var(--bg-elev2);border:1px solid var(--line);color:var(--fg);padding:10px;border-radius:4px;font:12px ui-monospace,monospace;cursor:pointer;text-align:left}
+.picker .scenarios button:hover{border-color:var(--accent)}
+.picker .scenarios button.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.profile-out{background:var(--bg-elev2);border:1px solid var(--accent3);border-radius:6px;padding:12px;margin-top:12px;font:12px ui-monospace,monospace;white-space:pre-wrap;color:var(--accent3)}
+.profile-out .key{color:var(--accent)}
+.profile-out .val{color:var(--accent2)}
+.profile-out .com{color:var(--fg-dim)}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+.field-card{background:var(--bg-elev);border:1px solid var(--line);border-radius:6px;padding:12px}
+.field-card h4{margin:0 0 8px;color:var(--accent2);font:600 13px ui-monospace,monospace}
+.field-card .opt{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--line);font:12px ui-monospace,monospace}
+.field-card .opt:last-child{border-bottom:none}
+.field-card .opt .opt-name{color:var(--accent3)}
+.field-card .opt .opt-desc{color:var(--fg-dim);text-align:right;font-size:11px}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+footer a{color:var(--accent)}
+@media (max-width:700px){.field-grid{grid-template-columns:1fr}}
+</style></head><body><main>
+
+<h1>ROS 2 DDS QoS Profiles — getting the right reliability / latency tradeoff</h1>
+<p class="lede">ROS 2 doesn't have built-in queues or fan-out logic — it delegates all of that to DDS (Data Distribution Service), the OMG real-time pub/sub standard. Every topic in ROS 2 has a <b>QoS profile</b> attached: a bundle of policies controlling how messages are delivered, stored, and dropped. Get them wrong and your publisher and subscriber will silently fail to connect; get them right and you can tune throughput, latency, and durability per topic. This visual breaks down the 7 important fields, then offers a use-case-to-profile picker.</p>
+
+<div class="anchors">
+<span class="anchor"><b>Standard</b>: OMG DDS-RTPS over UDP</span>
+<span class="anchor"><b>Default RMW</b>: rmw_fastrtps (Foxy+), rmw_cyclonedds (newer)</span>
+<span class="anchor"><b>Gotcha</b>: incompatible QoS → silent no-connection</span>
+<span class="anchor"><b>Compatibility rule</b>: subscriber requests ≤ publisher offers</span>
+</div>
+
+<h2>The 7 QoS fields you actually configure</h2>
+<div class="field-grid">
+
+<div class="field-card">
+<h4>1. Reliability</h4>
+<div class="opt"><span class="opt-name">RELIABLE</span><span class="opt-desc">retransmit losses; TCP-like</span></div>
+<div class="opt"><span class="opt-name">BEST_EFFORT</span><span class="opt-desc">fire and forget; UDP-like</span></div>
+<p style="font-size:11.5px;color:var(--fg-dim);margin:8px 0 0">Sensor streams = BEST_EFFORT (lossy is fine, latest matters). Commands, state machines = RELIABLE.</p>
+</div>
+
+<div class="field-card">
+<h4>2. Durability</h4>
+<div class="opt"><span class="opt-name">VOLATILE</span><span class="opt-desc">no history for late joiners</span></div>
+<div class="opt"><span class="opt-name">TRANSIENT_LOCAL</span><span class="opt-desc">publisher keeps last N for late subs</span></div>
+<p style="font-size:11.5px;color:var(--fg-dim);margin:8px 0 0">Use TRANSIENT_LOCAL for "static" topics — TF static, robot description, parameters — so subscribers that start later still get the last value.</p>
+</div>
+
+<div class="field-card">
+<h4>3. History</h4>
+<div class="opt"><span class="opt-name">KEEP_LAST (depth N)</span><span class="opt-desc">ring buffer of size N</span></div>
+<div class="opt"><span class="opt-name">KEEP_ALL</span><span class="opt-desc">unbounded until resource_limits</span></div>
+<p style="font-size:11.5px;color:var(--fg-dim);margin:8px 0 0">Default is KEEP_LAST depth 10. Set depth=1 for "latest only" (e.g., latest velocity command). Set higher for command queues.</p>
+</div>
+
+<div class="field-card">
+<h4>4. Deadline</h4>
+<div class="opt"><span class="opt-name">duration</span><span class="opt-desc">max gap between publishes</span></div>
+<p style="font-size:11.5px;color:var(--fg-dim);margin:8px 0 0">Publisher promises to send at least this often. If gap exceeded, both pub and sub get a "deadline missed" callback. Tells you a sensor died.</p>
+</div>
+
+<div class="field-card">
+<h4>5. Lifespan</h4>
+<div class="opt"><span class="opt-name">duration</span><span class="opt-desc">max message age</span></div>
+<p style="font-size:11.5px;color:var(--fg-dim);margin:8px 0 0">Messages older than this are dropped before being delivered. Stops stale commands from being applied after a comm hiccup.</p>
+</div>
+
+<div class="field-card">
+<h4>6. Liveliness</h4>
+<div class="opt"><span class="opt-name">AUTOMATIC</span><span class="opt-desc">heartbeats sent by DDS automatically</span></div>
+<div class="opt"><span class="opt-name">MANUAL_BY_TOPIC</span><span class="opt-desc">publisher must call assert_liveliness()</span></div>
+<p style="font-size:11.5px;color:var(--fg-dim);margin:8px 0 0">Combined with lease_duration: if no heartbeat for that long, subscribers get "publisher lost" callback. Watchdog mechanism.</p>
+</div>
+
+</div>
+
+<h2>The compatibility rule (a.k.a. why your nodes don't talk)</h2>
+<div class="panel warn">
+<p>For each field, the <b>subscriber's requested value must be "less demanding"</b> than the publisher's offered value, or DDS will refuse to connect them. Common cases:</p>
+<table>
+<tr><th>Publisher offers</th><th>Subscriber requests</th><th>Match?</th></tr>
+<tr><td>RELIABLE</td><td>RELIABLE or BEST_EFFORT</td><td>YES (publisher meets both)</td></tr>
+<tr><td>BEST_EFFORT</td><td>RELIABLE</td><td><span style="color:var(--warn)"><b>NO — sub wants stronger guarantee than pub offers</b></span></td></tr>
+<tr><td>TRANSIENT_LOCAL</td><td>VOLATILE or TRANSIENT_LOCAL</td><td>YES</td></tr>
+<tr><td>VOLATILE</td><td>TRANSIENT_LOCAL</td><td><span style="color:var(--warn)"><b>NO</b></span></td></tr>
+<tr><td>Deadline 10ms</td><td>Deadline 100ms</td><td>YES (pub more aggressive than sub asks)</td></tr>
+<tr><td>Deadline 100ms</td><td>Deadline 10ms</td><td><span style="color:var(--warn)"><b>NO — sub demands faster than pub promises</b></span></td></tr>
+</table>
+<p>The painful part: <b>this fails silently</b>. Your <code>ros2 topic list</code> shows the topic, but <code>ros2 topic echo</code> outputs nothing. Diagnose with <code>ros2 topic info /topicname --verbose</code> — it lists each pub/sub with its QoS, and the lines with mismatches.</p>
+</div>
+
+<h2>QoS profile picker — by use case</h2>
+<div class="picker">
+<h3>Pick a scenario, see the profile you should use</h3>
+<div class="scenarios" id="scenarios"></div>
+<div class="profile-out" id="profileOut">// click a scenario above</div>
+</div>
+
+<h2>The 4 built-in ROS 2 profiles</h2>
+<table>
+<tr><th>Profile</th><th>Reliability</th><th>Durability</th><th>History</th><th>Typical use</th></tr>
+<tr><td><code>rclcpp::SystemDefaultsQoS</code></td><td>RELIABLE</td><td>VOLATILE</td><td>KEEP_LAST 10</td><td>General commands, low rate</td></tr>
+<tr><td><code>rclcpp::SensorDataQoS</code></td><td>BEST_EFFORT</td><td>VOLATILE</td><td>KEEP_LAST 5</td><td>High-rate sensors (camera, IMU, LiDAR)</td></tr>
+<tr><td><code>rclcpp::ParametersQoS</code></td><td>RELIABLE</td><td>VOLATILE</td><td>KEEP_LAST 1000</td><td>Parameter updates (must not lose)</td></tr>
+<tr><td><code>rclcpp::ServicesQoS</code></td><td>RELIABLE</td><td>VOLATILE</td><td>KEEP_LAST 10</td><td>Service request/response</td></tr>
+</table>
+
+<h2>How to set QoS in code</h2>
+<div class="panel note">
+<h3>C++ (rclcpp)</h3>
+<pre style="background:var(--bg-elev2);padding:10px;border-radius:4px;font:11.5px ui-monospace,monospace;color:var(--fg);overflow-x:auto;margin:6px 0">auto qos = rclcpp::QoS(rclcpp::KeepLast(5))
+  .best_effort()
+  .durability_volatile();
+
+pub_ = create_publisher&lt;sensor_msgs::msg::Image&gt;("/camera/image", qos);
+sub_ = create_subscription&lt;sensor_msgs::msg::Image&gt;("/camera/image", qos, callback);</pre>
+
+<h3>Python (rclpy)</h3>
+<pre style="background:var(--bg-elev2);padding:10px;border-radius:4px;font:11.5px ui-monospace,monospace;color:var(--fg);overflow-x:auto;margin:6px 0">from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPolicy
+
+qos = QoSProfile(
+    reliability=ReliabilityPolicy.BEST_EFFORT,
+    durability=DurabilityPolicy.VOLATILE,
+    history=HistoryPolicy.KEEP_LAST,
+    depth=5)
+
+self.pub = self.create_publisher(Image, '/camera/image', qos)</pre>
+
+<h3>Launch file or yaml override</h3>
+<pre style="background:var(--bg-elev2);padding:10px;border-radius:4px;font:11.5px ui-monospace,monospace;color:var(--fg);overflow-x:auto;margin:6px 0">/camera_node:
+  ros__parameters:
+    qos_overrides:
+      /camera/image:
+        publisher:
+          reliability: best_effort
+          history: keep_last
+          depth: 5</pre>
+</div>
+
+<h2>The hidden gotchas</h2>
+<ul class="notice">
+<li><b>rosbag2 default uses RELIABLE</b> — but most sensor topics are BEST_EFFORT. Recording from a sensor topic with default bag QoS fails silently. Pass <code>--qos-profile-overrides-path qos.yaml</code> or use <code>--all</code> + <code>--include-hidden-topics</code> with override.</li>
+<li><b>RViz uses RELIABLE by default for most displays</b> — if your camera publishes BEST_EFFORT, RViz won't render. The display has a Reliability dropdown — switch to "Best Effort."</li>
+<li><b>Default depth 10 too small for high-rate sensors</b> — 200 Hz IMU into a 50 Hz consumer with depth 10 → 80 % of messages dropped per second. Either lower publisher rate or raise consumer's depth.</li>
+<li><b>TRANSIENT_LOCAL is per-publisher, not shared</b> — restarting a publisher loses its history. The "latched topics" pattern from ROS 1 is approximated by TRANSIENT_LOCAL but with caveats.</li>
+<li><b>Different RMWs interoperate but have quirks</b> — Fast-DDS ↔ Cyclone DDS works but with subtle differences in discovery timing and multi-NIC behavior. Force one RMW across your whole system with <code>RMW_IMPLEMENTATION=rmw_cyclonedds_cpp</code> in <code>~/.bashrc</code>.</li>
+<li><b>Discovery storms in large systems</b> — every node broadcasts discovery packets. With >50 nodes on shared multicast, this saturates the network. Use Discovery Server (<code>fastdds discovery</code>) or Cyclone DDS's <code>NetworkInterface</code> config.</li>
+</ul>
+
+<h2>Debugging QoS mismatches in the wild</h2>
+<div class="panel tip">
+<ol style="padding-left:18px;color:var(--fg)">
+<li><code>ros2 topic info /topicname --verbose</code> — lists each pub/sub with full QoS dump. Look for fields that differ.</li>
+<li><code>ros2 doctor --report</code> — flags some QoS mismatches automatically.</li>
+<li><code>RCUTILS_LOGGING_SEVERITY=DEBUG ros2 run ...</code> — DDS layer logs "incompatible QoS" with field name and offered/requested values.</li>
+<li>Check <b>logs from BOTH sides</b> — sometimes only one side prints the warning.</li>
+<li>If using a Discovery Server, verify it sees both ends with <code>fastdds discovery -i 0 -l 0.0.0.0</code>.</li>
+</ol>
+</div>
+
+<h2>Cheat sheet — when in doubt</h2>
+<table>
+<tr><th>Topic type</th><th>Profile</th></tr>
+<tr><td>Camera, LiDAR, depth image (raw, &gt; 10 Hz)</td><td>SensorDataQoS (BEST_EFFORT, depth 5)</td></tr>
+<tr><td>IMU, joint state, odometry (continuous, &gt; 50 Hz)</td><td>SensorDataQoS</td></tr>
+<tr><td>cmd_vel, teleop, action goal</td><td>SystemDefaults (RELIABLE, depth 10)</td></tr>
+<tr><td>/tf_static, /robot_description, /map</td><td>RELIABLE + TRANSIENT_LOCAL, depth 1</td></tr>
+<tr><td>/tf (dynamic transforms, 100+ Hz)</td><td>RELIABLE, KEEP_LAST 100 (tf2's own choice)</td></tr>
+<tr><td>Heartbeat / watchdog topics</td><td>BEST_EFFORT + Deadline + Liveliness</td></tr>
+<tr><td>Diagnostics, logs</td><td>SystemDefaults</td></tr>
+</table>
+
+<footer>Cross-links: <a href="../../../extras/ros2-quickref.html">ROS 2 Quick-ref</a> · <a href="bus-selection.html">Bus selection</a> · <a href="data-flow-latency.html">Data-flow latency</a> · <a href="distributed-vs-centralized.html">Distributed vs centralized</a></footer>
+
+</main>
+<script>
+const SCENARIOS = [
+  {id:'lidar', label:'LiDAR scan @ 10 Hz', desc:'High-volume sensor; lossy ok',
+    profile: {reliability:'BEST_EFFORT', durability:'VOLATILE', history:'KEEP_LAST', depth:5, deadline:'150ms', lifespan:'500ms'},
+    comment:'// SensorDataQoS variant\n// Drop old scans; only latest matters'},
+  {id:'imu', label:'IMU @ 200 Hz', desc:'High-rate state estimator input',
+    profile: {reliability:'BEST_EFFORT', durability:'VOLATILE', history:'KEEP_LAST', depth:10, deadline:'10ms'},
+    comment:'// Depth bumped to absorb consumer jitter\n// Deadline catches sensor death'},
+  {id:'cmd', label:'/cmd_vel teleop', desc:'Don\'t lose commands',
+    profile: {reliability:'RELIABLE', durability:'VOLATILE', history:'KEEP_LAST', depth:10, lifespan:'200ms'},
+    comment:'// SystemDefaultsQoS + lifespan\n// Lifespan stops stale cmd after comm hiccup'},
+  {id:'tf_static', label:'/tf_static', desc:'Robot description, fixed frames',
+    profile: {reliability:'RELIABLE', durability:'TRANSIENT_LOCAL', history:'KEEP_LAST', depth:1},
+    comment:'// Late-joining subscribers get the value\n// Critical for rviz coming up after the pub'},
+  {id:'tf_dyn', label:'/tf dynamic', desc:'Coordinate transforms at high rate',
+    profile: {reliability:'RELIABLE', durability:'VOLATILE', history:'KEEP_LAST', depth:100},
+    comment:'// tf2 default; large depth holds short history\n// Reliable because tf math drops on missing transforms'},
+  {id:'map', label:'/map (occupancy grid)', desc:'Big infrequent message',
+    profile: {reliability:'RELIABLE', durability:'TRANSIENT_LOCAL', history:'KEEP_LAST', depth:1},
+    comment:'// Late subscribers must get current map\n// Reliable: a missing map breaks navigation'},
+  {id:'image', label:'/camera/image_raw', desc:'High-bandwidth image stream',
+    profile: {reliability:'BEST_EFFORT', durability:'VOLATILE', history:'KEEP_LAST', depth:1},
+    comment:'// Even depth 1 — large messages eat RAM\n// Drop frames if consumer behind'},
+  {id:'goal', label:'Action goal request', desc:'Command, fire once',
+    profile: {reliability:'RELIABLE', durability:'VOLATILE', history:'KEEP_LAST', depth:1},
+    comment:'// One-shot command, must arrive\n// Server ack via response topic'},
+  {id:'diag', label:'/diagnostics @ 1 Hz', desc:'Low-rate health',
+    profile: {reliability:'RELIABLE', durability:'VOLATILE', history:'KEEP_LAST', depth:10, deadline:'2s', liveliness:'AUTOMATIC'},
+    comment:'// Deadline catches stuck publisher\n// Liveliness lets monitors detect node death'},
+  {id:'param', label:'Parameter event', desc:'Internal ROS plumbing',
+    profile: {reliability:'RELIABLE', durability:'VOLATILE', history:'KEEP_LAST', depth:1000},
+    comment:'// ParametersQoS\n// Cannot lose param updates — big buffer'},
+];
+
+const scenariosEl = document.getElementById('scenarios');
+const outEl = document.getElementById('profileOut');
+
+scenariosEl.innerHTML = SCENARIOS.map(s =>
+  `<button onclick="pick('${s.id}')" id="btn_${s.id}">${s.label}<br><span style="font-size:10.5px;color:var(--fg-dim)">${s.desc}</span></button>`
+).join('');
+
+function pick(id){
+  const s = SCENARIOS.find(x => x.id === id);
+  if(!s) return;
+  for(const b of document.querySelectorAll('.scenarios button')){
+    b.classList.remove('active');
+  }
+  document.getElementById('btn_'+id).classList.add('active');
+  const p = s.profile;
+  let html = `${escape(s.comment)}\n\n`;
+  html += `auto qos = rclcpp::QoS(rclcpp::KeepLast(${p.depth || 10}))\n`;
+  html += `  .${p.reliability === 'RELIABLE' ? 'reliable' : 'best_effort'}()\n`;
+  html += `  .${p.durability === 'TRANSIENT_LOCAL' ? 'transient_local' : 'durability_volatile'}()`;
+  if(p.deadline) html += `\n  .deadline(<span class="val">${p.deadline}</span>)`;
+  if(p.lifespan) html += `\n  .lifespan(<span class="val">${p.lifespan}</span>)`;
+  if(p.liveliness) html += `\n  .liveliness(<span class="val">${p.liveliness}</span>)`;
+  html += `;`;
+  outEl.innerHTML = highlight(html);
+}
+
+function escape(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function highlight(s){
+  return s
+    .replace(/(\/\/[^\n]*)/g, '<span class="com">$1</span>')
+    .replace(/(\b(?:auto|rclcpp|KeepLast|QoS|reliable|best_effort|transient_local|durability_volatile|deadline|lifespan|liveliness)\b)/g, '<span class="key">$1</span>');
+}
+
+window.pick = pick;
+pick('imu'); // default selection
+</script>
+</body></html>
