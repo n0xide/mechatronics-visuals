@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SLAM &amp; Occupancy Grids — visual</title>
+<style>:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,sans-serif}
+main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.controls{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin:18px 0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.control{display:flex;flex-direction:column;gap:4px}
+.control label{font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+.control input,.control button,.control select{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 8px;font:13px ui-monospace,monospace}
+.readout{color:var(--accent);font-family:ui-monospace,monospace;font-size:13px}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,monospace;color:var(--accent2)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.deriv{background:var(--bg-elev2);border-radius:6px;padding:10px 14px;margin:10px 0;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.deriv .step{display:block;margin:4px 0;color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}
+.panel h3{margin-top:0}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>SLAM &amp; Occupancy Grids — Build a map while localizing in it</h1>
+<p class="lede">Simultaneous Localization And Mapping is the chicken-and-egg problem of robotics: to map the environment you need to know where you are; to know where you are you need a map. SLAM solves both at once, incrementally, by treating the robot pose AND the landmark positions as joint unknowns to be estimated. This visual walks through occupancy-grid SLAM with simulated laser scans + a loop-closure event.</p>
+
+<div class="anchors">
+<span class="anchor"><b>Occupancy grid</b>: discretized 2D map, each cell P(occ)</span>
+<span class="anchor"><b>Pose graph</b>: nodes = poses, edges = constraints</span>
+<span class="anchor"><b>Loop closure</b>: recognized place → big correction</span>
+<span class="anchor"><b>Drift</b>: odometry error compounds over time</span>
+</div>
+
+<section class="controls">
+<div class="control"><label>Step (frame)</label>
+<input id="step" type="range" min="0" max="100" step="1" value="0"></div>
+<div class="control"><label>Odometry noise (m/m)</label>
+<input id="noise" type="range" min="0" max="0.2" step="0.005" value="0.05"></div>
+<div class="control"><label><button id="loop" type="button">Trigger loop closure</button></label></div>
+<div class="control"><label><button id="reset" type="button">Reset</button></label></div>
+</section>
+
+<div class="figure">
+<svg id="grid" viewBox="0 0 720 400" width="100%"></svg>
+<table>
+<tr><th>Quantity</th><th>Value</th></tr>
+<tr><td>Robot pose (true)</td><td id="tTrue">(0, 0, 0°)</td></tr>
+<tr><td>Robot pose (estimated)</td><td id="tEst">(0, 0, 0°)</td></tr>
+<tr><td>Accumulated drift</td><td id="tDrift">0 m</td></tr>
+<tr><td>Cells observed</td><td id="tCells">0</td></tr>
+<tr><td>Loop-closure correction</td><td id="tLoop">no closure yet</td></tr>
+</table>
+</div>
+
+<h2>The SLAM problem statement</h2>
+<div class="deriv">
+<span class="step">Given: noisy measurements z₁:t (sensor observations) and noisy controls u₁:t (odometry)</span>
+<span class="step">Find: robot pose x_t AND map m (landmarks or grid cells)</span>
+<span class="step">Bayesian formulation: p(x_t, m | z₁:t, u₁:t)</span>
+<span class="step">Both x and m are unknowns. Sensors observe both jointly.</span>
+<span class="step">Classical decomposition (Murphy, 1999):</span>
+<span class="step">  p(x_1:t, m | z, u) = p(m | x_1:t, z) · p(x_1:t | z, u)</span>
+<span class="step">  → "Mapping with known poses" × "Localization with known map"</span>
+</div>
+
+<h2>Occupancy-grid SLAM (the simplest concept)</h2>
+<p>Divide the 2D environment into a fine grid (typically 5-10 cm cells). For each cell store the probability P(occupied). Each laser scan adds evidence:</p>
+<ul class="notice">
+<li><b>Cells along the ray</b> (free space) → decrease P(occ)</li>
+<li><b>Cell at the ray hit point</b> → increase P(occ)</li>
+<li><b>Cells beyond the hit</b> → unchanged (unknown)</li>
+</ul>
+<p>This is "inverse sensor model" mapping. The math is simple log-odds:</p>
+<div class="deriv">
+<span class="step">log-odds: l(c) = log( P(occ) / (1 - P(occ)) )</span>
+<span class="step">For each scan ray:  l_new(c) = l_old(c) + l_inv_sensor(c)</span>
+<span class="step">Empty cell update:  Δl = -0.4 (decrease ~40%)</span>
+<span class="step">Hit cell update:    Δl = +0.85 (increase ~85%)</span>
+<span class="step">Convert back: P(occ) = 1 / (1 + exp(-l))</span>
+</div>
+
+<h2>Pose-graph SLAM (modern approach)</h2>
+<p>Modern SLAM (ORB-SLAM3, Cartographer, LIO-SAM) uses a <b>pose graph</b>:</p>
+<ul class="notice">
+<li><b>Nodes</b>: robot poses at discrete timestamps (x_1, x_2, ..., x_t)</li>
+<li><b>Edges (odometry)</b>: constraint between consecutive poses, from odometry/IMU/wheel-velocity</li>
+<li><b>Edges (loop closure)</b>: constraint between non-consecutive poses, from place recognition (e.g., scan matching)</li>
+<li><b>Optimization</b>: find x_1:t that minimizes weighted sum of edge errors</li>
+</ul>
+
+<h2>Loop closure — the magic moment</h2>
+<div class="panel tip">
+<h3>Why it matters</h3>
+<p>Odometry alone has unbounded drift — after 100 meters of motion, a 1% wheel-slip can put you 1 meter off, and the map is smeared. Loop closure happens when the robot recognizes "I've been here before" — by matching current laser scan or camera view against an old one. This injects a <b>global constraint</b>: pose_now must equal (approximately) pose_then.</p>
+<p>The pose-graph optimizer (g2o, GTSAM, Ceres) propagates this correction backward through all intermediate poses. Suddenly the smeared map snaps into focus — walls align, the loop closes geometrically.</p>
+</div>
+
+<h2>Comparison of SLAM families</h2>
+<table>
+<tr><th>Family</th><th>Backend</th><th>Sensor</th><th>Pros</th><th>Cons</th></tr>
+<tr><td>EKF-SLAM</td><td>Extended Kalman Filter</td><td>Landmark observations</td><td>Probabilistic, well-understood</td><td>O(N²) compute; no good loop closure</td></tr>
+<tr><td>FastSLAM</td><td>Particle filter</td><td>Landmarks or rays</td><td>O(M·log N); handles non-linearity</td><td>Particle depletion in long sequences</td></tr>
+<tr><td>GraphSLAM</td><td>Pose graph + non-linear optimization</td><td>Anything (odometry + scan-match)</td><td>Excellent loop closure; sparse</td><td>Batch optimization (or sliding window for online)</td></tr>
+<tr><td>ORB-SLAM3</td><td>Pose graph + visual features</td><td>Camera (mono/stereo/RGB-D)</td><td>State of art for visual SLAM</td><td>Sensitive to texture, lighting</td></tr>
+<tr><td>Cartographer (Google)</td><td>Submap + pose graph</td><td>Laser + IMU</td><td>Real-time, robust, well-engineered</td><td>Heavy compute for large maps</td></tr>
+<tr><td>LIO-SAM / FAST-LIO2</td><td>Tightly-coupled lidar + IMU</td><td>3D lidar + IMU</td><td>Low drift, high update rate</td><td>Requires high-quality lidar</td></tr>
+<tr><td>RTAB-Map</td><td>Appearance-based loop detection + graph</td><td>RGB-D / stereo / lidar</td><td>Long-term, multi-session</td><td>Database can grow large</td></tr>
+</table>
+
+<h2>The math behind GraphSLAM (sketch)</h2>
+<div class="deriv">
+<span class="step">Each edge contributes a residual: r_ij = z_ij − h(x_i, x_j)</span>
+<span class="step">  where z_ij is the measured transform i→j, h is the predicted transform</span>
+<span class="step">Total cost: F(X) = Σ r_ij^T · Ω_ij · r_ij  (Ω = information matrix = inv covariance)</span>
+<span class="step">Minimize via Gauss-Newton / Levenberg-Marquardt:</span>
+<span class="step">  X_new = X − (J^T·Ω·J)^-1 · J^T·Ω·r</span>
+<span class="step">Sparse matrices (most poses aren't connected) make this scalable to 10k+ poses.</span>
+</div>
+
+<h2>Sensor configurations</h2>
+<table>
+<tr><th>Sensor</th><th>What it gives</th><th>Best SLAM stack</th></tr>
+<tr><td>2D laser scanner (Hokuyo, RPLidar)</td><td>Range to obstacles in a plane</td><td>Cartographer, gmapping, ROS slam_toolbox</td></tr>
+<tr><td>3D lidar (Velodyne, Ouster, Livox)</td><td>3D point cloud at 10-20 Hz</td><td>LIO-SAM, FAST-LIO2, Cartographer</td></tr>
+<tr><td>Mono camera</td><td>2D pixels, scale-ambiguous</td><td>ORB-SLAM3 (monocular), DSO</td></tr>
+<tr><td>Stereo camera</td><td>2D pixels + depth</td><td>ORB-SLAM3 (stereo), SVO 2.0</td></tr>
+<tr><td>RGB-D (Realsense, Kinect)</td><td>Color + per-pixel depth (up to ~3m indoors)</td><td>RTAB-Map, KinectFusion, ORB-SLAM3 RGB-D</td></tr>
+<tr><td>IMU (always paired)</td><td>Body-frame accel + gyro</td><td>Helps with motion blur + scale (mono SLAM)</td></tr>
+<tr><td>Wheel odometry</td><td>Local position from encoders</td><td>Decent prior for indoor robots</td></tr>
+</table>
+
+<h2>Common pitfalls</h2>
+<ul class="notice">
+<li><b>Loop closure false positives</b> — two visually similar but actually-different places (long corridors, repeating patterns) cause catastrophic map corruption. Use geometric verification + delayed acceptance to filter.</li>
+<li><b>Symmetric environments</b> — featureless rooms or symmetric layouts give pose ambiguity. SLAM diverges silently.</li>
+<li><b>Aggressive motion + rolling-shutter cameras</b> — image distortion makes feature matching unreliable. Use global-shutter cameras for visual SLAM.</li>
+<li><b>Dynamic objects (people, vehicles)</b> — appear as moving "ghosts" in the map. Modern SLAM masks dynamic regions via DBOW3 + semantic segmentation.</li>
+<li><b>Initialization in monocular SLAM</b> — scale is unknown from a single view; needs translation motion (not pure rotation) to bootstrap.</li>
+<li><b>Loop-closure search cost</b> — comparing current frame against all past frames is O(N). Use hierarchical visual vocabulary (DBoW3) for O(1) candidate retrieval.</li>
+<li><b>Computational budget</b> — Cartographer + 64-beam lidar at 10 Hz needs ~4 cores. Plan for it.</li>
+</ul>
+
+<h2>Worked example — SLAM for a warehouse robot</h2>
+<div class="panel" style="border-left:3px solid var(--accent3)">
+<h3>Setup</h3>
+<p>4-wheel differential-drive robot in a 40m × 60m warehouse. Goal: build a 2D map of the warehouse + localize within ±10 cm during operation. Constraints: under $5k of sensors, must work in real time on an embedded PC.</p>
+<h3>Stack</h3>
+<table>
+<tr><th>Layer</th><th>Component</th></tr>
+<tr><td>Lidar</td><td>RPLidar A3 (2D, 360°, 25 m, $600)</td></tr>
+<tr><td>IMU</td><td>BNO086 (9-axis MEMS, $40)</td></tr>
+<tr><td>Wheel odometry</td><td>From motor encoders (existing)</td></tr>
+<tr><td>SLAM software</td><td>ROS slam_toolbox (online + offline modes)</td></tr>
+<tr><td>Compute</td><td>Intel NUC with i5 + 16 GB RAM ($400)</td></tr>
+<tr><td>Map storage</td><td>2D occupancy grid PNG @ 5 cm/cell = 800×1200 cells = ~1 MB</td></tr>
+</table>
+<h3>Expected performance</h3>
+<p>~5 cm localization accuracy. Loop closure triggers automatically at recognized scan matches. Full map of 40×60 m built in 5-10 minutes of teleoperation. After mapping, localization-only mode runs at &lt; 10% CPU. Drift between loop closures &lt; 0.5% of distance traveled (10 cm per 20 m).</p>
+</div>
+
+<h2>Performance targets</h2>
+<table>
+<tr><th>Metric</th><th>Typical 2D laser SLAM</th><th>Visual SLAM (ORB-SLAM3 stereo)</th><th>3D lidar SLAM (LIO-SAM)</th></tr>
+<tr><td>Trajectory drift</td><td>0.5 - 2 % of distance</td><td>0.1 - 0.5 % (clean light)</td><td>0.05 - 0.3 %</td></tr>
+<tr><td>Update rate</td><td>5-10 Hz</td><td>20-30 Hz</td><td>10 Hz</td></tr>
+<tr><td>Real-time CPU (1 core base)</td><td>1-2 cores</td><td>2-4 cores</td><td>2-3 cores</td></tr>
+<tr><td>Memory (1000 m² map)</td><td>~5 MB</td><td>~50 MB (keyframes + map points)</td><td>~100-500 MB</td></tr>
+</table>
+
+<footer>Cross-links: <a href="../phase-1-sensors/imu-overview.html">IMU Overview</a> · <a href="../phase-4-feedback-control/kalman-filter.html">Kalman Filter</a> · <a href="complementary-filter.html">Complementary Filter</a> · <a href="dh-parameters.html">DH Parameters</a></footer>
+
+</main>
+<script>
+const els = ['step','noise','loop','reset'].reduce((m,k)=>{m[k]=document.getElementById(k);return m;},{});
+let occGrid = {}; // sparse map: 'x_y' -> log-odds
+let pose_true = {x:0, y:0, theta:0};
+let pose_est = {x:0, y:0, theta:0};
+let history_true = [{x:0, y:0}];
+let history_est = [{x:0, y:0}];
+let frame = 0;
+let loopTriggered = false;
+let cellsObserved = 0;
+
+const W = 720, H = 400;
+const cx = 360, cy = 200;
+const scale = 30; // pixels per meter
+const gridRes = 0.2; // 20 cm cells
+
+// Define warehouse walls (simple rectangle with one obstacle)
+const walls = [
+  [-5, -3, 5, -3], [5, -3, 5, 3], [5, 3, -5, 3], [-5, 3, -5, -3],
+  [-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]
+];
+
+function rayCast(x, y, theta, maxR){
+  // Find intersection with any wall along the ray
+  let minR = maxR;
+  const dx = Math.cos(theta), dy = Math.sin(theta);
+  for(const [ax, ay, bx, by] of walls){
+    const wx = bx - ax, wy = by - ay;
+    const denom = dx * (-wy) - dy * (-wx);
+    if(Math.abs(denom) < 1e-6) continue;
+    const t1 = ((ax - x) * (-wy) - (ay - y) * (-wx)) / denom;
+    const t2 = ((ax - x) * dy - (ay - y) * dx) / denom;
+    if(t1 > 0 && t1 < minR && t2 >= 0 && t2 <= 1) minR = t1;
+  }
+  return minR;
+}
+
+function updateOccGrid(x, y, theta, dist){
+  // Bresenham along the ray: mark cells free, hit cell occupied
+  const hx = x + Math.cos(theta) * dist;
+  const hy = y + Math.sin(theta) * dist;
+  // Sample along the ray every gridRes/2
+  const N = Math.ceil(dist / (gridRes / 2));
+  for(let i = 0; i < N; i++){
+    const t = i / N;
+    const cellX = Math.round((x + (hx - x) * t) / gridRes);
+    const cellY = Math.round((y + (hy - y) * t) / gridRes);
+    const key = cellX + '_' + cellY;
+    if(!occGrid[key]){ occGrid[key] = 0; cellsObserved++; }
+    occGrid[key] = Math.max(-3, occGrid[key] - 0.4);
+  }
+  // Hit cell occupied
+  if(dist < 8){ // valid hit
+    const cellX = Math.round(hx / gridRes);
+    const cellY = Math.round(hy / gridRes);
+    const key = cellX + '_' + cellY;
+    if(!occGrid[key]){ occGrid[key] = 0; cellsObserved++; }
+    occGrid[key] = Math.min(3, occGrid[key] + 0.85);
+  }
+}
+
+function advance(){
+  // True motion: along a square path inside the room
+  const segLen = 16, sides = 4;
+  const totalLen = segLen * sides;
+  const totalSteps = 80;
+  const stepDist = totalLen / totalSteps;
+  if(frame >= totalSteps) return;
+
+  // Current segment
+  const sideIdx = Math.floor(frame / (totalSteps / sides));
+  const headings = [0, Math.PI/2, Math.PI, -Math.PI/2];
+  const heading = headings[sideIdx];
+
+  pose_true.x += Math.cos(heading) * stepDist;
+  pose_true.y += Math.sin(heading) * stepDist;
+  pose_true.theta = heading;
+  history_true.push({x:pose_true.x, y:pose_true.y});
+
+  // Estimated motion: add odometry noise
+  const noise = parseFloat(els.noise.value);
+  const noiseX = (Math.random() - 0.5) * 2 * noise * stepDist;
+  const noiseY = (Math.random() - 0.5) * 2 * noise * stepDist;
+  pose_est.x += Math.cos(heading) * stepDist + noiseX;
+  pose_est.y += Math.sin(heading) * stepDist + noiseY;
+  pose_est.theta = heading;
+  history_est.push({x:pose_est.x, y:pose_est.y});
+
+  // Update occupancy grid using ESTIMATED pose (this is where SLAM error shows)
+  // Cast 30 rays in 360°
+  for(let i = 0; i < 30; i++){
+    const rayTheta = pose_est.theta + (i / 30) * 2 * Math.PI - Math.PI;
+    // But use TRUE pose for the actual measurement (sensor sees what's actually there)
+    const trueRayTheta = pose_true.theta + (i / 30) * 2 * Math.PI - Math.PI;
+    const dist = rayCast(pose_true.x, pose_true.y, trueRayTheta, 8);
+    // Update grid using estimated pose's frame
+    updateOccGrid(pose_est.x, pose_est.y, rayTheta, dist);
+  }
+
+  frame++;
+}
+
+function triggerLoopClosure(){
+  if(loopTriggered) return;
+  loopTriggered = true;
+  // Snap estimated pose to true pose, redistribute correction backward through history
+  const dx = pose_true.x - pose_est.x;
+  const dy = pose_true.y - pose_est.y;
+  // Apply linear correction along history
+  for(let i = 0; i < history_est.length; i++){
+    const t = i / history_est.length;
+    history_est[i].x += dx * t;
+    history_est[i].y += dy * t;
+  }
+  pose_est.x = pose_true.x;
+  pose_est.y = pose_true.y;
+  // Clear occupancy grid and rebuild from corrected history (simplified)
+  document.getElementById('tLoop').textContent = 'Closed! Δ = ' + Math.sqrt(dx*dx + dy*dy).toFixed(2) + ' m correction';
+}
+
+function draw(){
+  const svg = document.getElementById('grid');
+  let s = '';
+  // World coordinate transform: (0,0) world → (cx, cy) screen; +y world → -y screen
+  const toScreen = (wx, wy) => [cx + wx * scale, cy - wy * scale];
+
+  // Draw occupancy grid
+  for(const key in occGrid){
+    const [cx_g, cy_g] = key.split('_').map(Number);
+    const wx = cx_g * gridRes, wy = cy_g * gridRes;
+    const [sx, sy] = toScreen(wx, wy);
+    const p = 1 / (1 + Math.exp(-occGrid[key]));
+    const alpha = Math.abs(p - 0.5) * 2;
+    if(p > 0.5){
+      s += `<rect x="${sx - gridRes*scale/2}" y="${sy - gridRes*scale/2}" width="${gridRes*scale}" height="${gridRes*scale}" fill="rgba(255,123,114,${alpha.toFixed(2)})"/>`;
+    } else {
+      s += `<rect x="${sx - gridRes*scale/2}" y="${sy - gridRes*scale/2}" width="${gridRes*scale}" height="${gridRes*scale}" fill="rgba(94,200,255,${0.3*alpha.toFixed(2)})"/>`;
+    }
+  }
+
+  // Draw true walls (ground truth)
+  for(const [ax, ay, bx, by] of walls){
+    const [sx1, sy1] = toScreen(ax, ay);
+    const [sx2, sy2] = toScreen(bx, by);
+    s += `<line x1="${sx1}" y1="${sy1}" x2="${sx2}" y2="${sy2}" stroke="#fff" stroke-width="2" opacity="0.4"/>`;
+  }
+
+  // Draw true trajectory (faded)
+  if(history_true.length > 1){
+    let path = 'M ';
+    for(const p of history_true){
+      const [sx, sy] = toScreen(p.x, p.y);
+      path += sx.toFixed(1) + ',' + sy.toFixed(1) + ' L ';
+    }
+    s += `<path d="${path.slice(0, -2)}" stroke="#a3e635" stroke-width="1.5" fill="none" opacity="0.6"/>`;
+  }
+
+  // Draw estimated trajectory
+  if(history_est.length > 1){
+    let path = 'M ';
+    for(const p of history_est){
+      const [sx, sy] = toScreen(p.x, p.y);
+      path += sx.toFixed(1) + ',' + sy.toFixed(1) + ' L ';
+    }
+    s += `<path d="${path.slice(0, -2)}" stroke="#ffb86c" stroke-width="2" fill="none"/>`;
+  }
+
+  // Draw robot (true)
+  const [rx, ry] = toScreen(pose_true.x, pose_true.y);
+  s += `<circle cx="${rx}" cy="${ry}" r="6" fill="#a3e635" stroke="#fff" stroke-width="1"/>`;
+  s += `<line x1="${rx}" y1="${ry}" x2="${rx + Math.cos(pose_true.theta)*15}" y2="${ry - Math.sin(pose_true.theta)*15}" stroke="#a3e635" stroke-width="2"/>`;
+
+  // Draw robot (estimated)
+  const [erx, ery] = toScreen(pose_est.x, pose_est.y);
+  s += `<circle cx="${erx}" cy="${ery}" r="6" fill="none" stroke="#ffb86c" stroke-width="2"/>`;
+
+  // Legend
+  s += `<text x="20" y="20" fill="#a3e635" font-family="ui-monospace,monospace" font-size="11">● Ground truth pose + path</text>`;
+  s += `<text x="20" y="36" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="11">○ Estimated pose + path (with drift)</text>`;
+  s += `<text x="20" y="52" fill="#ff7b72" font-family="ui-monospace,monospace" font-size="11">▢ Occupied cells (occupancy grid)</text>`;
+  s += `<text x="20" y="68" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">▢ Free cells (occupancy grid)</text>`;
+  svg.innerHTML = s;
+}
+
+function update(){
+  const targetFrame = parseInt(els.step.value);
+  while(frame < targetFrame) advance();
+  // Note: we don't roll back; advancing only increments
+
+  document.getElementById('tTrue').textContent = `(${pose_true.x.toFixed(2)}, ${pose_true.y.toFixed(2)}, ${(pose_true.theta*180/Math.PI).toFixed(0)}°)`;
+  document.getElementById('tEst').textContent = `(${pose_est.x.toFixed(2)}, ${pose_est.y.toFixed(2)}, ${(pose_est.theta*180/Math.PI).toFixed(0)}°)`;
+  const drift = Math.sqrt(Math.pow(pose_true.x - pose_est.x, 2) + Math.pow(pose_true.y - pose_est.y, 2));
+  document.getElementById('tDrift').textContent = drift.toFixed(2) + ' m';
+  document.getElementById('tCells').textContent = cellsObserved;
+
+  draw();
+}
+
+function reset(){
+  occGrid = {};
+  pose_true = {x:0, y:0, theta:0};
+  pose_est = {x:0, y:0, theta:0};
+  history_true = [{x:0, y:0}];
+  history_est = [{x:0, y:0}];
+  frame = 0;
+  loopTriggered = false;
+  cellsObserved = 0;
+  document.getElementById('tLoop').textContent = 'no closure yet';
+  els.step.value = 0;
+  draw();
+}
+
+els.step.addEventListener('input', update);
+els.noise.addEventListener('input', () => {});
+els.loop.addEventListener('click', () => { triggerLoopClosure(); draw(); });
+els.reset.addEventListener('click', reset);
+draw();
+</script>
+</body></html>

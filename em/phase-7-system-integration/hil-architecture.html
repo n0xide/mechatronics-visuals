@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hardware-in-the-Loop (HiL) Architecture — visual</title>
+<style>:root{--bg:#0e1116;--bg-elev:#161a21;--bg-elev2:#1d232c;--fg:#dde3ec;--fg-dim:#8f99a8;--fg-bright:#fff;--accent:#5ec8ff;--accent2:#ffb86c;--accent3:#a3e635;--warn:#ff7b72;--line:#2a313c}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,sans-serif}
+main{max-width:980px;margin:0 auto;padding:24px 20px 80px}
+h1{font:600 22px/1.2 ui-monospace,Menlo,monospace;color:var(--fg-bright);margin:0 0 4px}
+h2{font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px}
+.lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+.anchors{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.anchor{background:var(--bg-elev2);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:12px ui-monospace,monospace;color:var(--fg-dim)}
+.anchor b{color:var(--accent2)}
+.figure{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:16px;margin:18px 0}
+.figure svg{display:block;max-width:100%;height:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{padding:6px 10px;border:1px solid var(--line);font-family:ui-monospace,monospace;text-align:left;vertical-align:top}
+th{background:var(--bg-elev2);color:var(--fg-bright)}
+ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.notice b{color:var(--fg)}
+.panel{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;padding:14px 18px;margin:14px 0}
+.panel.tip{border-left:3px solid var(--accent3)}.panel.warn{border-left:3px solid var(--warn)}
+.panel h3{margin-top:0}
+footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
+footer a{color:var(--accent)}
+</style></head><body><main>
+
+<h1>Hardware-in-the-Loop (HiL) Architecture</h1>
+<p class="lede">HiL is the test bench every safety-critical embedded engineer reaches for after unit tests but before physical-rig testing. The MCU under test runs its real firmware. The mechanical / physical world it controls is simulated on a separate, faster computer that exchanges I/O with the MCU in real time. Result: thousands of test scenarios per day, including fault injection that would damage real hardware.</p>
+
+<div class="anchors">
+<span class="anchor"><b>Real-time loop</b>: typ 1-10 kHz, &lt; 1 ms latency</span>
+<span class="anchor"><b>Plant model</b>: simulation of motors, batteries, environment</span>
+<span class="anchor"><b>Faults</b>: stuck sensor, open phase, short, voltage sag, all reproducible</span>
+<span class="anchor"><b>Used in</b>: auto/aero industry standard, ISO 26262 mandates</span>
+</div>
+
+<div class="figure">
+<svg viewBox="0 0 720 320" width="100%">
+<!-- Top row: simulator -->
+<rect x="40" y="40" width="300" height="100" fill="#1d232c" stroke="#5ec8ff" stroke-width="2" rx="6"/>
+<text x="190" y="62" text-anchor="middle" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="14" font-weight="600">REAL-TIME SIMULATOR</text>
+<text x="190" y="82" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="11">Plant model (motor, battery, environment)</text>
+<text x="190" y="100" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">Runs at 1-10 kHz on real-time OS</text>
+<text x="190" y="118" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">(Speedgoat, dSPACE, NI Veristand)</text>
+
+<!-- Bottom row: DUT -->
+<rect x="380" y="180" width="300" height="100" fill="#1d232c" stroke="#ffb86c" stroke-width="2" rx="6"/>
+<text x="530" y="202" text-anchor="middle" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="14" font-weight="600">DEVICE UNDER TEST</text>
+<text x="530" y="222" text-anchor="middle" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="11">MCU running production firmware</text>
+<text x="530" y="240" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">No code modification; thinks it's real</text>
+<text x="530" y="258" text-anchor="middle" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">(Real ECU, e.g., STM32G474)</text>
+
+<!-- I/O bridge -->
+<rect x="160" y="160" width="400" height="40" fill="#1d232c" stroke="#a3e635" stroke-width="2" rx="6"/>
+<text x="360" y="186" text-anchor="middle" fill="#a3e635" font-family="ui-monospace,monospace" font-size="12">I/O BRIDGE: D/A + A/D + CAN + serial + GPIO</text>
+
+<!-- Arrows -->
+<path d="M 190 140 L 190 160" stroke="#5ec8ff" stroke-width="2" fill="none" marker-end="url(#arrSim)"/>
+<defs>
+<marker id="arrSim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+<path d="M0,0 L10,5 L0,10 z" fill="#5ec8ff"/>
+</marker>
+<marker id="arrDut" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+<path d="M0,0 L10,5 L0,10 z" fill="#ffb86c"/>
+</marker>
+</defs>
+<path d="M 530 200 L 530 180" stroke="#ffb86c" stroke-width="2" fill="none" marker-end="url(#arrDut)"/>
+
+<!-- Labels -->
+<text x="100" y="155" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">Sensor signals (V, I, position)</text>
+<text x="600" y="220" text-anchor="end" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="10">PWM, CAN, GPIO outputs</text>
+</svg>
+</div>
+
+<h2>How it works — the signal flow</h2>
+<ul class="notice">
+<li><b>Plant model</b> on the simulator computes physical quantities: motor currents, voltages, encoder positions, temperatures. Updates at 1-10 kHz.</li>
+<li><b>I/O bridge</b> (real-time card with DACs + ADCs + digital I/O) converts model state into analog/digital signals the DUT sees as "real sensors". DAC outputs current, ADCs read what DUT commands.</li>
+<li><b>DUT</b> runs the production firmware unchanged. From its perspective, it's connected to real hardware.</li>
+<li><b>DUT outputs</b> (PWM, CAN commands, GPIO) flow back through the I/O bridge into the simulator, closing the loop.</li>
+<li><b>Test sequencer</b> on the simulator side scripts scenarios: ramp the load, inject a sensor failure, drop the supply voltage. Logs everything for analysis.</li>
+</ul>
+
+<h2>Three levels of in-the-loop testing</h2>
+<table>
+<tr><th>Level</th><th>Plant</th><th>Controller</th><th>When</th></tr>
+<tr><td>MIL — Model in the loop</td><td>Simulated plant</td><td>Simulated controller (e.g., Simulink model)</td><td>Early controller design; algorithm validation</td></tr>
+<tr><td>SIL — Software in the loop</td><td>Simulated plant</td><td>Production code compiled for PC</td><td>Code validation pre-target; CI testing</td></tr>
+<tr><td>PIL — Processor in the loop</td><td>Simulated plant</td><td>Production code on target MCU, debug-connected</td><td>Verifies cross-compilation + processor-specific behavior</td></tr>
+<tr><td>HIL — Hardware in the loop</td><td>Simulated plant in real time</td><td>Production code on target MCU + real I/O hardware</td><td>System validation, fault injection, regression testing</td></tr>
+</table>
+
+<h2>What HIL tests are good at</h2>
+<table>
+<tr><th>Test type</th><th>Example</th></tr>
+<tr><td>Functional behavior</td><td>"Does the motor controller hit setpoint within 100 ms after a setpoint step?"</td></tr>
+<tr><td>Boundary conditions</td><td>"What happens at max input voltage? Min temperature? Slewing limits?"</td></tr>
+<tr><td>Fault injection</td><td>"Stuck encoder, open phase, short to battery, supply brownout — does the firmware safely degrade?"</td></tr>
+<tr><td>Regression</td><td>"Re-run 200 scenarios after a firmware change; report any divergence from baseline."</td></tr>
+<tr><td>Worst-case scenario</td><td>"Sun-angle + dust on camera + rain on lidar — does the perception stack still report a viable path?"</td></tr>
+<tr><td>Performance under load</td><td>"Drive the MCU with 95% CPU load + worst-case bus traffic — do deadlines still hold?"</td></tr>
+<tr><td>Compliance certification</td><td>"ISO 26262 ASIL-D: prove the controller meets safety requirements under 1000s of injected faults."</td></tr>
+</table>
+
+<h2>HIL hardware platforms</h2>
+<table>
+<tr><th>Platform</th><th>Use case</th><th>Cost</th></tr>
+<tr><td>dSPACE SCALEXIO / MicroAutoBox</td><td>Automotive ECU testing, motor control</td><td>$50k - $500k</td></tr>
+<tr><td>Speedgoat Performance</td><td>Aerospace, robotics, MATLAB workflow</td><td>$30k - $200k</td></tr>
+<tr><td>NI VeriStand + PXIe</td><td>General-purpose, LabVIEW workflow</td><td>$40k - $300k</td></tr>
+<tr><td>Typhoon HIL</td><td>Power electronics, microgrids</td><td>$20k - $100k</td></tr>
+<tr><td>OPAL-RT</td><td>Electrical / power systems with FPGA</td><td>$30k - $200k</td></tr>
+<tr><td>Custom: real-time Linux + analog I/O</td><td>Lab prototypes; flexible</td><td>$5k - $20k</td></tr>
+</table>
+
+<h2>The math behind real-time</h2>
+<p>A HIL simulator must update faster than the DUT's control loop sees the world. If the DUT closes a 1 kHz current loop, the plant model must update at &gt; 10 kHz, ideally 20-100 kHz. This requires:</p>
+<ul class="notice">
+<li><b>Hard real-time OS</b>: VxWorks, QNX, RT-Linux (PREEMPT_RT), or bare-metal on FPGA</li>
+<li><b>Bounded interrupt latency</b>: typically &lt; 10 µs jitter</li>
+<li><b>Fixed-step solver</b>: ODE solver runs at the loop rate, no adaptive timestep</li>
+<li><b>FPGA accelerator for fast dynamics</b>: motor + inverter modeled at 1 MHz on FPGA, slower dynamics on CPU</li>
+</ul>
+
+<h2>Worked example — arm-6dof-pa612 joint controller HIL setup</h2>
+<div class="panel" style="border-left:3px solid var(--accent3)">
+<h3>The goal</h3>
+<p>Validate the joint-controller firmware against 500 test scenarios before deploying to a $50k physical robot. Each scenario takes &lt; 30 s on the HIL bench; a full regression sweep runs in 4 hours overnight.</p>
+<h3>Setup</h3>
+<table>
+<tr><th>Layer</th><th>What's real</th><th>What's simulated</th></tr>
+<tr><td>Joint controller MCU</td><td>STM32G474 PCB (production hardware)</td><td>—</td></tr>
+<tr><td>Encoder feedback</td><td>SPI emulator board (FPGA generates AS5048A frames)</td><td>Mechanical position (from plant model)</td></tr>
+<tr><td>Phase currents</td><td>Inline DAC outputs to ADC inputs</td><td>Motor model with R, L, BEMF</td></tr>
+<tr><td>Bus supply</td><td>Programmable PSU (real)</td><td>—</td></tr>
+<tr><td>CAN bus</td><td>Real CAN tranceiver loopback</td><td>Other joint controllers (simulated)</td></tr>
+<tr><td>Plant model</td><td>—</td><td>6-DOF arm dynamics with PA612-CF link stiffness, payload, gravity, friction</td></tr>
+</table>
+<h3>Test scenarios run nightly</h3>
+<ol>
+<li>Step inputs at every joint, validate settling time and overshoot</li>
+<li>Sinusoidal trajectory tracking at 0.5, 1, 2, 5 Hz; measure phase lag</li>
+<li>Disturbance rejection: inject sudden 5 N·m torque pulse</li>
+<li>Sensor fault: open encoder phase A; verify fail-safe stops within 50 ms</li>
+<li>Bus brownout at random points in trajectory; verify clean restart</li>
+<li>Stress: max-rate command stream over CAN at 1 kHz for 1 hour; check no deadline misses</li>
+<li>Collision: simulated end-effector contact with virtual wall; verify impedance limits</li>
+</ol>
+<p>Cost: ~$15k HIL bench + 1 month engineering. Saved: 6 months of physical-robot debugging + 3 hardware replacements at $8k each.</p>
+</div>
+
+<h2>Common pitfalls</h2>
+<ul class="notice">
+<li><b>Model fidelity</b> — your plant model must include real-world non-idealities: friction, backlash, sensor noise, computational delays. A too-clean model passes tests that real hardware fails.</li>
+<li><b>I/O latency</b> — DAC settle time, ADC sample-and-hold, bus arbitration. Total round-trip from sim output → DUT input → DUT output → sim input should be &lt; 1 PWM period.</li>
+<li><b>Real-time guarantees</b> — Windows + USB DAQ does not count as real-time. You'll see correct mean behavior but missed worst-cases.</li>
+<li><b>Validation of the model itself</b> — HIL tests prove the firmware matches the model, not reality. Periodic correlation with physical-rig tests is mandatory.</li>
+<li><b>Test coverage</b> — 1000 random scenarios isn't comprehensive. Use combinatorial test design (pair-wise) or model-based test generation.</li>
+<li><b>Versioning</b> — HIL scenarios are themselves code. Treat the test scripts + plant model + firmware as a versioned set; one regression test failure must reproduce exactly later.</li>
+</ul>
+
+<footer>Cross-links: <a href="bringup-procedure.html">Bring-up Procedure</a> · <a href="debugging-tools.html">Debugging Tools</a> · <a href="data-flow-latency.html">Data Flow Latency</a> · <a href="distributed-vs-centralized.html">Distributed vs Centralized</a></footer>
+
+</main><script>console.log('HIL Architecture loaded');</script>
+</body></html>
