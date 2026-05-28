@@ -186,7 +186,7 @@
     <p>STM32F4 (168 MHz) sampling 4 ADC channels in sequence: 3-axis accel scaled to ±2 g (chan 0,1,2), battery voltage divider (chan 3). Target sample rate per channel: 1 kHz → 4 kHz scan rate. ADC clock = 21 MHz, sampling 84 cycles, 12 bits → ~4 µs/conv, 16 µs/scan.</p>
 
     <h3>Buffer math</h3>
-    <p>One sample = 4 halfwords (4 channels × 16 bits, padded). Process at 100 Hz, so half-buffer = 10 samples = 40 halfwords. Full buffer = 80 halfwords = 160 bytes.</p>
+    <p>One scan = 4 halfwords (4 channels × 16 bits). Full buffer holds 20 scans = 80 halfwords = 160 bytes; half-buffer = 10 scans = 40 halfwords. At a 4 kHz scan rate, each half-buffer fills in 10/4000 = 2.5 ms — so half/full callbacks fire at <b>400 Hz</b>. (If you wanted ~100 Hz callbacks, grow the buffer to 80 scans = 320 halfwords.)</p>
 
     <h3>DMA configuration</h3>
     <pre><span class="kw">static</span> uint16_t adc_buf[<span class="nm">80</span>];  <span class="co">// 4 channels × 20 samples</span>
@@ -209,7 +209,7 @@ void HAL_ADC_ConvCpltCallback(...)     { compute_averages(&adc_buf[40], 40); }
     </span>
 
     <h3>Timing budget</h3>
-    <p>40 samples / 4 kHz = 10 ms between interrupts. ISR work (averaging 40 × 4 channels): ~80 µs on Cortex-M4 — 0.8 % CPU load. The remaining 99.2 % is available for control loops, comms, display, etc.</p>
+    <p>10 scans / 4 kHz = 2.5 ms between half/full callbacks (400 Hz event rate). ISR work (averaging 10 scans × 4 channels = 40 sample values): ~80 µs on Cortex-M4 — 80 µs / 2500 µs ≈ 3.2 % CPU load. The remaining 96.8 % is available for control loops, comms, display, etc.</p>
   </div>
 
   <h2>What to notice</h2>

@@ -136,18 +136,14 @@
     <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Step-by-step procedure (after PCB assembly)</h3>
     <table style="font-size:12px">
     <tr><th>Step</th><th>Action</th><th>Gate (must pass)</th><th>Common failure</th></tr>
-    <tr><td>1</td><td>Visual + multimeter: short-circuit between rails?</td><td>VBUS-GND &gt; 100 kΩ; 3V3-GND &gt; 50 kΩ</td><td>Solder bridge under BGA → reflow</td></tr>
-    <tr><td>2</td><td>Current-limited PSU at 0.1 A, 24 V. Watch current draw</td><td>≤ 50 mA quiescent (no smoke)</td><td>Reversed cap polarity, wrong-rail load</td></tr>
-    <tr><td>3</td><td>Probe each rail: 24 V → 5 V → 3.3 V → 1.8 V</td><td>All within ±5 % of nominal</td><td>Bad LDO, wrong feedback divider</td></tr>
-    <tr><td>4</td><td>Flash empty firmware, blink LED</td><td>LED blinks at 1 Hz (proves clock, GPIO, flash)</td><td>Wrong crystal load caps; BOOT pin float</td></tr>
-    <tr><td>5</td><td>Read encoder: spin shaft by hand, log raw counts</td><td>Counts increment smoothly, no missed ticks at any angle</td><td>Z-pulse alignment off; SPI mode wrong</td></tr>
-    <tr><td>6</td><td>Apply fixed PWM (open-loop) to one phase, watch rotor cog</td><td>Rotor cogs to a known electrical position</td><td>Wrong phase order; FET gate not driven</td></tr>
-    <tr><td>7</td><td>Six-step block commutation, open-loop velocity</td><td>Rotor spins smoothly, ~no audible cogging</td><td>BEMF zero-cross timing off; dead-time too long</td></tr>
-    <tr><td>8</td><td>Close current loop (Iq command from console)</td><td>Step Iq → measured Iq settles in &lt;5 ms, no oscillation</td><td>Kp_i too high; ADC sample point wrong</td></tr>
-    <tr><td>9</td><td>Close velocity loop, command 100 RPM</td><td>Velocity tracks ±2 % steady-state</td><td>Velocity estimation noise; Ki_v windup</td></tr>
-    <tr><td>10</td><td>Close position loop, command 90° step</td><td>Position settles in &lt;200 ms with &lt;1% overshoot</td><td>Encoder counts/rev wrong; gear ratio mis-set</td></tr>
-    <tr><td>11</td><td>Run CAN-FD on bench harness, send commands from host</td><td>Acks every command, no error frames</td><td>Termination missing; baud mismatch</td></tr>
-    <tr><td>12</td><td>Integrate to arm chassis, repeat steps 8-11 with cable run</td><td>Same behavior as on bench</td><td>EMI on bus from motor PWM; ground loop</td></tr>
+    <tr><td>1</td><td>Smoke test — current-limited PSU 0.1 A, visual + multimeter for rail shorts</td><td>VBUS-GND &gt; 100 kΩ; 3V3-GND &gt; 50 kΩ; ≤ 30 mA quiescent; no smoke; no part hot to touch</td><td>Solder bridge under BGA; reversed cap polarity; wrong-rail load</td></tr>
+    <tr><td>2</td><td>MCU heartbeat — flash blinky, probe each rail</td><td>LED blinks at exactly 1 Hz (proves clock + reset + boot); all rails within ±5 %</td><td>Wrong crystal load caps; BOOT pin float; bad LDO feedback divider</td></tr>
+    <tr><td>3</td><td>Comms — TX/RX CAN-FD heartbeat to bus sniffer</td><td>Bidirectional traffic; no bus-error frames; CRC clean</td><td>Termination missing; baud mismatch; transceiver standby pin floating</td></tr>
+    <tr><td>4</td><td>Encoder — spin shaft by hand, log raw + scaled counts, mark pole-zero</td><td>Counts smooth + monotonic; zero-offset recorded; no glitches at any angle</td><td>Z-pulse alignment off; SPI mode wrong; gear ratio mis-set</td></tr>
+    <tr><td>5</td><td>Open-loop motor spin — slow sinusoidal 3-phase voltage at ~10 % duty</td><td>Rotor follows commanded electrical angle; pole-pair count verified on encoder</td><td>Wrong phase order; encoder sign inverted; FET gate not driven</td></tr>
+    <tr><td>6</td><td>Close current loop — PI on i_d, i_q at ~500 Hz bandwidth, step from rest</td><td>i_q tracks step in ~1 ms with &lt; 10 % overshoot; i_d ≈ 0; no thermal runaway</td><td>K_p_i too high; ADC sample point wrong; dead-time too long</td></tr>
+    <tr><td>7</td><td>Close velocity loop — PI on dθ/dt feeds i_q*; release the clamp</td><td>Velocity tracks ±2 % steady-state; recovers from a hand-applied disturbance in &lt; 200 ms</td><td>Velocity estimation noise; K_i_v windup; encoder counts/rev wrong</td></tr>
+    <tr><td>8</td><td>Close position loop + integrate with host — P + velocity FF; run a canned trajectory from the host PC over CAN-FD, including on the assembled arm</td><td>Joint follows trajectory; /joint_states published cleanly at ≥ 1 kHz; behavior matches on bench and on chassis</td><td>P-loop overshoot; EMI on bus from motor PWM; ground loop after chassis install</td></tr>
     </table>
     <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">When a step fails</h3>
     <p>Do not skip ahead. The arm-6dof-pa612 spec sheet has each gate's expected scope/multimeter reading; deviations indicate the specific failure mode. Logbook every reading — when production units fail later, the bench-baseline is the comparison.</p>

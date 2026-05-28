@@ -166,7 +166,7 @@
   <p>Mixed-signal boards (analog + digital) traditionally split the ground plane and bridge the two nets at a single point. <em>But</em>: if you place a high-speed signal trace over the split, its return current has nowhere to go — it loops around the long way and creates massive ground noise. The modern rule is:</p>
   <ul class="notice">
     <li><b>Don't cross splits with high-speed signals</b> — keep digital signals over digital ground, analog over analog.</li>
-    <li><b>If you can't avoid it</b>: bridge the split with a 1 kΩ stitching cap (0.1 µF) directly under the signal.</li>
+    <li><b>If you can't avoid it</b>: bridge the split with a small-value stitching capacitor (0.1 µF, low-ESL package) directly under the signal so the return current has an AC path across the split.</li>
     <li><b>Better: no split at all.</b> A solid plane works for most modern designs. The split-ground habit is from the through-hole era; SMD parts now use bypass caps and component placement to avoid noise coupling.</li>
   </ul>
 
@@ -179,7 +179,7 @@
     <span class="eq">Switching current di/dt: 2 A / 5 ns = 4·10⁸ A/s</span>
     <span class="eq">V_GB at switcher's ground pin: 34.5e-9 · 4e8 = <b>13.8 V</b> peak (5 ns spike)</span>
     <span class="eq">If ADC shares this ground: 16-bit converter sees 13.8 V offset for 5 ns. With sample-and-hold of 30 ns, the spike disturbs the held value.</span>
-    <span class="eq">Effect: 13.8 V / 5 µs sample = 27600 LSB error spikes; the ADC reads noise rather than the input.</span>
+    <span class="eq">Effect: 13.8 V / 50 µV per LSB = 276 000 LSB of disturbance during the 5 ns spike — completely overwhelms the held value, and the ADC reads noise rather than the input.</span>
     <h3>The fix</h3>
     <span class="eq">Star ground: separate trace from ADC GND to PSU GND; ADC sees only its own GND inductance (~3 nH for 3 mm to plane) = 0.27 V — still bad.</span>
     <span class="eq">Single-point AGND/DGND: ADC's AGND pin goes to its own quiet plane; DGND goes to digital plane. Tied at one point under ADC. Effective coupling: pF-scale.</span>
@@ -203,7 +203,7 @@
 
   <h2>What to notice</h2>
   <ul class="notice">
-    <li><b>Ground bounce is V = L · di/dt, not IR.</b> R doesn't matter much for nanosecond edges — L dominates. A trace's R = 0.5 mΩ but L = 30 nH; for 1 ns edges, L's impedance is 188 Ω.</li>
+    <li><b>Ground bounce is V = L · di/dt, not IR.</b> R doesn't matter much for nanosecond edges — L dominates. A trace's R = 0.5 mΩ but L = 30 nH; the edge bandwidth of a 1 ns transition is ~350 MHz, where ωL ≈ 66 Ω — five orders of magnitude above the DC resistance.</li>
     <li><b>Wider traces have less inductance per unit length</b>, but the difference is &lt; 2× for typical PCBs. The bigger benefit of width is current capacity, not inductance.</li>
     <li><b>A solid ground plane reduces L to ~0.1 nH per mm of trace</b> over the plane — 10× better than a thin strip.</li>
     <li><b>Bypass caps are local current reservoirs</b> for high-frequency switching. A 100 nF X7R right at the IC's V_CC pin prevents the IC's switching current from traveling 30 mm to the bulk cap, drastically reducing trace di/dt.</li>

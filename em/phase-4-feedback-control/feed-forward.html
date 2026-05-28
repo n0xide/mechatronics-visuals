@@ -88,8 +88,8 @@
 
   <h2>Robot arm gravity compensation</h2>
   <p>One-link arm of length <code>L</code>, mass <code>m</code>, pivot at the shoulder. Joint angle θ measured
-  from the horizontal. Gravity torque <code>τ_g = m·g·L·cos(θ)</code>. The motor must supply this just to hold
-  position. With FF on, the controller adds <code>τ_FF = m·g·L·cos(θ_setpoint)</code>. PID only sees inertia
+  from the horizontal. For a uniform rod pivoting at one end, gravity torque <code>τ_g = m·g·(L/2)·cos(θ)</code> (mass acts through the centre of mass at L/2). The motor must supply this just to hold
+  position. With FF on, the controller adds <code>τ_FF = m·g·(L/2)·cos(θ_setpoint)</code>. PID only sees inertia
   and disturbance.</p>
 
   <section class="controls">
@@ -127,7 +127,7 @@
       <label>Feed-forward</label>
       <select id="ffmode">
         <option value="off">Off — pure PID</option>
-        <option value="grav" selected>Gravity comp τ_FF = m·g·L·cos(θ_sp)</option>
+        <option value="grav" selected>Gravity comp τ_FF = m·g·(L/2)·cos(θ_sp) (uniform rod)</option>
         <option value="velocity">Velocity FF (for trajectory)</option>
         <option value="both">Both gravity + velocity</option>
       </select>
@@ -158,7 +158,7 @@
   <table>
     <thead><tr><th>FF source</th><th>Formula</th><th>Typical use</th></tr></thead>
     <tbody>
-      <tr><td>Gravity</td><td>τ_FF = m·g·L·cos(θ)</td><td>Robot arm joints, anything horizontal</td></tr>
+      <tr><td>Gravity (uniform link)</td><td>τ_FF = m·g·(L/2)·cos(θ)</td><td>Robot arm joints, anything horizontal — use point-mass form (m·g·L·cosθ) for tip-loaded payloads.</td></tr>
       <tr><td>Friction (Coulomb)</td><td>τ_FF = sign(v)·τ_friction</td><td>Joints with stiction breakaway</td></tr>
       <tr><td>Friction (viscous)</td><td>τ_FF = b·v</td><td>High-speed lubricated joints</td></tr>
       <tr><td>Velocity (trajectory)</td><td>u_FF = K_v·v_setpoint</td><td>Tracking moving setpoints — no lag</td></tr>
@@ -183,7 +183,7 @@
       <h3>FORMULAS</h3>
       <dl>
         <dt>Combined</dt><dd><span class="eq">u = u_FF(r) + u_PID(r − y)</span></dd>
-        <dt>Gravity (1 link)</dt><dd><span class="eq">τ_g = m·g·L·cos(θ)</span></dd>
+        <dt>Gravity (uniform rod)</dt><dd><span class="eq">τ_g = m·g·(L/2)·cos(θ)</span></dd>
         <dt>Velocity FF</dt><dd><span class="eq">u_v = K_v · v_sp</span></dd>
         <dt>Acceleration FF</dt><dd><span class="eq">u_a = J · a_sp</span></dd>
         <dt>Inverse-dyn FF (multi-DOF)</dt><dd><span class="eq">τ = M(q)·q̈_sp + C(q,q̇)·q̇_sp + g(q)</span></dd>
@@ -312,15 +312,15 @@ function simulate(){
     // FF
     let uFFi = 0;
     if(ffmode === 'grav' || ffmode === 'both'){
-      uFFi += mLink * g * Llink * Math.cos(qSP);
+      uFFi += mLink * g * (Llink/2) * Math.cos(qSP);
     }
     if(ffmode === 'velocity' || ffmode === 'both'){
       // Velocity FF: K_v * qdSP. K_v approx J/τ but for tracking just use J + viscous compensation
       uFFi += b * qdSP + J * 0;  // accel = 0 in ramp interior; use viscous comp.
     }
     const u = uPIDi + uFFi;
-    // Dynamics: J·q̈ = u − m·g·L·cos(q) − b·q̇
-    const tauGrav = mLink * g * Llink * Math.cos(q);
+    // Dynamics (uniform rod, pivot at end): J·q̈ = u − m·g·(L/2)·cos(q) − b·q̇
+    const tauGrav = mLink * g * (Llink/2) * Math.cos(q);
     const qdd = (u - tauGrav - b*qd) / J;
     qd += qdd * dt;
     q += qd * dt;
@@ -396,13 +396,13 @@ function drawPlot(){
   ns('path',{d:pth,fill:'none',stroke:'#5ec8ff','stroke-width':2.5},svg);
 
   // summary
-  const tauG = mLink*g*Llink*Math.cos(theta);
+  const tauG = mLink*g*(Llink/2)*Math.cos(theta);
   const finalTh = sim.th[sim.th.length-1]*180/Math.PI;
   const finalPID = sim.uPID[sim.uPID.length-1];
   const finalFF = sim.uFF[sim.uFF.length-1];
   document.getElementById('summary').innerHTML =
     `<b>Plant constants:</b> mass = ${mLink.toFixed(2)} kg, length = ${Llink.toFixed(2)} m, J = ⅓mL² = ${((1/3)*mLink*Llink*Llink).toFixed(4)} kg·m²<br>` +
-    `<b>Required holding torque at setpoint:</b> τ_g = m·g·L·cos(θ) = ${tauG.toFixed(3)} N·m<br>` +
+    `<b>Required holding torque at setpoint:</b> τ_g = m·g·(L/2)·cos(θ) = ${tauG.toFixed(3)} N·m<br>` +
     `<span style="color:var(--accent3)">FF mode = <b>${ffmode}</b>: FF torque @ end = ${finalFF.toFixed(3)} N·m  →  PID torque @ end = ${finalPID.toFixed(3)} N·m (smaller is better)</span><br>` +
     `<span style="color:var(--accent)">Final θ = ${finalTh.toFixed(2)}°  (setpoint = ${(theta*180/Math.PI).toFixed(1)}°)</span>`;
 }
