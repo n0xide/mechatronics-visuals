@@ -176,21 +176,23 @@ footer a{color:var(--accent)}
 <h3>Fault tree decomposition</h3>
 <div class="deriv">
 <span class="step">Top event T: "uncommanded joint motion"</span>
-<span class="step">T ⇐ (motor energized when not commanded) AND (brake fails to hold)</span>
-<span class="step">  L_motor: motor energized when not commanded</span>
-<span class="step">    L_motor ⇐ (firmware bug latches PWM high) OR (MOSFET driver fault) OR (encoder commands runaway)</span>
-<span class="step">  L_brake: brake fails to hold</span>
-<span class="step">    L_brake ⇐ (brake release stuck) OR (brake supply lost during motion) OR (watchdog fails to trigger brake)</span>
+<span class="step">T ⇐ (motor energized when not commanded) AND (brake fails to hold) AND (watchdog fails to fire)</span>
+<span class="step">  L_motor ⇐ (firmware bug latches PWM high) OR (MOSFET driver fault) OR (encoder commands runaway)</span>
+<span class="step">  L_brake ⇐ (brake release stuck) OR (brake supply lost during motion)</span>
+<span class="step">  L_wd   ⇐ (watchdog timer disabled in firmware) OR (watchdog hardware fault)</span>
+<span class="step">Three-way AND for independent defense-in-depth: T = L_motor · L_brake · L_wd</span>
 </div>
 <h3>Numerical example (typical rates)</h3>
 <div class="deriv">
 <span class="step">P(firmware latch) = 1e-7 /h  · P(MOSFET fault) = 5e-7 /h  · P(encoder runaway) = 2e-6 /h</span>
 <span class="step">  L_motor ≈ 1e-7 + 5e-7 + 2e-6 = 2.6e-6 /h</span>
-<span class="step">P(brake stuck) = 1e-6 /h  · P(brake supply lost) = 5e-6 /h  · P(watchdog fault) = 1e-5 /h</span>
-<span class="step">  L_brake ≈ 1.6e-5 /h</span>
+<span class="step">P(brake stuck) = 1e-6 /h  · P(brake supply lost) = 5e-6 /h</span>
+<span class="step">  L_brake ≈ 6e-6 /h</span>
+<span class="step">P(watchdog disabled in fw) = 1e-6 /h  · P(watchdog hw fault) = 1e-5 /h</span>
+<span class="step">  L_wd ≈ 1.1e-5 /h</span>
 <span class="step"></span>
-<span class="step">T = L_motor · L_brake = 2.6e-6 · 1.6e-5 = <b>4.2e-11 /h</b></span>
-<span class="step">MTBF = 1/T = 2.4e10 h = 2.7 million years</span>
+<span class="step">T = L_motor · L_brake · L_wd = 2.6e-6 · 6e-6 · 1.1e-5 = <b>1.7e-16 /h</b></span>
+<span class="step">MTBF = 1/T ≈ 6e15 h (astronomical — really limited by common-cause)</span>
 <span class="step">PFH_d category: ASIL B (10⁻⁸ to 10⁻⁷ /h target) — well within budget</span>
 </div>
 <p>This is why brake + motor + watchdog are independent: knock out any one of these, even a faulty firmware that latches PWM high or a stuck-on MOSFET — the brake still holds the joint. Three layers of defense = three multiplied probabilities = vanishingly rare top event.</p>

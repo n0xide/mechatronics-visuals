@@ -149,7 +149,7 @@
     <li><b>Super-loop period drifts with workload</b> — the control loop fires every time it gets a chance, which is <i>after</i> the LCD finishes. Set LCD to 6 ms and control "1 kHz" becomes ~150 Hz. Worst-case latency = sum of every other job's worst-case time.</li>
     <li><b>RTOS preempts mid-LCD</b> — the red ticks in the RTOS row are preemption boundaries: scheduler tick fires, sees control is ready, saves LCD context, runs control, restores LCD. LCD takes longer wall-clock but control hits its deadline every time.</li>
     <li><b>Jitter ≠ latency</b> — even when the super-loop "makes it," the time-between-iterations varies wildly. PID loops, filters, and observers assume <code>dt = constant</code>; jitter pollutes derivative terms and ruins gain margins.</li>
-    <li><b>RTOS overhead is real but tiny</b> — context switch on Cortex-M4 at 168 MHz is ~30 cycles ≈ 200 ns. A 1 kHz tick adds ~0.02% CPU. The cost is RAM (each task needs ≥512 B stack) and discipline (shared data needs mutexes).</li>
+    <li><b>RTOS overhead is real but tiny</b> — a full FreeRTOS context switch on Cortex-M4 at 168 MHz is ~100–200 cycles ≈ 0.6–1.2 µs (PendSV save/restore of the register file + stack swap). A 1 kHz tick still adds well under 1 % CPU. The cost is RAM (each task needs ≥512 B stack) and discipline (shared data needs mutexes).</li>
     <li><b>For the arm: 10 kHz current loop is non-negotiable</b> — that's 100 µs budget per iteration. A 3 ms LCD redraw in a super-loop would miss <i>thirty</i> deadlines. This is why FOC on a multi-job MCU lives in an RTOS task (or, more often, on a dedicated MCU).</li>
     <li><b>Cooperative scheduling is a middle ground</b> — Arduino's loop() + yield(), MicroPython's asyncio. Tasks voluntarily yield. Simpler but one runaway task still hangs everything. Useful for UI-heavy systems with no hard-real-time work.</li>
   </ul>
@@ -165,7 +165,7 @@
         <dd><span class="eq">T_ctrl_eff ≈ Σ T_i</span>
           <span class="eq-note">if all jobs run every iteration</span></dd>
         <dt>RTOS context switch</dt>
-        <dd><span class="eq">~30 cycles ≈ 200 ns @ 168 MHz</span></dd>
+        <dd><span class="eq">~100–200 cycles ≈ 0.6–1.2 µs @ 168 MHz</span></dd>
         <dt>Tick overhead</dt>
         <dd><span class="eq">1 kHz tick ≈ 0.02% CPU</span></dd>
       </dl>

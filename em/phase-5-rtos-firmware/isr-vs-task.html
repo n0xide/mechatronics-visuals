@@ -93,7 +93,7 @@
   <h1>ISR vs Task — context, rules, latency budget</h1>
   <p class="lede">Interrupts and tasks live in different worlds. ISRs are short, non-blocking, and run at hardware priority. Tasks do the heavy lifting. The bridge between them is a semaphore or queue.</p>
 
-  <p>An <b>ISR</b> (interrupt service routine) runs in hardware interrupt context: the CPU saves the current register state, jumps to the handler, runs it, and returns — all while the RTOS scheduler is locked out. ISRs cannot block (no <code>vTaskDelay</code>, no mutex take, no malloc), cannot use the full FreeRTOS API (only <code>...FromISR</code> variants), and should be <i>short</i> — measured in microseconds, not milliseconds. The pattern is <b>deferred work</b>: ISR grabs the hardware data, signals a task via <code>xSemaphoreGiveFromISR</code>, and returns. The task does the heavy processing (filter, log, parse). <b>Latency budget</b> for a hard-real-time path is the sum of: interrupt entry latency (CPU saves context, ~12 cycles on Cortex-M4), ISR body, exit latency, RTOS context switch (~30 cycles), and the task's processing time. For the arm's 10 kHz current loop, the entire path must finish in &lt;100 µs — and it's usually run <i>inside</i> the ISR with no deferred task, because the deferred-work overhead would blow the budget.</p>
+  <p>An <b>ISR</b> (interrupt service routine) runs in hardware interrupt context: the CPU saves the current register state, jumps to the handler, runs it, and returns — all while the RTOS scheduler is locked out. ISRs cannot block (no <code>vTaskDelay</code>, no mutex take, no malloc), cannot use the full FreeRTOS API (only <code>...FromISR</code> variants), and should be <i>short</i> — measured in microseconds, not milliseconds. The pattern is <b>deferred work</b>: ISR grabs the hardware data, signals a task via <code>xSemaphoreGiveFromISR</code>, and returns. The task does the heavy processing (filter, log, parse). <b>Latency budget</b> for a hard-real-time path is the sum of: interrupt entry latency (CPU saves context, ~12 cycles on Cortex-M4), ISR body, exit latency, full FreeRTOS context switch (~100–200 cycles — PendSV has to save/restore the register file and swap stacks), and the task's processing time. For the arm's 10 kHz current loop, the entire path must finish in &lt;100 µs — and it's usually run <i>inside</i> the ISR with no deferred task, because the deferred-work overhead would blow the budget.</p>
 
   <section class="controls">
     <div class="control">
@@ -122,7 +122,7 @@
       <span><span class="swatch" style="background:var(--warn)"></span>ISR entry latency (~12 cyc)</span>
       <span><span class="swatch" style="background:var(--accent2)"></span>ISR body</span>
       <span><span class="swatch" style="background:var(--warn)"></span>ISR exit latency</span>
-      <span><span class="swatch" style="background:var(--accent)"></span>RTOS context switch (~30 cyc)</span>
+      <span><span class="swatch" style="background:var(--accent)"></span>RTOS context switch (~100–200 cyc)</span>
       <span><span class="swatch" style="background:var(--accent3)"></span>Task body (filter/process)</span>
     </div>
   </div>
