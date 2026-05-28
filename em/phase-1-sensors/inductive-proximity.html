@@ -144,7 +144,7 @@
     <div class="deriv">
       <span class="step">Z_reflected = (ωM)² / (R_t + jωL_t)</span>
       <span class="step">Real part (added to coil R): <b>R_added = (ωM)² · R_t / (R_t² + (ωL_t)²)</b></span>
-      <span class="step">Imag part (subtracts from coil L): <b>ΔL = −(ωM)² · L_t / (R_t² + (ωL_t)²) / ω</b></span>
+      <span class="step">Imag part (subtracts from coil L): <b>ΔL = −(ωM)² · L_t / (R_t² + (ωL_t)²)</b>  (units: Ω²·H/Ω² = H ✓)</span>
       <span class="step"><span class="arrow">→</span> ferrous targets (high µ_r) add MORE inductance than they subtract — net L goes UP for steel below saturation</span>
       <span class="step"><span class="arrow">→</span> non-magnetic conductors (aluminum, copper, brass) subtract inductance → net L goes DOWN</span>
     </div>
@@ -269,11 +269,13 @@ uint32_t dataCh0 = raw &amp; 0x0FFFFFFF; // 28-bit valid bits
     <h3>Wirewound vs planar PCB spiral</h3>
     <p>Two coil families. <b>Wirewound</b>: copper enamel wire wound on a bobbin or air core, often with a ferrite pot core to focus the field. Used in industrial M8/M12/M18/M30 cylindrical prox switches. High inductance per cm³, narrow field. <b>Planar PCB spiral</b>: spiral traces on FR4 (often a multi-layer "stacked" spiral), no machining needed, integrates with the rest of the board, but lower inductance per area. Modern apps (touchless buttons, position encoders) almost always use planar.</p>
 
-    <p>Planar single-layer round spiral inductance (Wheeler approximation):</p>
+    <p>Planar single-layer round spiral inductance (modified Wheeler / Mohan approximation):</p>
     <div class="deriv">
-      <span class="step"><b>L (µH) ≈ N² · d_avg · K₁ / (1 + K₂·ρ)</b></span>
-      <span class="step">where K₁ = 2.34, K₂ = 2.75 (round shape), d_avg in mm, ρ = (d_out − d_in)/(d_out + d_in)</span>
-      <span class="step">d_avg = (d_out + d_in)/2  is the average diameter</span>
+      <span class="step"><b>L (µH) ≈ (µ₀ · K₁ / 2) · N² · d_avg / (1 + K₂·ρ)</b></span>
+      <span class="step">With d_avg in mm and µ₀ = 1.257 µH/m, the prefactor (µ₀ · K₁ / 2) becomes 0.6×10⁻³ µH/mm:</span>
+      <span class="step"><b>L (µH) ≈ 0.6×10⁻³ · K₁ · N² · d_avg(mm) / (1 + K₂·ρ)</b></span>
+      <span class="step">where K₁ = 2.34, K₂ = 2.75 (round shape), ρ = (d_out − d_in)/(d_out + d_in), d_avg = (d_out + d_in)/2</span>
+      <span class="step">Example: N=20, d_avg=8.5 mm, ρ=0.65 → L ≈ 0.6e-3 · 2.34 · 400 · 8.5 / (1 + 2.75·0.65) ≈ 1.8 µH (single layer)</span>
       <span class="step">Multi-layer: L_total ≈ N_layers² · L_single_layer × coupling factor (~0.9 for tight stack)</span>
     </div>
 
@@ -393,7 +395,7 @@ uint32_t dataCh0 = raw &amp; 0x0FFFFFFF; // 28-bit valid bits
         <dt>Resonance</dt><dd><span class="eq">f_res = 1 / (2π√(LC))</span></dd>
         <dt>Q</dt><dd><span class="eq">Q = ωL / R</span></dd>
         <dt>Skin depth</dt><dd><span class="eq">δ = √(2 / (ωµσ))</span></dd>
-        <dt>Wheeler L</dt><dd><span class="eq">L ≈ N²·d_avg·2.34 / (1 + 2.75·ρ) µH</span></dd>
+        <dt>Wheeler L</dt><dd><span class="eq">L ≈ 0.6×10⁻³ · K₁ · N² · d_avg(mm) / (1 + K₂·ρ) µH (K₁=2.34, K₂=2.75)</span></dd>
         <dt>Reflected R</dt><dd><span class="eq">R_added = (ωM)² · R_t / (R_t² + (ωL_t)²)</span></dd>
         <dt>LDC1614 count</dt><dd><span class="eq">N = round(f_REF / f_sensor · 2²⁸)</span></dd>
       </dl>
@@ -567,7 +569,9 @@ uint32_t dataCh0 = raw &amp; 0x0FFFFFFF; // 28-bit valid bits
 
     const dav = (Do + Di) / 2;
     const rho = (Do - Di) / (Do + Di);
-    const L1 = (N*N * dav * 2.34) / (1 + 2.75*rho); // µH
+    // Modified Wheeler / Mohan for planar round spiral (d_avg in mm → L in µH).
+    // Full form: L = µ₀·K₁/2 · N²·d_avg / (1+K₂·ρ); prefactor with d_avg in mm = 0.6e-3 µH/mm.
+    const L1 = (0.6e-3 * 2.34 * N*N * dav) / (1 + 2.75*rho); // µH
     const Ltot = Ly*Ly * L1 * 0.9;
     document.getElementById('coDavg').textContent = dav.toFixed(1) + ' mm';
     document.getElementById('coRho').textContent = rho.toFixed(3);

@@ -237,11 +237,108 @@
     </div>
   </section>
 
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
+  </section>
+
   <footer>
-    Curriculum: <a href="../../phase-4-feedback-control.md">EM Phase 4 — Feedback Control</a> ·
+    Curriculum: <a target="_top" href="../../index.html">EM Phase 4 — Feedback Control</a> ·
     Topic: PID explorer, mass-spring-damper, windup, derivative kick
   </footer>
 </main>
+
+<style>
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
+</style>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "You have a P-only controller and the output settles below the setpoint with a small constant error. The best single-term change to drive that error to zero is:",
+      a: ["Increase Kp", "Add integral (Ki)", "Add derivative (Kd)", "Increase the saturation limits"],
+      correct: 1,
+      why: "Steady-state error from a constant load disturbance with P-only control cannot be removed by raising Kp without compromising stability. Integral action sums the error over time and pushes it to zero. Kd doesn't help — derivative of a constant error is zero."
+    },
+    {
+      q: "Your loop tracks setpoints well in normal operation, but after a long actuator saturation it overshoots wildly before recovering. Most likely culprit?",
+      a: ["Derivative kick on the setpoint",
+          "Integral windup",
+          "Sample rate too high",
+          "Sensor noise on the derivative term"],
+      correct: 1,
+      why: "Classic windup signature: while the actuator was saturated the integrator kept accumulating error, so by the time the actuator can move again the integral term carries a huge stored value that overshoots before unwinding. Fix with conditional integration, back-calculation, or clamping."
+    },
+    {
+      q: "A step change in setpoint produces a brief, very large output spike. The pure-PID structure that causes this is:",
+      a: ["Kp acting on error",
+          "Ki integrating step",
+          "Kd of the error signal (which contains a step)",
+          "Sensor anti-aliasing"],
+      correct: 2,
+      why: "Derivative of a step is an impulse — Kd · de/dt explodes momentarily. The standard fix is to take the derivative of the measurement only (–Kd · dy/dt), not of the error. The plant state can't change instantly so dy/dt stays bounded."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
+</script>
 <script>
 const plotSvg = document.getElementById('plotSvg');
 
@@ -452,18 +549,42 @@ function drawPlot(){
   metric('Sat samples', m.satCount + ' / ' + (out.t.length), m.satCount > 100);
 }
 
-document.getElementById('kp').oninput = e=>{ kp=parseFloat(e.target.value); document.getElementById('kpRO').textContent=kp.toFixed(1); drawPlot(); };
-document.getElementById('ki').oninput = e=>{ ki=parseFloat(e.target.value); document.getElementById('kiRO').textContent=ki.toFixed(1); drawPlot(); };
-document.getElementById('kd').oninput = e=>{ kd=parseFloat(e.target.value); document.getElementById('kdRO').textContent=kd.toFixed(2); drawPlot(); };
-document.getElementById('sp').oninput = e=>{ sp=parseFloat(e.target.value); document.getElementById('spRO').textContent=sp.toFixed(2); drawPlot(); };
-document.getElementById('dist').oninput = e=>{ dist=parseFloat(e.target.value); document.getElementById('distRO').textContent=dist.toFixed(1)+' N'; drawPlot(); };
-document.getElementById('sat').oninput = e=>{ sat=parseFloat(e.target.value); document.getElementById('satRO').textContent=sat.toFixed(0)+' N'; drawPlot(); };
-document.getElementById('noise').oninput = e=>{ noise=parseFloat(e.target.value); document.getElementById('noiseRO').textContent=noise.toFixed(3); drawPlot(); };
-document.getElementById('aw').onchange = e=>{ antiWindup=e.target.value; drawPlot(); };
+// Deep-link state: every slider value encoded in URL hash so configurations are shareable.
+const HASH_KEYS = ['kp','ki','kd','sp','dist','sat','noise','aw','showP','showI','showD','showU'];
+function loadHashState(){
+  const params = new URLSearchParams(location.hash.slice(1));
+  for(const id of HASH_KEYS){
+    const v = params.get(id);
+    if(v === null) continue;
+    const el = document.getElementById(id);
+    if(!el) continue;
+    if(el.type === 'checkbox') el.checked = (v === '1' || v === 'true');
+    else el.value = v;
+  }
+}
+function saveHashState(){
+  const params = new URLSearchParams();
+  for(const id of HASH_KEYS){
+    const el = document.getElementById(id);
+    if(!el) continue;
+    params.set(id, el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value);
+  }
+  history.replaceState(null, '', '#' + params.toString());
+}
+
+document.getElementById('kp').oninput = e=>{ kp=parseFloat(e.target.value); document.getElementById('kpRO').textContent=kp.toFixed(1); saveHashState(); drawPlot(); };
+document.getElementById('ki').oninput = e=>{ ki=parseFloat(e.target.value); document.getElementById('kiRO').textContent=ki.toFixed(1); saveHashState(); drawPlot(); };
+document.getElementById('kd').oninput = e=>{ kd=parseFloat(e.target.value); document.getElementById('kdRO').textContent=kd.toFixed(2); saveHashState(); drawPlot(); };
+document.getElementById('sp').oninput = e=>{ sp=parseFloat(e.target.value); document.getElementById('spRO').textContent=sp.toFixed(2); saveHashState(); drawPlot(); };
+document.getElementById('dist').oninput = e=>{ dist=parseFloat(e.target.value); document.getElementById('distRO').textContent=dist.toFixed(1)+' N'; saveHashState(); drawPlot(); };
+document.getElementById('sat').oninput = e=>{ sat=parseFloat(e.target.value); document.getElementById('satRO').textContent=sat.toFixed(0)+' N'; saveHashState(); drawPlot(); };
+document.getElementById('noise').oninput = e=>{ noise=parseFloat(e.target.value); document.getElementById('noiseRO').textContent=noise.toFixed(3); saveHashState(); drawPlot(); };
+document.getElementById('aw').onchange = e=>{ antiWindup=e.target.value; saveHashState(); drawPlot(); };
 
 for(const id of ['showP','showI','showD','showU']){
   document.getElementById(id).onchange = e=>{
     window[id] = e.target.checked;
+    saveHashState();
     drawPlot();
   };
 }
@@ -488,6 +609,25 @@ function applyPreset(name){
 document.querySelectorAll('[data-preset]').forEach(btn=>{
   btn.onclick = ()=>applyPreset(btn.getAttribute('data-preset'));
 });
+
+// Apply URL hash on load (handlers wired above so values + checkbox states sync), then re-read state
+loadHashState();
+kp = parseFloat(document.getElementById('kp').value);
+ki = parseFloat(document.getElementById('ki').value);
+kd = parseFloat(document.getElementById('kd').value);
+sp = parseFloat(document.getElementById('sp').value);
+dist = parseFloat(document.getElementById('dist').value);
+sat = parseFloat(document.getElementById('sat').value);
+noise = parseFloat(document.getElementById('noise').value);
+antiWindup = document.getElementById('aw').value;
+for(const id of ['showP','showI','showD','showU']){ window[id] = document.getElementById(id).checked; }
+document.getElementById('kpRO').textContent = kp.toFixed(1);
+document.getElementById('kiRO').textContent = ki.toFixed(1);
+document.getElementById('kdRO').textContent = kd.toFixed(2);
+document.getElementById('spRO').textContent = sp.toFixed(2);
+document.getElementById('distRO').textContent = dist.toFixed(1) + ' N';
+document.getElementById('satRO').textContent = sat.toFixed(0) + ' N';
+document.getElementById('noiseRO').textContent = noise.toFixed(3);
 
 drawPlot();
 </script>

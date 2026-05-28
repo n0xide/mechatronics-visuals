@@ -102,6 +102,19 @@ Add a "Share this configuration: [copy link]" affordance to the page (CSS class 
 
 Visuals with this pattern as of 2026-05-27: snubber-deep, gain-scheduling, imu-fusion, composites-laminate, secure-boot-ota, llc-resonant, refrigeration-cycle, fmea-fault-tree, lyapunov-stability, euler-buckling. To add to an existing visual, copy the helper functions + add the SLIDERS list at the top of `<script>`.
 
+## Practice-quiz pattern
+
+A self-contained "Check yourself" quiz block can be added at the end of any visual (before the `<footer>`). Pattern is a `<section class="quiz" id="quiz">` with `<div id="quizMount"></div>`, followed by a `<style>` block of `.quiz-*` rules and an inline `<script>` IIFE that:
+
+- builds a `QUESTIONS` array of `{q, a[], correct, why}` objects
+- keys state by `'quiz:' + location.pathname.replace(/.*\//,'')` so localStorage tracks per-visual answers
+- renders each card; on click, locks in the choice, colors ✓/✗, shows the `why` explanation
+- shows a final score + "Try again" button once all questions are answered
+
+Three questions per visual is the target — enough to anchor the takeaway, short enough to skip. Distractors should be plausible (common student mistakes, off-by-one factors, swapped numerator/denominator), not nonsense. The `why` field is the teaching moment — even a right answer benefits from the one-line explanation.
+
+Visuals with the quiz pattern as of 2026-05-28: voltage-divider-explorer, ohms-law-explorer, rlc-resonance, pid-explorer, mohrs-circle. To add to a new visual, copy the entire block from `voltage-divider-explorer.html` (everything between `<section class="quiz"...>` and the closing `</script>`) and rewrite the `QUESTIONS` array. The CSS uses the same `--bg-elev`, `--accent`, `--warn` variables every visual already has, so no theme work needed.
+
 ## Special files — intentional source/bundle drift
 
 These three were promoted from `docs/_extras/` to `docs/extras/` but their **bundle copies are NOT verbatim mirrors of source**. The bundle versions were hand-rewritten to render correctly inside the SPA iframe (back-links use `target="_top"` and `../index.html`; phase-deep links use `../index.html#<disc>-<n>` anchors instead of `../<track>/phase-N-...md` paths). A naive `cp` from source over bundle for these files will clobber those rewrites and break the bundle.
