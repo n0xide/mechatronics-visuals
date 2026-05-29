@@ -177,7 +177,7 @@
         <select id="chip">
           <option value="a4988">A4988 (I_peak = V_ref / (8·R_s))</option>
           <option value="drv8825">DRV8825 (I_peak = V_ref / (5·R_s))</option>
-          <option value="tmc2209">TMC2209 (analog: I_rms ≈ V_ref · 0.71 / (R_s + 0.02); see UART IRUN below)</option>
+          <option value="tmc2209">TMC2209 (analog: I_rms ≈ 0.092·V_ref / (R_s+0.02); see UART IRUN below)</option>
         </select>
       </div>
       <div class="control">
@@ -282,7 +282,7 @@
       <dl>
         <dt>A4988</dt><dd><span class="eq">I_peak = V_ref / (8 · R_sense)</span></dd>
         <dt>DRV8825</dt><dd><span class="eq">I_peak = V_ref / (5 · R_sense)</span></dd>
-        <dt>TMC2209</dt><dd><span class="eq">I_rms ≈ V_ref · 0.71 / (R_s + 0.02)</span><br><span class="eq-note">(analog mode); usually set by UART IRUN</span></dd>
+        <dt>TMC2209</dt><dd><span class="eq">I_rms ≈ 0.092·V_ref / (R_s + 0.02)</span><br><span class="eq-note">(analog mode, vsense=0; full form: 0.325·V_ref / (2.5·√2·(R_s+0.02)) — V_FS=0.325V scales with V_ref/2.5V; usually set by UART IRUN instead)</span></dd>
         <dt>I_rms ↔ peak</dt><dd><span class="eq">I_rms = I_peak / √2 (sine current)</span></dd>
       </dl>
     </div>
@@ -395,9 +395,12 @@
       Imax = Vr/(5*Rs);
       Irms = Imax/Math.sqrt(2);
     } else {
-      // TMC2209 analog mode: I_rms ≈ V_REF × 0.71 / (R_sense + 0.02 Ω)
-      // (assumes V_FS scaled by V_REF input; precise constant depends on vsense bit)
-      Irms = Vr*0.71/(Rs+0.02);
+      // TMC2209 analog mode: V_FS = 0.325V × (V_REF / 2.5V) at vsense=0
+      // I_RMS = V_FS / (√2 × (R_sense + R_internal)); R_internal ≈ 0.02 Ω
+      // Combined: I_RMS ≈ 0.325 · V_REF / (2.5 · √2 · (R_sense + 0.02))
+      //         ≈ V_REF · 0.0919 / (R_sense + 0.02)
+      // Sanity: V_REF=1.2V, R_sense=0.11Ω → I_RMS ≈ 0.85A (matches factory default)
+      Irms = 0.325*Vr/(2.5*Math.sqrt(2)*(Rs+0.02));
       Imax = Irms*Math.sqrt(2);
     }
     const ratio = (Imax/Ir*100);
