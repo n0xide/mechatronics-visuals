@@ -181,7 +181,7 @@
     <span class="eq">If the ADC shares this ground return, its reference moves by 13.8 V for 5 ns. A SAR aperture of ~100 ns–1 µs straddles many such spikes per conversion.</span>
     <span class="eq">Effect: 13.8 V / 76 µV per LSB ≈ 180 000 LSB of disturbance — the LSB count is meaningless; the conversion is corrupted whenever a switching edge lands inside the aperture.</span>
     <h3>The fix</h3>
-    <span class="eq">Star ground: separate trace from ADC GND to PSU GND; ADC sees only its own GND inductance (~3 nH for 3 mm to plane) = 0.27 V — still bad.</span>
+    <span class="eq">Star ground: separate trace from ADC GND to PSU GND; the ADC's spoke sees only the residual inductance of the star-point connection. If that residual is ~3 nH and the switcher's 4×10⁸ A/s edge couples through it with k ≈ 0.2 (typical for short shared trunk), V_at_ADC ≈ k · 3 nH · 4×10⁸ ≈ 0.24 V — better, still bad for a 76 µV LSB.</span>
     <span class="eq">Single-point AGND/DGND: ADC's AGND pin goes to its own quiet plane; DGND goes to digital plane. Tied at one point under ADC. Effective coupling: pF-scale.</span>
     <span class="eq">Best: solid ground plane below the entire layout, switcher and ADC each placed locally; return currents take direct paths under their signals.</span>
   </div>
@@ -192,8 +192,8 @@
     <p>STM32 toggles a 100 mA relay coil through a transistor. Edge rate of the MCU GPIO: 10 ns. Connecting trace to relay = 20 mm narrow. Sensitive ADC reads strain gauge on same board.</p>
     <h3>The math</h3>
     <span class="eq">Edge L: 20 mm · 1 nH/mm = 20 nH</span>
-    <span class="eq">di: MCU GPIO charging a typical 1 nF effective gate input (Qg ≈ 5 nC at Vgs=5 V) in 10 ns → di = C·ΔV/Δt = 1 nF · 5 V / 10 ns = 0.5 A peak.</span>
-    <span class="eq">V_GB = L · di/dt = 20e-9 · (0.5/10e-9) = <b>1 V</b> transient on shared GND.</span>
+    <span class="eq">Peak gate current: MCU GPIO charging a typical 1 nF effective gate input in 10 ns → i_peak = C·ΔV/Δt = 1 nF · 5 V / 10 ns = 0.5 A.</span>
+    <span class="eq">di/dt of that pulse: 0.5 A / 10 ns = 5×10⁷ A/s. V_GB = L · di/dt = 20 nH · 5×10⁷ = <b>1 V</b> transient on shared GND.</span>
     <span class="eq">Strain-gauge ADC (24-bit, ±0.5 V FS after PGA → LSB ≈ 60 nV; or 24-bit at ±2.5 V FS → LSB ≈ 300 nV): a 1 V transient buries the conversion by 17 M LSB / 3 M LSB respectively — way past anything the digital filter can salvage.</span>
     <h3>The fix</h3>
     <span class="eq">Add a separate "noisy" ground to relay driver + transistor; tie this ground to the "quiet" ground at a single point near the MCU's main GND.</span>

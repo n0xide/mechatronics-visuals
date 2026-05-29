@@ -356,18 +356,24 @@
     ctx.fillText('frequency (Hz)', W-110, H-2);
 
     // Compute R(f), X(f), |Z|(f)
-    // Model: R peaks at peak frequency ~100 MHz, height = beadZ
-    // L falls off above SRF
+    // Bead model: series wire-wound L_b (low DC R), with parasitic shunt C_p and a
+    // lossy core that gives a resistive peak around the rated frequency (here 100 MHz).
+    // Below peak: inductive (X = +ωL_b). At peak: resistive plateau ≈ beadZ.
+    // Above peak: parasitic shunt C_p dominates, |Z| falls (net capacitive reactance).
     const peakF = 100e6;
-    const Q = 1.2;
     function model(f){
-      // R(f) — band-stop resistive contribution centered at peakF
+      // R(f) — lossy-core resistive peak centered at peakF (log-Gaussian shape)
       const x = Math.log10(f / peakF);
       const R = beadZ * Math.exp(-x*x / (2 * 0.5*0.5)) + 0.005; // peak + DC resistance
-      // X(f) — inductive below peak, capacitive above (because of parasitic C)
-      const L = beadZ / (2*Math.PI*peakF) * 0.6;
-      const C = 1 / (4 * Math.PI*Math.PI * peakF*peakF * L);
-      const X = 2*Math.PI*f*L - 1/(2*Math.PI*f*C);
+      // L_b chosen so |X_L| at peakF ≈ beadZ (Q-like factor 0.6 for realism)
+      const L_b = beadZ / (2*Math.PI*peakF) * 0.6;
+      // Parasitic shunt C_p chosen so the L_b‖C_p resonance lands at peakF.
+      const C_p = 1 / (4 * Math.PI*Math.PI * peakF*peakF * L_b);
+      // Series L in parallel with shunt C: net jX (sign: inductive below, capacitive above)
+      const X_L = 2*Math.PI*f*L_b;
+      const X_C = -1/(2*Math.PI*f*C_p); // capacitive reactance, negative
+      // Approximate net reactance by combining as L below resonance, C above
+      const X = (f < peakF) ? X_L : X_C;
       const mag = Math.sqrt(R*R + X*X);
       return {R, X: Math.abs(X), mag};
     }
