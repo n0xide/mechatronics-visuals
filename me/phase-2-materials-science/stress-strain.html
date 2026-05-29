@@ -201,11 +201,108 @@
     </div>
   </section>
 
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
+  </section>
+
   <footer>
     Curriculum: <a target="_top" href="../../index.html">ME Phase 2 — Materials Science</a> ·
     Topic: Stress-strain behavior
   </footer>
 </main>
+
+<style>
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
+</style>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "Engineering stress is defined as:",
+      a: ["Force divided by current cross-section area",
+          "Force divided by original cross-section area",
+          "Force divided by length",
+          "Strain divided by Young's modulus"],
+      correct: 1,
+      why: "σ_engineering = F / A_0 (original area). True stress uses the instantaneous area and is higher once necking starts. For small strains the two agree; design codes almost always use engineering stress."
+    },
+    {
+      q: "A steel rod (E = 200 GPa) under 200 MPa axial stress experiences an elastic strain of:",
+      a: ["0.001 (0.1 %)", "0.01 (1 %)", "0.1 (10 %)", "1 (100 %)"],
+      correct: 0,
+      why: "Hooke's law in the elastic region: ε = σ/E = 200·10⁶ / 200·10⁹ = 10⁻³ = 0.1 %. Steel elastic strains are tiny — most parts fail in service from yield or fatigue long before they 'feel' stretched."
+    },
+    {
+      q: "Past the yield point, the material:",
+      a: ["Continues to behave linearly with the same E",
+          "Returns to its original shape when unloaded",
+          "Retains permanent (plastic) deformation when unloaded",
+          "Fractures immediately"],
+      correct: 2,
+      why: "Yield is the boundary between elastic (reversible) and plastic (permanent) deformation. After yield, removing the load leaves the part with residual strain. For most metals this is gradual — UTS sits well above yield, with strain-hardening in between."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
+</script>
 <script>
 // ----- Curve definitions ------------------------------------------------------
 // Each returns sigma (MPa) at a given strain (decimal). Domain: 0..eps_fracture

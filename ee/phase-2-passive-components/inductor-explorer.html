@@ -261,11 +261,102 @@
     </div>
   </section>
 
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
+  </section>
+
   <footer>
     Curriculum: <a target="_top" href="../../index.html">EE Phase 2 — Passive Components</a> ·
     Topic: Inductor saturation, DCR, winding capacitance, SRF, core materials
   </footer>
 </main>
+
+<style>
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
+</style>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "An inductor's voltage relationship is v = L·di/dt. If di/dt = 10 A/ms and L = 100 µH, what is v?",
+      a: ["0.1 V", "1 V", "10 V", "1 kV"],
+      correct: 1,
+      why: "v = L · di/dt = 100·10⁻⁶ H · 10/10⁻³ A/s = 100·10⁻⁶ · 10⁴ = 1 V. The inductor resists changes in current — fast di/dt produces large voltages. That's why a relay coil spikes when the driver opens."
+    },
+    {
+      q: "Energy stored in a 100 µH inductor carrying 2 A is closest to:",
+      a: ["200 µJ", "200 mJ", "20 mJ", "100 µJ"],
+      correct: 0,
+      why: "E = ½·L·I² = 0.5 · 100·10⁻⁶ · 4 = 200 µJ. Same ½ factor as a capacitor; energy lives in the magnetic field. When the switch opens this energy must go somewhere — usually into a flyback diode or a snubber."
+    },
+    {
+      q: "Two 10 µH inductors in series (no mutual coupling). The equivalent inductance is:",
+      a: ["5 µH", "10 µH", "20 µH", "100 µH"],
+      correct: 2,
+      why: "Series inductors add: L_total = L1 + L2 = 20 µH. Same rule as series resistors (and opposite of series capacitors). Parallel inductors follow the same rule as parallel resistors."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
+</script>
 <script>
   // ---------- TAB MGMT ----------
   document.querySelectorAll('.tab').forEach(t => {

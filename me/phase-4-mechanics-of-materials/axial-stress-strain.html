@@ -213,11 +213,102 @@
     </div>
   </section>
 
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
+  </section>
+
   <footer>
     Curriculum: <a target="_top" href="../../index.html">ME Phase 4 — Mechanics of Materials</a> ·
     Topic: Axial stress, strain, Hooke's law, thermal stress
   </footer>
 </main>
+
+<style>
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
+</style>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "A round bar with diameter 10 mm carries an axial tensile load of 7.85 kN. The axial stress is closest to:",
+      a: ["10 MPa", "100 MPa", "785 MPa", "7.85 GPa"],
+      correct: 1,
+      why: "A = π·d²/4 = π·(0.010)²/4 ≈ 78.5 mm² = 78.5·10⁻⁶ m². σ = F/A = 7850 / 78.5·10⁻⁶ = 1·10⁸ Pa = 100 MPa. Cross-section grows with d², so doubling the diameter quarters the stress."
+    },
+    {
+      q: "An aluminum bar (α = 23·10⁻⁶ /°C, E = 70 GPa) is fully restrained (no length change allowed) and heated by 50 °C. The induced compressive stress is approximately:",
+      a: ["80 MPa", "0.5 MPa", "1.6 GPa", "0 — heating doesn't produce stress"],
+      correct: 0,
+      why: "Thermal-strain mechanics: σ = E·α·ΔT = 70·10⁹ · 23·10⁻⁶ · 50 ≈ 80·10⁶ Pa = 80 MPa, compressive (the bar wants to expand but can't, so it pushes back on its supports). This is why bimetal strips bend and bridges need expansion joints."
+    },
+    {
+      q: "A steel cable elongates by 2 mm under load. If you double the original length but keep the load the same, the elongation becomes:",
+      a: ["1 mm", "2 mm", "4 mm", "Cannot be determined"],
+      correct: 2,
+      why: "δ = PL/(AE). With P, A, E fixed and L doubled, δ doubles to 4 mm. Same stress, but more length to stretch over. (Strain ε = σ/E is independent of length — but the *total* elongation grows with length.)"
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
+</script>
 <script>
 // ---- Axial bar visual ----
 const svg = document.getElementById('bar');

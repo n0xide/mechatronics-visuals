@@ -298,11 +298,105 @@
     </div>
   </section>
 
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
+  </section>
+
   <footer>
     Curriculum: <a target="_top" href="../../index.html">EE Phase 2 — Passive Components</a> ·
     Topic: Capacitor types, ESR/ESL, SRF, DC-bias derating
   </footer>
 </main>
+
+<style>
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
+</style>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "Two 100 µF capacitors are connected in parallel. The equivalent capacitance is:",
+      a: ["50 µF", "100 µF", "200 µF", "10 mF"],
+      correct: 2,
+      why: "Parallel capacitors add: C_total = C1 + C2 = 200 µF. Opposite of resistors. Same voltage across each; total stored charge is the sum."
+    },
+    {
+      q: "A 16 V rated X7R MLCC is biased at 12 V (75 % of rating). What's the most likely effect?",
+      a: ["No change — voltage is below rating",
+          "Capacitance is 5–10 % below the nameplate",
+          "Capacitance drops by 30–60 % below the nameplate",
+          "Capacitor immediately fails"],
+      correct: 2,
+      why: "Class-II MLCC dielectrics (X7R, X5R, Y5V) show severe DC-bias derating: at ~75 % of rated voltage you typically lose 30-60 % of capacitance. Rule of thumb: use a cap rated for at least 2-3× the working voltage if you need the labelled value. C0G/NP0 doesn't suffer this."
+    },
+    {
+      q: "Energy stored on a 470 µF capacitor charged to 12 V is closest to:",
+      a: ["3 mJ", "34 mJ", "340 mJ", "5.6 J"],
+      correct: 1,
+      why: "E = ½·C·V² = 0.5 · 470e-6 · 144 ≈ 0.0338 J = 33.8 mJ. The ½ factor catches many newcomers — it comes from integrating i·v over the charge-up transient."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
+</script>
 <script>
   // ---------- TAB MGMT ----------
   document.querySelectorAll('.tab').forEach(t => {

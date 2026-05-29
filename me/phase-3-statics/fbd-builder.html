@@ -195,11 +195,108 @@
     </div>
   </section>
 
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
+  </section>
+
   <footer>
     Curriculum: <a target="_top" href="../../index.html">ME Phase 3 — Statics</a> ·
     Topic: FBD construction and determinacy
   </footer>
 </main>
+
+<style>
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
+</style>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "A 2-D beam is supported by a fixed pin on one end and a roller on the other. How many reaction-force components do you draw on the FBD?",
+      a: ["1", "2", "3", "4"],
+      correct: 2,
+      why: "A 2-D pin gives two reaction components (Rx, Ry). A roller gives one (perpendicular to its rolling surface). Total = 3 — exactly what the three 2-D equilibrium equations (ΣFx = ΣFy = ΣM = 0) can solve. This is the canonical statically-determinate beam."
+    },
+    {
+      q: "Which of the following is NOT typically drawn on a free-body diagram of a single rigid body?",
+      a: ["External applied forces",
+          "Reaction forces from supports",
+          "Internal forces between particles of the body",
+          "Gravitational weight at the centre of mass"],
+      correct: 2,
+      why: "An FBD shows only forces acting ON the body from outside (loads, reactions, gravity). Internal forces between particles of the body are not drawn — they cancel in pairs by Newton's 3rd law. To find internal forces you'd cut the body and draw an FBD of one piece."
+    },
+    {
+      q: "A 2-D structure has 6 unknown reaction components but only 3 equilibrium equations. The structure is:",
+      a: ["Statically determinate",
+          "Statically indeterminate (3 degrees redundant)",
+          "Unstable",
+          "A mechanism with 3 degrees of freedom"],
+      correct: 1,
+      why: "Unknowns > equations → statically indeterminate (here by 6 − 3 = 3 degrees). You need extra equations from material behaviour (compatibility / deflection) to solve. Statics alone is not enough."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
+</script>
 <script>
 const SUP_DATA = {
   pin:        {label:'Pin',          reactions:['Rx','Ry'],         dof:2, dim:2},

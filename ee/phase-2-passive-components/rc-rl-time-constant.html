@@ -211,11 +211,102 @@
     </div>
   </section>
 
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
+  </section>
+
   <footer>
     Curriculum: <a target="_top" href="../../index.html">EE Phase 2 — Passive Components</a> ·
     Topic: RC and RL time constant, first-order step response, equivalent low-pass cutoff
   </footer>
 </main>
+
+<style>
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
+</style>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "An RC circuit has R = 10 kΩ and C = 100 nF. The time constant τ is:",
+      a: ["10 µs", "100 µs", "1 ms", "10 ms"],
+      correct: 2,
+      why: "τ = RC = 10·10³ Ω · 100·10⁻⁹ F = 10⁻³ s = 1 ms. After one τ the capacitor reaches ~63 % of its final voltage on a charging step; ~99 % after 5τ."
+    },
+    {
+      q: "A capacitor charges from 0 V toward 5 V through a resistor. After 3τ, the voltage is approximately:",
+      a: ["0.5 V", "3.2 V", "4.75 V", "5.0 V"],
+      correct: 2,
+      why: "V(t) = V_final · (1 − e^(−t/τ)). At t = 3τ: V = 5·(1 − e⁻³) ≈ 5·(1 − 0.0498) ≈ 4.75 V (95 %). The exponential plateau: rough memorization 63 %, 86 %, 95 %, 98 %, 99 % at 1τ–5τ."
+    },
+    {
+      q: "An RC low-pass filter is built from R = 1 kΩ and C = 159 nF. Its −3 dB cutoff frequency is closest to:",
+      a: ["1 Hz", "100 Hz", "1 kHz", "10 kHz"],
+      correct: 2,
+      why: "f_c = 1/(2π·RC) = 1/(2π · 10³ · 159·10⁻⁹) ≈ 1.00 kHz. At f_c the output is 0.707× the input (−3 dB). Shortcut: τ = RC = 159 µs, f_c = 1/(2π·τ) ≈ 1 kHz."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
+</script>
 <script>
   const $ = id => document.getElementById(id);
   const state = {

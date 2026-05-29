@@ -113,7 +113,7 @@ A self-contained "Check yourself" quiz block can be added at the end of any visu
 
 Three questions per visual is the target — enough to anchor the takeaway, short enough to skip. Distractors should be plausible (common student mistakes, off-by-one factors, swapped numerator/denominator), not nonsense. The `why` field is the teaching moment — even a right answer benefits from the one-line explanation.
 
-Visuals with the quiz pattern as of 2026-05-28: voltage-divider-explorer, ohms-law-explorer, rlc-resonance, pid-explorer, mohrs-circle. To add to a new visual, copy the entire block from `voltage-divider-explorer.html` (everything between `<section class="quiz"...>` and the closing `</script>`) and rewrite the `QUESTIONS` array. The CSS uses the same `--bg-elev`, `--accent`, `--warn` variables every visual already has, so no theme work needed.
+Visuals with the quiz pattern as of 2026-05-28: voltage-divider-explorer, ohms-law-explorer, rlc-resonance, pid-explorer, mohrs-circle, kvl-kcl-explorer, series-parallel-explorer, thevenin-norton-explorer, rc-rl-time-constant, capacitor-explorer, inductor-explorer, stress-strain, fbd-builder, axial-stress-strain, wheatstone-bridge (15 total — heavy weighting on starter topics so beginners get checkpoint questions early in each track). To add to a new visual, copy the entire block from `voltage-divider-explorer.html` (everything between `<section class="quiz"...>` and the closing `</script>`) and rewrite the `QUESTIONS` array. The CSS uses the same `--bg-elev`, `--accent`, `--warn` variables every visual already has, so no theme work needed.
 
 ## Special files — intentional source/bundle drift
 
