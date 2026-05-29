@@ -202,7 +202,7 @@
       <text x="40" y="220" class="label-dim">rotor (PM, N-S)</text>
     </svg>
     <p style="margin-top:8px;font-size:12px;color:var(--fg-dim)">
-      Full-step: rotor sits aligned with the field (4 discrete positions per electrical cycle). Half-step: 8 positions. Microstep 1/16: 64. Higher microstepping means smoother motion and less audible noise. The <em>static</em> holding torque at each microstep stays near T_hold (sin/cos current shaping always energizes both coils at ~I_max RMS), but the <em>incremental</em> torque to displace by one microstep is ~T_hold·sin(π/(2M)) ≈ T_hold/M, so positioning accuracy at very fine microsteps is dominated by detent torque error and friction, not driver resolution.
+      Full-step: rotor sits aligned with the field (4 discrete positions per electrical cycle). Half-step: 8 positions. Microstep 1/16: 64. Higher microstepping means smoother motion and less audible noise. The <em>static</em> holding torque at each microstep is set by the resultant current vector √(I_A²+I_B²); with standard sin/cos drive at I_max amplitude that vector has magnitude I_max — about <b>1/√2 ≈ 71 %</b> of the two-phase-on full-step reference (datasheet T_hold). The <em>incremental</em> restoring torque to displace by one microstep is T_hold·sin(π/(2M)) ≈ T_hold·π/(2M) for large M (~T_hold/10 at M=16), so positioning accuracy at very fine microsteps is dominated by detent torque error and friction, not driver resolution.
     </p>
   </div>
 
@@ -420,14 +420,15 @@
     statEl.style.color = status==='OK' ? 'var(--accent3)' : 'var(--warn)';
 
     // Mode stats — "ht" is the *static holding* torque at the (half/micro)step position, as a fraction of T_hold.
-    // Full-step two-phase-on: 100% (both coils at I_max, vector √2 magnitude — datasheet T_hold reference).
+    // T_hold reference = full-step two-phase-on (both coils at I_max, vector √2·I_max magnitude — datasheet convention).
+    // Full-step two-phase-on: 100%.
     // Half-step (no current shaping): alternates 100% (two-phase-on) and 70.7% (one-phase-on, single coil at I_max).
-    // Microstep 1/M with sin/cos current shaping: rotor sees ~100% of T_hold at any microstep position; the
-    // *incremental* torque to displace by one microstep is reduced (T_hold·sin(π/(2M)) ≈ T_hold/M for large M).
+    // Microstep 1/M with standard sin/cos at I_max amplitude: vector magnitude is I_max → static holding ≈ 71% of T_hold;
+    // *incremental* torque to displace one microstep is T_hold·sin(π/(2M)) ≈ T_hold·π/(2M) for large M (~T_hold/10 at M=16).
     let modeName, sa, ht;
     if(mode==='full'){ modeName='Full-step'; sa='1.8°'; ht='100%'; }
     else if(mode==='half'){ modeName='Half-step'; sa='0.9°'; ht='71–100%'; }
-    else { modeName='Microstep 1/16'; sa='0.1125°'; ht='~100% static (incremental ~T_hold/16)'; }
+    else { modeName='Microstep 1/16'; sa='0.1125°'; ht='~71% static (incremental ~T_hold·π/32 ≈ T_hold/10)'; }
     document.getElementById('statMode').textContent = modeName;
     document.getElementById('statSA').textContent = sa;
     document.getElementById('statHT').textContent = ht;

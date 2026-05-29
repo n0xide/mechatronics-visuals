@@ -275,7 +275,7 @@
         <tr><th>Quantity</th><th>Value</th></tr>
         <tr><td>Tip deflection (free)</td><td id="beDef" class="num">—</td></tr>
         <tr><td>Aspect ratio L/t (each plate)</td><td id="beAR" class="num">—</td></tr>
-        <tr><td>Approximate blocked tip force</td><td id="beFb" class="num">—</td></tr>
+        <tr><td>Blocked tip force (b=5 mm assumed)</td><td id="beFb" class="num">—</td></tr>
         <tr><td>Resonance (first mode, approx)</td><td id="beFr" class="num">—</td></tr>
       </table>
     </div>
@@ -525,11 +525,21 @@
     // Tip deflection (parallel bimorph, t = per-plate thickness, total bimorph h = 2t):
     // δ = (3/2)·d31·V·L²/h² = (3/2)·d31·V·L²/(2t)² = (3/8)·d31·V·L²/t²
     const delta = (3/8) * d31 * V * (L*L)/(t*t);
-    const Fb = Math.abs(delta) * 0.05; // rough proportional
-    const fr = 0.162 * (t / (L*L)) * Math.sqrt(70e9 / 7800);
+    // Blocked tip force = k_bender · δ_free, where for a uniform cantilever
+    // k = 3·E·I / L³ = E·b·h³ / (4·L³). Bimorph total thickness h = 2t.
+    // Assume default width b = 5 mm and PZT modulus E ≈ 60 GPa for a representative number.
+    const h = 2*t;
+    const b_assumed = 5e-3;
+    const E_pzt = 60e9;
+    const rho_pzt = 7800;
+    const k_bender = E_pzt * b_assumed * h*h*h / (4 * L*L*L);
+    const Fb = Math.abs(delta) * k_bender;
+    // First-mode cantilever resonance: f₁ = 0.162·(h/L²)·√(E/ρ), h = total thickness.
+    const fr = 0.162 * (h / (L*L)) * Math.sqrt(E_pzt / rho_pzt);
     document.getElementById('beDef').textContent = (delta*1e6).toFixed(1) + ' µm';
     document.getElementById('beAR').textContent = (L/t).toFixed(0);
-    document.getElementById('beFb').textContent = Fb.toFixed(2) + ' N (approx)';
+    document.getElementById('beFb').textContent =
+        Fb < 0.01 ? (Fb*1000).toFixed(1) + ' mN' : Fb.toFixed(2) + ' N';
     document.getElementById('beFr').textContent = fr.toFixed(0) + ' Hz';
   }
 

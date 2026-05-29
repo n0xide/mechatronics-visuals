@@ -215,7 +215,7 @@
   <h2>What to notice</h2>
   <ul class="notice">
     <li><b>Quarter bridge output is 1/4 of full bridge</b> — adding more active gauges multiplies sensitivity directly: ×1, ×2, ×4 for quarter/half/full. Same ε, same GF, same V_ex.</li>
-    <li><b>Half bridge cancels temperature</b> — both gauges drift together with temperature; if they're in opposite arms (R1↑ and R3↑), the imbalance cancels. Use this in outdoor / engine-bay environments.</li>
+    <li><b>Half bridge cancels temperature</b> — put the two active gauges in OPPOSITE dividers (R1 in the left divider, R4 in the right; or equivalently R2 + R3). Both drift together with temperature so the imbalance cancels. Putting both gauges in the SAME divider (R1 + R3) preserves the divider ratio and outputs zero — wrong topology.</li>
     <li><b>mV/V is the load-cell spec</b> — datasheets give bridge output normalized by excitation (typically 2 mV/V at rated load). Multiply by your V_ex to get raw output.</li>
     <li><b>Raw signal is millivolts, ADC needs volts</b> — gain of 100–1000× is mandatory. INA125 / AD620 / INA826 are the workhorses; HX711 integrates this + 24-bit ADC into a single 50¢ chip for load cells.</li>
     <li><b>Bridge is small-signal linear</b> — formulas assume ΔR/R ≪ 1. For huge resistance changes (LDR, FSR) the bridge breaks; use a divider instead.</li>
@@ -239,7 +239,7 @@
       <h3>MEMORIZE</h3>
       <ul>
         <li><b>1, 2, 4×</b> — quarter, half, full bridge sensitivity.</li>
-        <li><b>Opposite arms add</b> — same-sign strain in R1 + R3 or R2 + R4 adds; same-arm cancels.</li>
+        <li><b>Cross-divider arms add</b> — same-sign strain in R1 + R4 (or R2 + R3) adds; same-divider pair (R1 + R3 or R2 + R4) cancels and reads zero.</li>
         <li><b>2 mV/V @ rated</b> — typical load-cell output at full scale.</li>
         <li><b>HX711</b> — 50¢ part = bridge amp + 24-bit ADC; default for hobby load cells.</li>
       </ul>
@@ -386,10 +386,12 @@
     if(mode === 'quarter'){
       R1 = R0 * (1 + dRoR);
     } else if(mode === 'half'){
-      // Two active gauges in opposite divider arms (R1 and R4) with the same
-      // sign of strain — doubles sensitivity vs quarter-bridge and cancels
-      // temperature drift. Putting two strain gauges in the SAME divider arm
-      // (R1 + R3, the buggy old version) leaves V_A unchanged and outputs zero.
+      // Two active gauges in OPPOSITE dividers (R1 in the left divider with R3;
+      // R4 in the right divider with R2), both with the same sign of strain —
+      // making R1 grow drops V_A, making R4 grow raises V_B, so V_A − V_B widens
+      // by 2× the quarter-bridge response. Cancels first-order temperature drift.
+      // Putting both gauges in the same divider (e.g. R1+R3) leaves the divider
+      // ratio unchanged and outputs zero — the buggy pre-fix version.
       R1 = R0 * (1 + dRoR);
       R4 = R0 * (1 + dRoR);
     } else { // full
@@ -441,7 +443,7 @@
     if(mode === 'quarter'){
       set('r1Box', true); set('r2Box', false); set('r3Box', false); set('r4Box', false);
     } else if(mode === 'half'){
-      // Two gauges in OPPOSITE divider arms (R1 + R4) — matches the JS at line 296-298
+      // Two gauges in OPPOSITE dividers (R1 left + R4 right) — matches the half-bridge JS above.
       set('r1Box', true); set('r2Box', false); set('r3Box', false); set('r4Box', true);
     } else {
       set('r1Box', true); set('r2Box', true); set('r3Box', true); set('r4Box', true);
