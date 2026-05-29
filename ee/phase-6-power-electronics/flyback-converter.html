@@ -166,15 +166,16 @@ footer a{color:var(--accent)}
 <span class="step">Low-line CCM duty: D = 6·20.5 / (110 + 123) = 0.528 → designs check &lt; 0.5 for transformer reset margin</span>
 <span class="step"></span>
 <span class="step">Pick L_p so the converter just barely stays in CCM at full load + high-line (smallest core, highest ripple still continuous):</span>
-<span class="step">  L_p_crit at high-line, full load: L_crit = V_in²·D²·T_sw / (2·P_in) = 380²·0.245²·10 µs / (2·73.9 W) = 580 µH</span>
+<span class="step">  P_in = P_out / η = 65 / 0.88 = 73.9 W (assume η ≈ 88 % for the flyback stage)</span>
+<span class="step">  L_p_crit at high-line, full load: L_crit = V_in²·D²·T_sw / (2·P_in) = 380²·0.245²·10 µs / (2·73.9 W) = 587 µH</span>
 <span class="step">  Pick L_p = 800 µH (slight CCM margin; standard core size). Accept ~165% ripple ratio (ΔI/I_avg_on) — flybacks typically run heavy ripple to minimize core size.</span>
 <span class="step"></span>
 <span class="step">Peak primary current at high-line CCM:</span>
 <span class="step">  ΔI = 380 · 0.245 · 10 µs / 800 µH = 1.16 A (peak-to-peak ripple)</span>
-<span class="step">  I_avg_on = 65 / (380 · 0.245) = 0.70 A (avg during on-time)</span>
-<span class="step">  I_pk = I_avg_on + ΔI/2 = 0.70 + 0.58 = 1.28 A</span>
+<span class="step">  I_avg_on = P_in / (V_in · D) = 73.9 / (380 · 0.245) = 0.79 A (avg during on-time; use P_in not P_out — efficiency matters here)</span>
+<span class="step">  I_pk = I_avg_on + ΔI/2 = 0.79 + 0.58 = 1.37 A</span>
 <span class="step"></span>
-<span class="step">Secondary peak: I_sec_pk = N · I_pk = 6 · 1.28 = 7.7 A → SiC Schottky or fast Si diode rated 10A/100V</span>
+<span class="step">Secondary peak: I_sec_pk = N · I_pk = 6 · 1.37 = 8.2 A → SiC Schottky or fast Si diode rated 10A/100V</span>
 </div>
 <p>Off-the-shelf controllers: TI UCC28780 (active-clamp flyback), STM L6566B, ON NCP1252. Add a synchronous rectifier on the secondary for 1-2% η improvement.</p>
 </div>
@@ -196,7 +197,7 @@ footer a{color:var(--accent)}
 <li><b>Sizing the transformer for steady-state instead of cold-start surge</b> — at startup, output cap is empty, full duty for tens of µs. Use peak-current limit to protect.</li>
 <li><b>Skipping the snubber</b> — leakage spike kills the switch in seconds at full load. Always include RCD or TVS, even on bench prototype.</li>
 <li><b>Wrong gap calculation</b> — flyback core gap stores ~all the energy. Wrong gap → wrong L_p → wrong saturation point. Verify with the gap formula: L_p = µ₀·A_e·N² / l_g.</li>
-<li><b>RHP zero in CCM</b> — pushes the maximum control-loop bandwidth to ~1/5 of f_sw. Don't try to cross over higher; the loop becomes unstable.</li>
+<li><b>RHP zero in CCM</b> — f_RHPZ ≈ R_load·(1−D)²/(2π·L_p·N²) (operating-point dependent). Loop crossover must stay below f_RHPZ/3 (and also below ~f_sw/10 for sampling). At low line + heavy load, f_RHPZ drops — that's usually the tighter limit.</li>
 <li><b>Forward-active clamp gotcha</b> — different from flyback active clamp. Don't grab the wrong app note.</li>
 <li><b>Magnetizing-current asymmetry</b> — in heavily loaded flybacks, asymmetric switching can lead to flux-walking. Always use current-mode control with cycle-by-cycle limit.</li>
 <li><b>EMI filter undersized</b> — flyback's I_pk pulses 10× the average create huge LF EMI. Plan for a meaty common-mode + differential filter.</li>
