@@ -195,13 +195,15 @@ let dist=0.5, vmax=0.8, amax=4.0, jmax=40, tauP=0.04, zeta=0.4;
 
 function profileTrap(){
   // returns array of {t,p,v,a,j}
-  let ta = vmax/amax;
-  let tc = dist/vmax - vmax/amax;
+  // Use locals so we don't mutate the module-level vmax / amax across calls.
+  let vMax = vmax, aMax = amax;
+  let ta = vMax/aMax;
+  let tc = dist/vMax - vMax/aMax;
   let triangular = tc < 0;
   if(triangular){
-    ta = Math.sqrt(dist/amax);
+    ta = Math.sqrt(dist/aMax);
     tc = 0;
-    vmax = amax*ta;
+    vMax = aMax*ta;
   }
   const T = 2*ta + tc;
   const samples=300;
@@ -209,11 +211,11 @@ function profileTrap(){
   for(let i=0;i<=samples;i++){
     const t = i*T/samples;
     let a=0,v=0,p=0;
-    if(t<ta){ a=amax; v=amax*t; p=0.5*amax*t*t; }
-    else if(t<ta+tc){ a=0; v=vmax; p=0.5*amax*ta*ta + vmax*(t-ta); }
+    if(t<ta){ a=aMax; v=aMax*t; p=0.5*aMax*t*t; }
+    else if(t<ta+tc){ a=0; v=vMax; p=0.5*aMax*ta*ta + vMax*(t-ta); }
     else {
-      const dt=t-(ta+tc); a=-amax; v=vmax-amax*dt;
-      p=0.5*amax*ta*ta + vmax*tc + vmax*dt - 0.5*amax*dt*dt;
+      const dt=t-(ta+tc); a=-aMax; v=vMax-aMax*dt;
+      p=0.5*aMax*ta*ta + vMax*tc + vMax*dt - 0.5*aMax*dt*dt;
     }
     arr.push({t,p,v,a,j:0});
   }
@@ -222,22 +224,24 @@ function profileTrap(){
 
 function profileScurve(){
   // 7-segment jerk-limited. Adjust if not possible to reach amax or vmax.
-  let tj = amax/jmax;
-  let ta = vmax/amax - tj;
-  if(ta<0){ ta=0; tj=Math.sqrt(vmax/jmax); amax = jmax*tj; }
-  let tc = dist/vmax - vmax/amax - tj;
+  // Use locals so we don't mutate the module-level vmax / amax across calls.
+  let vMax = vmax, aMax = amax;
+  let tj = aMax/jmax;
+  let ta = vMax/aMax - tj;
+  if(ta<0){ ta=0; tj=Math.sqrt(vMax/jmax); aMax = jmax*tj; }
+  let tc = dist/vMax - vMax/aMax - tj;
   if(tc<0){
     // triangular accel: cannot reach vmax. find ta such that displacement matches.
-    // distance fully = (amax)(ta+tj)^2 → reach v = amax(ta+tj); equal accel/decel triangles
-    // simplified: assume can still reach amax
+    // distance fully = (aMax)(ta+tj)^2 → reach v = aMax(ta+tj); equal accel/decel triangles
+    // simplified: assume can still reach aMax
     tc=0;
     // recompute time so total dist hits Δp
-    // d = amax*(ta+tj)^2  (assuming full a profile both sides + tc=0 ⇒ )
+    // d = aMax*(ta+tj)^2  (assuming full a profile both sides + tc=0 ⇒ )
     // approximate: ta+tj such that 2*(integral of v) = Δp
-    // v_top = amax*(ta+tj); d = v_top * (ta+tj)
-    const x = Math.sqrt(dist/amax);
+    // v_top = aMax*(ta+tj); d = v_top * (ta+tj)
+    const x = Math.sqrt(dist/aMax);
     if(x < tj){
-      // can't even reach amax; pure jerk-only
+      // can't even reach aMax; pure jerk-only
       tj = Math.cbrt(dist/(2*jmax));
       ta=0; tc=0;
     } else {
