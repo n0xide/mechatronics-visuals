@@ -186,7 +186,7 @@
     <li><b>Going across a bus is the biggest hit</b> — switch the bus dropdown to CAN. Suddenly serializing a 4-byte command + TX time = 80 µs minimum. This is why you never put the fast loop on the bus — close it locally.</li>
     <li><b>Motor electrical time constant L/R is your floor</b> — even with zero compute and zero bus, the motor current can only change at L/R. For typical small BLDC, L/R ~100–500 µs. Your control loop can't beat physics.</li>
     <li><b>"Sample mid-PWM"</b> — the ADC must trigger at the midpoint of the PWM period, when switching noise is quietest. This shifts your effective sample time by half a PWM period (25 µs at 20 kHz) but gives clean current readings. Worth it.</li>
-    <li><b>Always leave headroom</b> — never plan for 95% loop utilization. 50–70% is the safety margin for interrupt jitter, branch mispredictions, and the surprise function call that turns into 30 µs.</li>
+    <li><b>Always leave headroom</b> — never plan for 95% loop utilization. Target 50–70% peak utilization (30–50% headroom) for interrupt jitter, branch mispredictions, and the surprise function call that turns into 30 µs.</li>
   </ul>
 
   <h2>Worked example — current-controlled BLDC with sensor-to-PWM latency</h2>
@@ -324,18 +324,19 @@
     // verdict — but motor L/R is a physical floor we can't beat,
     // and in practice the control deadline only needs the *electrical* path to finish in T,
     // not the motor response. Compute electrical latency = total - motor L/R.
+    // Rule of thumb: L < 0.7·T (30% headroom for jitter).
     const electricalLatency = totalUs - stages[stages.length-1].us;
     const utilization = electricalLatency / T;
     let cls='ok', msg='';
-    if (utilization < 0.5) {
+    if (utilization < 0.7) {
       cls='ok';
-      msg = `OK — electrical loop ${electricalLatency.toFixed(1)} µs vs ${T.toFixed(1)} µs deadline (${(utilization*100).toFixed(0)}% utilization). Comfortable headroom.`;
-    } else if (utilization < 0.85) {
+      msg = `OK — electrical loop ${electricalLatency.toFixed(1)} µs vs ${T.toFixed(1)} µs deadline (${(utilization*100).toFixed(0)}% utilization). Within the L<0.7·T headroom rule.`;
+    } else if (utilization < 1.0) {
       cls='warn';
-      msg = `TIGHT — ${(utilization*100).toFixed(0)}% utilization. Will work but jitter could cause missed deadlines under load.`;
+      msg = `TIGHT — ${(utilization*100).toFixed(0)}% utilization, above the 70% headroom rule. Will work but jitter could cause missed deadlines under load.`;
     } else {
       cls='bad';
-      msg = `OVERRUN — electrical latency ${electricalLatency.toFixed(1)} µs > ${(0.85*T).toFixed(1)} µs (85% of deadline). Lower sample rate, simpler control law, faster MCU, or move loop closer to motor.`;
+      msg = `OVERRUN — electrical latency ${electricalLatency.toFixed(1)} µs > ${T.toFixed(1)} µs deadline. Lower sample rate, simpler control law, faster MCU, or move loop closer to motor.`;
     }
     if (totalUs > T*5) {
       msg += ` (Note: motor L/R floor ${stages[stages.length-1].us.toFixed(0)} µs already dominates — even an infinitely fast controller can't react faster than physics.)`;

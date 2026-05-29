@@ -140,19 +140,18 @@ footer a{color:var(--accent)}
 <h2>Worked example — robotic-arm joint position controller</h2>
 <div class="panel tip">
 <h3>Setup</h3>
-<p>Arm joint (arm-6dof-pa612 design): 100 N·m peak torque, 50 N·m continuous. Joint inertia 2 kg·m². PID position loop with K_p = 30, K_i = 8, K_d = 4. Commanded step: 90° in 0.5 s.</p>
+<p>Arm joint (arm-6dof-pa612 design): 100 N·m peak torque, 50 N·m continuous. Joint inertia 2 kg·m². PID position loop in SI units (rad, rad/s, N·m): K_p = 30 N·m/rad, K_i = 8 N·m/(rad·s), K_d = 4 N·m·s/rad. Commanded step: 90° ≈ 1.57 rad in 0.5 s.</p>
 <h3>Without anti-windup</h3>
 <div class="deriv">
-<span class="step">Required peak torque (no limit) ≈ K_p·90° = 47 N·m   (just under continuous)</span>
-<span class="step">With dynamics + payload: demand briefly exceeds 100 N·m peak → saturation</span>
-<span class="step">During 200 ms saturation, ∫e ~ 90·0.2 = 18  →  K_i·∫e = 144 N·m of pent-up integral</span>
-<span class="step">After target reached, integrator drives motor backwards through equilibrium → 14° overshoot, 1.2 s settle</span>
+<span class="step">Required peak torque (no limit) ≈ K_p · 1.57 rad ≈ 47 N·m   (just under continuous)</span>
+<span class="step">With dynamics + payload + a near-tip 10 kg mass on a 0.5 m link, transient demand briefly exceeds 100 N·m → saturation for ~200 ms</span>
+<span class="step">Illustrative pent-up integral while saturated: ∫e dt ≈ ½·1.57·0.2 ≈ 0.16 rad·s  →  the I-term stored value rises by K_i·∫e ≈ 8·0.16 ≈ 1.3 N·m of <i>extra</i> torque demand the controller will keep asking for once e flips sign</span>
+<span class="step">That extra demand persists through the deceleration phase (P and D shrink as e → 0; only I lags), producing measurable overshoot before the integrator unwinds.</span>
 </div>
 <h3>With back-calculation (T_t = 0.5 s)</h3>
 <div class="deriv">
-<span class="step">During saturation: dI/dt = K_i·e + (u_sat − u_pid)/T_t  ≈ 8·e − 280/0.5  (huge negative)</span>
-<span class="step">I quickly stabilizes at value that would give u_pid = 100 N·m exactly — no excess buildup</span>
-<span class="step">Result: 2° overshoot, 0.6 s settle. Same K_p / K_i, no other change.</span>
+<span class="step">During saturation: dI/dt = K_i·e + (u_act − u_pid)/T_t  →  the second term is large and negative whenever u_pid &gt; u_max</span>
+<span class="step">Result: I never builds up beyond the value consistent with u_pid = u_max, so when e crosses zero the integrator is already near its post-sat target — overshoot collapses, settling tightens. Same K_p / K_i, no other change.</span>
 </div>
 </div>
 

@@ -137,7 +137,7 @@
     <div class="control"><label>R1 (mesh 1 only): <span class="readout" id="r1Read">100 Ω</span></label><input id="r1" type="range" min="10" max="1000" step="10" value="100"></div>
     <div class="control"><label>R2 (shared 1↔2): <span class="readout" id="r2Read">220 Ω</span></label><input id="r2" type="range" min="10" max="1000" step="10" value="220"></div>
     <div class="control"><label>R3 (mesh 2 only): <span class="readout" id="r3Read">330 Ω</span></label><input id="r3" type="range" min="10" max="1000" step="10" value="330"></div>
-    <div class="control"><label>R4 (shared 2↔3 / mesh 2 in 2-mesh): <span class="readout" id="r4Read">470 Ω</span></label><input id="r4" type="range" min="10" max="1000" step="10" value="470"></div>
+    <div class="control"><label>R4 (shared 2↔3, 3-mesh only): <span class="readout" id="r4Read">470 Ω</span></label><input id="r4" type="range" min="10" max="1000" step="10" value="470"></div>
     <div class="control"><label>R5 (mesh 3 only): <span class="readout" id="r5Read">680 Ω</span></label><input id="r5" type="range" min="10" max="1000" step="10" value="680"></div>
   </section>
 
@@ -455,12 +455,12 @@
     // To keep it clean: put sources at xs[0] (V1), xs[3] (V2), and skip V3 for now or use it on the bottom.
     // Actually for 3-mesh: V1 on left, V2 in middle of mesh 2 bottom, V3 on right.
 
-    // V1 on xs[0]
+    // V1 on left vertical (mesh 1 edge)
     s += sourceVert(xs[0], (yT+yB)/2, 'V1', R.V1, '#5ec8ff');
-    // V2 on xs[3]
-    s += sourceVert(xs[3], (yT+yB)/2, 'V2', R.V2, '#ffb86c');
-    // V3 inserted on the bottom of mesh 2 (between xs[1] and xs[2])
-    s += sourceHoriz((xs[1]+xs[2])/2, yB, 'V3', R.V3, '#a3e635');
+    // V2 on bottom of mesh 2 (drives mesh 2 CW)
+    s += sourceHoriz((xs[1]+xs[2])/2, yB, 'V2', R.V2, '#ffb86c');
+    // V3 on right vertical (mesh 3 edge)
+    s += sourceVert(xs[3], (yT+yB)/2, 'V3', R.V3, '#a3e635');
     // R1 top of mesh 1
     s += resistor((xs[0]+xs[1])/2, yT, 'horizontal', 'R1', R.R1, '#5ec8ff');
     // R2 shared 1-2 (middle vertical at xs[1])
@@ -543,10 +543,9 @@
       // Mesh 3 borders: R4 + R5  →  M[2][2] = R4+R5
       // M[0][1] = -R2, M[1][2] = -R4, M[0][2] = 0
       const M = [[R1+R2, -R2, 0], [-R2, R2+R3+R4, -R4], [0, -R4, R4+R5]];
-      // V3 acts in mesh 2 (on the bottom of mesh 2)
-      const Vrhs = [V1, V2 + V3, 0];
-      // Wait — convention: V1 drives mesh 1, V2 drives mesh 3 (on the right), V3 drives mesh 2 on its bottom branch
-      const Vrhs2 = [V1, V3, V2];
+      // Convention: V_k drives mesh k (matches slider labels and worked example).
+      // V1 → mesh 1, V2 → mesh 2, V3 → mesh 3.
+      const Vrhs2 = [V1, V2, V3];
       const [I1, I2, I3] = solve3(M, Vrhs2);
       matBox.innerHTML =
         `<span class="row"><span class="accent">[ ${M[0][0].toFixed(0).padStart(5)}  ${M[0][1].toFixed(0).padStart(5)}  ${M[0][2].toFixed(0).padStart(5)} ]</span>   [ I1 ]     [ ${Vrhs2[0].toFixed(2).padStart(6)} ]</span>` +
@@ -564,7 +563,7 @@
         `<tr><td>R5</td><td class="num">${fmtI(I_R5)}</td><td>= I3</td></tr>` +
         `<tr><td>R2 (shared 1↔2)</td><td class="num">${fmtI(I_R2)}</td><td>= I1 − I2</td></tr>` +
         `<tr><td>R4 (shared 2↔3)</td><td class="num">${fmtI(I_R4)}</td><td>= I2 − I3</td></tr>`;
-      const Psrc = V1*I1 + V3*I2 + V2*I3;
+      const Psrc = V1*I1 + V2*I2 + V3*I3;
       const Pdiss = I_R1*I_R1*R1 + I_R2*I_R2*R2 + I_R3*I_R3*R3 + I_R4*I_R4*R4 + I_R5*I_R5*R5;
       checkCalc.innerHTML = `Σ source = ${fmtP(Psrc)} · Σ dissipated = ${fmtP(Pdiss)} · error ${(Math.abs(Psrc-Pdiss)/Math.max(Math.abs(Psrc),1e-12)*100).toFixed(3)} %`;
       drawCircuit3(I1, I2, I3, {V1,V2,V3,R1,R2,R3,R4,R5});

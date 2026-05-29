@@ -175,9 +175,9 @@
       <div class="control">
         <label>Driver chip</label>
         <select id="chip">
-          <option value="a4988">A4988 (I = V_ref / (8·R_s))</option>
-          <option value="drv8825">DRV8825 (I = V_ref / (5·R_s))</option>
-          <option value="tmc2209">TMC2209 (I_rms = V_ref · 1.77 / (R_s + 0.02))</option>
+          <option value="a4988">A4988 (I_peak = V_ref / (8·R_s))</option>
+          <option value="drv8825">DRV8825 (I_peak = V_ref / (5·R_s))</option>
+          <option value="tmc2209">TMC2209 (analog: I_rms ≈ V_ref · 0.71 / (R_s + 0.02); see UART IRUN below)</option>
         </select>
       </div>
       <div class="control">
@@ -280,10 +280,10 @@
     <div class="cheat-card formulas">
       <h3>VREF FORMULAS</h3>
       <dl>
-        <dt>A4988</dt><dd><span class="eq">I_max = V_ref / (8 · R_sense)</span></dd>
-        <dt>DRV8825</dt><dd><span class="eq">I_max = V_ref / (5 · R_sense)</span></dd>
-        <dt>TMC2209</dt><dd><span class="eq">I_rms ≈ V_ref · 1.77 / (R_s + 0.02)</span><br><span class="eq-note">but usually set by UART IRUN</span></dd>
-        <dt>I_rms ↔ peak</dt><dd><span class="eq">I_rms = I_peak / √2</span></dd>
+        <dt>A4988</dt><dd><span class="eq">I_peak = V_ref / (8 · R_sense)</span></dd>
+        <dt>DRV8825</dt><dd><span class="eq">I_peak = V_ref / (5 · R_sense)</span></dd>
+        <dt>TMC2209</dt><dd><span class="eq">I_rms ≈ V_ref · 0.71 / (R_s + 0.02)</span><br><span class="eq-note">(analog mode); usually set by UART IRUN</span></dd>
+        <dt>I_rms ↔ peak</dt><dd><span class="eq">I_rms = I_peak / √2 (sine current)</span></dd>
       </dl>
     </div>
     <div class="cheat-card memorize">
@@ -387,12 +387,19 @@
     document.getElementById('vrefRead').textContent=Vr.toFixed(2)+' V';
     document.getElementById('iRateRead').textContent=Ir.toFixed(2)+' A';
 
-    let Imax;
-    if(chip.value==='a4988') Imax = Vr/(8*Rs);
-    else if(chip.value==='drv8825') Imax = Vr/(5*Rs);
-    else Imax = Vr*1.77/(Rs+0.02); // TMC formula (returns rms-ish, treat as peak for simplicity)
-
-    const Irms = Imax/Math.sqrt(2);
+    let Imax, Irms;
+    if(chip.value==='a4988'){
+      Imax = Vr/(8*Rs);
+      Irms = Imax/Math.sqrt(2);
+    } else if(chip.value==='drv8825'){
+      Imax = Vr/(5*Rs);
+      Irms = Imax/Math.sqrt(2);
+    } else {
+      // TMC2209 analog mode: I_rms ≈ V_REF × 0.71 / (R_sense + 0.02 Ω)
+      // (assumes V_FS scaled by V_REF input; precise constant depends on vsense bit)
+      Irms = Vr*0.71/(Rs+0.02);
+      Imax = Irms*Math.sqrt(2);
+    }
     const ratio = (Imax/Ir*100);
     const P = 2*Irms*Irms*1.5; // rough: 2 coils, R~1.5 Ω avg
     document.getElementById('statImax').textContent=Imax.toFixed(2)+' A';

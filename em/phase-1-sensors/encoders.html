@@ -110,6 +110,10 @@
 
   <p>An encoder converts mechanical angle (or linear position) into a signal a microcontroller can count or read. Incremental encoders are deceptively simple — two square-wave channels A and B, 90° out of phase, and you count edges. Quadrature decoding lets you detect direction <i>and</i> multiply resolution by four. The catch: at power-up you don't know where the shaft is. Absolute encoders solve that by encoding every position with a unique pattern (parallel Gray code or serial readout), so the very first sample tells you exact position. Magnetic encoders (AS5048, MT6701) replace optical discs with a Hall sensor array reading a diametrically-magnetized rotor magnet — 14-bit resolution, no contact, no wear, ideal for compact robot joints.</p>
 
+  <p style="font-size:12px;color:var(--fg-dim);border-left:3px solid var(--accent2);padding:6px 10px;background:var(--bg-elev2);border-radius:0 4px 4px 0">
+    <b style="color:var(--accent2)">CPR vs PPR — terminology trap.</b> Vendors disagree. <b>Strict convention</b> (most US/European industrial datasheets): PPR = pulses per rev on one channel (= lines on the disc) and CPR = counts per rev <em>after</em> ×4 quadrature decoding, so CPR = 4·PPR. <b>Loose convention</b> (many hobby modules and US Digital docs): CPR is used as a synonym for PPR. This page uses the <b>loose</b> convention — the "CPR" slider below is the line count per revolution, and the formula <code>counts/rev = 4·CPR</code> gives the count after quadrature. Always read the datasheet's own definition before trusting the number.
+  </p>
+
   <div class="tabs">
     <div class="tab active" data-tab="inc">Incremental (A+B)</div>
     <div class="tab" data-tab="abs">Absolute (Gray)</div>
@@ -257,7 +261,7 @@
 
   <h2>What to notice</h2>
   <ul class="notice">
-    <li><b>Incremental quadrature gives 4× CPR</b> — a 100 CPR optical disc gives 400 counts per rev when you count both edges on both channels. Manufacturers sometimes spec PPR (pulses per rev = CPR), sometimes lines per rev. Always check.</li>
+    <li><b>Incremental quadrature gives 4× lines</b> — a 100-line optical disc gives 400 counts per rev when you count both edges on both channels. Watch the vendor's terminology: strictly PPR = lines/rev on one channel and CPR = counts/rev after ×4 decode (so CPR = 4·PPR); loosely many datasheets use CPR ≡ PPR ≡ lines. This page uses the loose form (so the slider's "CPR" is actually lines/rev).</li>
     <li><b>Direction = which channel leads</b> — A-leads-B is forward, B-leads-A is reverse. The transition table is the decoder.</li>
     <li><b>Index pulse Z is the home reference</b> — fires once per revolution; use it on startup to find absolute zero with an incremental encoder.</li>
     <li><b>Absolute encoders survive power loss</b> — your robot wakes up and instantly knows the joint angle. No homing routine needed, which matters when the arm can't safely traverse its own range.</li>
@@ -437,7 +441,9 @@
     const th = parseFloat(magTh.value);
     const gap = parseFloat(magGap.value);
     const off = parseFloat(magOff.value);
-    const raw = Math.round((th/360)*16383);
+    // AS5048A: 14-bit data register (0..16383), step = 360°/16384. Encode/decode
+    // both with /16384 to stay consistent (mod 2^14 wraps 360° → 0 cleanly).
+    const raw = Math.round((th/360)*16384) % 16384;
     const deg = raw * 360 / 16384;
     document.getElementById('magThRead').textContent = th.toFixed(1)+'°';
     document.getElementById('magGapRead').textContent = gap.toFixed(2)+' mm';

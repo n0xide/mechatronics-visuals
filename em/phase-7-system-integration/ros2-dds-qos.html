@@ -46,7 +46,7 @@ footer a{color:var(--accent)}
 <span class="anchor"><b>Standard</b>: OMG DDS-RTPS over UDP</span>
 <span class="anchor"><b>Default RMW</b>: rmw_fastrtps (Foxy+), rmw_cyclonedds (newer)</span>
 <span class="anchor"><b>Gotcha</b>: incompatible QoS → silent no-connection</span>
-<span class="anchor"><b>Compatibility rule</b>: subscriber requests ≤ publisher offers</span>
+<span class="anchor"><b>Compatibility rule</b>: subscriber-requested guarantee ≤ publisher-offered guarantee (pub must be at least as strong)</span>
 </div>
 
 <h2>The 6 QoS fields you actually configure</h2>
@@ -161,7 +161,7 @@ self.pub = self.create_publisher(Image, '/camera/image', qos)</pre>
 <ul class="notice">
 <li><b>rosbag2 default uses RELIABLE</b> — but most sensor topics are BEST_EFFORT. Recording from a sensor topic with default bag QoS fails silently. Pass <code>--qos-profile-overrides-path qos.yaml</code> or use <code>--all</code> + <code>--include-hidden-topics</code> with override.</li>
 <li><b>RViz uses RELIABLE by default for most displays</b> — if your camera publishes BEST_EFFORT, RViz won't render. The display has a Reliability dropdown — switch to "Best Effort."</li>
-<li><b>Default depth 10 too small for high-rate sensors</b> — 200 Hz IMU into a 50 Hz consumer with depth 10 → 80 % of messages dropped per second. Either lower publisher rate or raise consumer's depth.</li>
+<li><b>Default depth 10 too small for high-rate sensors</b> — 200 Hz IMU into a 50 Hz consumer with depth 10 → consumer pulls 50/s, ~150/s overflow the ring buffer and get dropped (~75 %). Either lower publisher rate or raise consumer's depth.</li>
 <li><b>TRANSIENT_LOCAL is per-publisher, not shared</b> — restarting a publisher loses its history. The "latched topics" pattern from ROS 1 is approximated by TRANSIENT_LOCAL but with caveats.</li>
 <li><b>Different RMWs interoperate but have quirks</b> — Fast-DDS ↔ Cyclone DDS works but with subtle differences in discovery timing and multi-NIC behavior. Force one RMW across your whole system with <code>RMW_IMPLEMENTATION=rmw_cyclonedds_cpp</code> in <code>~/.bashrc</code>.</li>
 <li><b>Discovery storms in large systems</b> — every node broadcasts discovery packets. With >50 nodes on shared multicast, this saturates the network. Use Discovery Server (<code>fastdds discovery</code>) or Cyclone DDS's <code>NetworkInterface</code> config.</li>

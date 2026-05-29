@@ -36,11 +36,12 @@ footer a{color:var(--accent)}
 </style></head><body><main>
 
 <h1>CAN Bus &amp; CAN-FD</h1>
-<p class="lede">Differential serial bus designed for automotive and industrial: every node can transmit; arbitration is non-destructive (lower ID = higher priority); two 120 Ω termination resistors at the bus ends; standard CAN runs 1 Mbps with 8-byte payloads; CAN-FD extends payload to 64 bytes and data-phase to 5 Mbps. The protocol's killer feature: a hardware-level "and-or" voting where a transmitting node detects another higher-priority node and yields automatically.</p>
+<p class="lede">Differential serial bus designed for automotive and industrial: every node can transmit; arbitration is non-destructive (lower ID = higher priority); two 120 Ω termination resistors at the bus ends; classical CAN runs up to 1 Mbps with 8-byte payloads; CAN-FD extends payload to 64 bytes and data-phase up to 8 Mbps (ISO 11898-1:2015 spec; most deployments cap at 2–5 Mbps for signal-integrity margin). The protocol's killer feature: a hardware-level wired-AND voting where a transmitter sending a recessive bit sees a dominant bit on the bus and yields automatically.</p>
 
 <div class="anchors">
-<span class="anchor"><b>Standard CAN</b>: 1 Mbps, 11-bit ID, 8 byte data</span>
-<span class="anchor"><b>CAN-FD</b>: 5 Mbps data, 11/29-bit ID, 64 byte data</span>
+<span class="anchor"><b>Standard CAN</b>: ≤ 1 Mbps, 11-bit ID, 8 byte data</span>
+<span class="anchor"><b>Extended CAN</b>: ≤ 1 Mbps, 29-bit ID, 8 byte data</span>
+<span class="anchor"><b>CAN-FD</b>: ≤ 8 Mbps data phase (spec), 11/29-bit ID, ≤ 64 byte data</span>
 <span class="anchor"><b>Termination</b>: 2 × 120 Ω at bus ends</span>
 <span class="anchor"><b>Transceivers</b>: TJA1042 (Std), SN65HVD230, MCP2562</span>
 </div>
@@ -74,9 +75,9 @@ footer a{color:var(--accent)}
 <div class="seg ctrl">DLC<br>4</div>
 <div class="seg data" id="dataSeg">Data<br>0–64</div>
 <div class="seg crc">CRC<br>15</div>
-<div class="seg crc">CRC<br>delim 1</div>
-<div class="seg ack">ACK<br>1</div>
-<div class="seg ack">delim 1</div>
+<div class="seg crc">CRC delim<br>1</div>
+<div class="seg ack">ACK slot<br>1</div>
+<div class="seg ack">ACK delim<br>1</div>
 <div class="seg eof">EOF<br>7</div>
 <div class="seg eof">IFS<br>3</div>
 </div>
@@ -89,13 +90,13 @@ footer a{color:var(--accent)}
 <li><b>Lower ID = higher priority.</b> ID 0x000 always wins arbitration.</li>
 <li><b>Non-destructive arbitration.</b> The winning frame transmits as if there was no collision.</li>
 <li><b>Once arbitration is over</b> (last bit of ID + RTR), the data phase follows. The winner has the bus.</li>
-<li><b>Bit stuffing</b>: every 5 same-value bits, transmitter inserts the opposite bit. Receiver removes it. Prevents long DC strings that would mess up bit timing.</li>
+<li><b>Bit stuffing</b>: after 5 consecutive same-value bits, the transmitter inserts one bit of the opposite polarity (a "stuff bit"). Receiver detects the run, removes the inserted bit, and continues. Guarantees an edge at least every 6 bit-times so the receiver PLL stays locked. EOF and IFS fields are NOT stuffed.</li>
 </ul>
 
 <h2>Bit timing</h2>
 <p>Each bit is divided into multiple "time quanta" (Tq). Receiver samples the bus at the "sample point" within each bit. Typical config: SYNC_SEG (1 Tq), PROP_SEG (1-8 Tq), PHASE_SEG1 (1-8 Tq), sample point, PHASE_SEG2 (1-8 Tq). Sample point at 75-87% of bit time is standard.</p>
 
-<p>Maximum bus length is governed by the round-trip propagation time. At 1 Mbps (1 µs bit time), the bit must reach the farthest node and be acked back within one bit. Speed of signal in cable ~200 m/µs, so 40 m one-way = 200 ns round trip → leaves ~800 ns for arbitration logic + jitter. Above 40 m at 1 Mbps, you need either lower bit rate or active terminators.</p>
+<p>Maximum bus length is governed by the round-trip propagation time: the dominant bit a transmitter puts on the bus must reach the farthest node and be sampled (and, for arbitration, returned) within one bit time. Signal speed in twisted-pair cable is ~200 m/µs. The table below is the CiA design guideline; the actual length × bit-rate product floats between 40,000 and 60,000 m·kbps depending on transceiver delay and design margin.</p>
 
 <table>
 <tr><th>Bit rate</th><th>Max bus length</th></tr>
@@ -103,6 +104,7 @@ footer a{color:var(--accent)}
 <tr><td>500 kbps</td><td>100 m</td></tr>
 <tr><td>250 kbps</td><td>250 m</td></tr>
 <tr><td>125 kbps</td><td>500 m</td></tr>
+<tr><td>50 kbps</td><td>1000 m</td></tr>
 <tr><td>10 kbps</td><td>5000 m</td></tr>
 </table>
 
@@ -129,7 +131,7 @@ footer a{color:var(--accent)}
 <p>Modern car body bus: 500 kbps, 4-meter run, 8 ECUs (door modules, BCM, instrument cluster, telematics, etc.). What does each frame look like and how much bandwidth do you have?</p>
 <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Per-frame numbers</h3>
 <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Bit time: 1/500e3 = 2 µs</div>
-<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Standard CAN frame with 8 data bytes: SOF(1) + ID(11) + RTR(1) + IDE(1) + r0(1) + DLC(4) + Data(64) + CRC(15) + CRC-delim(1) + ACK(2) + EOF(7) + IFS(3) = 111 bits raw</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Standard CAN frame with 8 data bytes: SOF(1) + ID(11) + RTR(1) + IDE(1) + r0(1) + DLC(4) + Data(64) + CRC(15) + CRC-delim(1) + ACK-slot(1) + ACK-delim(1) + EOF(7) + IFS(3) = 111 bits raw</div>
 <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Plus ~20% bit-stuffing overhead worst case → 133 bits</div>
 <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Frame airtime: 133 × 2 µs = 266 µs</div>
 <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Max frames/sec at 100% bus utilization: 1e6 / 266 ≈ 3760</div>
@@ -184,18 +186,25 @@ function update(){
   document.getElementById('tBit').textContent = tBit_us.toFixed(2) + ' µs';
 
   const idBits = ft === 'ext' ? 29 : 11;
-  // Frame size: SOF(1) + ID + RTR(1) + IDE(1) + r0(1) + DLC(4) + data + CRC(15) + CRC_delim(1) + ACK(2) + EOF(7) + IFS(3)
-  const baseBits = 1 + idBits + 1 + 1 + 1 + 4 + dlc*8 + 15 + 1 + 2 + 7 + 3;
-  // Add ~20% stuffing worst case
+  // Standard frame: SOF(1) + ID(11) + RTR(1) + IDE(1) + r0(1) + DLC(4) + data + CRC(15) + CRC_delim(1) + ACK(1) + ACK_delim(1) + EOF(7) + IFS(3) = 47 + 8·DLC bits
+  // Extended frame: SOF(1) + ID-A(11) + SRR(1) + IDE(1) + ID-B(18) + RTR(1) + r1(1) + r0(1) + DLC(4) + data + CRC(15) + CRC_delim(1) + ACK(1) + ACK_delim(1) + EOF(7) + IFS(3) = 67 + 8·DLC bits
+  // Extended adds 18 extra ID bits + SRR + r1 vs standard (= 67 − 47 = 20 extra control bits).
+  // CAN-FD frame (11-bit, ≤16-byte data): adds RRS(1) replacing RTR, BRS(1), ESI(1), uses 4-bit DLC with non-linear mapping for >8 B,
+  // 17-bit CRC + stuff-count(4) + CRC_delim(1) for ≤16 B (21-bit CRC for >16 B). For simplicity we model FD with the same overhead
+  // shape as standard CAN here — the airtime estimate is approximate for FD.
+  const ctrlOverhead = ft === 'ext'
+    ? (1 + 11 + 1 + 1 + 18 + 1 + 1 + 1 + 4 + 15 + 1 + 1 + 1 + 7 + 3) // 67
+    : (1 + 11 + 1 + 1 + 1 + 4 + 15 + 1 + 1 + 1 + 7 + 3);              // 47
+  const baseBits = ctrlOverhead + dlc*8;
+  // Add ~20% stuffing worst case (only the bit-stuffed region counts; close enough as a rule-of-thumb)
   const totalBits = Math.round(baseBits * 1.2);
   document.getElementById('tFrame').textContent = totalBits + ' bits';
   document.getElementById('tAir').textContent = (totalBits * tBit_us).toFixed(1) + ' µs';
 
-  // Max bus length per ISO 11898-2 rule of thumb: round-trip prop ≤ 0.4 × bit time
-  // (leaves ~60% of the bit for arbitration logic + transceiver delay + jitter).
-  // This matches the canonical 40 m @ 1 Mbps figure in the table below.
-  // signal speed 200 m/µs in twisted-pair cable.
-  const max_len = (0.4 * tBit_us) / 2 * 200; // meters
+  // Max bus length: CiA conservative guideline ≈ 40,000–60,000 m·kbps for standard high-speed transceivers
+  // (40 m @ 1 Mbps; 100 m @ 500 kbps — see table below). The constant floats with transceiver delay and margin.
+  // We pick 50,000 here as a middle-ground rule; the table is the published CiA reference.
+  const max_len = 50000 / br; // meters (br in kbps)
   document.getElementById('tMax').textContent = max_len.toFixed(0) + ' m';
 
   const verdict = len <= max_len ? '<span style="color:var(--accent3)">PASS</span>' : '<span style="color:var(--warn)">FAIL — reduce bit rate or shorten bus</span>';

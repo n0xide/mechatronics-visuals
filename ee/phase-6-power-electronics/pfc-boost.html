@@ -43,7 +43,7 @@ footer a{color:var(--accent)}
 <div class="control"><label>V_out (V DC): <span class="readout" id="voutRead">400</span></label><input id="vout" type="range" min="200" max="450" step="10" value="400"></div>
 <div class="control"><label>P_load (W): <span class="readout" id="pRead">200</span></label><input id="p" type="range" min="20" max="2000" step="10" value="200"></div>
 <div class="control"><label>Switching freq (kHz): <span class="readout" id="fRead">100</span></label><input id="f" type="range" min="20" max="500" step="10" value="100"></div>
-<div class="control"><label>Mode</label>
+<div class="control"><label>Mode (informational only — math below is CCM-shaped)</label>
 <select id="mode"><option value="ccm" selected>CCM — continuous conduction</option><option value="crm">CrM / BCM — boundary conduction</option><option value="dcm">DCM — discontinuous</option></select>
 </div>
 </section>
@@ -95,7 +95,7 @@ footer a{color:var(--accent)}
 <tr><td>Inductor (CCM, 20% ripple, 100 kHz)</td><td>~600 µH, 4 A sat current</td></tr>
 <tr><td>Switch (MOSFET)</td><td>600 V, ~20 mΩ R_DS(on)</td></tr>
 <tr><td>Diode (output)</td><td>SiC Schottky 600 V (no Q_rr)</td></tr>
-<tr><td>Output cap</td><td>~150 µF, 450 V (electrolytic + film)</td></tr>
+<tr><td>Output cap</td><td>~170 µF, 450 V (electrolytic + film) — 1 % peak-amplitude ripple at 120 Hz</td></tr>
 <tr><td>Controller</td><td>UCC28950 (CrM), or NCP1654 (CCM)</td></tr>
 </table>
 
@@ -120,7 +120,7 @@ footer a{color:var(--accent)}
 <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Switching freq: 100 kHz CCM (compromise between size + EMI)</div>
 <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">L (CCM, 30 % peak-to-peak ripple): V_pk · D / (f · ΔI) = 120 × 0.70 / (1e5 × 4) = 210 µH</div>
 <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">L sat current: I_peak + ΔI/2 = 13.3 + 2 = 15.3 A → pick L sat rated 20 A</div>
-<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Output cap (1 % ripple at 120 Hz): C = 800 / (400 × 0.01 × 2π × 120) = 265 µF → use 470 µF 450 V electrolytic + 1 µF film</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Output cap (1 % peak-amplitude ripple at 120 Hz): C = P / (V_out² · 0.01 · 2π · 120) = 800 / (400² · 0.01 · 2π · 120) = 663 µF → use 820 µF 450 V electrolytic + 1 µF film for HF bypass</div>
 <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Component picks</h3>
 <table>
 <tr><th>Part</th><th>Spec</th><th>Example</th></tr>
@@ -129,7 +129,7 @@ footer a{color:var(--accent)}
 <tr><td>Inductor</td><td>210 µH, 20 A sat, low DCR</td><td>Sendust or Kool Mu toroid, ~40 turns AWG 16</td></tr>
 <tr><td>Controller (CCM)</td><td>Average-current-mode + power factor</td><td>UCC28180, NCP1654, FAN9672</td></tr>
 <tr><td>Controller (CrM)</td><td>For ≤500 W, simpler</td><td>UCC28019, L6562A</td></tr>
-<tr><td>Output cap</td><td>470 µF 450 V, low ESR @ 120 Hz</td><td>Nichicon UPM series, 105 °C rated</td></tr>
+<tr><td>Output cap</td><td>820 µF 450 V, low ESR @ 120 Hz</td><td>Nichicon UPM series, 105 °C rated</td></tr>
 <tr><td>NTC inrush limiter</td><td>5–10 Ω cold, &lt; 0.5 Ω hot at 10 A</td><td>Ametherm SL22</td></tr>
 </table>
 <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Efficiency breakdown</h3>
@@ -233,8 +233,10 @@ function update(){
   const L = Vpk * (1 - Vpk/Vout) / (f * 0.2 * Iin_pk);
   document.getElementById('lVal').textContent = (L*1e3).toFixed(2) + ' mH';
 
-  // C_out for 1% ripple at 2*f_line = 120 Hz (full-wave): ΔV = P / (V_out × 2π × 120 × C) → C
-  const C = P / (Vout * 0.01 * 2 * Math.PI * 120);
+  // C_out for 1% peak-amplitude ripple at 2*f_line = 120 Hz (full-wave):
+  // I_cap_amplitude = P/V_out at 2f_line; ΔV_pk = I/(ω·C); set ΔV_pk = 0.01·V_out.
+  // ⇒ C = P / (V_out² · 0.01 · 2π · 120)
+  const C = P / (Vout * Vout * 0.01 * 2 * Math.PI * 120);
   document.getElementById('cVal').textContent = (C*1e6).toFixed(0) + ' µF';
 
   drawWaveform();

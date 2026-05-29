@@ -112,8 +112,9 @@
   <h1>TIM and PCB thermal management</h1>
   <p class="lede">Once heat leaves the silicon, it crosses a few millimeters of <i>thermal interface
   material</i> (TIM) to the case or sink, then spreads through the PCB via copper pours and via arrays.
-  Each step is just <code>Θ = L/(k·A)</code>. The numbers are small — fractions of a degree per watt —
-  but they decide whether an IC sits at 60 °C or 110 °C.</p>
+  Each step is just 1D conduction in <b>steady state</b>: <code>Θ = L / (k·A)</code> with k in W/m·K, L in
+  m, A in m². The numbers are small — fractions of a degree per watt — but the right TIM choice can move
+  an IC from 110 °C to 60 °C at the same power.</p>
 
   <h2>(a) TIM comparison — 12 × 12 mm pad</h2>
   <section class="controls">
@@ -140,10 +141,13 @@
   </div>
 
   <h2>(b) Thermal-via array calculator</h2>
-  <p>Under a QFN's exposed pad, designers drill a grid of plated through-holes. Each via is a small
-  copper tube — a parallel low-resistance path from top-layer pad to bottom-layer copper pour.
-  Each via behaves like a thermal resistor of value Θ_via; <code>N</code> of them in parallel sum as
-  <code>Θ_array = Θ_via/N</code>.</p>
+  <p>Under a QFN's exposed pad, designers drill a grid of plated through-holes. Each via is a thin copper
+  tube — a parallel conduction path from top-layer pad to bottom-layer copper pour. The plated barrel's
+  copper cross-section is <code>A_Cu ≈ π · d · w</code> (thin-wall approximation; d = drill diameter,
+  w = plating thickness). Each via is then a resistor <code>Θ_via = L / (k_Cu · A_Cu)</code> and
+  <code>N</code> in parallel give <code>Θ_array = Θ_via / N</code>. This treats the plated barrel only;
+  real boards also conduct laterally through copper pours and (weakly) through FR4, which lowers the
+  total Θ further.</p>
   <section class="controls">
     <div class="control">
       <label>Array size N × N</label>
@@ -179,8 +183,10 @@
         <p>Per-via thermal resistance: <span class="big-number" id="rViaRO">—</span> °C/W</p>
         <p>Array thermal resistance: <span class="big-number" id="rArrRO">—</span> °C/W</p>
         <p style="font-size:12px;color:var(--fg-dim)">Plus lateral spreading through copper pours,
-        which conducts heat outward to the rest of the PCB — at 400 W/m·K, a 1 oz pour acts as a wide
-        plane sink. For 1 W into a 35 µm × 30 mm × 30 mm pour, expect another ~3–8 °C/W to the board edge.</p>
+        which conducts heat outward to the rest of the PCB. Spreading resistance scales as
+        R ≈ ln(r₁/r₀) / (2π·k·t) — for a 1 oz (35 µm) pour spreading from a small hot spot to the
+        edge of a 30 × 30 mm pour, expect roughly 15-25 °C/W. Heavier (2 oz) or larger pours, and
+        adding inner-layer copper planes via thermal vias, are the practical ways to bring this down.</p>
         <table id="viaTable">
           <thead><tr><th>Quantity</th><th>Value</th></tr></thead>
           <tbody></tbody>
@@ -193,8 +199,8 @@
   <ul class="notice">
     <li><b>TIM BLT matters more than k.</b> A silicone pad at k=5, BLT=0.5 mm has 100× the resistance of paste at k=8, BLT=0.05 mm — same chemistry family, different thickness. Thin layer wins.</li>
     <li><b>Liquid metal isn't usually worth it.</b> Yes, k=40, but it conducts electricity, eats aluminum (forms In-Al alloy), spreads if you tilt the device, and adds 2 mm² of risk for a fraction of a °C improvement over good paste. Reserved for overclockers and rare ME-engineered systems.</li>
-    <li><b>Each thermal via is ~2–5 °C/W.</b> Numbers depend on plating and length. 9 vias in parallel give ~0.3 °C/W — a 10× improvement over 1 via.</li>
-    <li><b>Diminishing returns past N=16.</b> Going from 9 to 25 vias only drops Θ from ~0.3 to ~0.1 — and you lose pad area, complicate soldering (paste wicks down the holes), and risk solder voids. Most designs land at 3×3 or 4×4 vias.</li>
+    <li><b>Each plated thermal via (0.3 mm, 1 oz Cu, 1.6 mm board) is ~120 °C/W.</b> Counter-intuitive because the copper cross-section of a hollow barrel is tiny (π·d·w ≈ 0.033 mm² for that geometry). 9 vias in parallel give ~13 °C/W. Filled vias (solid copper plug) get to ~10-30 °C/W each; that's where the "2-5 °C/W array" rules of thumb come from.</li>
+    <li><b>Diminishing returns past N=16.</b> 9 → 25 vias drops Θ_array by 64 % (1/N scaling), but you lose pad area, complicate soldering (paste wicks down the holes), and risk solder voids. Most designs land at 3×3 or 4×4 vias.</li>
     <li><b>Copper pours conduct laterally.</b> The pad doesn't have to push heat <i>down</i> — it can spread it <i>across</i> the board to a connector or chassis. A 1 oz copper pour over 30 × 30 mm acts as a wide low-Θ plane.</li>
     <li><b>"Thermal relief" spokes hurt thermal performance.</b> Standard PCB connections to a thermal pad use 4-spoke reliefs to prevent solder wicking. For high-power parts, request <i>solid copper</i> connections instead — accept the soldering challenge, gain ~2× thermal conductivity at that joint.</li>
   </ul>
@@ -205,7 +211,8 @@
       <h3>FORMULAS</h3>
       <dl>
         <dt>TIM</dt><dd><span class="eq">R_TIM = BLT / (k · A)</span></dd>
-        <dt>via array</dt><dd><span class="eq">3×3 vias ≈ 0.3–0.5 °C/W</span></dd>
+        <dt>per via (plated)</dt><dd><span class="eq">R_via = L / (k_Cu · π · d · w)</span><span class="eq-note">d = drill dia, w = plating wall</span></dd>
+        <dt>via array</dt><dd><span class="eq">R_array = R_via / N</span></dd>
       </dl>
     </div>
     <div class="cheat-card memorize">

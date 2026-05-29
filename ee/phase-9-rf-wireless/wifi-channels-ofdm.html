@@ -132,7 +132,7 @@ footer a{color:var(--accent);text-decoration:none}
 <ul class="notice">
 <li><b>2.4 GHz is the IoT junk band</b> — Bluetooth, BLE, ZigBee, microwave ovens, baby monitors, garage openers. Use 5/6 GHz for serious traffic.</li>
 <li><b>5 GHz DFS channels</b> can lose connection when radar is detected — base station drops to a different channel mid-stream. Avoid DFS in low-latency apps.</li>
-<li><b>Width vs range tradeoff</b> — 160 MHz channel = 2× speed but 6 dB lower spectral density → 4× weaker signal at a given distance. Wider is faster but closer-range.</li>
+<li><b>Width vs range tradeoff</b> — doubling channel width doubles the noise power in the band (+3 dB noise floor) at the same total TX power. 20 → 160 MHz is 8×, so +9 dB more noise. That's a ~3× range loss (range scales as 10^(ΔdB/20)). Wider is faster but closer-range.</li>
 <li><b>MIMO needs spatial diversity</b> — 4×4 MIMO requires 4 antennas with sufficient λ/2 spacing (~6 cm at 2.4 GHz, 3 cm at 5 GHz). Small devices can't fit 4×4.</li>
 <li><b>OFDMA latency win comes with throughput loss</b> per device — useful for many sparse devices (IoT) but worse than full-channel allocation for one heavy user.</li>
 <li><b>WiFi 7 features</b> — 320 MHz channels (6 GHz only), 4096-QAM, multi-link operation. Marginal gain in throughput, real gain in latency.</li>
@@ -167,11 +167,11 @@ footer a{color:var(--accent);text-decoration:none}
 <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Thermal noise (20 MHz BW, NF=5 dB): −174 + 73 + 5 = −96 dBm</div>
 <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">RX sensitivity for MCS 11 (1024-QAM 5/6): noise + min_SNR = −96 + 34 = −62 dBm</div>
 <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Max path loss for MCS 11: 25 − (−62) + 5 (RX gain) = 92 dB</div>
-<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">PL = 92 dB at 5 GHz → d = c/(4π·f) · 10^(PL/20) = 0.0096 × 10^4.6 = ~4 m line-of-sight</div>
-<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">MCS 7 (64-QAM 5/6, 25 dB SNR): −96 + 25 = −71 dBm → range ~15 m</div>
-<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">MCS 0 (BPSK 1/2, 5 dB SNR): −96 + 5 = −91 dBm → range ~120 m line-of-sight</div>
-<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Reality</h3>
-<p>Indoor: walls add 5-15 dB per wall. 2.4 GHz penetrates better than 5 GHz; 5 GHz better than 6 GHz. A modern dual-band AP often ends up using MCS 9 at the device's location, not the spec-sheet 1024-QAM.</p>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">FSPL at 5.5 GHz: 32.44 + 20·log(d_km) + 20·log(5500). Solve for 92 dB → d ≈ 170 m LOS</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">MCS 7 (64-QAM 5/6, 25 dB SNR): −96 + 25 = −71 dBm → budget 101 dB → ~490 m LOS</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">MCS 0 (BPSK 1/2, 5 dB SNR): −96 + 5 = −91 dBm → budget 121 dB → ~4.9 km LOS</div>
+<h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Reality — indoors collapses these LOS numbers</h3>
+<p>The LOS distances above are the theoretical free-space limit. Indoors you eat 5–15 dB per wall, plus 5–10 dB body absorption, plus multipath fading. A typical 2-wall apartment between AP and phone subtracts ~20 dB, so MCS 11's 170 m LOS reach drops to ~17 m practical (PL = 72 dB at that distance leaves ~20 dB for walls). MCS 0 still reaches the whole flat. A modern dual-band AP often ends up using MCS 9 at the device's location, not the spec-sheet 1024-QAM.</p>
 </div>
 
 <h2>Cheat sheet</h2>
@@ -314,16 +314,23 @@ function drawOfdm(){
 
 function update(){
   const std = els.std.value;
+  const bw = parseInt(els.bw.value); // 20/40/80/160
   const isAx = (std === 'ax' || std === 'be');
   document.getElementById('scSpacing').textContent = isAx ? '78.125 kHz (longer symbol)' : '312.5 kHz';
   document.getElementById('scCount').textContent = isAx ? '256' : '64';
   document.getElementById('scData').textContent = isAx ? '234' : '52';
   document.getElementById('scPilot').textContent = isAx ? '8' : '4';
   document.getElementById('scNull').textContent = isAx ? '14' : '8';
-  const peak1x1 = std === 'be' ? 2400 : std === 'ax' ? 600 : std === 'ac' ? 433 : 150;
+  // Per-20-MHz 1x1 peak rates (1024-QAM 5/6 ax, 256-QAM 5/6 ac, 64-QAM 5/6 n, 4096-QAM 5/6 be) with short GI.
+  const peak1x1_20 = std === 'be' ? 172 : std === 'ax' ? 143 : std === 'ac' ? 87 : 72;
+  // Scale linearly by channel-width factor (20 MHz = 1.0, 40 = 2, 80 = 4, 160 = 8). Cap n at 40 MHz (max it supports); cap ac at 160.
+  const widthFactor = bw / 20;
+  const maxFactor = std === 'n' ? 2 : 8; // n maxes at 40 MHz
+  const useFactor = Math.min(widthFactor, maxFactor);
+  const peak1x1 = Math.round(peak1x1_20 * useFactor);
   const peak4x4 = peak1x1 * 4;
-  document.getElementById('rate').textContent = peak1x1 + ' Mbps';
-  document.getElementById('rate4').textContent = peak4x4 + ' Mbps';
+  document.getElementById('rate').textContent = peak1x1 + ' Mbps (' + bw + ' MHz)';
+  document.getElementById('rate4').textContent = peak4x4 + ' Mbps (' + bw + ' MHz)';
   drawOfdm();
 }
 

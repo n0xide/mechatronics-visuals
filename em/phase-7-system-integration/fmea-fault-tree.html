@@ -193,7 +193,7 @@ footer a{color:var(--accent)}
 <span class="step"></span>
 <span class="step">T = L_motor · L_brake · L_wd = 2.6e-6 · 6e-6 · 1.1e-5 = <b>1.7e-16 /h</b></span>
 <span class="step">MTBF = 1/T ≈ 6e15 h (astronomical — really limited by common-cause)</span>
-<span class="step">PFH_d category: ASIL B (10⁻⁸ to 10⁻⁷ /h target) — well within budget</span>
+<span class="step">PFH_d category: ASIL D (PMHF target &lt; 10⁻⁸ /h) — well within budget; the AND-of-three structure puts the calculated rate 8 orders below the ceiling</span>
 </div>
 <p>This is why brake + motor + watchdog are independent: knock out any one of these, even a faulty firmware that latches PWM high or a stuck-on MOSFET — the brake still holds the joint. Three layers of defense = three multiplied probabilities = vanishingly rare top event.</p>
 <h3>What kills this analysis (common-cause)</h3>
@@ -332,14 +332,16 @@ function renderTree(){
   const T = motor_active * brake_fail * wd_fail;
   el('vTop').innerHTML = T.toExponential(1) + ' /h';
 
-  // Decide note based on T
+  // Decide note based on T (highest claimable level per ISO 26262 PMHF / IEC 61508 PFH_d)
+  // ASIL A: <1e-6/h · ASIL B,C: <1e-7/h · ASIL D: <1e-8/h
+  // SIL 1: <1e-5/h · SIL 2: <1e-6/h · SIL 3: <1e-7/h · SIL 4: <1e-8/h
   const topCard = el('topCard');
   topCard.classList.remove('hi','lo');
   let asilTarget;
   if(T < 1e-8){ asilTarget = 'ASIL D / SIL 4 ✓'; topCard.classList.add('hi'); }
-  else if(T < 1e-7){ asilTarget = 'ASIL C / SIL 3'; topCard.classList.add('hi'); }
-  else if(T < 1e-6){ asilTarget = 'ASIL B / SIL 2'; }
-  else if(T < 1e-5){ asilTarget = 'ASIL A / SIL 1'; topCard.classList.add('lo'); }
+  else if(T < 1e-7){ asilTarget = 'ASIL B or C / SIL 3'; topCard.classList.add('hi'); }
+  else if(T < 1e-6){ asilTarget = 'ASIL A / SIL 2'; }
+  else if(T < 1e-5){ asilTarget = 'SIL 1 only — below ASIL A target'; topCard.classList.add('lo'); }
   else { asilTarget = 'unsafe — no SIL credit'; topCard.classList.add('lo'); }
   el('vTopNote').textContent = asilTarget;
 

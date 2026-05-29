@@ -87,11 +87,19 @@
 
   <h2 id="why">Why isolate?</h2>
   <ul class="notice">
-    <li><b>Safety</b> — mains-side circuits (offline switching supply) must be isolated from user-touchable secondary side. Regulatory: IEC 60601, UL 1577.</li>
-    <li><b>Ground loops</b> — two pieces of equipment plugged into different outlets have ground potential differences (volts at AC, ms-scale). Isolating signal lines between them prevents this current from coursing through your data cables.</li>
+    <li><b>Safety</b> — mains-side circuits (offline switching supply) must be isolated from user-touchable secondary side. Regulatory: IEC 60950-1 / IEC 62368-1 (ITE), IEC 60601-1 (medical, MOOP/MOPP), UL 1577 (component-level isolation rating).</li>
+    <li><b>Ground loops</b> — two pieces of equipment plugged into different outlets have ground-potential differences (volts at line frequency, ms-scale transients). Isolating signal lines between them prevents this current from coursing through your data cables.</li>
     <li><b>High-side measurement</b> — current sensing on the high side of a 400 V bus needs to talk to MCU referenced to GND. Isolated amplifier or ADC required.</li>
     <li><b>Industrial environments</b> — surge events, ESD, transient ground bounce. Each isolated chunk is a noise firewall.</li>
     <li><b>Lightning-prone exposed cables</b> — RS-485 in a barn, Ethernet to a remote sensor. Isolation transformer plus surge clamps survive nearby strikes.</li>
+  </ul>
+
+  <h3>Basic vs. reinforced — the regulatory split</h3>
+  <ul class="notice">
+    <li><b>Functional isolation</b> — works under normal operation; no safety claim. Used between two low-voltage domains for noise immunity only.</li>
+    <li><b>Basic isolation</b> — single layer rated for mains stress. Provides single-fault protection; must be backed by a second layer (basic + supplementary = double, or a single layer rated as reinforced) to meet user-touchable safety.</li>
+    <li><b>Reinforced isolation</b> — single layer that meets the same withstand as double-insulation; sufficient on its own for user-touchable circuits at mains.</li>
+    <li><b>Voltage spec trap</b> — datasheets quote multiple numbers: <b>V_ISO</b> (1-min withstand, RMS), <b>V_IORM</b> (continuous working voltage, peak), and <b>V_IOTM</b> / <b>V_IOSM</b> (transient/surge peaks). A "5 kV" rating is typically the 1-min V_ISO RMS — the continuous V_IORM is often only ~1 kV peak. Don't compare V_ISO of one part to V_IORM of another.</li>
   </ul>
 
   <h2 id="opto">Optocouplers</h2>
@@ -180,7 +188,7 @@
     <p>RS-485 itself can be transformer-coupled (Ethernet-style) or just signal-isolated (separate isolated DC-DC for the transceiver). Add a Si8642 paired with a TI ISOW7841 (isolated DC-DC + 4-ch isolator in one) for the full solution.</p>
 
     <h3>Verdict</h3>
-    <p>Digital isolator. The cost premium ($1.50) buys 5× better CMTI and lower bit-error rate. In a robot where motor switching is on the same chassis, that's worth it.</p>
+    <p>Digital isolator. The cost premium ($1.50) buys ~20× better CMTI (100 kV/µs vs 5 kV/µs) and lower bit-error rate. In a robot where motor switching is on the same chassis, that's worth it.</p>
   </div>
 
   <h2>Where you'll see this</h2>
@@ -191,7 +199,7 @@
       <li><b style="color:var(--fg)">Gate drivers</b> for high-side MOSFETs (especially in motor drives, EV chargers).</li>
       <li><b style="color:var(--fg)">Isolated USB-to-serial</b> (FT231XS-iso, USB2ISO) — clean serial to mains-side test gear.</li>
       <li><b style="color:var(--fg)">Industrial IO modules</b> — DI/DO channels isolated to 1500 V.</li>
-      <li><b style="color:var(--fg)">Medical devices</b> — strict regulatory isolation, often basic isolation + reinforced barrier.</li>
+      <li><b style="color:var(--fg)">Medical devices</b> — strict regulatory isolation (IEC 60601-1 MOOP for operator, MOPP for patient), usually reinforced single-layer or basic + supplementary.</li>
     </ul>
   </div>
 
@@ -203,9 +211,11 @@
         <dt>tpd</dt><dd>propagation delay (ns–µs)</dd>
         <dt>CTR</dt><dd>opto only, I_C/I_F</dd>
         <dt>CMTI</dt><dd>kV/µs common-mode immunity</dd>
-        <dt>VRMS</dt><dd>isolation rating (1500–5000 V)</dd>
+        <dt>V_ISO</dt><dd>1-min withstand, RMS (2.5–5 kV)</dd>
+        <dt>V_IORM</dt><dd>continuous working, peak (≪ V_ISO)</dd>
+        <dt>V_IOTM</dt><dd>transient surge, peak</dd>
+        <dt>Class</dt><dd>functional / basic / reinforced</dd>
         <dt>Data rate</dt><dd>max NRZ throughput</dd>
-        <dt>Channels</dt><dd>per package</dd>
       </dl>
     </div>
     <div class="cheat-card memorize">
@@ -215,7 +225,7 @@
         <li>1–10 MHz, professional → <b>HCPL-2630 / Si8641</b></li>
         <li>10+ MHz, multi-channel → <b>ADuM1411 / Si8642</b></li>
         <li>Motor drive gates → <b>UCC21520 / Si8275</b></li>
-        <li>SafetyMains → <b>basic + reinforced</b> (IEC 60601)</li>
+        <li>Mains user-touchable → <b>reinforced</b> (or basic + supplementary)</li>
       </ul>
     </div>
     <div class="cheat-card pitfalls">
@@ -224,7 +234,7 @@
         <li><b>Too-little CTR margin</b> — works new, fails in 2 years as LED ages.</li>
         <li><b>Forgetting both sides need power</b> — digital iso doesn't bootstrap.</li>
         <li><b>CMTI tested at typical, not max</b> — worst-case is what matters in motor drives.</li>
-        <li><b>Single-channel iso ≠ basic isolation</b>; need to look at safety standards for medical/aviation.</li>
+        <li><b>"5 kV isolation" ≠ continuous working voltage.</b> V_ISO is a 1-min withstand test in RMS; the continuous V_IORM may be 10× lower and is the spec you actually live with.</li>
         <li><b>Pin-compatible drop-in</b> — opto vs digital often share package but not pin function.</li>
       </ul>
     </div>
@@ -285,7 +295,8 @@
       <rect x="270" y="100" width="80" height="140" fill="var(--bg-elev2)" stroke="var(--warn)" stroke-width="2" stroke-dasharray="4 3"/>
       <text x="310" y="120" class="label" text-anchor="middle" fill="var(--warn)">ISOLATOR</text>
       <text x="310" y="135" class="label-dim" text-anchor="middle">barrier</text>
-      <text x="310" y="220" class="label-dim" text-anchor="middle">5 kV</text>
+      <text x="310" y="215" class="label-dim" text-anchor="middle" font-size="10">V_ISO 5 kV_RMS</text>
+      <text x="310" y="228" class="label-dim" text-anchor="middle" font-size="10">(1-min, ≠ V_IORM)</text>
 
       <line x1="350" y1="140" x2="380" y2="140" class="wire"/>
       <line x1="350" y1="170" x2="380" y2="170" class="wire"/>

@@ -105,9 +105,10 @@
   <p class="lede">Spin a bolt into too few threads and the threads <em>strip</em> before the bolt itself breaks. Too many threads and you waste material and add weight. The rule is: engage the threads so the joint fails in <em>bolt tension</em>, not thread shear. This usually lands at 1·D for steel-in-steel, 1.5·D for steel-in-aluminum, and 2·D for steel-in-plastic. Pick fastener size and material; the visual draws the threads and the failure mode.</p>
 
   <div class="anchors">
-    <span class="anchor"><b>1·D</b>: steel-on-steel rule</span>
-    <span class="anchor"><b>1.5·D</b>: steel-on-aluminum</span>
+    <span class="anchor"><b>1·D</b>: steel-on-steel (matched grades)</span>
+    <span class="anchor"><b>1.5·D</b>: steel-on-aluminum / brass</span>
     <span class="anchor"><b>2·D</b>: steel-on-plastic / heat-set insert</span>
+    <span class="anchor"><b>2.5·D</b>: steel-on-magnesium</span>
     <span class="anchor"><b>Goal</b>: bolt breaks before thread strips</span>
   </div>
 
@@ -138,6 +139,7 @@
         <option value="steel" selected>Steel (σ_y ~ 250 MPa)</option>
         <option value="al">Aluminum 6061 (σ_y ~ 275 MPa)</option>
         <option value="brass">Brass (σ_y ~ 200 MPa)</option>
+        <option value="mg">Magnesium AZ91 (σ_y ~ 150 MPa)</option>
         <option value="plastic">Plastic / FDM (σ_y ~ 50 MPa)</option>
         <option value="insert">Heat-set insert into FDM (eff σ_y ~ 90 MPa)</option>
       </select>
@@ -194,15 +196,16 @@
     <span class="eq">Use M3 heat-set insert (e.g., RUTHEX M3): outer Ø 4.6 mm, 5.7 mm long</span>
     <span class="eq">Effective engagement σ_y ≈ 90 MPa (composite brass-in-plastic pullout strength)</span>
     <span class="eq">F_strip = π · D_p · L · τ_y · 0.5 = π · 2.675 · 5.7 · 0.5 × (0.58 · 90) ≈ 1.25 kN</span>
-    <span class="eq">Bolt 8.8: F_bolt = 4.02 kN → J = 1.25/4.02 = 0.31 (still strip-limited)</span>
-    <span class="eq">Workable for hand-torque tightening (~2 N·m, F_clamp ≈ 1 kN) where you'll never exceed F_strip.</span>
-    <span class="eq">Spec: <b>M3 × 6 mm bolt + heat-set insert + max torque 1.5 N·m</b> → clamp load ~750 N, F_strip 1.25 kN → safety factor 1.7</span>
+    <span class="eq">Bolt 8.8: F_bolt = 4.02 kN → J = 1.25/4.02 = 0.31 (still strip-limited — bolt is way stronger than insert)</span>
+    <span class="eq">Inverting T = K·F·d at F = F_strip = 1.25 kN, K = 0.20, d = 0.003 m → T_max ≈ 0.75 N·m (the torque that just pulls the insert).</span>
+    <span class="eq">Spec: <b>M3 × 6 mm bolt + heat-set insert + max torque ≈ 0.5 N·m</b> (K = 0.20 dry) → F_clamp = 0.5/(0.2·0.003) ≈ 833 N, F_strip 1.25 kN → safety factor ≈ 1.5.</span>
 
     <h3>Steel-on-steel reference</h3>
     <span class="eq">Same M3 bolt in tapped steel: F_strip @ L=3 mm = π · 2.675 · 3 · 0.5 × (0.58 · 250) = 1.83 kN</span>
     <span class="eq">@ L=4.5 mm: F_strip = 2.75 kN (>F_bolt for class 4.8 bolts at 2.0 kN)</span>
-    <span class="eq">@ L=6 mm: F_strip = 3.66 kN (close to 8.8 bolt at 4.0 kN — J=0.92)</span>
-    <span class="eq">Spec: <b>M3 × 6 mm engagement</b> in steel → balanced design, neither strips nor breaks at design load with 30% headroom.</span>
+    <span class="eq">@ L=6 mm: F_strip = 3.66 kN (close to 8.8 bolt at 4.0 kN — J=0.91)</span>
+    <span class="eq">@ L=7 mm: F_strip = 4.27 kN (just exceeds 8.8 bolt 4.0 kN — J=1.06, balanced).</span>
+    <span class="eq">Spec: <b>M3 × 7 mm engagement</b> in steel-on-steel with class-8.8 bolt → J ≈ 1.06, bolt fails before threads strip. The 1·D rule (3 mm) gives J ≈ 0.45 here — under-engaged. For class-8.8 in mild steel use ≈ 2·D; add another 20–50 % for safety margin.</span>
   </div>
 
   <h2>What to notice</h2>
@@ -242,10 +245,11 @@
     <div class="cheat-card memorize">
       <h3>RULES OF THUMB</h3>
       <ul>
-        <li><b>Steel/steel</b>: L ≥ 1·D</li>
+        <li><b>Steel/steel</b>: L ≥ 1·D (matched grades; 1.5·D for class 8.8+ in mild steel)</li>
         <li><b>Steel/Al</b>: L ≥ 1.5·D</li>
         <li><b>Steel/brass</b>: L ≥ 1.5·D</li>
-        <li><b>Steel/plastic</b>: L ≥ 2·D or insert</li>
+        <li><b>Steel/Mg</b>: L ≥ 2.5·D</li>
+        <li><b>Steel/plastic</b>: L ≥ 2·D or use insert</li>
         <li><b>Class 12.9 bolts</b> need stronger substrate → 2·D in Al</li>
         <li><b>Through + nut</b> → never strips substrate</li>
       </ul>
@@ -285,11 +289,11 @@
   };
   const TAP_SY = {
     'steel':  250, 'al':     275, 'brass':  200,
-    'plastic': 50, 'insert':  90
+    'mg':     150, 'plastic': 50, 'insert':  90
   };
   const RATIO = {
     'steel':  1.0, 'al':     1.5, 'brass':  1.5,
-    'plastic': 2.0,'insert':  1.0 /* insert is sized for ~ 1.5D */
+    'mg':     2.5, 'plastic': 2.0, 'insert':  1.0 /* insert is sized for ~ 1.5D */
   };
 
   const sizeEl = document.getElementById('size');

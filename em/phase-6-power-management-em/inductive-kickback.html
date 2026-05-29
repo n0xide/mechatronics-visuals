@@ -78,7 +78,7 @@
 <body>
 <main>
   <h1>Inductive Kickback</h1>
-  <p class="lede">Coils don't want their current to change. When you abruptly switch off the current to a relay coil, solenoid, or motor winding, the inductor fights back by generating a voltage spike — sometimes hundreds of volts — across the switching element. Without a snubber, that spike fries MOSFETs and BJTs in microseconds. The classic fix is a freewheeling diode; the more advanced options are TVS clamps (for fast switching) and RC snubbers (for AC loads).</p>
+  <p class="lede">Coils don't want their current to change. Regime: <b>transient at switch-off of a current-carrying inductor</b> (relay coil, solenoid, motor winding, transformer primary). When you abruptly open the switch, the inductor fights back by generating a voltage spike — sometimes hundreds of volts — across the switching element. The sign is set by Lenz's law: V_L = −L·di/dt, so when current is collapsing (di/dt &lt; 0) the inductor voltage flips polarity vs. the steady-state drive direction. Without a snubber, that spike fries MOSFETs and BJTs in microseconds. The classic fix is a freewheeling diode; the advanced options are TVS clamps (for fast PWM), Zener+diode for fast drop-out, and RC snubbers (for AC loads).</p>
 
   <div class="chips">
     <a class="chip" href="#why">#why-it-spikes</a>
@@ -95,9 +95,9 @@
   <div class="deriv">
     <span class="step">Voltage across inductor: <b>V_L = L · di/dt</b></span>
     <span class="step">If switch opens fast: di/dt approaches infinity → V_L approaches infinity</span>
-    <span class="step">Real switching transient: di/dt ≈ 10⁹ A/s (1 A → 0 in 1 ns)</span>
-    <span class="step">For L = 100 mH (typical relay coil): V_L = 0.1 · 10⁹ = <b>100 kV theoretical</b></span>
-    <span class="step">In practice clamped by something — arcing, parasitic capacitance, breakdown of nearest semiconductor.</span>
+    <span class="step">Fast switching transient: di/dt ≈ 10⁶ A/s (1 A → 0 in 1 µs, typical MOSFET turn-off)</span>
+    <span class="step">For L = 100 mH (large relay/solenoid): V_L = 0.1 · 10⁶ = <b>100 kV theoretical peak</b></span>
+    <span class="step">Push di/dt to 10⁹ A/s (sub-ns) and you'd hit 100 MV — but air arcs at ~30 kV/cm, MOSFETs avalanche at V_DSS. In practice the spike is clamped by something — arcing, parasitic capacitance, breakdown of the nearest semiconductor.</span>
   </div>
 
   <section class="controls">
@@ -143,7 +143,7 @@
     <span class="step">V across switch is clamped to: <b>V_supply + V_F ≈ V_supply + 0.7</b></span>
   </div>
 
-  <p><b>Trade-off:</b> a freewheel diode is cheap and bulletproof. But the slow exponential decay <em>delays relay drop-out</em> — the relay's mechanical action waits for the magnetic field to collapse. For fast-acting (10 ms) relays this can push drop-out to 50 ms. If you need fast turn-off, use a Zener in series with the diode (sometimes called a "Tobias clamp") so the inductor sees a higher clamping voltage (the Zener V_Z) and decays faster.</p>
+  <p><b>Trade-off:</b> a freewheel diode is cheap and bulletproof. But the slow exponential decay <em>delays relay drop-out</em> — the relay's mechanical action waits for the magnetic field to collapse. For fast-acting (10 ms) relays this can push drop-out to 50 ms. If you need fast turn-off, use a <b>Zener+diode (or TVS) flyback clamp</b>: a Zener (V_Z = e.g. 15–30 V) in series-back-to-back with the freewheel diode. The inductor now has to climb to V_supply + V_F + V_Z before current freewheels, so |di/dt| during decay is V_Z/L instead of (V_F)/L → drop-out is several times faster.</p>
 
   <h2 id="tvs">TVS diode — for fast PWM switching</h2>
   <p>MOSFETs switching PWM into a motor coil might do 20 kHz — that's an inductive kickback every 50 µs. A standard rectifier diode (1N4007) has trr (reverse recovery) too slow; it doesn't turn off in time and contributes its own ringing.</p>
@@ -156,12 +156,13 @@
   </ul>
 
   <h2 id="rc">RC snubber — for AC loads</h2>
-  <p>On AC loads (mains relays, AC motors), a freewheeling diode would conduct continuously on every negative half-cycle. Bad. Instead, use an RC snubber: a series resistor + capacitor across the switching contacts. When the switch opens, the inductor's voltage rise charges the cap (energy storage), and the resistor dissipates the energy as heat.</p>
+  <p>On AC loads (mains relays, AC motors), a freewheeling diode would conduct continuously on every negative half-cycle. Bad. Instead, use an RC snubber: a series resistor + capacitor across the switching contacts (or across the load). When the switch opens, the inductor's voltage rise charges the cap (energy storage), and the resistor damps the L–C ringing and dissipates the energy as heat.</p>
   <div class="deriv">
-    <span class="step">Cap absorbs initial transient: ΔV_cap = ∫I dt / C</span>
-    <span class="step">R limits the inrush back when switch closes: I_inrush = V / R, must be &lt; switch rating.</span>
-    <span class="step">Typical AC snubber: R = 100 Ω 1 W (carbon, non-inductive), C = 0.1 µF X7R or AC film.</span>
-    <span class="step">Choose ωRC = 1 at line frequency for best damping: R = 1/(2π·60·C); 0.1 µF → R ≈ 27 kΩ; clamp ratio is less aggressive but no overshoot.</span>
+    <span class="step">Cap absorbs initial transient: ΔV_cap = ∫I dt / C; for a critically-damped snubber, C ≈ I²·L/V_peak²</span>
+    <span class="step">R damps the L–C ringing — characteristic impedance match: <b>R ≈ √(L/C)</b>. For L=80 mH, C=0.1 µF → R ≈ 900 Ω.</span>
+    <span class="step">R also limits the cap-discharge inrush when switch re-closes: I_inrush = V/R, must be &lt; switch rating.</span>
+    <span class="step">Typical mains-AC contact snubber: <b>R = 100–220 Ω 1 W</b> (carbon or metal-oxide, non-inductive), <b>C = 0.1 µF X1/Y1 AC-rated film</b>. Don't use ceramic across AC line.</span>
+    <span class="step">Leakage at line frequency: I_leak ≈ V·2π·f·C; 230 V × 2π·50·0.1 µF ≈ 7 mA — non-negligible across an OFF contact.</span>
   </div>
 
   <h2 id="worked">Worked example — driving a 12 V solenoid from an N-channel MOSFET</h2>
@@ -184,10 +185,10 @@
     <span class="eq">Diode current = 300 mA peak, falling exponentially. 1N4148 is rated 300 mA average forward / 1 A repetitive peak — marginal for 300 mA repeating kickback. Prefer 1N4007 (1 A continuous) or SS14 Schottky for a clean derating margin.</span>
     <span class="eq">Solenoid drop-out time: ~ 6 ms (3·τ) → acceptable for a valve, too slow for a printer dot driver.</span>
 
-    <h3>With Zener-diode (Tobias) clamp — fast drop-out</h3>
+    <h3>With Zener+diode (flyback) clamp — fast drop-out</h3>
     <span class="eq">15 V Zener in series with the freewheel diode → V_clamp = V_supply + V_Z + V_F = 12 + 15 + 0.7 = 27.7 V</span>
-    <span class="eq">New τ = L / (R_coil + 0) = 80 mH / 40 Ω = 2 ms — but the higher clamp voltage means initial di/dt = (V_Z) / L = 15 / 0.08 = 187 A/s → drop-out is roughly L·I/V_Z = 1.6 ms (4× faster).</span>
-    <span class="eq">MOSFET still safe at 27.7 V (V_DSS = 55 V, 50 % derating margin).</span>
+    <span class="eq">Decay is ~linear (constant clamp ⇒ constant di/dt = −V_Z/L), not exponential: |di/dt| = V_Z/L = 15 / 0.08 = 187 A/s → drop-out ≈ I/|di/dt| = L·I/V_Z = 0.08·0.3/15 = 1.6 ms (~4× faster than 6 ms diode-only drop-out).</span>
+    <span class="eq">MOSFET still safe at 27.7 V (V_DSS = 55 V, ~50 % derating margin).</span>
   </div>
 
   <h2>What to notice</h2>
@@ -221,16 +222,17 @@
         <dt>Decay τ</dt><dd><span class="eq">τ = L / R</span></dd>
         <dt>Diode clamp</dt><dd><span class="eq">V_clamp = V_supply + V_F</span></dd>
         <dt>Zener clamp</dt><dd><span class="eq">V_clamp = V_supply + V_F + V_Z</span></dd>
-        <dt>RC snubber</dt><dd><span class="eq">R ≈ 1/(2π·f·C)</span></dd>
+        <dt>RC snubber</dt><dd><span class="eq">R ≈ √(L/C)</span> (damp match)</dd>
       </dl>
     </div>
     <div class="cheat-card memorize">
       <h3>RULES OF THUMB</h3>
       <ul>
         <li><b>Always snub inductive loads.</b> Always.</li>
-        <li><b>Schottky for &lt; 40 V DC</b>, fast and low Vf.</li>
-        <li><b>1N4007 for AC/up to 1 kV</b>, slow but cheap.</li>
-        <li><b>TVS for repeated PWM</b>.</li>
+        <li><b>Schottky for DC freewheel &lt; ~40 V</b> — fast trr, low V_F.</li>
+        <li><b>1N4007 for DC freewheel up to 1 kV reverse blocking</b> — slow trr (~30 µs), only OK for low-rep-rate DC; not usable on AC loads (it would conduct on every line half-cycle).</li>
+        <li><b>TVS for repeated PWM</b> across the switch or load.</li>
+        <li><b>RC snubber (or MOV) on AC contact loads</b> — diode-freewheel doesn't apply when polarity flips.</li>
         <li><b>Diode rating ≥ steady-state current</b>; surge rating ≥ 10× steady.</li>
       </ul>
     </div>
@@ -249,7 +251,7 @@
   <footer>
     Curriculum: <a target="_top" href="../../index.html">EM Phase 6 — Power Management</a> ·
     Topic: Inductive kickback, freewheel, TVS, RC snubber ·
-    Cross: <a href="../../ee/phase-2-passive-components/energy-storage-cl.html">Energy storage L/C</a> ·
+    Cross: <a href="../../../ee/visuals/phase-2-passive-components/energy-storage-cl.html">Energy storage L/C</a> ·
     Forward: <a href="inrush-control.html">Inrush Control</a>
   </footer>
 </main>

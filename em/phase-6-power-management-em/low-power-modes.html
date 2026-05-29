@@ -110,7 +110,7 @@
   <p>Every MCU has a hierarchy of sleep modes that trade <b>current draw</b> for <b>what's retained</b> and <b>how fast it wakes</b>. The trick to long battery life isn't picking the deepest mode &mdash; it's spending <i>most</i> of your time there. A sensor node that wakes for 50&nbsp;ms once a second and sleeps the other 950&nbsp;ms can outlast its battery shelf life, even if the active draw is 80&nbsp;mA.</p>
 
   <div class="figure">
-    <h3>Mode picker (STM32 F4 typical &mdash; click to compare)</h3>
+    <h3>Mode picker (STM32 F4/L4 family, typical &mdash; click to compare)</h3>
     <div class="mode-grid" id="modeGrid"></div>
   </div>
 
@@ -177,17 +177,17 @@
   <h2>Worked example — environmental sensor on a CR2032 button cell</h2>
   <div style="background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0">
     <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">The setup</h3>
-    <p>Wireless thermometer wakes once per minute, takes a temperature reading from a SHT40 sensor, transmits 8 bytes over BLE, and sleeps. CR2032 battery: 220 mAh nominal, 200 mAh derated. Target life: ≥ 2 years.</p>
+    <p>Wireless thermometer on STM32L4 (or nRF52 — both have sub-µA Stop modes). Wakes once per minute, takes a temperature reading from an SHT40 sensor, transmits 8 bytes over BLE, and sleeps. CR2032 battery: 220 mAh nominal, 200 mAh derated. Target life: ≥ 2 years.</p>
     <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Power budget per cycle (60-second cycle)</h3>
-    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Standby (sleep mode): 1.5 µA × 59.9 s = 90 µA·s per cycle</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Stop-mode sleep: 1.5 µA × 59.9 s ≈ 90 µA·s per cycle (RAM retained)</div>
     <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Wakeup + sensor read: 5 mA × 100 ms = 500 µA·s</div>
     <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">BLE advertise + TX: 12 mA × 5 ms = 60 µA·s</div>
     <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Total per cycle: 90 + 500 + 60 = 650 µA·s</div>
-    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Average current: 650 / 60 = 10.8 µA</div>
-    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Battery life: 200,000 / 10.8 ≈ 18,500 hours = 2.1 years ✓</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Average current: 650 µA·s / 60 s ≈ 10.8 µA</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Battery life: 200,000 µAh / 10.8 µA ≈ 18,500 h ≈ 2.1 years ✓</div>
     <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Sensitivity analysis</h3>
-    <p>If we'd used Standby instead of Sleep (slower wake, but lower I_sleep at 0.5 µA): standby = 0.5 µA × 59.9 = 30 µA·s. Average drops to 9.0 µA → battery life = 22,200 h = 2.5 years. Worth it if 1.5 ms extra wake-time is acceptable (we have 5 ms of BLE budget left, so yes).</p>
-    <p>If we'd kept the MCU awake polling (50 µA active idle): 50 µA × 60 s = 3000 µA·s per cycle → 50 µA avg → battery dies in 167 days. <b>5× shorter life by skipping sleep modes</b>. Sleep is mandatory for any sub-mA application.</p>
+    <p>If we'd dropped further to Standby (lower I_sleep at 0.5 µA, but RAM lost — state must be re-built from flash/EEPROM each wake): standby = 0.5 µA × 59.9 s ≈ 30 µA·s. New total = 30 + 500 + 60 = 590 µA·s → I_avg ≈ 9.83 µA → battery life ≈ 20,350 h ≈ 2.3 years. Worth it if the extra ~100s of µs Standby wake-time is acceptable (we have plenty of slack in the 5 ms BLE budget, so yes — provided we accept the re-init cost).</p>
+    <p>If we'd kept the MCU awake polling (50 µA active idle): 50 µA × 60 s = 3000 µA·s per cycle → ~50 µA avg → battery dies in 200,000/50 = 4000 h ≈ 167 days. <b>~5× shorter life by skipping sleep modes</b>. Sleep is mandatory for any sub-mA average application.</p>
   </div>
 
   <h2>Cheat sheet</h2>
@@ -202,15 +202,16 @@
       </dl>
     </div>
     <div class="cheat-card memorize">
-      <h3>STM32 MODES (TYPICAL)</h3>
+      <h3>STM32 F4 / L4 MODES (TYPICAL)</h3>
       <table>
         <tr><th>Mode</th><th>I</th><th>Wake</th><th>Keeps</th></tr>
-        <tr><td>Active</td><td>80&nbsp;mA</td><td>&mdash;</td><td>all</td></tr>
-        <tr><td>Sleep</td><td>5&nbsp;mA</td><td>&micro;s</td><td>RAM, regs, periph</td></tr>
-        <tr><td>Stop</td><td>20&nbsp;&micro;A</td><td>1&minus;10&nbsp;&micro;s</td><td>RAM, regs</td></tr>
-        <tr><td>Standby</td><td>2&nbsp;&micro;A</td><td>1&minus;10&nbsp;ms</td><td>RTC + bkp</td></tr>
-        <tr><td>Shutdown</td><td>0.3&nbsp;&micro;A</td><td>10+&nbsp;ms</td><td>RTC only</td></tr>
+        <tr><td>Run (168 MHz)</td><td>~80&nbsp;mA</td><td>&mdash;</td><td>all</td></tr>
+        <tr><td>Sleep</td><td>~30&nbsp;mA</td><td>~&micro;s</td><td>RAM, regs, periph</td></tr>
+        <tr><td>Stop (LP reg)</td><td>~20&nbsp;&micro;A (F4); ~1&nbsp;&micro;A (L4)</td><td>~10&nbsp;&micro;s</td><td>RAM, regs</td></tr>
+        <tr><td>Standby</td><td>~2&nbsp;&micro;A</td><td>~hundreds&nbsp;&micro;s</td><td>RTC + bkp RAM only</td></tr>
+        <tr><td>Shutdown (L4+)</td><td>~0.3&nbsp;&micro;A</td><td>~ms (POR-like)</td><td>RTC only</td></tr>
       </table>
+      <div style="font-size:11px;color:var(--fg-dim);margin-top:4px">AVR/Atmega Power-Down: ~0.1&minus;1&nbsp;&micro;A with WDT off; ESP32 deep-sleep: ~10&nbsp;&micro;A typical.</div>
     </div>
     <div class="cheat-card pitfalls">
       <h3>COMMON PITFALLS</h3>
@@ -230,11 +231,11 @@
 </main>
 <script>
   const modes = [
-    {id:'active',  name:'Active',     I:80e-3,   wake:'&mdash;',     keeps:['CPU','RAM','Periph','PLL','Flash']},
-    {id:'sleep',   name:'Sleep',      I:5e-3,    wake:'~&micro;s',  keeps:['RAM','Regs','Periph']},
-    {id:'stop',    name:'Stop',       I:20e-6,   wake:'1&minus;10&nbsp;&micro;s', keeps:['RAM','Regs'], lost:['CPU clk']},
-    {id:'standby', name:'Standby',    I:2e-6,    wake:'1&minus;10&nbsp;ms', keeps:['RTC','Backup RAM'], lost:['RAM']},
-    {id:'shutdown',name:'Shutdown',   I:300e-9,  wake:'10+&nbsp;ms', keeps:['RTC'], lost:['RAM','Regs']}
+    {id:'active',  name:'Run',        I:80e-3,   wake:'&mdash;',     keeps:['CPU','RAM','Periph','PLL','Flash']},
+    {id:'sleep',   name:'Sleep',      I:30e-3,   wake:'~&micro;s',  keeps:['RAM','Regs','Periph','PLL']},
+    {id:'stop',    name:'Stop (LP)',  I:20e-6,   wake:'~10&nbsp;&micro;s', keeps:['RAM','Regs'], lost:['PLL','CPU clk']},
+    {id:'standby', name:'Standby',    I:2e-6,    wake:'~100s&nbsp;&micro;s', keeps:['RTC','Backup RAM'], lost:['RAM','Regs']},
+    {id:'shutdown',name:'Shutdown',   I:300e-9,  wake:'POR-like (ms)', keeps:['RTC'], lost:['RAM','Regs']}
   ];
   let sleepIdx = 2; // start at Stop
 

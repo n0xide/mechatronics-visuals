@@ -204,8 +204,8 @@
       <div style="font:600 32px ui-monospace,monospace;color:var(--accent3);margin:8px 0">
         <span id="z0Calc">50</span> Ω
       </div>
-      <p style="font-size:12px;color:var(--fg-dim)">For controlled-impedance 50 Ω on 1.6 mm FR4: W ≈ 0.9 mm (35 mil). On a typical 10 mil prepreg with ε<sub>r</sub>=4.4: W ≈ 18 mil. Always confirm against fab's actual Dk and stackup.</p>
-      <p style="font-size:11px;color:var(--fg-dim)"><b>Reality check:</b> use the Saturn PCB Toolkit or your fab's calculator for the final number — this is the rough sanity check.</p>
+      <p style="font-size:12px;color:var(--fg-dim)"><b>What "H" means:</b> H is the dielectric height from the trace to the nearest reference plane, NOT the total board thickness. On a 2-layer 1.6 mm board, H ≈ 1.55 mm (the full core) — 50 Ω microstrip needs W ≈ 2.9 mm (~115 mil), impractically wide for most signals (one reason 2-layer boards rarely run controlled-impedance). On a 4-layer board with a ground plane on layer 2, H is the prepreg between L1 and L2 (typ. 7-10 mil = 0.18-0.25 mm); 50 Ω then needs W ≈ 13-15 mil (0.33-0.38 mm) at ε<sub>r</sub>=4.4. Always confirm against fab's actual Dk and stackup.</p>
+      <p style="font-size:11px;color:var(--fg-dim)"><b>Reality check:</b> use the Saturn PCB Toolkit or your fab's calculator for the final number — this formula is valid for 0.1 ≤ W/H ≤ 3 and is the rough sanity check.</p>
     </div>
   </div>
 
@@ -215,7 +215,7 @@
     <li><b>Source termination</b> — the cleanest single-resistor fix for digital point-to-point. Full amplitude at load, no DC current, no extra parts at the receiver. Most FPGA pins datasheet a recommended R<sub>series</sub>.</li>
     <li><b>Load termination</b> — strongest absorption at the load. Required for distributed loads (memory buses) but burns DC current. AC-coupled (split) variants exist to avoid that.</li>
     <li><b>Series ≈ source termination</b> for a high-impedance receiver. The half-amplitude wave doubles at the open load, and the return is killed by R<sub>series</sub>. This is what 22 Ω in series with a clock line is doing.</li>
-    <li><b>50 Ω is not magic</b>. Pick Z<sub>0</sub> for the system. PC boards default to 50 Ω because RF instruments do; differential pairs target 90–100 Ω (USB, LVDS).</li>
+    <li><b>50 Ω is not magic</b>. Pick Z<sub>0</sub> for the system. PC boards default to 50 Ω single-ended because RF instruments do; differential pairs target ~90 Ω (USB 2.0/3) or ~100 Ω (LVDS, Ethernet, PCIe, HDMI).</li>
   </ul>
 
   <h2>Cheat sheet</h2>
@@ -223,8 +223,8 @@
     <div class="cheat-card memorize">
       <h3>MEMORIZE</h3>
       <ul>
-        <li><b>50 Ω microstrip</b> on 1.6 mm FR4 ≈ <b>0.9 mm</b> wide.</li>
-        <li>Differential pairs: <b>90–100 Ω</b> (USB, LVDS).</li>
+        <li><b>50 Ω microstrip</b> ≈ W/H ≈ 2 on FR4 (ε<sub>r</sub>≈4.4). On a 2-layer 1.6 mm board: W ≈ 2.9 mm. On a 4-layer board with ~8 mil (0.2 mm) prepreg to L2 GND: W ≈ 13 mil (0.33 mm).</li>
+        <li>Differential pairs: <b>USB 2.0 / USB 3 ≈ 90 Ω</b>; <b>LVDS / Ethernet / PCIe ≈ 100 Ω</b>; <b>HDMI / DisplayPort ≈ 100 Ω</b>.</li>
       </ul>
     </div>
     <div class="cheat-card">
@@ -330,19 +330,19 @@
     }
 
     // Build V_source vs time and V_load vs time
-    // Source voltage starts at V0 (the step launched onto the line)
-    // When wave returns to source, source voltage adds the (1+gs)*amp term
+    // Source voltage starts at V0 (the step launched onto the line).
+    // Each "load-arrival" event is the additional contribution of one bounce; same for "src-arrival".
+    // Both must accumulate so the steady state is the sum of the geometric series of reflections.
     let vS = V0, vL = 0;
     const tMax = periods * 2;
     for(let i=0;i<samples;i++){
       const t = (i/samples) * tMax;
-      // accumulate events: any event with e.t < t
       vS = V0;
       vL = 0;
       events.forEach(e=>{
         if(e.t === 0) return;
         if(e.t <= t){
-          if(e.type === 'load-arrival') vL = e.ld;
+          if(e.type === 'load-arrival') vL += e.ld;
           if(e.type === 'src-arrival') vS += e.src;
         }
       });

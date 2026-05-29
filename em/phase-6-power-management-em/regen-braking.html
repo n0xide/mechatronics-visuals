@@ -90,16 +90,22 @@
   </div>
 
   <h2 id="emf">Back-EMF — the motor's generator voltage</h2>
-  <p>Every brushed-DC and BLDC motor obeys: <b>V_bemf = Kv · ω</b> where Kv is the motor's back-EMF constant (in V/rad/s, or RPM/V depending on convention) and ω is its angular velocity.</p>
+  <p>Every brushed-DC and BLDC motor obeys: <b>V_bemf = K_e · ω</b> in SI form, where K_e is the back-EMF constant in V·s/rad and ω is angular velocity in rad/s. Datasheets quote it three different ways:</p>
+  <ul class="notice">
+    <li><b>K_e in V/krpm</b> (back-EMF per 1000 RPM, common in industrial servo specs) — what the controls below use.</li>
+    <li><b>K_v in RPM/V</b> (motor velocity constant — the no-load RPM per applied volt, common in hobby/RC). This is the <em>numerical reciprocal</em> of V/krpm when both are expressed in those units: 100 V/krpm ↔ 10 RPM/V.</li>
+    <li><b>K_e in V·s/rad</b> (SI, equal to the torque constant K_t in N·m/A for an ideal motor). Convert: K_e [V·s/rad] = 60/(2π) · K_e [V/krpm] / 1000.</li>
+  </ul>
+  <p>Mixing the three conventions is the #1 motor-spec mistake. In the controls below we use V/krpm so V_bemf = ω[RPM]/1000 · K_e[V/krpm] is plain arithmetic.</p>
   <p>In normal driving (motoring), the bus supplies V_bus to the motor terminals. Current flows: I = (V_bus − V_bemf) / R_winding. Mechanical power output P_mech = V_bemf · I.</p>
   <p>If you suddenly stop driving and shorting the bridge so the motor terminals see V_bus = 0, the back-EMF drives current through the (now-shorted) windings — the motor brakes like a generator into a short. Energy is dissipated as I²R in the windings and as torque against rotation.</p>
-  <p>The interesting case: leaving the bridge in PWM mode with a duty cycle giving an <em>effective V_bus = some intermediate voltage</em>. If V_bemf &gt; effective V_bus, current reverses direction. The motor pushes current into the battery; energy flows the "wrong" way; the motor experiences a braking torque equal to Kv · I_regen.</p>
+  <p>The interesting case: leaving the bridge in PWM mode with a duty cycle giving an <em>effective motor terminal voltage = some intermediate value</em>. If V_bemf &gt; V_motor_eff, current reverses direction. The motor pushes current into the battery; energy flows the "wrong" way; the motor experiences a braking torque equal to K_t · |I_regen| (with K_t = K_e in SI units).</p>
 
   <section class="controls">
     <div class="control"><label>V_bus (battery): <span class="readout" id="vRead">36 V</span></label>
       <input id="v" type="range" min="6" max="80" step="0.5" value="36"></div>
-    <div class="control"><label>Motor Kv: <span class="readout" id="kvRead">100 V/krpm</span></label>
-      <input id="kv" type="range" min="20" max="500" step="5" value="100"></div>
+    <div class="control"><label>K_e (V/krpm): <span class="readout" id="kvRead">8 V/krpm</span></label>
+      <input id="kv" type="range" min="2" max="60" step="0.5" value="8"></div>
     <div class="control"><label>R_winding: <span class="readout" id="rRead">0.50 Ω</span></label>
       <input id="r" type="range" min="0.05" max="3" step="0.05" value="0.5"></div>
     <div class="control"><label>Motor RPM: <span class="readout" id="rpmRead">3000 RPM</span></label>
@@ -109,7 +115,7 @@
         <button data-m="motor" class="active">Motoring</button>
         <button data-m="coast">Coast</button>
         <button data-m="regen">Regen brake</button>
-        <button data-m="short">Plug brake</button>
+        <button data-m="short">Dynamic brake (short)</button>
       </div>
     </div>
     <div class="control"><label>Battery accept current limit: <span class="readout" id="ilRead">10 A regen</span></label>
@@ -120,11 +126,11 @@
     <svg id="bridge" viewBox="0 0 600 320" width="100%"></svg>
     <table>
       <tr><th>Quantity</th><th>Value</th><th>Notes</th></tr>
-      <tr><td>Back-EMF</td><td id="tEmf" class="num">30.0 V</td><td><code>Kv · ω</code></td></tr>
-      <tr><td>Net driving voltage</td><td id="tVd" class="num">+6.0 V</td><td><code>V_bus − V_bemf</code> (motoring) or <code>V_bemf − V_bus_eff</code> (regen)</td></tr>
-      <tr><td>Current (signed)</td><td id="tI" class="num">+12 A → motor</td><td><code>I = ΔV / R</code></td></tr>
-      <tr><td>Mechanical power</td><td id="tPm" class="num">360 W out</td><td><code>V_bemf · I</code></td></tr>
-      <tr><td>Electrical power to/from battery</td><td id="tPe" class="num">432 W in</td><td><code>V_bus · I</code></td></tr>
+      <tr><td>Back-EMF</td><td id="tEmf" class="num">24.0 V</td><td><code>K_e · ω</code></td></tr>
+      <tr><td>Net driving voltage</td><td id="tVd" class="num">+12.0 V</td><td><code>V_bus − V_bemf</code> (motoring) or <code>V_bemf − V_motor_eff</code> (regen)</td></tr>
+      <tr><td>Current (signed)</td><td id="tI" class="num">+24 A → motor</td><td><code>I = ΔV / R</code></td></tr>
+      <tr><td>Mechanical power</td><td id="tPm" class="num">576 W out</td><td><code>V_bemf · I</code></td></tr>
+      <tr><td>Electrical power to/from battery</td><td id="tPe" class="num">864 W from battery</td><td><code>V_motor_eff · I</code> (= V_bus · I when motoring, less in regen)</td></tr>
       <tr><td>Bus overvoltage risk</td><td id="tOv">No</td><td>regen with full battery</td></tr>
     </table>
   </div>
@@ -147,7 +153,7 @@
 
   <div class="deriv">
     <span class="step">Steady-state at duty D: <b>V_motor = D · V_bus</b></span>
-    <span class="step">Steady-state RPM: <b>ω = V_motor / Kv = D·V_bus / Kv</b></span>
+    <span class="step">Steady-state RPM: <b>ω = V_motor / K_e = D·V_bus / K_e</b></span>
     <span class="step">Current during transient (D changes from D₀ to D₁ instantly): I = (D₁·V_bus − V_bemf) / R</span>
     <span class="step">If D₁·V_bus &lt; V_bemf → <b>I is negative</b> → current flows from motor into battery.</span>
   </div>
@@ -164,25 +170,28 @@
   <h2 id="worked">Worked example — robot arm joint deceleration</h2>
   <div class="worked">
     <h3>The setup</h3>
-    <p>A 6-DOF robot arm joint: BLDC motor, Kv = 80 V/krpm, R_winding = 0.3 Ω, V_bus = 48 V (4S Li-ion). At the moment of braking, joint motor is spinning at 4000 RPM under modest load.</p>
+    <p>A 6-DOF robot arm joint: BLDC motor with datasheet K_e = 80 V/krpm, R_winding = 0.3 Ω, V_bus = 48 V (4S Li-ion). At the moment of braking, joint motor is spinning at 4000 RPM under modest load. (Spoiler — this K_e is too high for a 48 V bus; we'll catch it in the unit-sanity step.)</p>
 
     <h3>Get the convention right first</h3>
-    <p>Kv has two common conventions: <b>"V/krpm"</b> (volts per 1000 RPM — back-EMF coefficient) and <b>"RPM/V"</b> (motor-RPM per applied volt — the reciprocal). They are numerically reciprocal in non-overlapping units; mixing them is the #1 motor-spec mistake.</p>
-    <p>For a 4S / 48 V system, "V/krpm = 80" would mean V_bemf hits 48 V at only 600 RPM — way below typical operating speed. So 80 V/krpm motors belong in 200–400 V drives, not 48 V hobby/robotics. For 48 V at 4000 RPM cruise, the right spec is the inverse:</p>
+    <p>The motor spec uses <b>K_e in V/krpm</b> (volts of back-EMF per 1000 RPM). Hobby/RC suppliers usually quote <b>K_v in RPM/V</b> (no-load RPM per applied volt) — the reciprocal convention in reciprocal units (e.g. 80 V/krpm ↔ 12.5 RPM/V; 4 V/krpm ↔ 250 RPM/V). Mixing them is the #1 motor-spec mistake.</p>
+    <p>Sanity check: K_e = 80 V/krpm at 4000 RPM cruise would give V_bemf = 320 V — meaningless on a 48 V bus. 80 V/krpm motors belong in 200–400 V drives. For 48 V at 4000 RPM cruise we need a motor where V_bemf at 4000 RPM is comfortably below the bus, so we'll pick a motor spec'd as K_v = 250 RPM/V (equivalently K_e = 4 V/krpm).</p>
 
-    <h3>Use realistic numbers (Kv = 250 RPM/V)</h3>
+    <h3>Use realistic numbers (K_v = 250 RPM/V, i.e. K_e = 4 V/krpm)</h3>
     <p>At 48 V, max no-load RPM ≈ 250 · 48 = 12 000. Cruise at 4000 RPM → V_bemf = 4000 / 250 = 16 V.</p>
-    <span class="eq">Brake by setting duty = 0, all 4 low-side FETs on (short-circuit brake):</span>
-    <span class="eq">I = V_bemf / R = 16 / 0.3 = 53 A <span class="annot">(very hard brake; will overheat windings if sustained)</span></span>
-    <span class="eq">Brake by setting duty so V_motor_eff = 10 V (with regen recovery):</span>
-    <span class="eq">I_regen = (V_bemf − V_motor_eff) / R = (16 − 10)/0.3 = 20 A into battery</span>
-    <span class="eq">Power recovered: V_bus · I_regen = 48 · 20 = <b>960 W</b> into the battery.</span>
-    <span class="eq">If battery accept limit is 15 A: brake chopper engages, dissipating (20 − 15) · 48 = 240 W in the brake resistor.</span>
+    <span class="eq">Brake by setting duty = 0, all 4 low-side FETs on (short-circuit / dynamic brake):</span>
+    <span class="eq">I_short = V_bemf / R = 16 / 0.3 = 53 A <span class="annot">(very hard brake; all energy dumped in windings as I²R — overheats if sustained)</span></span>
+    <span class="eq">Brake by PWM regen with effective motor terminal voltage V_motor_eff = 10 V (duty D ≈ 10/48 ≈ 0.21):</span>
+    <span class="eq">I_motor = (V_bemf − V_motor_eff) / R = (16 − 10)/0.3 = 20 A (flowing out of the motor)</span>
+    <span class="eq">Mechanical power extracted: V_bemf · I_motor = 16 · 20 = 320 W out of the rotor</span>
+    <span class="eq">Winding I²R loss: 20² · 0.3 = 120 W heat in copper</span>
+    <span class="eq">Electrical power back to bus: V_motor_eff · I_motor = 10 · 20 = <b>200 W</b> recovered into the pack. (Check: 320 W mech = 200 W elec + 120 W copper ✓.)</span>
+    <span class="eq">Average bus current: I_bus_avg = P_bus / V_bus = 200 / 48 ≈ 4.2 A — well within a 4S 5-Ah pack at 1 C accept (5 A). No chopper needed here. To overrun the pack you would need a harder brake or a smaller pack.</span>
 
-    <h3>Brake chopper sizing</h3>
-    <span class="eq">Peak power: 240 W for ~0.5 s during braking event.</span>
-    <span class="eq">Energy per brake event: 240 W · 0.5 s = 120 J → cap or large resistor with thermal mass.</span>
-    <span class="eq">Sustained downhill: if 1/3 of motion is braking at 240 W → average 80 W → 100 W aluminum-housed 15 Ω, heatsinked.</span>
+    <h3>Brake chopper sizing — harder brake scenario</h3>
+    <span class="eq">Push V_motor_eff down to 4 V → I_motor = (16 − 4)/0.3 = 40 A, I²R = 480 W copper, P_bus = 4·40 = 160 W back to bus, I_bus_avg = 160/48 ≈ 3.3 A — still under 5 A accept.</span>
+    <span class="eq">Hardest regen short of pure short-circuit: V_motor_eff → 0⁺ → I_motor → 53 A, ALL energy in copper (no bus recovery). The chopper is for when a transient sends I_bus_avg above the pack's accept limit — e.g. a 10-Ah-equivalent inertia decelerating fast enough to push 20+ A average into a pack that accepts 5 A.</span>
+    <span class="eq">If a brake event delivers I_bus = 10 A average for 0.5 s into a 5 A-accept pack: 5 A go into the pack, 5 A · 48 V = 240 W must go into the chopper for 0.5 s → 120 J. Use a chopper resistor with thermal mass to absorb 120 J pulses + steady-state for sustained downhill.</span>
+    <span class="eq">Cross-check via kinetic energy: reflected inertia J_ref ≈ 0.01 kg·m² at 4000 RPM (ω ≈ 419 rad/s) → E_rot = ½·0.01·419² ≈ 877 J. A 0.5 s 320-W brake removes 160 J of mech energy → motor decelerates from 4000 RPM to 4000·√(717/877) ≈ 3620 RPM. Long downhills accumulate energy faster than this single event.</span>
   </div>
 
   <h2>What to notice</h2>
@@ -190,8 +199,8 @@
     <li><b>Regen is "free" from the bridge's perspective</b> — the same hardware drives and recovers, just with reversed current direction.</li>
     <li><b>Synchronous rectification matters</b> for efficiency. Letting current freewheel through body diodes wastes Vf·I (about 2 % at low V, 5 %+ at low currents). Active rectification keeps the losses at I²·R_DS(on).</li>
     <li><b>Battery charge-acceptance is the real bottleneck.</b> A 4S 2 Ah pack at 1C accepts 2 A; at 3C accepts 6 A. Regen above that limit needs a brake resistor.</li>
-    <li><b>Plug-braking (full reversal of polarity)</b> generates the highest brake torque but also the highest peak current — too aggressive for most BLDCs. Use short-circuit brake or PWM-controlled regen instead.</li>
-    <li><b>Without regen capability, an unloaded motor will spin to V_bus / Kv RPM</b> — the no-load speed. With regen, you can hold any RPM with finite torque.</li>
+    <li><b>Plug-braking (true polarity reversal: V_motor = −V_bus)</b> generates the highest brake torque but also the highest peak current (I ≈ (V_bus + V_bemf)/R, almost 2× short-circuit brake). Too aggressive for most BLDCs. Use short-circuit ("dynamic") brake or PWM-controlled regen instead. The simulator above shows short-circuit brake; plug-brake isn't safe to display without current limiting.</li>
+    <li><b>Without regen capability, an unloaded motor will spin up to its no-load speed</b> ω_no-load = V_bus / K_e (or RPM_no-load = V_bus · K_v if K_v is in RPM/V). With regen, you can hold any RPM below no-load with finite torque.</li>
   </ul>
 
   <h2>Where you'll see this</h2>
@@ -211,12 +220,14 @@
     <div class="cheat-card formulas">
       <h3>FORMULAS</h3>
       <dl>
-        <dt>Back-EMF</dt><dd><span class="eq">V_bemf = Kv · ω</span></dd>
-        <dt>Motor current</dt><dd><span class="eq">I = (V_bus − V_bemf) / R</span></dd>
+        <dt>Back-EMF</dt><dd><span class="eq">V_bemf = K_e · ω</span></dd>
+        <dt>Motor current</dt><dd><span class="eq">I = (V_motor_eff − V_bemf) / R</span><br><span style="font-size:11px">= (V_bus − V_bemf)/R at 100% duty (full motoring); negative when V_bemf &gt; V_motor_eff (regen).</span></dd>
         <dt>Mech power</dt><dd><span class="eq">P_mech = V_bemf · I</span></dd>
-        <dt>Bus power</dt><dd><span class="eq">P_bus = V_bus · I</span></dd>
-        <dt>Effective V at PWM</dt><dd><span class="eq">V_eff = D · V_bus</span></dd>
-        <dt>Brake threshold</dt><dd><span class="eq">V_chopper = 1.1 · V_nom</span></dd>
+        <dt>Bus power (motoring)</dt><dd><span class="eq">P_bus = V_bus · I</span></dd>
+        <dt>Bus power (regen, PWM avg)</dt><dd><span class="eq">P_bus = V_motor_eff · I = D·V_bus·I</span></dd>
+        <dt>Effective V at PWM</dt><dd><span class="eq">V_motor_eff = D · V_bus</span></dd>
+        <dt>Kinetic energy</dt><dd><span class="eq">E_rot = ½·J·ω²</span> (rotor + reflected)</dd>
+        <dt>Brake threshold</dt><dd><span class="eq">V_chopper ≈ 1.1 · V_nom</span></dd>
       </dl>
     </div>
     <div class="cheat-card memorize">
@@ -264,7 +275,7 @@
       document.querySelectorAll('[data-m]').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
       mode = btn.dataset.m;
-      const labels = {motor:'Motoring',coast:'Coast (high-Z)',regen:'Regen brake',short:'Plug brake (short)'};
+      const labels = {motor:'Motoring',coast:'Coast (high-Z)',regen:'Regen brake',short:'Dynamic brake (short)'};
       document.getElementById('modeRead').textContent = labels[mode];
       update();
     });
@@ -384,7 +395,7 @@
     const ilim = parseFloat(els.il.value);
 
     document.getElementById('vRead').textContent = Vbus.toFixed(1) + " V";
-    document.getElementById('kvRead').textContent = Kv.toFixed(0) + " V/krpm";
+    document.getElementById('kvRead').textContent = Kv.toFixed(1) + " V/krpm";
     document.getElementById('rRead').textContent = R.toFixed(2) + " Ω";
     document.getElementById('rpmRead').textContent = rpm.toFixed(0) + " RPM";
     document.getElementById('ilRead').textContent = ilim.toFixed(0) + " A accept";
@@ -406,7 +417,11 @@
       I = -Vbemf / R;
     }
     const Pmech = Vbemf * I;
-    const Pe = Vbus * I;
+    // P_bus is the average power flowing in/out of the battery at the bus.
+    // In motoring: equals V_bus · I_avg (high-side conducts full time at D=1 idealization).
+    // In regen: equals V_motor_eff · |I| (= D · V_bus · |I|), NOT V_bus · |I|;
+    //   the latter overstates by 1/D. Use Vmotor (the effective terminal voltage).
+    const Pe = Vmotor * I;
     const regen = I < 0;
 
     document.getElementById('tEmf').textContent = Vbemf.toFixed(1) + " V";

@@ -155,7 +155,7 @@
       </div>
       <div class="step-block" data-step="4">
         <div class="step-name">5. GET_DESCRIPTOR(Device, first 8 bytes)</div>
-        <div class="step-detail">Host sends SETUP packet on endpoint 0: bmRequestType=0x80, bRequest=0x06, wValue=0x0100, wIndex=0x0000, wLength=0x0040. (USB spec only requires the host to read 8 bytes at this stage. Linux + Windows actually request 64; the device returns at least the first 8 bytes including bMaxPacketSize0, and the host short-packets the transfer as soon as that byte tells it the real EP0 size.)</div>
+        <div class="step-detail">Host sends SETUP packet on endpoint 0: bmRequestType=0x80, bRequest=0x06, wValue=0x0100 (descriptor type DEVICE, index 0), wIndex=0x0000, wLength=0x0008. The host only needs the first 8 bytes here so it can read bMaxPacketSize0 (offset 7) and learn the real EP0 packet size for the rest of enumeration. Windows/Linux may request more (often 64) and short-packet after the device returns its actual descriptor length.</div>
       </div>
       <div class="step-block" data-step="5">
         <div class="step-name">6. RESET (again)</div>
@@ -202,13 +202,13 @@
 
   <h2>D+/D- voltage states and what they mean</h2>
   <table>
-    <tr><th>D+</th><th>D-</th><th>State</th><th>Meaning</th></tr>
-    <tr><td class="num">L</td><td class="num">L</td><td>SE0</td><td>RESET, end-of-packet</td></tr>
-    <tr><td class="num">H</td><td class="num">L</td><td>J (full/high)</td><td>idle (full speed) or "K" (low speed)</td></tr>
-    <tr><td class="num">L</td><td class="num">H</td><td>K (full/high)</td><td>"K state" — alternating during data</td></tr>
-    <tr><td class="num">H</td><td class="num">H</td><td>SE1</td><td>illegal — error condition</td></tr>
+    <tr><th>D+</th><th>D−</th><th>FS / HS state</th><th>LS state</th><th>Meaning</th></tr>
+    <tr><td class="num">L</td><td class="num">L</td><td>SE0</td><td>SE0</td><td>RESET (≥10 ms) or end-of-packet (EOP)</td></tr>
+    <tr><td class="num">H</td><td class="num">L</td><td><b>J</b> (idle)</td><td><b>K</b></td><td>FS: idle/mark — line at rest; LS: opposite (K)</td></tr>
+    <tr><td class="num">L</td><td class="num">H</td><td><b>K</b></td><td><b>J</b> (idle)</td><td>FS: opposite of idle; LS: idle</td></tr>
+    <tr><td class="num">H</td><td class="num">H</td><td>SE1</td><td>SE1</td><td>illegal — never asserted by spec</td></tr>
   </table>
-  <p>Full speed and low speed use opposite conventions: full-speed J = D+ H, low-speed J = D- H. The host detects which by checking which line is pulled up before the first RESET.</p>
+  <p>Full speed and low speed swap the J/K convention so the receiver's idle (J) is always whichever line has the pull-up. The host detects which by checking which line is HIGH before the first RESET: D+ HIGH → full-speed; D− HIGH → low-speed.</p>
 
   <h2>The 18-byte device descriptor</h2>
   <table>

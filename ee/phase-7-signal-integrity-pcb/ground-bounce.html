@@ -128,7 +128,7 @@
     <svg id="topology" viewBox="0 0 700 320" width="100%"></svg>
     <table>
       <tr><th>Quantity</th><th>Value</th><th>Notes</th></tr>
-      <tr><td>Trace inductance L</td><td id="tL" class="num">25 nH</td><td><code>~1 nH/mm narrow trace, ~0.5 nH/mm wide trace</code></td></tr>
+      <tr><td>Trace inductance L</td><td id="tL" class="num">25 nH</td><td><code>~1 nH/mm narrow trace, ~0.3-0.5 nH/mm wide trace; values drop further over a solid GND plane</code></td></tr>
       <tr><td>di/dt</td><td id="tDidt" class="num">400 MA/s</td><td><code>Δi / Δt</code></td></tr>
       <tr><td>Ground bounce V_GB</td><td id="tVgb" class="num">10.0 V</td><td><code>L · di/dt — transient on "ground"</code></td></tr>
       <tr><td>Topology effective L</td><td id="tLeff" class="num">25 nH</td><td><code>shared return = full L; star = 0; SP = isolated</code></td></tr>
@@ -170,16 +170,16 @@
     <li><b>Better: no split at all.</b> A solid plane works for most modern designs. The split-ground habit is from the through-hole era; SMD parts now use bypass caps and component placement to avoid noise coupling.</li>
   </ul>
 
-  <h2>Worked example — 16-bit ADC near a buck switcher</h2>
+  <h2>Worked example — 16-bit SAR ADC near a buck switcher</h2>
   <div class="worked">
     <h3>The setup</h3>
-    <p>5 V → 3.3 V buck switcher, 500 kHz, 2 A. ADS1115 16-bit ADC sampling 3.3V signal nearby. ADC LSB = 50 µV. Switcher trace length to GND: 30 mm narrow + 15 mm wide.</p>
+    <p>5 V → 3.3 V buck switcher, 500 kHz, MOSFET switches 2 A in ~5 ns edge. A nearby 16-bit SAR ADC (e.g., ADS8866-class, ±2.5 V FS, ~76 µV LSB, sub-µs S/H aperture) sampling a 3.3 V-rail signal. Switcher MOSFET-source trace length to bulk GND: 30 mm narrow + 15 mm wide.</p>
     <h3>The math</h3>
     <span class="eq">Trace L: 30·1 nH + 15·0.3 nH = 34.5 nH (narrow + wide)</span>
     <span class="eq">Switching current di/dt: 2 A / 5 ns = 4·10⁸ A/s</span>
     <span class="eq">V_GB at switcher's ground pin: 34.5e-9 · 4e8 = <b>13.8 V</b> peak (5 ns spike)</span>
-    <span class="eq">If ADC shares this ground: 16-bit converter sees 13.8 V offset for 5 ns. With sample-and-hold of 30 ns, the spike disturbs the held value.</span>
-    <span class="eq">Effect: 13.8 V / 50 µV per LSB = 276 000 LSB of disturbance during the 5 ns spike — completely overwhelms the held value, and the ADC reads noise rather than the input.</span>
+    <span class="eq">If the ADC shares this ground return, its reference moves by 13.8 V for 5 ns. A SAR aperture of ~100 ns–1 µs straddles many such spikes per conversion.</span>
+    <span class="eq">Effect: 13.8 V / 76 µV per LSB ≈ 180 000 LSB of disturbance — the LSB count is meaningless; the conversion is corrupted whenever a switching edge lands inside the aperture.</span>
     <h3>The fix</h3>
     <span class="eq">Star ground: separate trace from ADC GND to PSU GND; ADC sees only its own GND inductance (~3 nH for 3 mm to plane) = 0.27 V — still bad.</span>
     <span class="eq">Single-point AGND/DGND: ADC's AGND pin goes to its own quiet plane; DGND goes to digital plane. Tied at one point under ADC. Effective coupling: pF-scale.</span>
@@ -194,7 +194,7 @@
     <span class="eq">Edge L: 20 mm · 1 nH/mm = 20 nH</span>
     <span class="eq">di: MCU GPIO charging a typical 1 nF effective gate input (Qg ≈ 5 nC at Vgs=5 V) in 10 ns → di = C·ΔV/Δt = 1 nF · 5 V / 10 ns = 0.5 A peak.</span>
     <span class="eq">V_GB = L · di/dt = 20e-9 · (0.5/10e-9) = <b>1 V</b> transient on shared GND.</span>
-    <span class="eq">Strain-gauge ADC (24-bit, LSB ≈ 60 nV at ±2.5 V FS): sees ~17 million LSB error for those 10 ns — way past anything the digital filter can salvage.</span>
+    <span class="eq">Strain-gauge ADC (24-bit, ±0.5 V FS after PGA → LSB ≈ 60 nV; or 24-bit at ±2.5 V FS → LSB ≈ 300 nV): a 1 V transient buries the conversion by 17 M LSB / 3 M LSB respectively — way past anything the digital filter can salvage.</span>
     <h3>The fix</h3>
     <span class="eq">Add a separate "noisy" ground to relay driver + transistor; tie this ground to the "quiet" ground at a single point near the MCU's main GND.</span>
     <span class="eq">Use a 100 nF cap between drain of FET and source — kills the current spike in the gate drive circuit (snubber).</span>
@@ -233,10 +233,10 @@
       <h3>FORMULAS</h3>
       <dl>
         <dt>V_GB</dt><dd><span class="eq">L · di/dt</span></dd>
-        <dt>Trace L (rough)</dt><dd><span class="eq">~1 nH/mm narrow; ~0.3 nH/mm wide over plane</span></dd>
-        <dt>BW of edge</dt><dd><span class="eq">~0.35 / t_rise</span></dd>
-        <dt>Edge → di/dt</dt><dd><span class="eq">Δi/Δt; typical CMOS: 100 mA/ns</span></dd>
-        <dt>Loop L (rectangle)</dt><dd><span class="eq">≈ (µ₀·h·L)/W (h between layers)</span></dd>
+        <dt>Trace L (rough)</dt><dd><span class="eq">~1 nH/mm narrow; ~0.3-0.5 nH/mm wide; lower still over a solid plane</span></dd>
+        <dt>BW of edge</dt><dd><span class="eq">~0.35 / t_rise (knee frequency)</span></dd>
+        <dt>Edge → di/dt</dt><dd><span class="eq">Δi/Δt; typical CMOS edge: ~100 mA/ns</span></dd>
+        <dt>Loop L (rectangle)</dt><dd><span class="eq">≈ µ₀·h·ℓ/W   (parallel-plate, valid when W ≫ h, ℓ = loop length)</span></dd>
       </dl>
     </div>
     <div class="cheat-card memorize">

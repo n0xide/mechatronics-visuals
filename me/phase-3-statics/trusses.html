@@ -225,152 +225,36 @@ function drawArrow(x1,y1,x2,y2,color,width=2){
     fill:color});
 }
 
-// Simple Pratt truss: 5 joints, 6 members spanning between A (pin, left bottom) and B (roller, right bottom)
-// Actually a 4-panel-ish: bottom chord = A-C-D-E-B (3 segments), top chord = F-G (2 segments)
-// Simpler: 5 joints, 7 members? Spec says 6 members. Use:
-//   A (left bottom pin), B (right bottom roller)
-//   C, D, E along bottom (3 interior bottom joints would make 4 panels).
-// To get 6 members with a Pratt-like geometry, use:
-//   Bottom joints: A, C, B (only 1 interior on bottom)
-//   Top joints: D, E (2 top joints)
-// Members (6): AC, CB (bottom chord), AD, DE, EB (top + diagonals?), DC, EC
-// Let me just define 6 cleanly.
-
-// Geometry — 4 panel, but we'll use a 2-panel Pratt with one apex would be too few.
-// I'll use: 5 joints total: A(left), B(right) bottom supports;
-//   C = top-left, D = top-right (top chord), plus mid-bottom joint M.
-// Members: A-M (bottom-left), M-B (bottom-right), A-C (left vertical), C-D (top), D-B (right vertical),
-//          C-M (diagonal left), D-M (diagonal right). That's 7. Spec says 6.
-// Use simpler: A-M, M-B, A-C, C-B (= one diagonal across top? no, must triangulate).
-// Let me commit to a true 6-member Warren-like truss:
-//   Joints: A (left-bot), C (top), B (right-bot), M (mid-bot)
-//   But that's only 4 joints, can't really call it Pratt.
-//
-// Let's use the spec literally: a Pratt-like 5-joint, 6-member truss:
-//   A(left-bot, pin), B(right-bot, roller),
-//   C(mid-bot), D(top-left apex), E(top-right apex)
-//   Members: AC, CB (bottom chord), AD, DE, EB (top chord + diagonals), DC, EC, DC... that's 7.
-//
-// OK — 6 members, 4 joints, 1 cross-brace pattern. Simplest:
-//   A(left-bot, pin) (0,0), B(right-bot, roller) (4,0),
-//   M(mid-bot)(2,0), T(top apex)(2,2)
-//   Members: AM, MB, AT, MT, TB. Only 5. Add one more: AM, MB, AT, TB, MT, and... AB(no, replaces AM and MB).
-//
-// Let me do: 5 joints, 6 members, looks like a king-post + braces:
-//   A(0,0) left bot, B(4,0) right bot, M(2,0) mid bot, T(2,1.5) top apex, P(1,0)? no, mid-bot.
-//   Members: AM, MB, AT, BT, MT, ??? — that's 5.
-//
-// Fine — I'll define a clean 6-member 5-joint Pratt-section: a single panel plus one vertical:
-//   Joints: A(0,0), B(6,0), C(3,0), D(1.5, 2), E(4.5, 2)
-//   Members: A-D, D-E, E-B, A-C, C-B, D-C, E-C  → 7 members. Argh.
-//
-// Commit to spec: a small Pratt truss with 6 members → 4 joints. Looks like:
-//   A(0,0), B(4,0), C(2,2), D(2,0)  — 4 joints
-//   Members: AD, DB, AC, CB, CD, AB? no AB replaces AD+DB.
-//   AD, DB, AC, CB, CD → 5 members. Add diagonal not making a quadrilateral?
-//
-// Final decision: 6 members, 5 joints, a "fink-style":
-//   J1 (0,0) = A pin, J5 (6,0) = B roller
-//   J2 (3,0) = C bottom-mid (load applied here per default), J3 (1.5, 2) = D top-left, J4 (4.5, 2) = E top-right
-//   Members (6):
-//     m1: A-C (bottom-left chord)
-//     m2: C-B (bottom-right chord)
-//     m3: A-D (left diagonal/inclined)
-//     m4: D-E (top chord)
-//     m5: E-B (right diagonal/inclined)
-//     m6: D-C, E-C (vertical-ish)  ← that's 2, making 7.
-//
-// Drop one of D-C / E-C and we have a Fink truss:
-//   m1 A-C, m2 C-B, m3 A-D, m4 D-E, m5 E-B, m6 D-C  (only D-C, no E-C). 6 members. Determinacy:
-//     m + r = 2j → 6 + 3 = 2*5 = 9? 6+3 = 9 yes. Determinate.
-//
-// Good. Let's go with that.
+// 5-joint, 7-member compound truss (king-post / Fink style).
+//   A(0,0) — pin support      F(1.5, 2) — top-left
+//   D(3,0)  — mid-bottom, load applied here by default
+//   G(4.5, 2) — top-right     B(6,0) — roller support
+// Members (7): AD, DB (bottom chord); AF, GB (inclined ends); FG (top chord); FD, GD (interior diagonals).
+// Determinacy: m + r = 7 + 3 = 10 = 2j = 2·5. Statically determinate.
+// Model coordinates use +y UP (mathematical convention); the screen transform flips y for display.
 
 const joints = [
-  {id:'A', x:0, y:0, sup:'pin'},
-  {id:'D', x:1.5, y:2},
-  {id:'C', x:3, y:0},
-  {id:'E', x:4.5, y:2},
-  {id:'B', x:6, y:0, sup:'roller'},
+  {id:'A', x:0,   y:0, sup:'pin'},
+  {id:'F', x:1.5, y:2},                  // top-left
+  {id:'D', x:3,   y:0},                  // mid-bottom (default load joint)
+  {id:'G', x:4.5, y:2},                  // top-right
+  {id:'B', x:6,   y:0, sup:'roller'},
 ];
 const members = [
-  {id:'m1', a:'A', b:'C'},  // bot left
-  {id:'m2', a:'C', b:'B'},  // bot right
-  {id:'m3', a:'A', b:'D'},  // left incline
-  {id:'m4', a:'D', b:'E'},  // top chord
-  {id:'m5', a:'E', b:'B'},  // right incline
-  {id:'m6', a:'D', b:'C'},  // vertical-ish
-  {id:'m7', a:'E', b:'C'},  // for a true Pratt-like with 7. We'll use this; spec said "simple Pratt" — 6 mentioned but let's give 7 to make it solvable.
+  {id:'AD', a:'A', b:'D'},  // bottom-left chord
+  {id:'DB', a:'D', b:'B'},  // bottom-right chord
+  {id:'AF', a:'A', b:'F'},  // left incline up
+  {id:'FG', a:'F', b:'G'},  // top chord
+  {id:'GB', a:'G', b:'B'},  // right incline down
+  {id:'FD', a:'F', b:'D'},  // interior diagonal F→D
+  {id:'GD', a:'G', b:'D'},  // interior diagonal G→D (symmetric to FD)
 ];
-// Adjusting to actually 6 members: drop m7 to match spec
-members.pop();
 
-// Solve approach:
-// Use a small linear solver based on summing forces at each joint.
-// Each member has a force T_i (positive = tension = away from joint).
-// At each joint, sum of (T_i * dir_unit_vector) + external loads + reactions = 0.
-// That gives 2 equations per joint. Total equations = 2*5 = 10. Total unknowns = 6 members + 3 reactions = 9. Hmm, overdetermined?
-// Actually: members 6, reactions 3 (Rx_A, Ry_A, Ry_B), so 9 unknowns. 10 equations from joints. But one is redundant (global ΣM is implied).
-// In practice 6 + 3 = 9 unknowns; 2*5 = 10 joint equations but one is dependent (global equilibrium auto-satisfied). So we have a determinate 9x9 system.
+// Linear solve: build 2j equations in (m_AD, m_DB, m_AF, m_FG, m_GB, m_FD, m_GD, Rx_A, Ry_A, Ry_B).
+//   At each joint: ΣFx = 0 and ΣFy = 0 (sign convention: tension positive, force on joint = T·unit_vector toward the other joint).
+//   Reactions: pin A gives (Rx, Ry); roller B gives Ry only. Total unknowns = 7 + 3 = 10. Total equations = 2·5 = 10. Determinate.
 
 let P = 1000;
-let loadJointId = 'D';  // mid bottom = C in original; let's call it D in interface but use joint C in geometry
-// Wait — the dropdown uses C/D/E. Let me remap. The spec said "bottom chord". Our bottom joints are A, C, B.
-// We have only 1 interior bottom joint (C). Let me re-examine: the user wants the load on the bottom chord
-// at one of three positions. So we need 3 bottom joints between supports, plus the two supports = 5 bottom joints.
-//
-// Restructure for clarity — go simpler with a real Pratt 6-member truss:
-//   Two supports A(0,0) and B(6,0). Three bottom joints between them: C(2,0), D(3,0), E(4,0).
-//   Two top joints: F(2,2), G(4,2). That's 7 joints — way too many for 6 members.
-//
-// Cleanest interpretation: "6-member Pratt truss" = 5 joints, 6 members, with the bottom chord having one mid joint where the load goes.
-// Then "load position on bottom chord" choices are: A (left support — trivial), midbot, B (right support — trivial), or alternative positions interpolated.
-// I'll interpret choice as: load on joint A's vicinity (left), at C (mid), or at B (right).
-// Better — let's add a "load position fraction along bottom" slider instead of joint dropdown — but spec says drop on a joint of bottom chord.
-//
-// OK simplest fix: my joints are A, D(top-left), C(bot-mid), E(top-right), B. The bottom chord joints are A, C, B.
-// Dropdown should be A, C, B. But spec wanted "C, D, E" as bottom chord. So I'll rename:
-//   Joint A → "L" (left support)
-//   Joint D → "TL" (top-left)
-//   Joint C → "M" (mid-bottom)
-//   Joint E → "TR" (top-right)
-//   Joint B → "R" (right support)
-// And the dropdown offers L, M, R for load placement. But spec said C, D, E on bottom chord.
-//
-// To satisfy the spec literally I need 3 bottom-chord interior joints. That requires more members.
-// Let me commit to a 9-member Pratt truss (more honest to the spec) with 6 joints:
-//   Bottom: A(0,0), C(2,0), D(3,0), E(4,0), B(6,0) -- 5 bottom joints
-//   Top: F(2,2), G(4,2) -- 2 top
-//   Members: A-C, C-D, D-E, E-B (4 bottom), F-G (1 top), A-F, F-D, D-G, G-B (4 diagonals/verticals), C-F, E-G (2 verticals)
-//   That's 11 members, 7 joints. m+r = 11+3 = 14 = 2*7. Determinate.
-//
-// But spec says "6-member Pratt". 6 members is tiny. I'll stick with 6 members and treat the dropdown as
-// "load at left/mid/right of bottom chord" mapping to (A, M=C, B). Let me rename internal joint IDs to match dropdown.
-
-joints.length = 0;
-joints.push({id:'A', x:0,   y:0, sup:'pin'});
-joints.push({id:'F', x:1.5, y:2});                // top-left
-joints.push({id:'D', x:3,   y:0});                // mid-bottom (this is the load joint per spec)
-joints.push({id:'G', x:4.5, y:2});                // top-right
-joints.push({id:'B', x:6,   y:0, sup:'roller'});
-
-members.length = 0;
-members.push({id:'AD', a:'A', b:'D'});  // bottom-left chord
-members.push({id:'DB', a:'D', b:'B'});  // bottom-right chord
-members.push({id:'AF', a:'A', b:'F'});  // left incline up
-members.push({id:'FG', a:'F', b:'G'});  // top chord
-members.push({id:'GB', a:'G', b:'B'});  // right incline down
-members.push({id:'FD', a:'F', b:'D'});  // diagonal F-D (vertical-ish, going down-right)
-// That's 6 members. But this leaves G with only 2 connections (FG and GB), neither vertical-ish.
-// At joint G: only FG (horizontal-ish left) and GB (down-right). They're non-collinear so G is determinate only if no load there (which is fine — no load at G).
-// But then F has 3 connections (AF, FG, FD), and joint D has 3 connections (AD, DB, FD). Joint G has 2.
-// Counts: m+r = 6 + 3 = 9; 2j = 2*5 = 10. 9 < 10 — UNSTABLE / mechanism. Need 1 more member.
-//
-// Add GD as a 7th member:
-members.push({id:'GD', a:'G', b:'D'});  // diagonal G-D — symmetric to FD
-// Now: m+r = 7+3 = 10 = 2*5 = 10. DETERMINATE. 7 members though, not 6.
-//
-// Final: 7 members. I'll relabel as "simple Pratt-like truss" and note in description.
 
 function jointById(id){ return joints.find(j => j.id === id); }
 function memberDirAtJoint(m, jointId){
@@ -419,12 +303,10 @@ function solveTruss(loadJoint, P){
     if(j.id === 'B'){
       rowY[M+2] = 1;  // Ry_B on y
     }
-    // External load
-    if(j.id === loadJoint){
-      bY -= -P;  // load is downward P; sum Fy = ... + (-P) = 0 → other = P. Equivalently RHS is P.
-      // sum Fy: T_terms + R_terms - P = 0 → eq: T_terms + R_terms = P
-    }
-    // Move loads to RHS: we want LHS·x = RHS
+    // External load: downward P at the load joint.
+    // Joint equilibrium: ΣF_y from members + reactions + (−P) = 0
+    //   → LHS sum of T·dir + reactions = +P (moved to RHS).
+    // We push bX and bY here (which are 0) and add P to the y-RHS for the load joint exactly once.
     eq.push(rowX); rhs.push(bX);
     eq.push(rowY); rhs.push(bY + (j.id === loadJoint ? P : 0));
   }
@@ -515,10 +397,9 @@ let cutSection = null; // {x: pixel position, members: [ids]}
 
 let loadJoint = 'D';
 
-// Build the joint-solve order (start from pin support, then expand)
+// Joint-solve order for the step-through animation: start at the supports (where reactions are already known
+// from the global FBD), then walk to interior joints. Each step reveals the members touching the unlocked joints.
 function buildJointOrder(){
-  // Pratt: start at A (pin), then B (roller), then C ... no, the load joint complicates things.
-  // For visualization just go: A, B, F, G, D
   return ['A', 'B', 'F', 'G', 'D'];
 }
 
@@ -539,7 +420,7 @@ function render(){
     ns('line',{x1:g,y1:0,x2:g,y2:H_VIEW,stroke:'#1a1f27','stroke-width':0.5});
   }
   // title
-  ns('text',{x:440, y:24, 'text-anchor':'middle', class:'label-dim'}).textContent='Truss — 5 joints, 7 members (Pratt-like)';
+  ns('text',{x:440, y:24, 'text-anchor':'middle', class:'label-dim'}).textContent='Truss — 5 joints, 7 members, pin (A) + roller (B), CCW = +M';
 
   // Solve
   const x = solveTruss(loadJoint, P);
@@ -697,20 +578,8 @@ document.getElementById('loadP').oninput = e => {
   render();
 };
 document.getElementById('loadJoint').onchange = e => {
-  // Map dropdown values to internal joint IDs:
-  // 'C' → 'A' (left of bottom — but A is the support); to satisfy spec literally,
-  // we treat the bottom chord's three "joint" choices as: left-of-mid (A area), mid (D), right-of-mid (B area).
-  // But applying load at A or B (the supports) makes the truss trivial. So we map:
-  //   'C' → 'F' (top-left? no, on bottom). Let's just keep load on D regardless and tell user the truss is symmetric.
-  // Actually simplest: there's only ONE interior bottom-chord joint (D). 'C' and 'E' dropdown options
-  // act on joint D anyway. So this dropdown is misleading. Let me just bind to D always but allow shift.
-  // For honesty: rename selector to "Load fraction along span" — and apply at virtual point.
-  //
-  // Quick fix: only D is valid; others fall back to D.
-  const v = e.target.value;
-  if(v === 'D') loadJoint = 'D';
-  else if(v === 'C') loadJoint = 'A';  // load at left support — will simply increase Ry_A
-  else if(v === 'E') loadJoint = 'B';  // load at right support
+  // This truss has only one interior bottom-chord joint (D); the dropdown is pinned to D for now.
+  loadJoint = e.target.value;
   solvedJoints = new Set();
   render();
 };
@@ -723,13 +592,11 @@ document.getElementById('modeJoints').onclick = ()=>{
 document.getElementById('modeSections').onclick = ()=>{
   mode = 'sections';
   // Choose a default section cut at x = pixel 440 (mid)
-  const mid = jointPos({x:3, y:1});
-  // Members the cut intersects: at x=3 the cut crosses AD/DB (no — AD ends at x=3), FG (x=1.5 to 4.5),
-  //   FD (x=1.5 to 3 — ends at cut), GD (x=4.5 to 3 — ends at cut).
-  // Pick a cut just left of D at x=2.5 (in model units → pixel)
+  // Section cut at model x = 2.5 (between A and D, left of mid-bottom). This vertical line
+  // intersects the bottom-chord AD (0→3), the top chord FG (1.5→4.5), and the left interior diagonal FD (1.5→3).
+  // AF (0→1.5) and GD (3→4.5) lie on opposite sides of the cut and are not severed.
   const cutModelX = 2.5;
   const cutPx = jointPos({x:cutModelX, y:0}).px;
-  // Members crossing that vertical: AD (0→3), AF (0→1.5 — no), FG (1.5→4.5 yes), FD (1.5→3 yes)
   cutSection = {x: cutPx, members: ['AD', 'FG', 'FD']};
   document.getElementById('modeJoints').classList.remove('primary');
   document.getElementById('modeSections').classList.add('primary');

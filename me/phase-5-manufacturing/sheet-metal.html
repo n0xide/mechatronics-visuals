@@ -116,18 +116,18 @@
       <input type="range" id="sK" min="0.30" max="0.50" step="0.01" value="0.40">
     </div>
     <div class="control">
-      <label>Leg A length: <span class="readout" id="rL1">50</span> mm</label>
+      <label>Leg A (tangent length): <span class="readout" id="rL1">50</span> mm</label>
       <input type="range" id="sL1" min="10" max="150" step="1" value="50">
     </div>
     <div class="control">
-      <label>Leg B length: <span class="readout" id="rL2">50</span> mm</label>
+      <label>Leg B (tangent length): <span class="readout" id="rL2">50</span> mm</label>
       <input type="range" id="sL2" min="10" max="150" step="1" value="50">
     </div>
   </div>
 
   <div class="calc-output">
-    <div class="calc-row"><span>Bend allowance BA = π × (r + K·t) × (θ/180)</span><span class="v" id="oBA">—</span></div>
-    <div class="calc-row"><span>Flat-pattern length = legA + legB + BA</span><span class="v" id="oFlat">—</span></div>
+    <div class="calc-row"><span>Bend allowance BA = (π/180) × (r + K·t) × θ</span><span class="v" id="oBA">—</span></div>
+    <div class="calc-row"><span>Flat-pattern length = legA<sub>tan</sub> + legB<sub>tan</sub> + BA</span><span class="v" id="oFlat">—</span></div>
     <div class="calc-row"><span>r/t ratio</span><span class="v" id="oRT">—</span></div>
     <div class="calc-row"><span>Bend feasibility (6061-T6)</span><span class="v" id="oFeas">—</span></div>
   </div>
@@ -207,8 +207,8 @@
   <section class="cheatsheet">
     <div class="cheat-card formulas">
       <h3>FORMULAS</h3>
-      <span class="eq">BA = π · (r<sub>i</sub> + K·t) · (angle/180)</span>
-      <span class="eq">L<sub>flat</sub> = Σ straight_legs + Σ BA</span>
+      <span class="eq">BA = (π/180) · (r<sub>i</sub> + K·t) · θ°</span>
+      <span class="eq">L<sub>flat</sub> = Σ tangent_legs + Σ BA</span>
     </div>
     <div class="cheat-card memorize">
       <h3>MEMORIZE — MIN BEND RADIUS</h3>
@@ -304,14 +304,16 @@ function update(){
   // Center of bend arc: (x0+L1px, y0 + rpx)
   const cx = x0 + L1px;
   const cy = y0 + rpx;
-  // Leg 2 direction angle from vertical: bend angle a
+  // Leg 2 direction angle: bend angle a, measured from leg-A direction
   const aRad = a * Math.PI / 180;
   // End of inner arc:
   const ex = cx + rpx * Math.sin(aRad);
   const ey = cy - rpx * Math.cos(aRad);
-  // Leg 2 outer end
-  const lex = ex + L2px * Math.cos((90 - a) * Math.PI / 180);
-  const ley = ey + L2px * Math.sin((90 - a) * Math.PI / 180);
+  // Leg 2 tangent direction: at α=0 continues +x (right); at α=90° goes +y (down);
+  // at α=180° goes −x (left). The arc is swept CW around a center below the start,
+  // so the tangent at the end is (cos α, sin α) in SVG (y-down) coordinates.
+  const lex = ex + L2px * Math.cos(aRad);
+  const ley = ey + L2px * Math.sin(aRad);
 
   let bent = `
     <text x="360" y="30" class="label" text-anchor="middle" style="font-weight:600">Bent part (side view)</text>

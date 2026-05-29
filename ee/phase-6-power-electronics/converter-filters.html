@@ -107,7 +107,7 @@
 <body>
 <main>
   <h1>Converter Output Filters</h1>
-  <p class="lede">An SMPS output looks like a sawtooth riding on the desired DC: that's switching ripple. A single L+C low-pass shaves it; a pi-filter (C-L-C) cascades two reactive stages for 40 dB/decade extra attenuation; a stage with ESR-conscious C choice keeps high-frequency spikes off the rail. Slide the filter component values and see the ripple-vs-frequency plot live; watch the impact of cap ESR (the silent killer of ripple specs).</p>
+  <p class="lede">An SMPS output looks like a sawtooth riding on the desired DC: that's switching ripple. A single L+C low-pass shaves it; adding a downstream L+C stage (often called a "pi filter" loosely, though a true 3-element C-L-C from a voltage source is only 40 dB/dec — the model here treats it as two cascaded LC stages, 80 dB/dec total) gives 40 dB/decade extra attenuation; a stage with ESR-conscious C choice keeps high-frequency spikes off the rail. All formulas assume CCM buck operation. Slide the filter component values and see the ripple-vs-frequency plot live; watch the impact of cap ESR (the silent killer of ripple specs).</p>
 
   <div class="anchors">
     <button class="anchor active" data-preset="single"><b>Single L+C</b> · low-pass</button>
@@ -154,11 +154,11 @@
   </div>
 
   <h2>The pi-filter (C-L-C) for extra attenuation</h2>
-  <p>Add a small inductor and a second cap after the main output. The pi-shape (looks like Greek π) gives you 80 dB/decade attenuation instead of 40 dB. Cost: extra components, extra layout, slight DC voltage drop across L_2. Used for: low-noise audio, RF reference rails, sub-mV-ripple ADC supplies.</p>
+  <p>Add a small inductor and a second cap downstream of the converter's existing output cap. With the converter's own L+C_out already providing one 2nd-order stage, the added L+C cascades a second 2nd-order stage. Above both resonances, that's 80 dB/decade rolloff total instead of 40. Cost: extra components, extra layout, slight DC voltage drop across the added L. Used for: low-noise audio, RF reference rails, sub-mV-ripple ADC supplies.</p>
   <div class="deriv">
-    <span class="step">Single L-C: <b>|H(f)| ≈ 1 / ((f/f_res)² − 1)</b> above f_res; rolloff 40 dB/dec</span>
-    <span class="step">Pi (C-L-C): <b>|H(f)|² ≈ rolloff 80 dB/dec</b> above the second resonance</span>
-    <span class="step">At f_sw of 500 kHz, with f_res = 10 kHz: single stage gives ~66 dB attenuation; pi gives ~132 dB</span>
+    <span class="step">Single L-C (buck L + C_out): <b>|H(f)| ≈ 1 / |(f/f_res)² − 1|</b> above f_res; rolloff 40 dB/dec</span>
+    <span class="step">Cascaded LC (buck L + C_out, then post-pi L + cap): rolloff 80 dB/dec above the higher of the two resonances. A standalone pi (voltage-source-driven C-L-C) is only 40 dB/dec — it's the buck L doing the first 40 dB/dec.</span>
+    <span class="step">At f_sw of 500 kHz, with both f_res ≈ 10 kHz: single stage gives 40·log₁₀(50) ≈ 68 dB attenuation; cascaded gives 80·log₁₀(50) ≈ 136 dB</span>
     <span class="step">In practice, ESR floors the achievable attenuation around −80 to −100 dB; below that, layout and ground noise dominate.</span>
   </div>
 
@@ -197,11 +197,11 @@
     <h3>The constraints</h3>
     <p>Headphone amp +/-9 V rails, draw 200 mA each. Switcher front-end at 800 kHz. Target ripple: ≤ 200 µV pp on rails.</p>
     <h3>The math</h3>
-    <span class="eq">Buck-boost converter output already has ~20 mV ripple — 100× too much.</span>
+    <span class="eq">Buck-boost converter output already has ~20 mV ripple at C1 — 100× too much vs the 200 µV spec.</span>
     <span class="eq">Need additional 40 dB → 100× attenuation at 800 kHz.</span>
-    <span class="eq">Pi-filter: L = 2.2 µH, C1 = 47 µF (post-buck), C2 = 22 µF + 100 nF (after pi-stage)</span>
-    <span class="eq">f_res2 = 1/(2π·√(2.2e-6·22e-6)) = 22.9 kHz; at 800 kHz that's 35× above → 30 dB extra attenuation</span>
-    <span class="eq">Combined with the existing 1-stage: 40+30 = 70 dB total → 20 mV/3000 = 6.3 µV — well under spec</span>
+    <span class="eq">Add post-stage: L_pi = 2.2 µH, C2 = 22 µF + 100 nF, downstream of the existing C1 = 47 µF.</span>
+    <span class="eq">f_res_pi = 1/(2π·√(2.2 µH · 22 µF)) = 22.9 kHz; at 800 kHz that's 35× above → 40·log₁₀(35) ≈ 62 dB extra attenuation (2nd-order rolloff)</span>
+    <span class="eq">20 mV / 10^(62/20) = 20 mV / 1259 ≈ 16 µV — well under the 200 µV spec.</span>
     <h3>Caveat</h3>
     <p>Even with 200 µV electrical ripple, audio amp PSRR must be &gt; 50 dB; otherwise the amp itself injects supply ripple into the audio. Choose op-amps like OPA1611 (110 dB PSRR @ 1 kHz, 75 dB @ 100 kHz).</p>
   </div>
@@ -243,7 +243,7 @@
         <dt>ΔV_o (worst)</dt><dd><span class="eq">ΔV_C + ΔV_ESR</span></dd>
         <dt>f_res</dt><dd><span class="eq">1/(2π·√(LC))</span></dd>
         <dt>Atten. at f &gt; f_res</dt><dd><span class="eq">40·log₁₀(f/f_res) dB (single LC)</span></dd>
-        <dt>Pi atten.</dt><dd><span class="eq">~80 dB/dec above 2nd resonance</span></dd>
+        <dt>Cascaded LC</dt><dd><span class="eq">~80 dB/dec above the higher resonance (buck L + post-stage L)</span></dd>
       </dl>
     </div>
     <div class="cheat-card memorize">

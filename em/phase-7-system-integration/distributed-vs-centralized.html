@@ -176,7 +176,7 @@
   <ul class="notice">
     <li><b>Centralized cable count explodes</b> — drag N to 12. The centralized side has 12 encoders × 4 signals + 12 drivers × 8 signals = ~144 wires crossing the robot. The distributed side has 2 (CAN bus). Cable mass + flex life + EMI all matter on a real arm.</li>
     <li><b>Centralized MCU saturates</b> — at 20 kHz × N joints, each FOC iteration costs ~20 µs. With N=12 you need 12×20 µs = 240 µs per period vs a 50 µs deadline. The single MCU cannot service all loops in time.</li>
-    <li><b>Bus utilization stays low in distributed</b> — even at N=24, each joint sends 16 bytes × 1 kHz = 16 kB/s = 128 kbps. Sum over 24 joints = 3 Mbps, well under CAN-FD's 5 Mbps data phase.</li>
+    <li><b>Bus utilization stays low in distributed</b> — at N=24 with 16-byte frames at 1 kHz, each frame on CAN-FD takes ~50–65 µs (30 bits arbitration @ 1 Mbps + ~170 bits data+CRC @ 5 Mbps). 24 × 1 kHz × 60 µs ≈ ~140% — actually saturates the bus, so plan accordingly (lower update rate, shorter payload, or higher data-phase rate). At N≤8 with 1 kHz, comfortable margin.</li>
     <li><b>Centralized is fine for N ≤ 3 or so</b> — a quadcopter has 4 ESCs (each is itself a tiny controller), a 2-wheel robot has 2 motors. At this scale, distributed adds overhead without benefit. Don't over-architect.</li>
     <li><b>Distributed has versioning costs</b> — if you flash joint J3 with new firmware but forget J5, you have a system with inconsistent behavior. Solve with: bootloader that checks compatibility on boot, version field in every message, automated fleet update tool.</li>
     <li><b>Hybrid is real</b> — many real robots: one host (Pi/Jetson) + smart motor controllers (ODrive, Moteus) per joint. ODrive already does FOC, so you talk to it over CAN at the velocity-loop tier. This is distributed at the joint level + centralized at the planning tier.</li>
@@ -193,7 +193,7 @@
     <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Architecture B: distributed (one MCU per joint)</h3>
     <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">CPU per joint: 1 FOC × 20 µs per 50 µs period = 40% CPU utilization (comfortable margin even with USART/CAN overhead).</div>
     <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Wiring: CAN-FD twisted pair + power = 4 wires through arm. Cleaner, easier to repair.</div>
-    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Bus load at 1 kHz position commands: 7 × 16 bytes × 1 kHz × 8 = 896 kbps over 5 Mbps CAN-FD = 18% load ✓</div>
+    <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Bus load at 1 kHz position commands (counting frame overhead): each 16-byte CAN-FD frame ≈ 30 bits arbitration @ 1 Mbps + ~140 bits data+CRC @ 5 Mbps ≈ 58 µs. 7 joints × 1 frame × 1 kHz × 58 µs ≈ ~40% bus utilization; add state-feedback frames → ~80% — at the edge, plan accordingly.</div>
     <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">Cost: 7 × $15 STM32G474 = $105 for MCUs vs one $40 STM32H750. Distributed costs more in BOM but lower wiring + repair costs.</div>
     <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Decision</h3>
     <p>arm-6dof-pa612 picks distributed (Architecture B). 7 wire pairs through joint = mechanically simpler; one MCU failure isolates to one joint, not the whole arm; CAN-FD bus load comfortable; each driver is independently testable. Industrial robots (KUKA, UR, ABB) all use distributed for the same reasons.</p>
@@ -302,12 +302,15 @@
     document.getElementById('distCompute').textContent = distUtil.toFixed(0) + ' % (per MCU)';
     document.getElementById('distCompute').className = 'val ' + (distUtil > 80 ? 'bad' : distUtil > 50 ? 'mid' : 'good');
     document.getElementById('distDomains').textContent = N + ' independent';
-    // Bus utilization: each joint state 1 kHz, bytes per packet (CAN-FD frame overhead ~16 bits/byte)
+    // Bus utilization: each joint state 1 kHz. CAN-FD has dual-bitrate: ~30 bits arbitration at 1 Mbps,
+    // remaining bits (data + CRC + ACK) at 5 Mbps data phase.
     const stateRate = 1000;  // joint state at 1 kHz, not at fast loop
-    const bitsPerFrame = bytes*8 + 80; // 80-bit overhead
-    const totalBps = N * stateRate * bitsPerFrame;
-    const busUtil = totalBps / 5_000_000 * 100;
-    document.getElementById('distBus').textContent = busUtil.toFixed(0) + ' % of 5 Mbps';
+    const arbBits = 30;
+    const dataBits = bytes*8 + 50; // payload + CRC/ACK/EOF overhead at data-phase rate
+    const frameTime_us = arbBits / 1.0 + dataBits / 5.0; // µs (Mbps = bits/µs)
+    const utilFraction = N * stateRate * frameTime_us / 1_000_000; // fraction of bus time used
+    const busUtil = utilFraction * 100;
+    document.getElementById('distBus').textContent = busUtil.toFixed(0) + ' % (CAN-FD dual-rate)';
     document.getElementById('distBus').className = 'val ' + (busUtil > 80 ? 'bad' : busUtil > 50 ? 'mid' : 'good');
     document.getElementById('distCables').textContent = '2 (CAN diff pair)';
   }

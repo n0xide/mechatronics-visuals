@@ -213,8 +213,8 @@
     <span class="eq">Reverse-solve strain: for a <i>full</i> bridge with 4 active gauges, V_out = V_exc · GF · ε (no /4). So ε = V_out / (V_exc · GF) = 5.0 mV / (5 V · 2.0) = 500 µε <span class="annot">(500 µε at 50 kg — typical for a stiff beam load cell)</span></span>
 
     <h3>Reading on the HX711</h3>
-    <span class="eq">HX711 input range @ 128×: ±20 mV <span class="annot">(plenty of headroom for ±5 mV)</span></span>
-    <span class="eq">LSB at 128× = 5 V / (128 · 2^24) ≈ 2.33 nV <span class="annot">(theoretical; noise floor ~80 nV RMS)</span></span>
+    <span class="eq">HX711 input range @ 128× scales with AVDD: ±AVDD/128. At AVDD=5 V → ±39 mV <span class="annot">(at the datasheet AVDD=2.7 V minimum, range is ±21 mV; the often-quoted "±20 mV" is that case)</span></span>
+    <span class="eq">LSB at 128×, AVDD=5 V = 5 V / (128 · 2^24) ≈ 2.33 nV <span class="annot">(theoretical; noise floor ~80 nV RMS limits real resolution)</span></span>
     <span class="eq">Effective resolution ≈ 5 mV / 80 nV = 62,500 counts ≈ 16 bits noise-free <span class="annot">(at 10 Hz output rate)</span></span>
     <span class="eq">Grams per count: 50 kg / 62,500 ≈ 0.8 g <span class="annot">(matches typical bench-scale spec)</span></span>
 
@@ -331,13 +331,18 @@
       {x1:140,y1:180,x2:300,y2:320, label:"R4", quad:"BL"},  // bottom-left
       {x1:460,y1:180,x2:300,y2:320, label:"R3", quad:"BR"}   // bottom-right
     ];
-    // In bridge convention: V_out + when R1·R3 ≠ R2·R4
-    // For quarter: only R1 active (+ΔR)
-    // For half:    R1 and R3 active (+ΔR); R2,R4 fixed  (opposite arms increase together)
-    // For full:    R1+ΔR, R3+ΔR, R2−ΔR, R4−ΔR  (alternating)
+    // arms[] index order: 0=R1 (TL), 1=R2 (TR), 2=R4 (BL), 3=R3 (BR).
+    // Quarter: only R1 active (+ΔR).
+    // Half (sketched here as R1 + R4 active, both +ΔR): with the topology
+    //   V_A = V_ex·R3/(R1+R3), V_B = V_ex·R4/(R2+R4), making R1 grow drops V_A
+    //   and making R4 grow raises V_B — both contribute to widening |V_A − V_B|.
+    //   Net: 2× the quarter-bridge signal. Equivalently a "diagonal-arm" half-bridge
+    //   (R1 +ΔR, R2 −ΔR) gives the same 2× result; both layouts are common.
+    // Full: all four arms active, alternating tension/compression around the
+    //   diamond (R1+R4 tension, R2+R3 compression). Output = V_ex·GF·ε (4× quarter).
     let activeMask = [false,false,false,false];
     if(active===1) activeMask = [true,false,false,false];
-    if(active===2) activeMask = [true,false,true,false];
+    if(active===2) activeMask = [true,false,true,false];   // R1 (TL) + R4 (BL)
     if(active===4) activeMask = [true,true,true,true];
 
     let parts = `

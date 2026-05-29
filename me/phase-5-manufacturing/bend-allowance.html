@@ -126,8 +126,8 @@
     <div class="control"><label>Thickness t: <span class="readout" id="tRead">2.0 mm</span></label><input id="t" type="range" min="0.5" max="6" step="0.1" value="2"></div>
     <div class="control"><label>Inside radius R: <span class="readout" id="rRead">2.0 mm</span></label><input id="r" type="range" min="0.2" max="20" step="0.1" value="2"></div>
     <div class="control"><label>Bend angle: <span class="readout" id="aRead">90°</span></label><input id="a" type="range" min="10" max="180" step="5" value="90"></div>
-    <div class="control"><label>Leg 1 (flange A): <span class="readout" id="L1Read">30 mm</span></label><input id="L1" type="range" min="5" max="100" step="1" value="30"></div>
-    <div class="control"><label>Leg 2 (flange B): <span class="readout" id="L2Read">40 mm</span></label><input id="L2" type="range" min="5" max="100" step="1" value="40"></div>
+    <div class="control"><label>Leg 1 (mold-line A): <span class="readout" id="L1Read">30 mm</span></label><input id="L1" type="range" min="5" max="100" step="1" value="30"></div>
+    <div class="control"><label>Leg 2 (mold-line B): <span class="readout" id="L2Read">40 mm</span></label><input id="L2" type="range" min="5" max="100" step="1" value="40"></div>
   </section>
 
   <div class="figure">
@@ -140,10 +140,10 @@
       <tr><td>Neutral fiber length</td><td id="rLneut" class="num">4.40 mm</td><td><code>(π/180) × (R + K·t) × angle</code></td></tr>
       <tr><td><b>Bend Allowance (BA)</b></td><td id="rBA" class="num">4.40 mm</td><td><code>arc length of neutral fiber</code></td></tr>
       <tr><td>Bend Deduction (BD)</td><td id="rBD" class="num">3.60 mm</td><td><code>2 (R+t) tan(α/2) − BA</code></td></tr>
-      <tr><td>Flat blank length</td><td id="rFlat" class="num">74.40 mm</td><td><code>L1 + L2 + BA</code></td></tr>
-      <tr><td>Bent length over-corner</td><td id="rOC" class="num">71.6 mm</td><td><code>L1 + L2 − BD (mold-line method)</code></td></tr>
+      <tr><td>Flat blank length</td><td id="rFlat" class="num">66.40 mm (BA method)</td><td><code>L1_tan + L2_tan + BA</code></td></tr>
+      <tr><td>Flat blank length</td><td id="rOC" class="num">66.40 mm (BD method)</td><td><code>L1_mold + L2_mold − BD</code></td></tr>
     </table>
-    <div class="vd"><b>Both methods agree</b> on the bent part dimensions. They give the flat blank length differently; pick whichever your CAM uses.</div>
+    <div class="vd"><b>Both methods agree</b> on the flat blank — provided each is fed its own leg interpretation (BA wants tangent-line legs, BD wants mold-line legs). The sliders here treat L1/L2 as mold-line, so the BA-method row first deducts (R+t)·tan(α/2) from each leg before adding BA.</div>
   </div>
 
   <h2>Where the K-factor comes from</h2>
@@ -185,8 +185,8 @@
 
     <h3>Flat blank</h3>
     <span class="eq">Mold-line: 40 + 30 = 70 mm; subtract BD: 70 − 2.654 = <b>67.35 mm flat</b></span>
-    <span class="eq">Cross-check via BA: legs from end-of-arc = 38.5 + 28.5 + 3.35 = 70.35 — wait, off by 1 mm</span>
-    <span class="eq">Reason: BA-method uses <b>tangent-line legs</b>, not mold-line; subtract (R+t) from each mold-line dimension.</span>
+    <span class="eq">Naive cross-check (subtract only R, not R+t): 38.5 + 28.5 + 3.35 = 70.35 mm — 3.0 mm over.</span>
+    <span class="eq">Reason: BA-method uses <b>tangent-line legs</b>, not mold-line; subtract (R+t)·tan(α/2) from each mold-line dimension. At α=90° this offset is just (R+t).</span>
     <span class="eq">Tangent legs: 40 − 3.0 = 37.0 and 30 − 3.0 = 27.0; flat = 37.0 + 27.0 + 3.346 = <b>67.35 mm</b> ✓</span>
 
     <h3>Tool selection</h3>
@@ -221,6 +221,7 @@
       <dl>
         <dt>BA</dt><dd><span class="eq">(π/180) × (R + K·t) × α</span></dd>
         <dt>BD</dt><dd><span class="eq">2(R+t) tan(α/2) − BA</span></dd>
+        <dt>Tan-leg</dt><dd><span class="eq">mold-line − (R+t) tan(α/2)</span></dd>
         <dt>Flat (BA)</dt><dd><span class="eq">L1_tangent + L2_tangent + BA</span></dd>
         <dt>Flat (BD)</dt><dd><span class="eq">L1_mold + L2_mold − BD</span></dd>
         <dt>Outside arc</dt><dd><span class="eq">(π/180) (R+t) α</span></dd>
@@ -290,8 +291,11 @@
     const Lneut = (R + K*t) * rad;
     const BA = Lneut;
     const BD = 2*(R+t)*Math.tan(rad/2) - BA;
-    // Flat using BA method (legs are tangent-line, i.e., mold-line minus (R+t))
-    const flatBA = (L1 - (R+t)) + (L2 - (R+t)) + BA;
+    // Mold-line-to-tangent offset for a general bend angle is (R+t)·tan(α/2).
+    // At α=90° this reduces to (R+t); at other angles it does not.
+    const mt = (R+t)*Math.tan(rad/2);
+    // Flat using BA method: legs are tangent-line = mold-line minus (R+t)·tan(α/2)
+    const flatBA = (L1 - mt) + (L2 - mt) + BA;
     // Flat using BD method (legs are mold-line)
     const flatBD = L1 + L2 - BD;
 
@@ -317,8 +321,8 @@
     const tpx = t*sc;
     const ang = a*Math.PI/180;
 
-    // start angle (horizontal right), end at (ang above)
-    // Inside arc from angle 0 to angle (ang) going CCW
+    // Inside arc from angle 0 (3 o'clock from bend center) CCW to angle ang.
+    // SVG y-down: arc-start position is (cx+Rpx, cy); arc-end is (cx+Rpx·cos ang, cy − Rpx·sin ang).
     const ax1 = cx + Rpx;            // start point on inside arc
     const ay1 = cy;
     const ax2 = cx + Rpx*Math.cos(ang);
@@ -329,14 +333,14 @@
     const by2 = cy - (Rpx+tpx)*Math.sin(ang);
     // legs
     const L1px = L1*sc, L2px = L2*sc;
-    // leg 1: horizontal to the right
-    const leg1ix = ax1 + L1px, leg1iy = ay1;
-    const leg1ox = bx1 + L1px, leg1oy = by1;
-    // leg 2: at angle (ang)
-    const leg2ix = ax2 - L2px*Math.cos(ang - Math.PI/2);  // tangent perpendicular
-    // Actually leg2 extends from end of arc, tangent direction
-    // The tangent at end-of-arc points perpendicular to radial direction:
-    // tangent dir = (-sin(ang), -cos(ang))
+    // Leg 1 extends OUT of the arc start in the direction opposite to the arc's start-tangent.
+    // At start (3 o'clock, angle 0), CCW tangent into the arc is (0, -1) in SVG (up).
+    // So leg 1 extends in (0, +1) in SVG (down) from the arc start.
+    const leg1ix = ax1, leg1iy = ay1 + L1px;
+    const leg1ox = bx1, leg1oy = by1 + L1px;
+    // Leg 2 extends OUT of the arc end along the arc-end tangent direction.
+    // Tangent into the arc at angle `ang` (CCW) is (-sin ang, -cos ang) in SVG.
+    // Leg 2 continues OUT of the arc in the same direction: (-sin ang, -cos ang).
     const tdx = -Math.sin(ang), tdy = -Math.cos(ang);
     const leg2ix2 = ax2 + L2px*tdx, leg2iy2 = ay2 + L2px*tdy;
     const leg2ox2 = bx2 + L2px*tdx, leg2oy2 = by2 + L2px*tdy;
@@ -361,9 +365,9 @@
       <path d="M ${ax1+K*tpx} ${ay1} A ${Rpx+K*tpx} ${Rpx+K*tpx} 0 0 0 ${(cx + (Rpx+K*tpx)*Math.cos(ang))} ${(cy - (Rpx+K*tpx)*Math.sin(ang))}"
             stroke="var(--accent)" stroke-width="1.5" fill="none" stroke-dasharray="4,3"/>
 
-      <!-- labels -->
-      <text x="${ax1+10}" y="${ay1+25}" class="label-warn">inside (compressed)</text>
-      <text x="${bx1+10}" y="${by1-10}" class="label-ok">outside (stretched)</text>
+      <!-- labels: positioned along the arc mid-angle so they track all bend angles -->
+      <text x="${cx + (Rpx*0.5)*Math.cos(ang/2)}" y="${cy - (Rpx*0.5)*Math.sin(ang/2)}" class="label-warn" text-anchor="middle">inside</text>
+      <text x="${cx + (Rpx+tpx+18)*Math.cos(ang/2)}" y="${cy - (Rpx+tpx+18)*Math.sin(ang/2)}" class="label-ok" text-anchor="middle">outside</text>
       <text x="${cx + (Rpx+K*tpx)*Math.cos(ang/2) + 8}" y="${cy - (Rpx+K*tpx)*Math.sin(ang/2)}" class="label" fill="var(--accent)">neutral fiber (K·t from inside)</text>
       <!-- bend center -->
       <circle cx="${cx}" cy="${cy}" r="3" fill="var(--fg-dim)"/>

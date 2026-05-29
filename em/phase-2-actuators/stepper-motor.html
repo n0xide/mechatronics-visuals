@@ -202,7 +202,7 @@
       <text x="40" y="220" class="label-dim">rotor (PM, N-S)</text>
     </svg>
     <p style="margin-top:8px;font-size:12px;color:var(--fg-dim)">
-      Full-step: rotor sits aligned with the field (4 discrete positions per electrical cycle). Half-step: 8 positions. Microstep 1/16: 64. Higher microstepping means smoother motion and less audible noise, but each microstep carries less than full holding torque (~70% at 1/16, falling further with finer divisions).
+      Full-step: rotor sits aligned with the field (4 discrete positions per electrical cycle). Half-step: 8 positions. Microstep 1/16: 64. Higher microstepping means smoother motion and less audible noise. The <em>static</em> holding torque at each microstep stays near T_hold (sin/cos current shaping always energizes both coils at ~I_max RMS), but the <em>incremental</em> torque to displace by one microstep is ~T_hold·sin(π/(2M)) ≈ T_hold/M, so positioning accuracy at very fine microsteps is dominated by detent torque error and friction, not driver resolution.
     </p>
   </div>
 
@@ -254,7 +254,7 @@
       <tbody>
         <tr><td>Driver</td><td>Two H-bridges (e.g. DRV8825, TMC2209)</td><td>Four low-side switches (simple)</td></tr>
         <tr><td>Current direction</td><td>Reversible per coil</td><td>Always one way (center-tap to V+)</td></tr>
-        <tr><td>Torque per amp</td><td>Higher (whole coil energized)</td><td>~71% (only half coil per step)</td></tr>
+        <tr><td>Torque per amp</td><td>Higher (whole coil energized, full N·I MMF)</td><td>~71% at equal I²R heat (only half-coil energized per step; same wire dissipation gives √2·I but half the turns)</td></tr>
         <tr><td>Common today</td><td>Yes — almost all NEMA17/23</td><td>Mostly legacy</td></tr>
       </tbody>
     </table>
@@ -288,7 +288,7 @@
         <li><b>1.8°/step</b> — default NEMA17. 200 full steps/rev.</li>
         <li><b>0.9°/step</b> — high-res NEMA17. 400 full steps/rev.</li>
         <li><b>Microstep ratios</b> — 8, 16, 32, 256 (TMC silent-step).</li>
-        <li><b>Holding torque</b> drops to ~50% by 1000 sps for typical NEMA17.</li>
+        <li><b>Pull-out torque</b> drops to ~50% by 1000 sps for typical NEMA17 (L/R-limited; holding ≠ running).</li>
       </ul>
     </div>
     <div class="cheat-card pitfalls">
@@ -419,11 +419,15 @@
     statEl.textContent = status;
     statEl.style.color = status==='OK' ? 'var(--accent3)' : 'var(--warn)';
 
-    // Mode stats
+    // Mode stats — "ht" is the *static holding* torque at the (half/micro)step position, as a fraction of T_hold.
+    // Full-step two-phase-on: 100% (both coils at I_max, vector √2 magnitude — datasheet T_hold reference).
+    // Half-step (no current shaping): alternates 100% (two-phase-on) and 70.7% (one-phase-on, single coil at I_max).
+    // Microstep 1/M with sin/cos current shaping: rotor sees ~100% of T_hold at any microstep position; the
+    // *incremental* torque to displace by one microstep is reduced (T_hold·sin(π/(2M)) ≈ T_hold/M for large M).
     let modeName, sa, ht;
     if(mode==='full'){ modeName='Full-step'; sa='1.8°'; ht='100%'; }
-    else if(mode==='half'){ modeName='Half-step'; sa='0.9°'; ht='70%'; }
-    else { modeName='Microstep 1/16'; sa='0.1125°'; ht='~70% (peak)'; }
+    else if(mode==='half'){ modeName='Half-step'; sa='0.9°'; ht='71–100%'; }
+    else { modeName='Microstep 1/16'; sa='0.1125°'; ht='~100% static (incremental ~T_hold/16)'; }
     document.getElementById('statMode').textContent = modeName;
     document.getElementById('statSA').textContent = sa;
     document.getElementById('statHT').textContent = ht;

@@ -71,7 +71,7 @@ footer a{color:var(--accent);text-decoration:none}
 </div>
 
 <h2>2.4 GHz channel plan</h2>
-<p>BLE uses 40 channels of 2 MHz each from 2402 to 2480 MHz. Three are reserved for advertising (37, 38, 39) placed to dodge WiFi channels 1, 6, 11. The other 37 are for data after connection.</p>
+<p>BLE uses 40 channels of 2 MHz each from 2402 to 2480 MHz. Three are reserved for advertising: index 37 at 2402 MHz, index 38 at 2426 MHz, index 39 at 2480 MHz — placed in the gaps between WiFi channels 1 (2412), 6 (2437), and 11 (2462) to dodge dominant WiFi traffic. The remaining 37 channels carry data after a connection forms.</p>
 
 <div class="figure">
 <svg id="channels" viewBox="0 0 720 200" width="100%"></svg>
@@ -204,15 +204,31 @@ const els = ['adv','con','lat','sup'].reduce((m,k)=>{m[k]=document.getElementByI
 function drawChannels(){
   const svg = document.getElementById('channels');
   let s = '';
-  // 2402 to 2480 MHz, 40 channels
-  for(let ch = 0; ch < 40; ch++){
-    const freq = 2402 + ch * 2;
+  // BLE logical channel index → physical RF frequency mapping (per Bluetooth Core spec):
+  //   adv 37 = 2402 MHz,  data 0..10 = 2404..2424 MHz,
+  //   adv 38 = 2426 MHz,  data 11..36 = 2428..2478 MHz,
+  //   adv 39 = 2480 MHz.
+  // Plot in physical-frequency order so adv lands at 2402/2426/2480 MHz.
+  function chIndexForFreq(freq){
+    if(freq === 2402) return 37;
+    if(freq === 2426) return 38;
+    if(freq === 2480) return 39;
+    // data channels: skip adv frequencies in the count
+    let dataIdx = 0;
+    for(let f = 2404; f < freq; f += 2){
+      if(f === 2426) continue;
+      dataIdx++;
+    }
+    return dataIdx;
+  }
+  for(let freq = 2402; freq <= 2480; freq += 2){
     const x = 40 + (freq - 2400) * 8;
-    const adv = (ch === 37 || ch === 38 || ch === 39);
+    const adv = (freq === 2402 || freq === 2426 || freq === 2480);
+    const ch = chIndexForFreq(freq);
     const color = adv ? '#ffb86c' : '#5ec8ff';
     s += `<rect x="${x}" y="50" width="14" height="100" fill="${color}" opacity="0.6" stroke="${color}" stroke-width="1"/>`;
-    if(ch % 5 === 0 || adv){
-      s += `<text x="${x+7}" y="170" font:9px ui-monospace,monospace fill="#8f99a8" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9">${ch}</text>`;
+    if((freq - 2400) % 10 === 0 || adv){
+      s += `<text x="${x+7}" y="170" fill="#8f99a8" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9">${ch}</text>`;
       s += `<text x="${x+7}" y="183" fill="#8f99a8" text-anchor="middle" font-family="ui-monospace,monospace" font-size="8">${freq}</text>`;
     }
   }
@@ -222,10 +238,10 @@ function drawChannels(){
     s += `<rect x="${x-32}" y="30" width="64" height="20" fill="rgba(255,123,114,0.2)" stroke="#ff7b72" stroke-width="1"/>`;
     s += `<text x="${x}" y="45" fill="#ff7b72" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10">${label}</text>`;
   }
-  s += `<text x="10" y="100" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="12">Ch:</text>`;
+  s += `<text x="10" y="100" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="12">Ch idx:</text>`;
   s += `<text x="10" y="180" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="11">MHz:</text>`;
-  s += `<text x="600" y="50" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="11">orange = adv (37,38,39)</text>`;
-  s += `<text x="600" y="68" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">blue = data (0-36)</text>`;
+  s += `<text x="600" y="50" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="11">orange = adv 37/38/39 (2402/2426/2480)</text>`;
+  s += `<text x="600" y="68" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="11">blue = data 0-36</text>`;
   svg.innerHTML = s;
 }
 

@@ -234,10 +234,10 @@
 
   <h2>What to notice</h2>
   <ul class="notice">
-    <li><b>SAR takes N clock cycles for N bits</b> — 12-bit at 1 MHz clock = 12 µs conversion. Conversion time scales linearly with resolution.</li>
+    <li><b>SAR takes N + small cycles per conversion</b> — N cycles to resolve N bits, plus a few for sample-and-hold acquisition. So 12-bit at 1 MHz SAR clock ≈ 14–16 µs total per sample → ~65 ksps sustained throughput. Conversion time scales linearly with resolution; throughput = 1 / (acquisition + conversion).</li>
     <li><b>Each step halves the uncertainty</b> — bit 7 splits [0, V_ref] in half, bit 6 splits the chosen half, and so on. Classic binary search.</li>
     <li><b>Quantization error is always ≤ 1 LSB</b> — but it never goes away with more samples. To reduce it you need more bits or oversampling + averaging (+1 ENOB per 4× oversample).</li>
-    <li><b>Nyquist is necessary, not sufficient</b> — sampling at exactly 2·f_signal recovers nothing if your samples land on the zero-crossings. Practical rule: f_s ≥ 5×f_max signal, plus an anti-aliasing filter.</li>
+    <li><b>Nyquist is necessary, not sufficient</b> — the theorem says perfect reconstruction needs f_s &gt; 2·f_max (strict inequality) and ideal sinc reconstruction. Sampling at exactly 2·f_signal can land samples on the zero-crossings of a sine, capturing zero amplitude. Practical rule: f_s ≥ 5×f_max signal, plus an anti-aliasing filter before the sample-and-hold.</li>
     <li><b>Aliases are real signal-level energy</b> — software can't tell an alias from a legitimate low-frequency signal. The only fix is hardware filtering before the sample-hold capacitor.</li>
   </ul>
 
@@ -246,10 +246,13 @@
     <div class="cheat-card formulas">
       <h3>FORMULAS</h3>
       <dl>
-        <dt>V_in</dt><dd><span class="eq">V_in = (code / 2^N) · V_ref</span></dd>
-        <dt>LSB</dt><dd><span class="eq">V_LSB = V_ref / 2^N</span></dd>
+        <dt>Code → V</dt><dd><span class="eq">V_in = (code / 2^N) · V_ref</span></dd>
+        <dt>LSB size</dt><dd><span class="eq">V_LSB = V_ref / 2^N</span></dd>
         <dt>Nyquist</dt><dd><span class="eq">f_s &gt; 2 · f_max</span><span class="eq-note">practical: ≥ 5×</span></dd>
-        <dt>Oversample</dt><dd><span class="eq">4× → +1 ENOB</span></dd>
+        <dt>SNR_ideal</dt><dd><span class="eq">SNR = 6.02·N + 1.76 dB</span><span class="eq-note">full-scale sine, no extra noise</span></dd>
+        <dt>ENOB</dt><dd><span class="eq">ENOB = (SINAD − 1.76) / 6.02</span><span class="eq-note">measured-SINAD → effective bits</span></dd>
+        <dt>Oversample</dt><dd><span class="eq">4× → +1 ENOB</span><span class="eq-note">white-noise assumption</span></dd>
+        <dt>DNL / INL</dt><dd><span class="eq">DNL = step − 1 LSB (per code); INL = integrated DNL</span></dd>
       </dl>
     </div>
     <div class="cheat-card memorize">

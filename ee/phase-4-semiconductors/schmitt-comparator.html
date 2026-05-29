@@ -111,7 +111,7 @@
     <span class="step">The comparator flips when V+ = V_ref. Solve for V_in: <b>V_in_threshold = V_ref · (R1+R2)/R2 − V_out · R1/R2</b></span>
     <span class="step">When V_out = +V_CC: V_in must drop to <b>V_TH−</b> for V+ to fall below V_ref → flips LOW</span>
     <span class="step">When V_out = 0 (or −V_CC): V_in must rise to <b>V_TH+</b> for V+ to exceed V_ref → flips HIGH</span>
-    <span class="step">Single-rail case with V_ref = V_CC/2 (the convention used by this tool and most single-supply Schmitt designs): V_TH+ = V_CC/2 + V_CC·β/2, V_TH− = V_CC/2 − V_CC·β/2, where β = R1/(R1+R2). Hysteresis = V_TH+ − V_TH− = V_CC·β. (For V_ref = 0 split-supply biasing: V_TH+ = V_CC·β, V_TH− = 0, hysteresis = V_CC·β — same window, shifted floor.)</span>
+    <span class="step">Single-rail case with V_ref = V_CC/2 (the convention used by this tool): V_TH+ = V_CC/2 + V_CC·R1/(2R2), V_TH− = V_CC/2 − V_CC·R1/(2R2). Hysteresis ΔV = V_TH+ − V_TH− = <b>V_CC · R1/R2</b>. (Note: the feedback-fraction β = R1/(R1+R2) is a related but distinct quantity; the hysteresis depends on the R1/R2 ratio directly. With R1 ≪ R2, β ≈ R1/R2, but the two diverge when R1 approaches R2.)</span>
   </div>
 
   <h2>Worked example — debouncing a tactile button with a 74HC14</h2>
@@ -141,9 +141,9 @@
     <span class="eq">At 20 °C, NTC ≈ 12.5 kΩ → V_div = 5 · 12.5 / 22.5 = <b>2.78 V</b> (rising threshold)</span>
     <span class="eq">At 22 °C, NTC ≈ 11.6 kΩ → V_div = 5 · 11.6 / 21.6 = <b>2.69 V</b> (falling threshold)</span>
     <span class="eq">Required hysteresis window: 2.78 − 2.69 = <b>90 mV</b>  <span class="annot">(needs about ±45 mV around V_ref = 2.74 V)</span></span>
-    <span class="eq">Comparator output swings 0 – 5 V. Pick feedback ratio: ΔV_TH = V_CC · R1/(R1+R2)</span>
-    <span class="eq">0.09 = 5 · R1/(R1+R2) → R1/(R1+R2) = 0.018 → <b>R2/R1 = 54.5</b></span>
-    <span class="eq">Pick R1 = 10 kΩ → R2 = 545 kΩ → use E12 560 kΩ (nearest). Resulting hysteresis = 5 · 10/570 = <b>87.7 mV</b> ✓</span>
+    <span class="eq">Comparator output swings 0 – 5 V. Hysteresis formula: ΔV_TH = V_CC · R1/R2</span>
+    <span class="eq">0.09 = 5 · R1/R2 → R1/R2 = 0.018 → <b>R2/R1 = 55.6</b></span>
+    <span class="eq">Pick R1 = 10 kΩ → R2 = 556 kΩ → use E12 560 kΩ (nearest). Resulting hysteresis = 5 · 10/560 = <b>89.3 mV</b> ✓</span>
 
     <h3>The result</h3>
     <p>The relay turns on at 20 °C, runs the heater, and won't turn off until the temperature rises to 22 °C — even if intermittent drafts cool the sensor briefly. The hysteresis ensures one switch per 2 °C cycle. <b>Bonus:</b> using a microcontroller ADC + software comparator, you get this hysteresis essentially free in code — but for a $0.30 LM393 comparator + two resistors, you don't need a microcontroller at all.</p>
@@ -156,7 +156,7 @@
     <li><b>Output rail swing affects hysteresis.</b> If V_out = ±15 V instead of 0–5 V, the hysteresis is 6× wider for the same R1, R2. A rail-to-rail comparator's hysteresis is bigger than a non-rail-to-rail one with the same feedback network.</li>
     <li><b>The 74HC14 hex Schmitt inverter</b> bakes hysteresis into a single chip. Six inverters per package; ~1.7 V hysteresis at 5 V VCC. The fastest, cheapest way to add hysteresis without designing the feedback network yourself.</li>
     <li><b>Schmitt = positive feedback.</b> Any feedback from output to non-inverting input is positive feedback — destabilizing. Comparators welcome this; linear amplifiers must avoid it (it makes them oscillate).</li>
-    <li><b>The inverting and non-inverting topologies have different formulas.</b> The non-inverting Schmitt is V_TH = V_CC·R1/(R1+R2); the inverting Schmitt centers on V_ref ± V_CC·R1/(R1+R2). Pick the one whose input polarity matches your sensor.</li>
+    <li><b>The inverting and non-inverting topologies have different formulas.</b> Non-inverting (this tool): hysteresis ΔV = (V_OH − V_OL)·R1/R2. Inverting Schmitt (input to −, feedback to +): hysteresis ΔV = (V_OH − V_OL)·R1/(R1+R2). Pick the topology whose input polarity matches your sensor.</li>
   </ul>
 
   <h2>Where you'll see this</h2>
@@ -179,11 +179,11 @@
     <div class="cheat-card formulas">
       <h3>FORMULAS</h3>
       <dl>
-        <dt>V_TH+ (non-inv)</dt><dd><span class="eq">= V_ref · (R1+R2)/R2  +  V_OL · R1/R2</span></dd>
-        <dt>V_TH− (non-inv)</dt><dd><span class="eq">= V_ref · (R1+R2)/R2  +  V_OH · R1/R2</span></dd>
-        <dt>Single-rail simple</dt><dd><span class="eq">V_TH+ = V_CC · R1/(R1+R2), V_TH− = 0</span></dd>
-        <dt>Hysteresis</dt><dd><span class="eq">ΔV = (V_OH − V_OL) · R1/(R1+R2)</span></dd>
-        <dt>Feedback ratio β</dt><dd><span class="eq">β = R1/(R1+R2)</span></dd>
+        <dt>V_TH+ (non-inv)</dt><dd><span class="eq">= V_ref · (R1+R2)/R2  −  V_OL · R1/R2</span></dd>
+        <dt>V_TH− (non-inv)</dt><dd><span class="eq">= V_ref · (R1+R2)/R2  −  V_OH · R1/R2</span></dd>
+        <dt>V_ref = V_CC/2</dt><dd><span class="eq">V_TH± = V_CC/2 ± V_CC·R1/(2R2)</span></dd>
+        <dt>Hysteresis</dt><dd><span class="eq">ΔV = (V_OH − V_OL) · R1/R2</span></dd>
+        <dt>Feedback ratio β</dt><dd><span class="eq">β = R1/(R1+R2)  (related but ≠ hysteresis ratio)</span></dd>
         <dt>74HC14 typ @ 5V</dt><dd><span class="eq">V_TH+ ≈ 2.7V, V_TH− ≈ 1.0V → ΔV ≈ 1.7V</span></dd>
       </dl>
     </div>
@@ -234,11 +234,14 @@
     const R1 = parseFloat(els.r1.value) * 1000;
     const R2 = parseFloat(els.r2.value) * 1000;
     const noise = parseFloat(els.noise.value) / 1000;
-    const beta = R1 / (R1 + R2);
-    // Simplest non-inverting Schmitt with V_ref = 0: V_TH+ = V_CC · β, V_TH− = 0.
-    // But that's an odd configuration; the more useful one centers around V_CC/2.
-    // Convention: V_ref = V_CC/2 (mid-rail), then V_TH+ = V_CC/2 + ΔV/2, V_TH− = V_CC/2 − ΔV/2, where ΔV = V_CC · β.
-    const dV = Vcc * beta;
+    // Non-inverting Schmitt: V_in through R1 to (+), V_out through R2 to (+), V_ref at (−).
+    // Set V_ref = V_CC/2 (mid-rail single-supply).
+    // Comparator flips when V_+ = V_ref → V_in·R2/(R1+R2) + V_out·R1/(R1+R2) = V_CC/2.
+    // Solving: V_in_threshold = (V_CC/2)·(R1+R2)/R2 − V_out·R1/R2.
+    // V_out swings 0 → V_CC. So hysteresis ΔV = V_CC · R1/R2 (NOT V_CC·R1/(R1+R2)).
+    // beta_fb = R1/(R1+R2) is the feedback fraction; hysteresis-relevant ratio is R1/R2.
+    const beta = R1 / (R1 + R2); // classic feedback fraction (kept for display)
+    const dV = Vcc * R1 / R2;
     const Vc = Vcc / 2;
     const Vthp = Vc + dV/2;
     const Vthn = Vc - dV/2;

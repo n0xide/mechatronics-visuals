@@ -170,15 +170,15 @@
   <h2 id="current">Current limit — R_sense sets the trip point</h2>
   <div class="deriv">
     <span class="step"><b>Concept:</b> driver continuously monitors voltage across R_sense → I × R_sense.</span>
-    <span class="step"><b>When V_R_sense ≥ V_ref</b> (internal reference, typically 0.2 V on DRV8833, 0.5 V on DRV8871):</span>
-    <span class="step">→ comparator trips → driver disconnects motor for "blanking time" (defaults to ~30 µs on DRV8833 / 25 µs on DRV8871).</span>
+    <span class="step"><b>When V_IPROPI/SENSE ≥ V_ITRIP</b> (internal reference, typically 0.2 V on DRV8833 / DRV8871, ~0.6 V at I_TRIP pin on DRV8251A):</span>
+    <span class="step">→ comparator trips → driver enters fixed off-time chopping (defaults to ~30 µs on DRV8833 / 25 µs on DRV8871).</span>
     <span class="step"><b>Result:</b> motor current chops at I_trip regardless of motor / supply combination.</span>
     <span class="step"><b>Formula:</b> I_trip = V_ref / R_sense</span>
   </div>
 
-  <p><b>R_sense sizing for DRV8833:</b> V_ref = 0.2 V. For 1.0 A trip: R_sense = 0.2 / 1.0 = <b>0.2 Ω (200 mΩ)</b>. For 1.5 A trip (the chip's max): R_sense = 0.13 Ω. For lower currents (delicate motors): increase R_sense. <b>Power dissipation</b> in R_sense: P = I² × R = 1² × 0.2 = 0.2 W at 1 A. Sense resistors must be rated for this; use 1/4 W or higher and add headroom for chopping spikes.</p>
+  <p><b>R_sense sizing for DRV8833:</b> V_ITRIP = 0.2 V. For 1.0 A trip: R_sense = 0.2 / 1.0 = <b>0.2 Ω (200 mΩ)</b>. For 1.5 A trip (the chip's max): R_sense = 0.13 Ω. For lower currents (delicate motors): increase R_sense. <b>Power dissipation</b> in R_sense: P = I² × R = 1² × 0.2 = 0.2 W at 1 A continuous (peak/RMS depends on duty — size for worst case, not for average). Sense resistors must be rated for this; use 1/4 W or higher and add headroom for chopping spikes.</p>
 
-  <p><b>DRV8871 fixed reference:</b> uses an on-chip 200 mV reference and an external resistor on the I_PROPI pin to scale. <b>DRV8251A</b> uses the I_TRIP pin to set the current limit by external resistor to V_ref; current limit is dialed in by a single resistor and the chip handles the sensing internally.</p>
+  <p><b>DRV8871 IPROPI:</b> uses an internal 200 mV reference and an external resistor on the IPROPI pin to scale. <b>DRV8251A</b> uses the IPROPI pin to set the current limit by external resistor to AGND; current limit is dialed in by a single resistor and the chip handles the sensing internally.</p>
 
   <h2 id="decay">Slow vs fast decay — what happens when PWM is OFF</h2>
   <p>During a PWM cycle, the FETs are alternately conducting (current rises) and off (current decays). What "off" means depends on which FETs you turn on during the off period — that's the decay mode.</p>
@@ -247,7 +247,7 @@
     <span class="eq">Sense-resistor power at trip: P = 1.11² × 0.18 = <b>0.22 W</b> (continuous in current-limit mode)</span>
 
     <h3>PWM frequency</h3>
-    <span class="eq">Pick 20 kHz — above audible range, below GaN-like switching losses</span>
+    <span class="eq">Pick 20 kHz — above human audible range, below the Si-MOSFET switching-loss knee</span>
     <span class="eq">Period = 50 µs, 8-bit duty cycle = 200 ns resolution. Plenty.</span>
     <span class="eq">DRV8833 max PWM ≈ 250 kHz — limit is FET switching loss + body diode reverse-recovery.</span>
 
@@ -255,8 +255,8 @@
     <span class="eq">Slow decay during constant-speed running → smooth, low ripple</span>
     <span class="eq">Fast decay during direction reversal → quick brake before reverse drive</span>
     <span class="eq">DRV8833 selects via IN1/IN2 pin combination per truth table:</span>
-    <span class="eq">IN1=PWM, IN2=0 → forward, slow decay (during PWM off, both low-sides on)</span>
-    <span class="eq">IN1=PWM, IN2=1 → forward, fast decay (during PWM off, opposing FETs on)</span>
+    <span class="eq">IN1=HIGH, IN2=PWM (toggles between 10=forward and 11=brake) → forward, <b>slow decay</b> — during PWM off both low-sides ON</span>
+    <span class="eq">IN1=PWM, IN2=LOW (toggles between 10=forward and 00=coast) → forward, <b>fast decay</b> — during PWM off body diodes freewheel current back to V_M</span>
 
     <h3>Protection</h3>
     <span class="eq">Internal: TSD at T_j ≈ 150 °C, OCP at ~2 A (chip abs-max)</span>
@@ -296,8 +296,8 @@
       <ul>
         <li><span class="eq">I_trip = V_ref / R_sense</span></li>
         <li><span class="eq">P_R_sense = I² × R_sense</span> (continuous in chop)</li>
-        <li><span class="eq">P_FET ≈ I² × R_DS(on) + V × Q × f</span></li>
-        <li><span class="eq">V_charge_pump ≈ 2 × VM</span> (regulated to V_gs_max)</li>
+        <li><span class="eq">P_FET ≈ I² × R_DS(on) + 0.5 × V_DS × I × (t_r+t_f) × f_sw</span> (cond + switching)</li>
+        <li><span class="eq">V_charge_pump ≈ VM + 10 V</span> (regulated to V_gs target, ~10 V above source)</li>
         <li><span class="eq">Blanking ≈ 1–2 µs</span> after each switching edge</li>
         <li><span class="eq">Chopping period ≈ 25–50 µs</span> when in current-limit</li>
       </ul>

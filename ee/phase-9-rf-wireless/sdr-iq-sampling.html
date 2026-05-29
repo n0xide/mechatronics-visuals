@@ -99,8 +99,8 @@ footer a{color:var(--accent)}
 <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">2. Set fs = 1 MHz (8× oversample for 125 kHz BW; better noise floor than 250 kHz minimum)</div>
 <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">3. RTL-SDR delivers interleaved 8-bit I,Q,I,Q,... → 2×1 MB/s data rate</div>
 <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">4. Convert to complex samples: c[n] = (I[n] − 127.5) + j(Q[n] − 127.5) — center on zero</div>
-<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">5. De-chirp: multiply by exp(−j·2π·k·n²/N) where k is the chirp slope (SF7 → k = 1/2^7)</div>
-<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">6. FFT each de-chirped symbol (2^SF samples) → peak bin index is the symbol value (0 to 2^SF−1)</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">5. Decimate to one sample per chip (125 kHz), then de-chirp: multiply each symbol by the reference down-chirp exp(−jπ·BW·t²/T_sym), which collapses each up-chirp into a tone</div>
+<div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">6. FFT each de-chirped symbol (2^SF = 128 samples for SF7) → peak bin index is the symbol value (0 to 2^SF−1)</div>
 <div style="background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2);font:13px ui-monospace,monospace;color:var(--accent)">7. Apply Gray decoding, header parse, FEC decode, dewhiten → packet bytes</div>
 <h3 style="margin:0 0 8px;color:var(--accent3);font:600 13px ui-monospace,monospace;text-transform:uppercase">Why I/Q matters here</h3>
 <p>The LoRa chirp <em>direction</em> (up-chirp vs down-chirp) is the key to symbol detection. With real-only samples, you couldn't distinguish an up-chirp at +50 kHz from a down-chirp at +50 kHz (they look identical in magnitude). I/Q's complex rotation direction immediately distinguishes them.</p>
@@ -134,7 +134,7 @@ footer a{color:var(--accent)}
 <ul class="notice">
 <li><b>Forgetting to subtract DC offset</b> — RTL-SDR's 8-bit ADC nominally has midpoint at 127.5; not 128 nor 0. Subtracting 128 leaves a ~0.5-LSB residual that aliases as a tiny DC spike.</li>
 <li><b>Sample-rate too low</b> — Nyquist demands fs ≥ signal_bandwidth. For complex sampling, the full fs is usable (vs fs/2 for real), but allow margin (3-4× oversample) for filter rolloff.</li>
-<li><b>Clock drift</b> — RTL-SDR's 28.8 MHz reference has ±10 ppm tolerance. For 433 MHz, that's ±4.3 kHz of LO error. Re-tune to find the signal; or buy a TCXO-equipped RTL-SDR.</li>
+<li><b>Clock drift</b> — stock RTL-SDR's 28.8 MHz reference is typically ±20–50 ppm and also drifts a few ppm with temperature. At ±25 ppm and 433 MHz, that's ±10.8 kHz of LO error; at 1.5 GHz, ±37 kHz. Re-tune to find the signal, or buy a TCXO-equipped RTL-SDR (~±0.5 ppm).</li>
 <li><b>Saturation on strong signals</b> — 8-bit ADC saturates at ±127 counts. Lower gain or add attenuator if the signal pegs.</li>
 <li><b>I/Q-swap bug</b> — swapping I and Q channels mirrors the spectrum. If signal appears at the wrong sideband, swap them in software.</li>
 </ul>
