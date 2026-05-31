@@ -639,7 +639,9 @@
   </footer>
 </main>
 
-<script>
+<script type="module">
+  import { fromLog, dBv } from '../_shared/physics.js';
+
   // ===================================================================
   // E12 / E24 / E6 series
   // ===================================================================
@@ -651,7 +653,7 @@
     const out = [];
     for (let dec = -12; dec <= 7; dec++) {
       for (const m of series) {
-        const v = m * Math.pow(10, dec);
+        const v = m * fromLog(dec);
         if (v >= lo && v <= hi) out.push(v);
       }
     }
@@ -722,7 +724,7 @@
 
     // vertical decade lines
     for (let dec = Math.ceil(Math.log10(fmin)); dec <= Math.floor(Math.log10(fmax)); dec++){
-      const f = Math.pow(10, dec);
+      const f = fromLog(dec);
       const x = fx(f);
       out += `<line x1="${x}" y1="${pad.t}" x2="${x}" y2="${pad.t+H}" class="grid-line major"/>`;
       out += `<text x="${x}" y="${pad.t+H+14}" class="axis-label" text-anchor="middle">${fmtF(f)}</text>`;
@@ -809,7 +811,7 @@
   function logFreqs(fmin, fmax, n) {
     const out = [];
     const a = Math.log10(fmin), b = Math.log10(fmax);
-    for (let i = 0; i < n; i++) out.push(Math.pow(10, a + (b - a) * i / (n - 1)));
+    for (let i = 0; i < n; i++) out.push(fromLog(a + (b - a) * i / (n - 1)));
     return out;
   }
 
@@ -820,7 +822,7 @@
     for (const f of fs){
       const w = 2*Math.PI*f;
       const denom = Math.sqrt(1 + (w/wc)*(w/wc));
-      mag.push(20*Math.log10(1/denom));
+      mag.push(dBv(1/denom));
       ph.push(-Math.atan2(w/wc, 1) * 180/Math.PI);
     }
     return {mag, ph};
@@ -833,7 +835,7 @@
       const w = 2*Math.PI*f;
       const num = w/wc;
       const denom = Math.sqrt(1 + (w/wc)*(w/wc));
-      mag.push(20*Math.log10(num/denom));
+      mag.push(dBv(num/denom));
       ph.push((90 - Math.atan2(w/wc, 1) * 180/Math.PI));
     }
     return {mag, ph};
@@ -849,7 +851,7 @@
       const re = w0*w0 - w*w;
       const im = (w0/Q)*w;
       const denom = Math.sqrt(re*re + im*im);
-      mag.push(20*Math.log10(gain * w0*w0 / denom));
+      mag.push(dBv(gain * w0*w0 / denom));
       ph.push(-Math.atan2(im, re) * 180/Math.PI);
     }
     return {mag, ph};
@@ -866,7 +868,7 @@
       const denIm = (w0/Q)*w;
       const numMag = w*w;
       const denMag = Math.sqrt(denRe*denRe + denIm*denIm);
-      mag.push(20*Math.log10(gain * numMag / denMag));
+      mag.push(dBv(gain * numMag / denMag));
       ph.push(180 - Math.atan2(denIm, denRe) * 180/Math.PI);
     }
     return {mag, ph};
@@ -881,7 +883,7 @@
       const denRe = w0*w0 - w*w;
       const denIm = (w0/Q)*w;
       const denMag = Math.sqrt(denRe*denRe + denIm*denIm);
-      mag.push(20*Math.log10(gain * numMag / denMag));
+      mag.push(dBv(gain * numMag / denMag));
       ph.push(90 - Math.atan2(denIm, denRe) * 180/Math.PI);
     }
     return {mag, ph};
@@ -938,7 +940,7 @@
   // ===================================================================
   function updateRC(){
     const type = document.getElementById('rc-type').value;
-    const fc = Math.pow(10, parseFloat(document.getElementById('rc-fc').value));
+    const fc = fromLog(parseFloat(document.getElementById('rc-fc').value));
     const rpref = parseFloat(document.getElementById('rc-rpref').value);
     document.getElementById('rc-typeRead').textContent = (type === 'lp') ? 'low-pass' : 'high-pass';
     document.getElementById('rc-fcRead').textContent = fmtF(fc);
@@ -977,7 +979,7 @@
   // TAB 2: RLC
   // ===================================================================
   function updateRLC(){
-    const f0 = Math.pow(10, parseFloat(document.getElementById('rlc-f0').value));
+    const f0 = fromLog(parseFloat(document.getElementById('rlc-f0').value));
     const Q = parseFloat(document.getElementById('rlc-q').value);
     const lpref = parseFloat(document.getElementById('rlc-lpref').value);
     document.getElementById('rlc-f0Read').textContent = fmtF(f0);
@@ -1011,7 +1013,7 @@
     const data = biquadBP(f0Realized, Qactual, 1, fs);
     drawBode(document.getElementById('rlc-bode'),
       [{mag: data.mag, phase: data.ph, freqs: fs, cls: 'trace-1'}],
-      { fmin: f0/1000, fmax: f0*1000, dbmin: -60, dbmax: Math.max(10, 20*Math.log10(Qactual) + 6),
+      { fmin: f0/1000, fmax: f0*1000, dbmin: -60, dbmax: Math.max(10, dBv(Qactual) + 6),
         phmin: -90, phmax: 90, fc: f0Realized, fcLabel: 'f0 = ' + fmtF(f0Realized) });
   }
 
@@ -1020,7 +1022,7 @@
   // ===================================================================
   function updateSK(){
     const type = document.getElementById('sk-type').value;
-    const fc = Math.pow(10, parseFloat(document.getElementById('sk-fc').value));
+    const fc = fromLog(parseFloat(document.getElementById('sk-fc').value));
     const family = document.getElementById('sk-family').value;
     let Q;
     if (family === 'butterworth') Q = 0.7071;
@@ -1094,7 +1096,7 @@
     const data = (type === 'lp') ? biquadLP(fcRealized, Qfinal, K, fs) : biquadHP(fcRealized, Qfinal, K, fs);
     drawBode(document.getElementById('sk-bode'),
       [{mag: data.mag, phase: data.ph, freqs: fs, cls: 'trace-1'}],
-      { fmin: fc/1000, fmax: fc*1000, dbmin: -60, dbmax: 20 + 20*Math.log10(Math.max(K, 1)),
+      { fmin: fc/1000, fmax: fc*1000, dbmin: -60, dbmax: 20 + dBv(Math.max(K, 1)),
         phmin: -200, phmax: 90, fc: fcRealized, fcLabel: 'fc = ' + fmtF(fcRealized) + ' Q=' + Qfinal.toFixed(2) });
   }
 
@@ -1159,7 +1161,7 @@
   // ===================================================================
   function updateMFB(){
     const type = document.getElementById('mfb-type').value;
-    const fc = Math.pow(10, parseFloat(document.getElementById('mfb-fc').value));
+    const fc = fromLog(parseFloat(document.getElementById('mfb-fc').value));
     const Q = parseFloat(document.getElementById('mfb-q').value);
     const A = parseFloat(document.getElementById('mfb-a').value);
     const Cpref = parseFloat(document.getElementById('mfb-cpref').value);
@@ -1233,7 +1235,7 @@
     const data = (type === 'lp') ? biquadLP(fc, Q, A, fs) : biquadBP(fc, Q, A, fs);
     drawBode(document.getElementById('mfb-bode'),
       [{mag: data.mag, phase: data.ph, freqs: fs, cls: 'trace-1'}],
-      { fmin: fc/1000, fmax: fc*1000, dbmin: -60, dbmax: 20*Math.log10(A) + 12 + 20*Math.log10(Math.max(Q, 1)),
+      { fmin: fc/1000, fmax: fc*1000, dbmin: -60, dbmax: dBv(A) + 12 + dBv(Math.max(Q, 1)),
         phmin: -270, phmax: 90, fc: fc, fcLabel: 'fc = ' + fmtF(fc) + ' Q=' + Q.toFixed(2) });
   }
 
@@ -1294,7 +1296,7 @@
   function updateCascade(){
     const fam = document.getElementById('cas-fam').value;
     const n = parseInt(document.getElementById('cas-n').value);
-    const fc = Math.pow(10, parseFloat(document.getElementById('cas-fc').value));
+    const fc = fromLog(parseFloat(document.getElementById('cas-fc').value));
     const famLabels = { butterworth:'Butterworth', bessel:'Bessel', cheby1:'Chebyshev 1 dB', cheby3:'Chebyshev 3 dB' };
     document.getElementById('cas-famRead').textContent = famLabels[fam];
     document.getElementById('cas-nRead').textContent = n;
@@ -1335,7 +1337,7 @@
   // ===================================================================
   function updateBodeCompare(){
     const n = parseInt(document.getElementById('bode-n').value);
-    const fc = Math.pow(10, parseFloat(document.getElementById('bode-fc').value));
+    const fc = fromLog(parseFloat(document.getElementById('bode-fc').value));
     document.getElementById('bode-nRead').textContent = n;
     document.getElementById('bode-fcRead').textContent = fmtF(fc);
 
@@ -1414,7 +1416,7 @@
       const denIm = -coef.a1 * sw - coef.a2 * s2;
       const numMag = Math.sqrt(numRe*numRe + numIm*numIm);
       const denMag = Math.sqrt(denRe*denRe + denIm*denIm);
-      mag.push(20*Math.log10(numMag/denMag));
+      mag.push(dBv(numMag/denMag));
       const numPh = Math.atan2(numIm, numRe);
       const denPh = Math.atan2(denIm, denRe);
       ph.push((numPh - denPh) * 180/Math.PI);
@@ -1424,7 +1426,7 @@
 
   function updateIIR(){
     const type = document.getElementById('iir-type').value;
-    const fc = Math.pow(10, parseFloat(document.getElementById('iir-fc').value));
+    const fc = fromLog(parseFloat(document.getElementById('iir-fc').value));
     const Q = parseFloat(document.getElementById('iir-q').value);
     const fsamp = parseFloat(document.getElementById('iir-fs').value);
     document.getElementById('iir-fcRead').textContent = fmtF(fc);
@@ -1462,7 +1464,7 @@
       [{mag: analog.mag, phase: null, freqs: fs, cls: 'trace-1'},
        {mag: digital.mag, phase: null, freqs: fs, cls: 'trace-2'}],
       { fmin: Math.max(fc/1000, 1), fmax: Math.min(fsamp/2, fc*1000),
-        dbmin: -60, dbmax: 20*Math.log10(Math.max(Q, 1)) + 6,
+        dbmin: -60, dbmax: dBv(Math.max(Q, 1)) + 6,
         phmin: -270, phmax: 90, fc: fsamp/2,
         fcLabel: 'Nyquist = ' + fmtF(fsamp/2) });
   }
