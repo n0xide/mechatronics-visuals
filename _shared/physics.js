@@ -161,6 +161,108 @@ export const parallelNR = (...Rs) => 1 / Rs.reduce((s, r) => s + 1 / r, 0);
 export const vDivider = (Vin, R1, R2) => Vin * R2 / (R1 + R2);
 
 // ─────────────────────────────────────────────────────────────────────
+// Ohm's law (explicit forms — pick the rearrangement you want)
+// ─────────────────────────────────────────────────────────────────────
+
+/** V = I·R. @param {number} I Current in A. @param {number} R Resistance in Ω. @returns {number} V in V. */
+export const vFromIR = (I, R) => I * R;
+/** I = V/R. @param {number} V Voltage in V. @param {number} R Resistance in Ω. @returns {number} I in A. */
+export const iFromVR = (V, R) => V / R;
+/** R = V/I. @param {number} V Voltage in V. @param {number} I Current in A. @returns {number} R in Ω. */
+export const rFromVI = (V, I) => V / I;
+
+// ─────────────────────────────────────────────────────────────────────
+// Electrical power (three rearrangements of P = V·I)
+// ─────────────────────────────────────────────────────────────────────
+
+/** P = V·I. @param {number} V Voltage in V. @param {number} I Current in A. @returns {number} Power in W. */
+export const powerVI = (V, I) => V * I;
+/** P = V²/R. @param {number} V Voltage in V. @param {number} R Resistance in Ω. @returns {number} Power in W. */
+export const powerVR = (V, R) => (V * V) / R;
+/** P = I²·R. @param {number} I Current in A. @param {number} R Resistance in Ω. @returns {number} Power in W. */
+export const powerIR = (I, R) => I * I * R;
+
+// ─────────────────────────────────────────────────────────────────────
+// ADC conversions
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * ADC code from an input voltage and reference, for an N-bit unipolar
+ * straight-binary converter. Result is clamped to [0, 2^N − 1].
+ * @param {number} Vin Input voltage.
+ * @param {number} Vref Reference voltage (full scale).
+ * @param {number} bits Resolution in bits.
+ * @returns {number} ADC count (integer).
+ */
+export const adcCount = (Vin, Vref, bits) => {
+  const full = Math.pow(2, bits) - 1;
+  return Math.min(full, Math.max(0, Math.round((Vin / Vref) * full)));
+};
+
+/**
+ * Voltage per LSB for an N-bit ADC.
+ * @param {number} Vref Reference voltage.
+ * @param {number} bits Resolution in bits.
+ * @returns {number} Voltage per LSB in V.
+ */
+export const adcVLsb = (Vref, bits) => Vref / Math.pow(2, bits);
+
+/**
+ * Ideal SNR ceiling for an N-bit ADC (full-scale sine, quantization
+ * noise only): SNR = 6.02·N + 1.76 dB.
+ * @param {number} bits Resolution in bits.
+ * @returns {number} SNR in dB.
+ */
+export const adcSnrIdeal = (bits) => 6.02 * bits + 1.76;
+
+/**
+ * Effective number of bits from a measured SINAD.
+ * ENOB = (SINAD − 1.76) / 6.02.
+ * @param {number} sinadDB Measured SINAD in dB.
+ * @returns {number} ENOB in bits.
+ */
+export const enob = (sinadDB) => (sinadDB - 1.76) / 6.02;
+
+// ─────────────────────────────────────────────────────────────────────
+// Damped second-order systems (RLC, mass-spring-damper)
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Natural angular frequency ω_n = √(k/m) — mass-spring or LC.
+ * @param {number} k Stiffness (or 1/L·C product).
+ * @param {number} m Mass (or L·C product, depending on system).
+ * @returns {number} ω_n in rad/s.
+ */
+export const omegaN = (k, m) => Math.sqrt(k / m);
+
+/**
+ * Damping ratio for a series RLC: ζ = (R/2)·√(C/L).
+ * @param {number} R Resistance in Ω.
+ * @param {number} L Inductance in H.
+ * @param {number} C Capacitance in F.
+ * @returns {number} ζ (dimensionless).
+ */
+export const zetaSeries = (R, L, C) => (R / 2) * Math.sqrt(C / L);
+
+/**
+ * Damping ratio for a mechanical mass-spring-damper: ζ = c / (2√(km)).
+ * @param {number} c Damping coefficient in N·s/m.
+ * @param {number} k Stiffness in N/m.
+ * @param {number} m Mass in kg.
+ * @returns {number} ζ (dimensionless).
+ */
+export const zetaMass = (c, k, m) => c / (2 * Math.sqrt(k * m));
+
+/**
+ * Damped natural frequency ω_d = ω_n · √(1 − ζ²). Valid only for
+ * underdamped systems (ζ < 1); returns NaN otherwise.
+ * @param {number} wn Natural angular frequency in rad/s.
+ * @param {number} zeta Damping ratio (dimensionless).
+ * @returns {number} ω_d in rad/s.
+ */
+export const omegaD = (wn, zeta) => zeta < 1 ? wn * Math.sqrt(1 - zeta * zeta) : NaN;
+
+// ─────────────────────────────────────────────────────────────────────
 // dB conversions
 // ─────────────────────────────────────────────────────────────────────
 
