@@ -428,7 +428,9 @@ uint32_t dataCh0 = raw &amp; 0x0FFFFFFF; // 28-bit valid bits
     Companions: hall-effect (magnetic), capacitive-touch, signal-conditioning
   </footer>
 </main>
-<script>
+<script type="module">
+  import { omega, fRes } from '../../_shared/physics.js';
+
   // Material parameters: rho_e (Ω·m), mu_r, name
   const MAT = {
     al:    {sig: 25e6,  mur: 1,     name: 'Aluminum',     ferro:false},
@@ -468,9 +470,9 @@ uint32_t dataCh0 = raw &amp; 0x0FFFFFFF; // 28-bit valid bits
     const k = couplingK(d, D);
 
     // Eddy effect scaled by conductivity^(1/2), skin depth ≈ sqrt(2/(2πf·µ0·µr·σ))
-    const omega = 2*Math.PI*f_op;
+    const omg = omega(f_op);
     const mu0 = 4*Math.PI*1e-7;
-    const delta = Math.sqrt(2/(omega * mu0 * mat.mur * mat.sig)); // m
+    const delta = Math.sqrt(2/(omg * mu0 * mat.mur * mat.sig)); // m
     const thickFactor = Math.min(1, t*1e-3 / (3*delta)); // 1 if thick ≥ 3δ
 
     // Reflected: more eddy = lower L for non-mag, but mu_r > 1 boosts L
@@ -480,10 +482,10 @@ uint32_t dataCh0 = raw &amp; 0x0FFFFFFF; // 28-bit valid bits
     const Rload = Rfree * (1 + 8 * eddyEffect * Math.sqrt(mat.sig/1e6));
 
     const C = 220e-12;
-    const Ffree = 1/(2*Math.PI*Math.sqrt(Lfree*1e-6 * C));
-    const Fload = 1/(2*Math.PI*Math.sqrt(Math.max(0.5, Lload)*1e-6 * C));
-    const Qfree = omega * Lfree*1e-6 / Rfree;
-    const Qload = omega * Lload*1e-6 / Rload;
+    const Ffree = fRes(Lfree*1e-6, C);
+    const Fload = fRes(Math.max(0.5, Lload)*1e-6, C);
+    const Qfree = omg * Lfree*1e-6 / Rfree;
+    const Qload = omg * Lload*1e-6 / Rload;
 
     document.getElementById('phLfree').textContent = Lfree.toFixed(2);
     document.getElementById('phLload').textContent = Lload.toFixed(2);
@@ -534,11 +536,11 @@ uint32_t dataCh0 = raw &amp; 0x0FFFFFFF; // 28-bit valid bits
     document.getElementById('ldcCRead').textContent = C.toFixed(0) + ' pF';
     document.getElementById('ldcDRead').textContent = d.toFixed(1) + ' mm';
 
-    const F0 = 1/(2*Math.PI*Math.sqrt(L*1e-6 * C*1e-12));
+    const F0 = fRes(L*1e-6, C*1e-12);
     // assume ferrous target boosting L by 5% / mm exponential
     const deltaL = -0.04 * L * Math.exp(-d/3);
     const L1 = L + deltaL;
-    const F1 = 1/(2*Math.PI*Math.sqrt(L1*1e-6 * C*1e-12));
+    const F1 = fRes(L1*1e-6, C*1e-12);
     const F_REF = 40e6;
     const count = Math.round(F_REF / F1 * Math.pow(2,28) / 4096);  // sample 16 LSBs
     document.getElementById('ldcF0').textContent = (F0/1e6).toFixed(3) + ' MHz';
@@ -547,7 +549,7 @@ uint32_t dataCh0 = raw &amp; 0x0FFFFFFF; // 28-bit valid bits
 
     // finite-difference for sensitivity
     const d1 = d + 0.05, deltaL2 = -0.04*L*Math.exp(-d1/3);
-    const F1b = 1/(2*Math.PI*Math.sqrt((L+deltaL2)*1e-6 * C*1e-12));
+    const F1b = fRes((L+deltaL2)*1e-6, C*1e-12);
     const count2 = Math.round(F_REF / F1b * Math.pow(2,28)/4096);
     const sens = Math.abs(count - count2) / 0.05;
     document.getElementById('ldcSens').textContent = sens.toFixed(0) + ' counts / mm';
