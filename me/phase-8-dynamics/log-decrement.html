@@ -273,15 +273,19 @@
     const x1 = noise(env1);
     const xn = noise(envn);
 
-    const delta = (1/n) * Math.log(x1/xn);
-    const zExtract = delta / Math.sqrt(4*Math.PI*Math.PI + delta*delta);
+    // BUG fix: high noise can push x1 or xn negative (or to 0), making
+    // Math.log(x1/xn) = NaN / -Infinity. The δ readout and downstream
+    // ζ-extract then displayed "NaN". Guard with isFinite + positivity.
+    const ratio = x1 / xn;
+    const delta = (ratio > 0 && isFinite(ratio)) ? (1/n) * Math.log(ratio) : NaN;
+    const zExtract = isFinite(delta) ? delta / Math.sqrt(4*Math.PI*Math.PI + delta*delta) : NaN;
     const Q = 1 / (2 * z);
 
     document.getElementById('rX1').textContent = x1.toFixed(3);
     document.getElementById('rXn').textContent = xn.toFixed(3);
     document.getElementById('rTd').textContent = Td.toFixed(3)+" s";
-    document.getElementById('rDelta').textContent = delta.toFixed(3);
-    document.getElementById('rZ').textContent = zExtract.toFixed(4);
+    document.getElementById('rDelta').textContent = isFinite(delta) ? delta.toFixed(3) : '— (noise floor)';
+    document.getElementById('rZ').textContent = isFinite(zExtract) ? zExtract.toFixed(4) : '—';
     document.getElementById('rZTrue').textContent = z.toFixed(4);
     document.getElementById('rQ').textContent = Q.toFixed(1);
 

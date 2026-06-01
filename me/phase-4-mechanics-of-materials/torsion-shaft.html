@@ -348,13 +348,18 @@ function render(){
   const csRi = csR * (d_i / d_o);
 
   // Heatmap rings: shear stress τ(ρ) = T·ρ/J
+  // BUG fix: when T = 0, tau_max = 0 and ratio = 0/0 = NaN; every ring's
+  // colour string became hsl(NaN, 75%, NaN%), and the linear plot below
+  // inherited NaN y-coords. Use a safe denominator that just makes ratio
+  // = 0 everywhere when there's no torque.
+  const safeMax = tau_max > 0 ? tau_max : 1;
   const NRings = 30;
   for(let i=NRings-1; i>=0; i--){
     const rInner = csRi + (csRo - csRi) * (i/NRings);
     const rOuter = csRi + (csRo - csRi) * ((i+1)/NRings);
     const rho = (rInner+rOuter)/2 * (d_o/2) / csR; // model mm
     const tauHere = (T*1000) * rho / J;
-    const ratio = tauHere / tau_max;
+    const ratio = tauHere / safeMax;
     // Color: gradient from cool to hot
     const col = `hsl(${210 - ratio*210}, 75%, ${55+ratio*5}%)`;
     nsmk(cross, 'circle',{cx:ccx, cy:ccy, r:rOuter, fill:col, 'fill-opacity':0.7});
@@ -387,7 +392,8 @@ function render(){
   // x-axis: 0 → d_o/2.  y-axis: 0 → tau_max
   const xMax = d_o/2;
   function px(rho){ return px0 + (rho/xMax) * pxw; }
-  function py(tau){ return py0 + pyh - (tau/tau_max) * (pyh-10); }
+  // Same safeMax dodge as above — when T = 0, plot collapses to the τ=0 axis.
+  function py(tau){ return py0 + pyh - (tau/safeMax) * (pyh-10); }
 
   // For hollow: line is from (d_i/2, T*(d_i/2)/J) to (d_o/2, tau_max). Inside hole = no material.
   if(d_i > 0){
