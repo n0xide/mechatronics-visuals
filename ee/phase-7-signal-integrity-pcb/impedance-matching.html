@@ -162,7 +162,7 @@
   </div>
 
   <h2>PCB microstrip Z<sub>0</sub> calculator</h2>
-  <p style="font-size:12px;color:var(--fg-dim)">Approximate formula: Z<sub>0</sub> ≈ (87/√(ε<sub>r</sub>+1.41)) · ln(5.98·H/(0.8·W + T)). Valid when W/H is between 0.1 and 3.</p>
+  <p style="font-size:12px;color:var(--fg-dim)">Approximate formula: Z<sub>0</sub> ≈ (87/√(ε<sub>r</sub>+1.41)) · ln(5.98·H/(0.8·W + T)). Valid for 0.1 ≤ W/H ≤ 3 (Hammerstad-Jensen, accurate ~5% in that range). Microstrip is <em>quasi-TEM</em> — the dielectric is inhomogeneous (substrate below, air above), so the formula uses an effective permittivity ε<sub>r,eff</sub> between 1 and ε<sub>r</sub>. Outside the 0.1-3 W/H range, or at frequencies above ~5 GHz on FR4 where dispersion kicks in, use a 2D field solver (Saturn, KiCad calculator, ATLC).</p>
 
   <section class="controls">
     <div class="control">
@@ -215,7 +215,7 @@
     <li><b>Source termination</b> — the cleanest single-resistor fix for digital point-to-point. Full amplitude at load, no DC current, no extra parts at the receiver. Most FPGA pins datasheet a recommended R<sub>series</sub>.</li>
     <li><b>Load termination</b> — strongest absorption at the load. Required for distributed loads (memory buses) but burns DC current. AC-coupled (split) variants exist to avoid that.</li>
     <li><b>Series ≈ source termination</b> for a high-impedance receiver. The half-amplitude wave doubles at the open load, and the return is killed by R<sub>series</sub>. This is what 22 Ω in series with a clock line is doing.</li>
-    <li><b>50 Ω is not magic</b>. Pick Z<sub>0</sub> for the system. PC boards default to 50 Ω single-ended because RF instruments do; differential pairs target ~90 Ω (USB 2.0/3) or ~100 Ω (LVDS, Ethernet, PCIe, HDMI).</li>
+    <li><b>50 Ω is not magic</b>. Pick Z<sub>0</sub> for the system. PC boards default to 50 Ω single-ended because RF instruments do; differential pairs target ~90 Ω (USB 2.0/3), ~85 Ω (PCIe Gen 1-6 per PCI-SIG spec §4.7), or ~100 Ω (LVDS, Ethernet, HDMI, DisplayPort, SATA).</li>
   </ul>
 
   <h2>Cheat sheet</h2>
@@ -224,7 +224,7 @@
       <h3>MEMORIZE</h3>
       <ul>
         <li><b>50 Ω microstrip</b> ≈ W/H ≈ 2 on FR4 (ε<sub>r</sub>≈4.4). On a 2-layer 1.6 mm board: W ≈ 2.9 mm. On a 4-layer board with ~8 mil (0.2 mm) prepreg to L2 GND: W ≈ 13 mil (0.33 mm).</li>
-        <li>Differential pairs: <b>USB 2.0 / USB 3 ≈ 90 Ω</b>; <b>LVDS / Ethernet / PCIe ≈ 100 Ω</b>; <b>HDMI / DisplayPort ≈ 100 Ω</b>.</li>
+        <li>Differential pairs: <b>USB 2.0 / USB 3 ≈ 90 Ω</b>; <b>PCIe ≈ 85 Ω</b> (PCI-SIG spec); <b>LVDS / Ethernet / HDMI / DisplayPort / SATA ≈ 100 Ω</b>.</li>
       </ul>
     </div>
     <div class="cheat-card">
@@ -392,15 +392,29 @@
   let mw = 15, mh = 10, mt = 1.4, mer = 4.4;
   function calcZ0(){
     // Z0 = (87/sqrt(er+1.41)) * ln(5.98*H / (0.8*W + T))
+    // Hammerstad-Jensen valid for 0.1 ≤ W/H ≤ 3. Outside that range the closed
+    // form breaks down; flag it rather than clamping silently to a misleading value.
+    const ratio = mw / mh;
     const z = (87 / Math.sqrt(mer + 1.41)) * Math.log(5.98 * mh / (0.8 * mw + mt));
-    return Math.max(10, Math.min(200, z));
+    if (!isFinite(z) || z < 10 || z > 200 || ratio < 0.1 || ratio > 3){
+      return null; // out of formula validity range
+    }
+    return z;
   }
   function updateMicrostrip(){
     document.getElementById('wVal').textContent = mw;
     document.getElementById('hVal').textContent = mh;
     document.getElementById('tVal').textContent = mt.toFixed(1);
     document.getElementById('erVal').textContent = mer.toFixed(1);
-    document.getElementById('z0Calc').textContent = calcZ0().toFixed(1);
+    const z = calcZ0();
+    const z0El = document.getElementById('z0Calc');
+    if (z === null){
+      z0El.textContent = '— (W/H outside 0.1-3, use 2D solver)';
+      z0El.style.fontSize = '15px';
+    } else {
+      z0El.textContent = z.toFixed(1);
+      z0El.style.fontSize = '';
+    }
     // update SVG
     const traceW = Math.min(180, 6 + mw * 3);
     const tracePosX = 160 - traceW/2;

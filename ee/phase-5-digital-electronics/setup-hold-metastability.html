@@ -164,19 +164,19 @@
     <span class="step">Resolution time follows: <b>P(t_res &gt; t) = exp(−t/τ)</b>, where τ is the inverter time constant (~50 ps in modern CMOS, ~1 ns in 74HC).</span>
     <span class="step">Mean time between failures: <b>MTBF = exp(t_res/τ) / (T_0·f_data·f_clk)</b></span>
     <span class="step">T_0 is a process constant (~10⁻¹³ s); higher is worse.</span>
-    <span class="step">For t_res = 10 ns, τ = 200 ps: MTBF = e^50 ≈ 5·10²¹ — never happens.</span>
-    <span class="step">For t_res = 2 ns, τ = 200 ps: MTBF = e^10 ≈ 22 000 (clock cycles). At 100 MHz, fails every 0.22 ms.</span>
+    <span class="step">For t_res = 10 ns, τ = 200 ps, T_0 = 10⁻¹³ s, f_clk = 100 MHz, f_data = 1 MHz: MTBF = e^50 / (10⁻¹³·10⁶·10⁸) = 5.18·10²¹ / 10 ≈ 5·10²⁰ s — never happens.</span>
+    <span class="step">For t_res = 2 ns, τ = 200 ps: e^10 ≈ 22 000 ; divide by (T_0·f_data·f_clk = 10) ⇒ MTBF ≈ 2200 s ≈ 37 minutes between failures. Marginal — needs another stage.</span>
     <span class="step"><span class="arrow">→</span> The fix is to provide MORE t_res by adding flip-flops in the chain — each stage gives another e^(Tclk/τ) margin.</span>
   </div>
 
   <h2>The synchronizer chain</h2>
   <p>When an asynchronous signal (UART RX, button press, sensor edge) enters a synchronous system, you MUST clock it through 2 or 3 flip-flops in sequence — the "synchronizer." The first FF may go metastable, but it has a full clock period to resolve before the second FF samples it. After 2 stages, MTBF is astronomical for typical systems.</p>
   <table>
-    <tr><th>Chain</th><th>Margin per stage</th><th>Resulting MTBF (typical CMOS, 100 MHz, 1 MHz data)</th></tr>
+    <tr><th>Chain</th><th>Total resolution time (cumulative)</th><th>Resulting MTBF (typical CMOS, 100 MHz, 1 MHz data)</th></tr>
     <tr><td>None (direct)</td><td>0 (uses clk-to-output time only)</td><td>seconds to minutes — bad</td></tr>
-    <tr><td>1 FF</td><td>T_clk − t_co − t_su = full period</td><td>years</td></tr>
-    <tr><td>2 FF (default)</td><td>2× period</td><td>universe age × 10⁹</td></tr>
-    <tr><td>3 FF (paranoid)</td><td>3× period</td><td>even further from any failure</td></tr>
+    <tr><td>1 FF</td><td>T_clk − t_co − t_su (≈ one period)</td><td>years</td></tr>
+    <tr><td>2 FF (default)</td><td>2 × (T_clk − t_co − t_su) ≈ 2 periods</td><td>universe age × 10⁹</td></tr>
+    <tr><td>3 FF (paranoid)</td><td>3 × (T_clk − t_co − t_su) ≈ 3 periods</td><td>even further from any failure</td></tr>
   </table>
 
   <h2>Worked example — UART RX into a 100 MHz FPGA</h2>
@@ -305,7 +305,9 @@
     // Metastability statistics
     // τ ≈ 0.2 ns for modern CMOS, ~1 ns for 74HC
     const tau_ns = state.Tclk < 20 ? 0.2 : 1.0;
-    const t_co = Math.max(2, state.Tclk/20); // estimate clk-to-output
+    // Estimate clk-to-output: Tclk/20 with a 0.4 ns floor (modern FPGA t_co ~0.4 ns,
+    // older 74-series ~5-10 ns). The earlier 2 ns floor was too pessimistic for FPGAs.
+    const t_co = Math.max(0.4, state.Tclk/20);
     const T_0 = 1e-13;
     const f_data = state.rate * 1e6;
     const f_clk = 1/(state.Tclk*1e-9);

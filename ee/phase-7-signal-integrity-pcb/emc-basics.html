@@ -360,15 +360,20 @@
     // Compute R(f), X(f), |Z|(f)
     // Bead model: series wire-wound L_b (low DC R), with parasitic shunt C_p and a
     // lossy core that gives a resistive peak around the rated frequency (here 100 MHz).
-    // Below peak: inductive (X = +ωL_b). At peak: resistive plateau ≈ beadZ.
+    // Below peak: inductive (X = +ωL_b). At peak: resistive plateau ≈ beadZ_eff.
     // Above peak: parasitic shunt C_p dominates, |Z| falls (net capacitive reactance).
+    //
+    // DC bias derating: real ferrites lose typically 30–60% of rated Z near max
+    // rated DC current (core saturates, μ drops). Approximate with a linear factor
+    // here; always check vendor's Z-vs-Idc curve for production designs.
     const peakF = 100e6;
+    const beadZ_eff = beadZ * Math.max(0.4, 1 - 0.4 * (beadI / 3));
     function model(f){
       // R(f) — lossy-core resistive peak centered at peakF (log-Gaussian shape)
       const x = Math.log10(f / peakF);
-      const R = beadZ * Math.exp(-x*x / (2 * 0.5*0.5)) + 0.005; // peak + DC resistance
-      // L_b chosen so |X_L| at peakF ≈ beadZ (Q-like factor 0.6 for realism)
-      const L_b = beadZ / (2*Math.PI*peakF) * 0.6;
+      const R = beadZ_eff * Math.exp(-x*x / (2 * 0.5*0.5)) + 0.005; // peak + DC resistance
+      // L_b chosen so |X_L| at peakF ≈ beadZ_eff (Q-like factor 0.6 for realism)
+      const L_b = beadZ_eff / (2*Math.PI*peakF) * 0.6;
       // Parasitic shunt C_p chosen so the L_b‖C_p resonance lands at peakF.
       const C_p = 1 / (4 * Math.PI*Math.PI * peakF*peakF * L_b);
       // Series L in parallel with shunt C: net jX (sign: inductive below, capacitive above)
@@ -402,7 +407,7 @@
     ctx.beginPath(); ctx.moveTo(fToX(peakF), 20); ctx.lineTo(fToX(peakF), H-40); ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = '#ff7b72';
-    ctx.fillText(beadZ + 'Ω @ 100 MHz', fToX(peakF)+4, 35);
+    ctx.fillText(Math.round(beadZ_eff) + 'Ω @ 100 MHz (rated ' + beadZ + ' Ω, derated for ' + beadI.toFixed(1) + ' A DC bias)', fToX(peakF)+4, 35);
 
     // Legend
     ctx.fillStyle = '#5ec8ff'; ctx.fillText('|Z|', W-180, 30);

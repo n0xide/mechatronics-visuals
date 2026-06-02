@@ -89,7 +89,7 @@
       <tr><td>Gain G</td><td id="tG" class="num">40.2</td><td><code>1 + 2·R_F/R_G</code></td></tr>
       <tr><td>V_out (diff)</td><td id="tVout" class="num">0.402 V</td><td><code>G · V_diff</code></td></tr>
       <tr><td>V_out (CM leak)</td><td id="tVcm" class="num">0.31 mV</td><td><code>V_cm · A_cm</code></td></tr>
-      <tr><td>CMRR (R-mismatch limited)</td><td id="tCmrr" class="num">66 dB</td><td><code>20·log(G·R1/(R1+R2)·1/ΔR/R)</code></td></tr>
+      <tr><td>CMRR (R-mismatch limited)</td><td id="tCmrr" class="num">66 dB</td><td><code>20·log10[(1 + 2·R_F/R_G) / (4·δ)]</code></td></tr>
       <tr><td>Total V_out</td><td id="tTotal" class="num">0.402 V</td><td><code>V_out_diff + V_out_cm</code></td></tr>
     </table>
     <div class="vd"><b>Output:</b> <span id="outputEq">V_out = (1 + 2·R_F/R_G) · V_diff = 40.2 × 10 mV = 0.402 V</span></div>
@@ -137,7 +137,7 @@
     <p>Want 10.5 mV → 4.5 V at the ADC input (leaving headroom in 5 V rail). G = 4.5 / 0.0105 = 428. Note: INA126 uses a different on-chip gain formula <code>G = 5 + 80 kΩ / R_G</code> (not the generic <code>1 + 2·R_F/R_G</code> shown in the tool above — INA126 sets its internal R_F = 40 kΩ and the back-end gain is also fixed). So R_G = 80 kΩ / (428 − 5) = 189 Ω. Closest E96: 187 Ω → actual G = 80 kΩ/187 + 5 = 433.</p>
 
     <h3>Why an INA</h3>
-    <p>Each strain-bridge node sits at ~Vexc/2 = 2.5 V common-mode. A single-supply diff amp would not handle this CM input well (rail-to-rail input op-amp required). An INA126's internal architecture handles CM inputs from V- to V+ −1.4 V, so 2.5 V CM is fine.</p>
+    <p>Each strain-bridge node sits at ~Vexc/2 = 2.5 V common-mode. A single-supply diff amp would not handle this CM input well (rail-to-rail input op-amp required). An INA126's CM input range (single-supply 5 V) is roughly 0.875 V to 4.125 V, so 2.5 V CM sits comfortably in the middle.</p>
 
     <h3>Why CMRR matters</h3>
     <span class="eq">If CMRR = 80 dB (R-mismatch 1 %): CM rejected by 10000:1. A 2.5 V CM → 0.25 mV CM error at output ÷ 4.5 V signal = 56 ppm error.</span>
@@ -147,7 +147,7 @@
 
   <h2>Common pitfalls + design rules</h2>
   <ul class="notice">
-    <li><b>Single-supply CM range</b> — A standard rail-to-rail op-amp can swing inputs to either rail. But the INA's internal nodes (U1, U2) need headroom: typically V_INA must keep the internal op-amp outputs in linear range. INA126 V_CM range is V+−1.4 V to V−. INA826 is rail-to-rail input. Pick the right INA for your supply topology.</li>
+    <li><b>Single-supply CM range</b> — A standard rail-to-rail op-amp can swing inputs to either rail. But the INA's internal nodes (U1, U2) need headroom: typically V_INA must keep the internal op-amp outputs in linear range. INA126 V_CM range is roughly (V−)+0.875 V to (V+)−0.875 V (single-supply, TI SBOS062 typ). INA826 has rail-to-rail <em>output</em> but its inputs are limited to about (V−)+0.9 V to (V+)−1.1 V — not rail-to-rail input. Pick the right INA for your supply topology.</li>
     <li><b>Ref pin grounding</b> — the diff-amp stage subtracts the V_REF pin from the output. Tying V_REF to ground gives single-ended output centered on ground. Tying V_REF to Vcc/2 gives output centered on mid-rail (useful for single-supply systems feeding a bipolar ADC).</li>
     <li><b>Bandwidth tradeoff with gain</b> — INA gain-bandwidth limits the high-frequency response. At G=100, INA126 bandwidth is ~10 kHz. For audio or motor-current sensing at PWM frequencies, use a faster INA (AD8221, INA188).</li>
     <li><b>EMI immunity</b> — at high frequency, RF can rectify in the input bias transistors and bias the input offset. Use ferrite beads + 1 nF caps to ground on each input, or pick INA with built-in EMI filters (AD8232, INA821).</li>
@@ -180,7 +180,7 @@
     <div class="cheat-card pitfalls">
       <h3>PITFALLS</h3>
       <ul>
-        <li><b>Wrong CM range</b> — picking INA126 for single-supply 5 V means top of CM is only 3.6 V.</li>
+        <li><b>Wrong CM range</b> — picking INA126 for single-supply 5 V means top of CM is only ~4.1 V (TI SBOS062 typ).</li>
         <li><b>Forgetting REF pin</b> — floating V_REF = noise + drift.</li>
         <li><b>Gain too high</b> — bandwidth collapses, slew limits.</li>
         <li><b>No EMI filtering</b> — RF rectifies in input, DC offset shifts.</li>
