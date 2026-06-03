@@ -27,6 +27,11 @@
   .controls{background:var(--bg-elev);border:1px solid var(--line);
     border-radius:8px;padding:14px 16px;margin:18px 0;
     display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .controls.vbatt-row{grid-template-columns:1fr}
+  .controls.resistor-row{grid-template-columns:repeat(3, minmax(0,1fr));margin:10px 0}
+  .controls.resistor-row .row-label{grid-column:1/-1;font:11px ui-monospace,Menlo,monospace;
+    color:var(--fg-dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:-2px}
+  @media(max-width:640px){.controls.resistor-row{grid-template-columns:1fr}}
   .control{display:flex;flex-direction:column;gap:4px}
   .control label{font-size:12px;color:var(--fg-dim);
     font-family:ui-monospace,Menlo,monospace}
@@ -160,14 +165,20 @@
   <p>These two laws are the bookkeeping rules behind every circuit analysis. KVL says <b>energy is conserved around a loop</b>: every volt the battery pushes is consumed by a drop. KCL says <b>charge is conserved at a node</b>: nothing piles up. Once you trust both, all circuits made of resistors and constant sources (no diodes, no transistors yet — "linear" circuits) become mechanical.</p>
   <p style="font-size:12px;color:var(--fg-dim)"><b>Walking the loop:</b> imagine you're a charge carrier sliding around the circuit. When you cross a battery from − to +, your potential goes <em>up</em> (a "rise"). When you cross a resistor in the direction the current is flowing, your potential goes <em>down</em> (a "drop"). KVL says rises must equal drops over a closed walk — you return to the same potential you started at.</p>
 
-  <section class="controls">
-    <div class="control"><label>V_batt: <span class="readout" id="vbRead">12.00 V</span></label><input id="vb" type="range" min="1" max="24" step="0.5" value="12"></div>
-    <div class="control"><label>R1 (series): <span class="readout" id="r1Read">100 Ω</span></label><input id="r1" type="range" min="0" max="24" step="1" value="12"></div>
-    <div class="control"><label>R2 (series): <span class="readout" id="r2Read">220 Ω</span></label><input id="r2" type="range" min="0" max="24" step="1" value="16"></div>
-    <div class="control"><label>R3 (series): <span class="readout" id="r3Read">470 Ω</span></label><input id="r3" type="range" min="0" max="24" step="1" value="20"></div>
-    <div class="control"><label>Rp1 (parallel): <span class="readout" id="p1Read">100 Ω</span></label><input id="p1" type="range" min="0" max="24" step="1" value="12"></div>
-    <div class="control"><label>Rp2 (parallel): <span class="readout" id="p2Read">220 Ω</span></label><input id="p2" type="range" min="0" max="24" step="1" value="16"></div>
-    <div class="control"><label>Rp3 (parallel): <span class="readout" id="p3Read">470 Ω</span></label><input id="p3" type="range" min="0" max="24" step="1" value="20"></div>
+  <section class="controls vbatt-row">
+    <div class="control"><label>V_batt — drives both circuits: <span class="readout" id="vbRead">12.00 V</span></label><input id="vb" type="range" min="1" max="24" step="0.5" value="12"></div>
+  </section>
+  <section class="controls resistor-row" aria-label="Series resistors">
+    <div class="row-label">Series loop (KVL)</div>
+    <div class="control"><label>R1: <span class="readout" id="r1Read">100 Ω</span></label><input id="r1" type="range" min="0" max="24" step="1" value="12"></div>
+    <div class="control"><label>R2: <span class="readout" id="r2Read">220 Ω</span></label><input id="r2" type="range" min="0" max="24" step="1" value="16"></div>
+    <div class="control"><label>R3: <span class="readout" id="r3Read">470 Ω</span></label><input id="r3" type="range" min="0" max="24" step="1" value="20"></div>
+  </section>
+  <section class="controls resistor-row" aria-label="Parallel resistors">
+    <div class="row-label">Parallel node (KCL)</div>
+    <div class="control"><label>Rp1: <span class="readout" id="p1Read">100 Ω</span></label><input id="p1" type="range" min="0" max="24" step="1" value="12"></div>
+    <div class="control"><label>Rp2: <span class="readout" id="p2Read">220 Ω</span></label><input id="p2" type="range" min="0" max="24" step="1" value="16"></div>
+    <div class="control"><label>Rp3: <span class="readout" id="p3Read">470 Ω</span></label><input id="p3" type="range" min="0" max="24" step="1" value="20"></div>
   </section>
 
   <div class="figure">
@@ -200,9 +211,12 @@
           <!-- Arrows around loop -->
           <g id="loopArrows"></g>
           <!-- Current readout -->
-          <text x="180" y="260" class="label" text-anchor="middle" id="iLoopLbl">I = 15.2 mA (clockwise)</text>
+          <text x="180" y="245" class="label" text-anchor="middle" id="iLoopLbl">I = 15.2 mA (clockwise)</text>
+          <text x="180" y="265" class="label-dim" text-anchor="middle" id="rsLbl">R_s = 790 Ω</text>
         </svg>
         <div style="font:12px ui-monospace,monospace;line-height:1.7">
+          R_s = R1 + R2 + R3 = <span id="rsEq">790 Ω</span><br>
+          I = V_batt / R_s = <span id="iSeriesEq">12 / 790 = 15.2 mA</span><br>
           KVL: <span id="kvlEq">+12.00 − 1.52 − 3.34 − 7.14 = 0.0 V</span><br>
           <span class="sumcheck" id="kvlSum">✓ sum = 0 (energy conserved)</span>
         </div>
@@ -254,9 +268,12 @@
 
           <!-- Current direction arrows into node -->
           <g id="kclArrows"></g>
-          <text x="180" y="252" class="label" text-anchor="middle" id="itotLbl">I_in = 200 mA</text>
+          <text x="180" y="245" class="label" text-anchor="middle" id="itotLbl">I_in = 200 mA</text>
+          <text x="180" y="265" class="label-dim" text-anchor="middle" id="rpLbl">R_p = 60.0 Ω</text>
         </svg>
         <div style="font:12px ui-monospace,monospace;line-height:1.7">
+          R_p = 1 / (1/Rp1 + 1/Rp2 + 1/Rp3) = <span id="rpEq">60.0 Ω</span><br>
+          I_in = V_batt / R_p = <span id="iParallelEq">12 / 60.0 = 200.0 mA</span><br>
           KCL at A: <span id="kclEq">I_in = I1 + I2 + I3 → 200.0 = 120.0 + 54.5 + 25.5 mA</span><br>
           <span class="sumcheck" id="kclSum">✓ I_in − ΣI_out ≈ 0 (charge conserved)</span>
         </div>
@@ -444,6 +461,11 @@
     document.getElementById('vr2Lbl').textContent="V2="+V2.toFixed(2)+"V";
     document.getElementById('vr3Lbl').textContent="V3="+V3.toFixed(2)+"V";
     document.getElementById('iLoopLbl').textContent="I = "+fmtI(I)+" (clockwise)";
+    document.getElementById('rsLbl').textContent="R_s = "+fmtR(Rs);
+    document.getElementById('rsEq').textContent=
+      `${fmtR(R1)} + ${fmtR(R2)} + ${fmtR(R3)} = ${fmtR(Rs)}`;
+    document.getElementById('iSeriesEq').textContent=
+      `${V.toFixed(2)} V / ${fmtR(Rs)} = ${fmtI(I)}`;
     const kvlSum=V-V1-V2-V3;
     document.getElementById('kvlEq').textContent=
       `+${V.toFixed(2)} − ${V1.toFixed(2)} − ${V2.toFixed(2)} − ${V3.toFixed(2)} = ${kvlSum.toFixed(3)} V`;
@@ -459,7 +481,8 @@
     });
 
     // Parallel circuit
-    const Itot=V/Rp1+V/Rp2+V/Rp3;
+    const Rp = 1/(1/Rp1 + 1/Rp2 + 1/Rp3);
+    const Itot=V/Rp;  // same as V/Rp1+V/Rp2+V/Rp3 by construction
     const I1=V/Rp1, I2=V/Rp2, I3=V/Rp3;
     document.getElementById('vb2Lbl').textContent=V.toFixed(1)+"V";
     document.getElementById('p1Lbl').textContent=fmtR(Rp1);
@@ -469,6 +492,11 @@
     document.getElementById('ip2Lbl').textContent=fmtI(I2);
     document.getElementById('ip3Lbl').textContent=fmtI(I3);
     document.getElementById('itotLbl').textContent="I_in = "+fmtI(Itot);
+    document.getElementById('rpLbl').textContent="R_p = "+fmtR(Rp);
+    document.getElementById('rpEq').textContent=
+      `1 / (1/${fmtR(Rp1)} + 1/${fmtR(Rp2)} + 1/${fmtR(Rp3)}) = ${fmtR(Rp)}`;
+    document.getElementById('iParallelEq').textContent=
+      `${V.toFixed(2)} V / ${fmtR(Rp)} = ${fmtI(Itot)}`;
     document.getElementById('kclEq').textContent=
       `I_in = I1 + I2 + I3 → ${(Itot*1000).toFixed(1)} = ${(I1*1000).toFixed(1)} + ${(I2*1000).toFixed(1)} + ${(I3*1000).toFixed(1)} mA`;
     const kclSum=Itot - I1 - I2 - I3;
