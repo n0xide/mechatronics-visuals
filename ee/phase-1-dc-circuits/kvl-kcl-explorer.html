@@ -139,6 +139,32 @@
   .regime-banner .rt.large-signal{color:var(--warn)}
   .regime-banner .rt.dynamic{color:var(--warn)}
   .regime-banner .rt.nonlinear{color:var(--warn)}
+
+  /* Phase-1 explorer enhancements: source toggle, color bands, dots, power */
+  .source-toggle{display:flex;gap:6px;align-items:center;
+    font:11px ui-monospace,Menlo,monospace;color:var(--fg-dim);margin-top:6px}
+  .source-toggle button{background:var(--bg-elev2);color:var(--fg-dim);
+    border:1px solid var(--line);border-radius:4px;padding:3px 9px;cursor:pointer;
+    font:11px ui-monospace,Menlo,monospace}
+  .source-toggle button.active{background:var(--accent);color:var(--bg);
+    border-color:var(--accent)}
+  .controls.vbatt-row.with-rint{grid-template-columns:1fr 1fr}
+  @media(max-width:640px){.controls.vbatt-row.with-rint{grid-template-columns:1fr}}
+  .rint-control{display:none}
+  .rint-control.visible{display:flex}
+  .colorband{display:inline-block;vertical-align:middle;margin-left:6px;
+    border:1px solid var(--line);border-radius:2px;background:var(--bg-elev2)}
+  .power-label{fill:var(--accent3);font:10px ui-monospace,monospace}
+  .pdetail{margin-top:8px;padding:8px;background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:4px}
+  .pdetail summary{cursor:pointer;color:var(--accent2);
+    font:12px ui-monospace,monospace;outline:none;user-select:none}
+  .pdetail summary:hover{color:var(--accent)}
+  .pdetail table{font-size:11px;margin:8px 0 4px}
+  .pdetail th,.pdetail td{padding:2px 6px;text-align:right}
+  .pdetail th:first-child,.pdetail td:first-child{text-align:left;color:var(--fg-bright)}
+  .pdetail .bal{color:var(--accent3);font-size:11px}
+  .pdetail .bal.bad{color:var(--warn)}
 </style>
 </head>
 <body>
@@ -165,20 +191,33 @@
   <p>These two laws are the bookkeeping rules behind every circuit analysis. KVL says <b>energy is conserved around a loop</b>: every volt the battery pushes is consumed by a drop. KCL says <b>charge is conserved at a node</b>: nothing piles up. Once you trust both, all circuits made of resistors and constant sources (no diodes, no transistors yet — "linear" circuits) become mechanical.</p>
   <p style="font-size:12px;color:var(--fg-dim)"><b>Walking the loop:</b> imagine you're a charge carrier sliding around the circuit. When you cross a battery from − to +, your potential goes <em>up</em> (a "rise"). When you cross a resistor in the direction the current is flowing, your potential goes <em>down</em> (a "drop"). KVL says rises must equal drops over a closed walk — you return to the same potential you started at.</p>
 
-  <section class="controls vbatt-row">
-    <div class="control"><label>V_batt — drives both circuits: <span class="readout" id="vbRead">12.00 V</span></label><input id="vb" type="range" min="1" max="24" step="0.5" value="12"></div>
+  <section class="controls vbatt-row" id="vbattRow">
+    <div class="control">
+      <label>V_batt — drives both circuits: <span class="readout" id="vbRead">12.00 V</span></label>
+      <input id="vb" type="range" min="1" max="24" step="0.5" value="12">
+      <div class="source-toggle">
+        <span>Source model:</span>
+        <button type="button" id="srcIdeal" class="active">Ideal (V fixed)</button>
+        <button type="button" id="srcReal">Non-ideal (with R_int)</button>
+      </div>
+    </div>
+    <div class="control rint-control" id="rintControl">
+      <label>R_int — battery internal resistance: <span class="readout" id="riRead">5 Ω</span></label>
+      <input id="ri" type="range" min="0" max="50" step="1" value="5">
+      <small style="color:var(--fg-dim);font-size:11px">Real AA: 0.1–0.3 Ω · 9 V battery: 1–3 Ω · old/cold cell: 10+ Ω. Crank Rp1 down and watch the other branches' currents drop too — that's the real-world coupling an ideal source hides.</small>
+    </div>
   </section>
   <section class="controls resistor-row" aria-label="Series resistors">
     <div class="row-label">Series loop (KVL)</div>
-    <div class="control"><label>R1: <span class="readout" id="r1Read">100 Ω</span></label><input id="r1" type="range" min="0" max="24" step="1" value="12"></div>
-    <div class="control"><label>R2: <span class="readout" id="r2Read">220 Ω</span></label><input id="r2" type="range" min="0" max="24" step="1" value="16"></div>
-    <div class="control"><label>R3: <span class="readout" id="r3Read">470 Ω</span></label><input id="r3" type="range" min="0" max="24" step="1" value="20"></div>
+    <div class="control"><label>R1: <span class="readout" id="r1Read">100 Ω</span> <span id="r1Band" class="colorband"></span></label><input id="r1" type="range" min="0" max="24" step="1" value="12"></div>
+    <div class="control"><label>R2: <span class="readout" id="r2Read">220 Ω</span> <span id="r2Band" class="colorband"></span></label><input id="r2" type="range" min="0" max="24" step="1" value="16"></div>
+    <div class="control"><label>R3: <span class="readout" id="r3Read">470 Ω</span> <span id="r3Band" class="colorband"></span></label><input id="r3" type="range" min="0" max="24" step="1" value="20"></div>
   </section>
   <section class="controls resistor-row" aria-label="Parallel resistors">
     <div class="row-label">Parallel node (KCL)</div>
-    <div class="control"><label>Rp1: <span class="readout" id="p1Read">100 Ω</span></label><input id="p1" type="range" min="0" max="24" step="1" value="12"></div>
-    <div class="control"><label>Rp2: <span class="readout" id="p2Read">220 Ω</span></label><input id="p2" type="range" min="0" max="24" step="1" value="16"></div>
-    <div class="control"><label>Rp3: <span class="readout" id="p3Read">470 Ω</span></label><input id="p3" type="range" min="0" max="24" step="1" value="20"></div>
+    <div class="control"><label>Rp1: <span class="readout" id="p1Read">100 Ω</span> <span id="p1Band" class="colorband"></span></label><input id="p1" type="range" min="0" max="24" step="1" value="12"></div>
+    <div class="control"><label>Rp2: <span class="readout" id="p2Read">220 Ω</span> <span id="p2Band" class="colorband"></span></label><input id="p2" type="range" min="0" max="24" step="1" value="16"></div>
+    <div class="control"><label>Rp3: <span class="readout" id="p3Read">470 Ω</span> <span id="p3Band" class="colorband"></span></label><input id="p3" type="range" min="0" max="24" step="1" value="20"></div>
   </section>
 
   <div class="figure">
@@ -210,15 +249,30 @@
           <text x="320" y="172" class="label-dim" id="vr3Lbl">V3=7.14V</text>
           <!-- Arrows around loop -->
           <g id="loopArrows"></g>
+          <!-- Animated charge dots -->
+          <g id="seriesDots"></g>
           <!-- Current readout -->
           <text x="180" y="245" class="label" text-anchor="middle" id="iLoopLbl">I = 15.2 mA (clockwise)</text>
           <text x="180" y="265" class="label-dim" text-anchor="middle" id="rsLbl">R_s = 790 Ω</text>
         </svg>
         <div style="font:12px ui-monospace,monospace;line-height:1.7">
-          R_s = R1 + R2 + R3 = <span id="rsEq">790 Ω</span><br>
+          R_s = R1 + R2 + R3 = <span id="rsEq">790 Ω</span> &middot; G_s = 1/R_s = <span id="gsEq">1.27 mS</span><br>
           I = V_batt / R_s = <span id="iSeriesEq">12 / 790 = 15.2 mA</span><br>
           KVL: <span id="kvlEq">+12.00 − 1.52 − 3.34 − 7.14 = 0.0 V</span><br>
           <span class="sumcheck" id="kvlSum">✓ sum = 0 (energy conserved)</span>
+          <details class="pdetail">
+            <summary>Per-resistor detail + power balance</summary>
+            <table id="seriesDetail">
+              <tr><th></th><th>R</th><th>V</th><th>I</th><th>P</th></tr>
+              <tr><th>R1</th><td id="r1Rd"></td><td id="r1Vd"></td><td id="r1Id"></td><td id="r1Pd"></td></tr>
+              <tr><th>R2</th><td id="r2Rd"></td><td id="r2Vd"></td><td id="r2Id"></td><td id="r2Pd"></td></tr>
+              <tr><th>R3</th><td id="r3Rd"></td><td id="r3Vd"></td><td id="r3Id"></td><td id="r3Pd"></td></tr>
+            </table>
+            <div class="bal" id="seriesBal">P_source = V&middot;I = … = ΣP_R ✓</div>
+            <div style="font-size:11px;color:var(--fg-dim);margin-top:6px">
+              Biggest R hogs the voltage drop (same I → bigger V·I = bigger P). Try R3 ≫ R1+R2.
+            </div>
+          </details>
         </div>
         <p class="label-dim" style="font:11px ui-monospace,monospace;margin-top:10px;color:var(--fg-dim)">
           <b style="color:var(--fg)">Sign convention:</b> Traverse the loop clockwise from the battery's +. A rise (− to +) is positive; a drop (+ to −, across resistors in the direction of current) is negative. The signed sum is always zero.
@@ -268,14 +322,30 @@
 
           <!-- Current direction arrows into node -->
           <g id="kclArrows"></g>
+          <!-- Animated charge dots -->
+          <g id="parallelDots"></g>
           <text x="180" y="245" class="label" text-anchor="middle" id="itotLbl">I_in = 200 mA</text>
           <text x="180" y="265" class="label-dim" text-anchor="middle" id="rpLbl">R_p = 60.0 Ω</text>
         </svg>
         <div style="font:12px ui-monospace,monospace;line-height:1.7">
-          R_p = 1 / (1/Rp1 + 1/Rp2 + 1/Rp3) = <span id="rpEq">60.0 Ω</span><br>
+          R_p = 1 / (1/Rp1 + 1/Rp2 + 1/Rp3) = <span id="rpEq">60.0 Ω</span> &middot; G_p = G1 + G2 + G3 = <span id="gpEq">16.67 mS</span><br>
           I_in = V_batt / R_p = <span id="iParallelEq">12 / 60.0 = 200.0 mA</span><br>
+          Current divider: <span id="cdivHint">I_k = I_in &middot; R_p / R_pk</span><br>
           KCL at A: <span id="kclEq">I_in = I1 + I2 + I3 → 200.0 = 120.0 + 54.5 + 25.5 mA</span><br>
           <span class="sumcheck" id="kclSum">✓ I_in − ΣI_out ≈ 0 (charge conserved)</span>
+          <details class="pdetail">
+            <summary>Per-branch detail + power balance</summary>
+            <table id="parallelDetail">
+              <tr><th></th><th>R</th><th>G = 1/R</th><th>I</th><th>I via divider</th><th>P</th></tr>
+              <tr><th>Rp1</th><td id="p1Rd"></td><td id="p1Gd"></td><td id="p1Id"></td><td id="p1Cdv"></td><td id="p1Pd"></td></tr>
+              <tr><th>Rp2</th><td id="p2Rd"></td><td id="p2Gd"></td><td id="p2Id"></td><td id="p2Cdv"></td><td id="p2Pd"></td></tr>
+              <tr><th>Rp3</th><td id="p3Rd"></td><td id="p3Gd"></td><td id="p3Id"></td><td id="p3Cdv"></td><td id="p3Pd"></td></tr>
+            </table>
+            <div class="bal" id="parallelBal">P_source = V&middot;I_in = … = ΣP_R ✓</div>
+            <div style="font-size:11px;color:var(--fg-dim);margin-top:6px">
+              Conductance is the dual of resistance: G = 1/R. Parallel resistors add as conductances (G_p = G1+G2+G3) — the same shape as series R add (R_s = R1+R2+R3). Conductance is to KCL what resistance is to KVL.
+            </div>
+          </details>
         </div>
         <p class="label-dim" style="font:11px ui-monospace,monospace;margin-top:10px;color:var(--fg-dim)">
           <b style="color:var(--fg)">Sign convention:</b> Currents into a node are positive; currents out are negative. The signed sum at any node is always zero. Charge cannot accumulate in steady-state.
@@ -431,17 +501,86 @@
     if(Math.abs(i)<1) return (i*1e3).toFixed(1)+" mA";
     return i.toFixed(2)+" A";
   }
+  function fmtP(p){
+    if(Math.abs(p)<1e-3) return (p*1e6).toFixed(1)+" µW";
+    if(Math.abs(p)<1) return (p*1e3).toFixed(1)+" mW";
+    return p.toFixed(2)+" W";
+  }
+  function fmtG(g){ // conductance in siemens
+    if(g>=1) return g.toFixed(3)+" S";
+    if(g>=1e-3) return (g*1e3).toFixed(2)+" mS";
+    return (g*1e6).toFixed(2)+" µS";
+  }
 
-  const ids=['vb','r1','r2','r3','p1','p2','p3'];
+  // 4-band resistor color code rendering
+  const BAND_COLORS = ['#1a1a1a','#7c4a0e','#d63a2f','#e87a25','#e8d325','#3a9d3a','#3a6cd6','#9a4ad6','#7c7c7c','#dde3ec'];
+  const BAND_GOLD = '#caa040';
+  const BAND_BODY = '#d4b78a';
+  function colorBandsFor(R){
+    if (R <= 0) return null;
+    let val = R, mult = 0;
+    // Reduce to two significant digits (val in [10, 100))
+    while (val >= 100){ val /= 10; mult++; }
+    while (val < 10 && val > 0){ val *= 10; mult--; }
+    const d1 = Math.floor(val/10);
+    const d2 = Math.floor(val - d1*10 + 0.5); // round
+    if (mult < -2 || mult > 9) return null;
+    let m;
+    if (mult >= 0) m = BAND_COLORS[mult];
+    else if (mult === -1) m = BAND_GOLD;
+    else m = '#bdbdbd'; // silver, ×0.01
+    return [BAND_COLORS[Math.max(0,Math.min(9,d1))], BAND_COLORS[Math.max(0,Math.min(9,d2))], m, BAND_GOLD];
+  }
+  function renderBand(el, R){
+    const bands = colorBandsFor(R);
+    if (!bands || !el) { if(el) el.innerHTML = ''; return; }
+    const [c1, c2, c3, c4] = bands;
+    el.innerHTML =
+      '<svg viewBox="0 0 50 14" width="48" height="14" aria-hidden="true">'+
+      '<rect x="0" y="4" width="50" height="6" fill="'+BAND_BODY+'"/>'+
+      '<line x1="0" y1="7" x2="4" y2="7" stroke="#888" stroke-width="1.2"/>'+
+      '<line x1="46" y1="7" x2="50" y2="7" stroke="#888" stroke-width="1.2"/>'+
+      '<rect x="9" y="2" width="3" height="10" fill="'+c1+'"/>'+
+      '<rect x="16" y="2" width="3" height="10" fill="'+c2+'"/>'+
+      '<rect x="23" y="2" width="3" height="10" fill="'+c3+'"/>'+
+      '<rect x="38" y="2" width="3" height="10" fill="'+c4+'"/>'+
+      '</svg>';
+  }
+
+  const ids=['vb','r1','r2','r3','p1','p2','p3','ri'];
   const els={};
   ids.forEach(k=>els[k]=document.getElementById(k));
 
+  // Source-mode toggle (ideal voltage source vs Thévenin with R_int)
+  let sourceMode = 'ideal';
+  const vbattRow = document.getElementById('vbattRow');
+  const rintControl = document.getElementById('rintControl');
+  const btnIdeal = document.getElementById('srcIdeal');
+  const btnReal = document.getElementById('srcReal');
+  function setSourceMode(mode){
+    sourceMode = mode;
+    btnIdeal.classList.toggle('active', mode==='ideal');
+    btnReal.classList.toggle('active', mode==='real');
+    if (mode==='real'){ rintControl.classList.add('visible'); vbattRow.classList.add('with-rint'); }
+    else { rintControl.classList.remove('visible'); vbattRow.classList.remove('with-rint'); }
+    updateAndSave();
+  }
+  btnIdeal.addEventListener('click', () => setSourceMode('ideal'));
+  btnReal.addEventListener('click', () => setSourceMode('real'));
+
+  // Animation state — driven by RAF; current values updated by update()
+  const animState = { Iseries: 0, Ip1: 0, Ip2: 0, Ip3: 0 };
+  const seriesDotPos = [0, 0.333, 0.667];
+  const parallelDotPos = { 1: [0, 0.5], 2: [0, 0.5], 3: [0, 0.5] };
+
   function update(){
-    const V=parseFloat(els.vb.value);
+    const V_open = parseFloat(els.vb.value);  // open-circuit / battery emf
     const R1=rOf(els.r1.value), R2=rOf(els.r2.value), R3=rOf(els.r3.value);
     const Rp1=rOf(els.p1.value), Rp2=rOf(els.p2.value), Rp3=rOf(els.p3.value);
+    const Rint = sourceMode === 'real' ? parseFloat(els.ri.value) : 0;
 
-    document.getElementById('vbRead').textContent=V.toFixed(2)+" V";
+    document.getElementById('vbRead').textContent=V_open.toFixed(2)+" V";
+    document.getElementById('riRead').textContent=Rint+" Ω";
     document.getElementById('r1Read').textContent=fmtR(R1);
     document.getElementById('r2Read').textContent=fmtR(R2);
     document.getElementById('r3Read').textContent=fmtR(R3);
@@ -449,11 +588,26 @@
     document.getElementById('p2Read').textContent=fmtR(Rp2);
     document.getElementById('p3Read').textContent=fmtR(Rp3);
 
-    // Series circuit
-    const Rs=R1+R2+R3;
-    const I=V/Rs;
+    // Render resistor color bands
+    renderBand(document.getElementById('r1Band'), R1);
+    renderBand(document.getElementById('r2Band'), R2);
+    renderBand(document.getElementById('r3Band'), R3);
+    renderBand(document.getElementById('p1Band'), Rp1);
+    renderBand(document.getElementById('p2Band'), Rp2);
+    renderBand(document.getElementById('p3Band'), Rp3);
+
+    // ===== SERIES CIRCUIT =====
+    const Rs = R1+R2+R3;
+    const Gs = 1/Rs;
+    const I = V_open / (Rint + Rs);
+    const V_term_s = V_open - I*Rint;  // voltage at battery terminals (ideal: V_open)
     const V1=I*R1, V2=I*R2, V3=I*R3;
-    document.getElementById('vbLbl').textContent=V.toFixed(1)+"V";
+    const P1s=V1*I, P2s=V2*I, P3s=V3*I;
+    const Pint_s = I*I*Rint;
+    const Psum_s = P1s+P2s+P3s+Pint_s;
+    const Psource_s = V_open*I;
+
+    document.getElementById('vbLbl').textContent=V_open.toFixed(1)+"V";
     document.getElementById('r1Lbl').textContent="R1="+fmtR(R1);
     document.getElementById('r2Lbl').textContent="R2="+fmtR(R2);
     document.getElementById('r3Lbl').textContent="R3="+fmtR(R3);
@@ -461,30 +615,65 @@
     document.getElementById('vr2Lbl').textContent="V2="+V2.toFixed(2)+"V";
     document.getElementById('vr3Lbl').textContent="V3="+V3.toFixed(2)+"V";
     document.getElementById('iLoopLbl').textContent="I = "+fmtI(I)+" (clockwise)";
-    document.getElementById('rsLbl').textContent="R_s = "+fmtR(Rs);
+    document.getElementById('rsLbl').textContent="R_s = "+fmtR(Rs)+(Rint>0?(" + R_int = "+fmtR(Rs+Rint)):"");
     document.getElementById('rsEq').textContent=
       `${fmtR(R1)} + ${fmtR(R2)} + ${fmtR(R3)} = ${fmtR(Rs)}`;
-    document.getElementById('iSeriesEq').textContent=
-      `${V.toFixed(2)} V / ${fmtR(Rs)} = ${fmtI(I)}`;
-    const kvlSum=V-V1-V2-V3;
-    document.getElementById('kvlEq').textContent=
-      `+${V.toFixed(2)} − ${V1.toFixed(2)} − ${V2.toFixed(2)} − ${V3.toFixed(2)} = ${kvlSum.toFixed(3)} V`;
+    document.getElementById('gsEq').textContent=fmtG(Gs);
+    document.getElementById('iSeriesEq').textContent= Rint>0 ?
+      `${V_open.toFixed(2)} V / (${fmtR(Rint)} + ${fmtR(Rs)}) = ${fmtI(I)}  ·  V_term = ${V_term_s.toFixed(2)} V` :
+      `${V_open.toFixed(2)} V / ${fmtR(Rs)} = ${fmtI(I)}`;
+    const kvlSum=V_open-V1-V2-V3-(I*Rint);
+    if (Rint > 0){
+      document.getElementById('kvlEq').textContent=
+        `+${V_open.toFixed(2)} − ${(I*Rint).toFixed(2)}(R_int) − ${V1.toFixed(2)} − ${V2.toFixed(2)} − ${V3.toFixed(2)} = ${kvlSum.toFixed(3)} V`;
+    } else {
+      document.getElementById('kvlEq').textContent=
+        `+${V_open.toFixed(2)} − ${V1.toFixed(2)} − ${V2.toFixed(2)} − ${V3.toFixed(2)} = ${kvlSum.toFixed(3)} V`;
+    }
     document.getElementById('kvlSum').textContent=
       `✓ sum ≈ ${Math.abs(kvlSum)<0.01?"0":kvlSum.toFixed(3)+" V"} (energy conserved)`;
 
-    // Loop arrows (animation phase)
+    // Series detail table
+    document.getElementById('r1Rd').textContent=fmtR(R1);
+    document.getElementById('r2Rd').textContent=fmtR(R2);
+    document.getElementById('r3Rd').textContent=fmtR(R3);
+    document.getElementById('r1Vd').textContent=V1.toFixed(2)+" V";
+    document.getElementById('r2Vd').textContent=V2.toFixed(2)+" V";
+    document.getElementById('r3Vd').textContent=V3.toFixed(2)+" V";
+    document.getElementById('r1Id').textContent=fmtI(I);
+    document.getElementById('r2Id').textContent=fmtI(I);
+    document.getElementById('r3Id').textContent=fmtI(I);
+    document.getElementById('r1Pd').textContent=fmtP(P1s);
+    document.getElementById('r2Pd').textContent=fmtP(P2s);
+    document.getElementById('r3Pd').textContent=fmtP(P3s);
+    const sBal = document.getElementById('seriesBal');
+    const balDiff_s = Psource_s - Psum_s;
+    const balOK_s = Math.abs(balDiff_s) < 1e-9 || Math.abs(balDiff_s/Math.max(1e-12,Psource_s)) < 1e-6;
+    sBal.classList.toggle('bad', !balOK_s);
+    sBal.textContent = Rint > 0
+      ? `P_source = V_batt·I = ${fmtP(Psource_s)}  =  ΣP_R (${fmtP(P1s+P2s+P3s)}) + P_int (${fmtP(Pint_s)})  ${balOK_s?'✓':'✗'}`
+      : `P_source = V_batt·I = ${fmtP(Psource_s)}  =  P_R1 + P_R2 + P_R3 = ${fmtP(P1s+P2s+P3s)}  ${balOK_s?'✓':'✗'}`;
+
+    // Loop arrows (static direction indicators)
     const arrows=document.getElementById('loopArrows');
     arrows.innerHTML='';
     const points=[[60,210],[60,150],[60,90],[100,60],[180,60],[260,60],[300,90],[300,150],[300,210]];
-    points.forEach((p,k)=>{
-      arrows.innerHTML+=`<polygon points="${p[0]-4},${p[1]-4} ${p[0]+5},${p[1]} ${p[0]-4},${p[1]+4}" fill="var(--accent3)" opacity="0.7"/>`;
+    points.forEach((p)=>{
+      arrows.innerHTML+=`<polygon points="${p[0]-4},${p[1]-4} ${p[0]+5},${p[1]} ${p[0]-4},${p[1]+4}" fill="var(--accent3)" opacity="0.35"/>`;
     });
 
-    // Parallel circuit
-    const Rp = 1/(1/Rp1 + 1/Rp2 + 1/Rp3);
-    const Itot=V/Rp;  // same as V/Rp1+V/Rp2+V/Rp3 by construction
-    const I1=V/Rp1, I2=V/Rp2, I3=V/Rp3;
-    document.getElementById('vb2Lbl').textContent=V.toFixed(1)+"V";
+    // ===== PARALLEL CIRCUIT =====
+    const Gp = 1/Rp1 + 1/Rp2 + 1/Rp3;
+    const Rp = 1/Gp;
+    const Itot = V_open / (Rint + Rp);             // current out of battery
+    const V_term_p = V_open - Itot*Rint;            // voltage across parallel branches
+    const I1=V_term_p/Rp1, I2=V_term_p/Rp2, I3=V_term_p/Rp3;
+    const Pp1=I1*V_term_p, Pp2=I2*V_term_p, Pp3=I3*V_term_p;
+    const Pint_p = Itot*Itot*Rint;
+    const Psource_p = V_open*Itot;
+    const Psum_p = Pp1+Pp2+Pp3+Pint_p;
+
+    document.getElementById('vb2Lbl').textContent=V_open.toFixed(1)+"V";
     document.getElementById('p1Lbl').textContent=fmtR(Rp1);
     document.getElementById('p2Lbl').textContent=fmtR(Rp2);
     document.getElementById('p3Lbl').textContent=fmtR(Rp3);
@@ -492,48 +681,135 @@
     document.getElementById('ip2Lbl').textContent=fmtI(I2);
     document.getElementById('ip3Lbl').textContent=fmtI(I3);
     document.getElementById('itotLbl').textContent="I_in = "+fmtI(Itot);
-    document.getElementById('rpLbl').textContent="R_p = "+fmtR(Rp);
+    document.getElementById('rpLbl').textContent="R_p = "+fmtR(Rp)+(Rint>0?("  ·  V_term = "+V_term_p.toFixed(2)+"V"):"");
     document.getElementById('rpEq').textContent=
       `1 / (1/${fmtR(Rp1)} + 1/${fmtR(Rp2)} + 1/${fmtR(Rp3)}) = ${fmtR(Rp)}`;
-    document.getElementById('iParallelEq').textContent=
-      `${V.toFixed(2)} V / ${fmtR(Rp)} = ${fmtI(Itot)}`;
+    document.getElementById('gpEq').textContent=
+      `${fmtG(1/Rp1)} + ${fmtG(1/Rp2)} + ${fmtG(1/Rp3)} = ${fmtG(Gp)}`;
+    document.getElementById('iParallelEq').textContent= Rint>0 ?
+      `${V_open.toFixed(2)} V / (${fmtR(Rint)} + ${fmtR(Rp)}) = ${fmtI(Itot)}  ·  V_term = ${V_term_p.toFixed(2)} V` :
+      `${V_open.toFixed(2)} V / ${fmtR(Rp)} = ${fmtI(Itot)}`;
+    document.getElementById('cdivHint').innerHTML =
+      `I_k = V_term / R_pk = I_in · R_p / R_pk &nbsp; <span style="color:var(--fg-dim)">(scales with the smaller R)</span>`;
     document.getElementById('kclEq').textContent=
       `I_in = I1 + I2 + I3 → ${(Itot*1000).toFixed(1)} = ${(I1*1000).toFixed(1)} + ${(I2*1000).toFixed(1)} + ${(I3*1000).toFixed(1)} mA`;
     const kclSum=Itot - I1 - I2 - I3;
     document.getElementById('kclSum').textContent=
       `✓ I_in − ΣI_out = ${(kclSum*1e6).toFixed(1)} µA (charge conserved)`;
 
-    // KCL arrows
+    // Parallel detail table
+    document.getElementById('p1Rd').textContent=fmtR(Rp1);
+    document.getElementById('p2Rd').textContent=fmtR(Rp2);
+    document.getElementById('p3Rd').textContent=fmtR(Rp3);
+    document.getElementById('p1Gd').textContent=fmtG(1/Rp1);
+    document.getElementById('p2Gd').textContent=fmtG(1/Rp2);
+    document.getElementById('p3Gd').textContent=fmtG(1/Rp3);
+    document.getElementById('p1Id').textContent=fmtI(I1);
+    document.getElementById('p2Id').textContent=fmtI(I2);
+    document.getElementById('p3Id').textContent=fmtI(I3);
+    // Current-divider cross-check (algebraically equal to V_term / Rpk; shown for pedagogy)
+    document.getElementById('p1Cdv').textContent=fmtI(Itot*Rp/Rp1);
+    document.getElementById('p2Cdv').textContent=fmtI(Itot*Rp/Rp2);
+    document.getElementById('p3Cdv').textContent=fmtI(Itot*Rp/Rp3);
+    document.getElementById('p1Pd').textContent=fmtP(Pp1);
+    document.getElementById('p2Pd').textContent=fmtP(Pp2);
+    document.getElementById('p3Pd').textContent=fmtP(Pp3);
+    const pBal = document.getElementById('parallelBal');
+    const balDiff_p = Psource_p - Psum_p;
+    const balOK_p = Math.abs(balDiff_p) < 1e-9 || Math.abs(balDiff_p/Math.max(1e-12,Psource_p)) < 1e-6;
+    pBal.classList.toggle('bad', !balOK_p);
+    pBal.textContent = Rint > 0
+      ? `P_source = V_batt·I_in = ${fmtP(Psource_p)}  =  ΣP_R (${fmtP(Pp1+Pp2+Pp3)}) + P_int (${fmtP(Pint_p)})  ${balOK_p?'✓':'✗'}`
+      : `P_source = V_batt·I_in = ${fmtP(Psource_p)}  =  P_Rp1 + P_Rp2 + P_Rp3 = ${fmtP(Pp1+Pp2+Pp3)}  ${balOK_p?'✓':'✗'}`;
+
+    // KCL arrows (static)
     const ka=document.getElementById('kclArrows');
     ka.innerHTML='';
-    // arrow into node
-    ka.innerHTML+=`<polygon points="155,55 175,60 155,65" fill="var(--accent)" opacity="0.8"/>`;
-    // arrows down each branch
+    ka.innerHTML+=`<polygon points="155,55 175,60 155,65" fill="var(--accent)" opacity="0.4"/>`;
     [120,180,240].forEach(x=>{
-      ka.innerHTML+=`<polygon points="${x-4},88 ${x},98 ${x+4},88" fill="var(--accent2)" opacity="0.8"/>`;
+      ka.innerHTML+=`<polygon points="${x-4},88 ${x},98 ${x+4},88" fill="var(--accent2)" opacity="0.4"/>`;
     });
+
+    // Update animation state
+    animState.Iseries = Math.abs(I);
+    animState.Ip1 = Math.abs(I1);
+    animState.Ip2 = Math.abs(I2);
+    animState.Ip3 = Math.abs(I3);
   }
-  // Deep-link state: URL hash mirrors slider values so configs are shareable.
-  const HASH_KEYS = ids;
+
+  // ===== Charge-dot animation (RAF) =====
+  function seriesXY(t){
+    // Loop perimeter parameterized t∈[0,1) starting at bottom-left, going clockwise.
+    if (t < 0.20) return [60, 220 - (t/0.20)*160];
+    if (t < 0.50) return [60 + ((t-0.20)/0.30)*240, 60];
+    if (t < 0.70) return [300, 60 + ((t-0.50)/0.20)*160];
+    return [300 - ((t-0.70)/0.30)*240, 220];
+  }
+  function renderSeriesDots(){
+    const g = document.getElementById('seriesDots');
+    let html = '';
+    for (const t of seriesDotPos){
+      const [x,y] = seriesXY(t);
+      html += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.2" fill="var(--accent3)" opacity="0.95"/>`;
+    }
+    g.innerHTML = html;
+  }
+  function renderParallelDots(){
+    const g = document.getElementById('parallelDots');
+    let html = '';
+    for (const k of [1,2,3]){
+      const x = ({1:120,2:180,3:240})[k];
+      for (const t of parallelDotPos[k]){
+        // Branch path: y=60 (top node) → y=200 (ground rail)
+        const y = 60 + t * 140;
+        html += `<circle cx="${x}" cy="${y.toFixed(1)}" r="2.8" fill="var(--accent2)" opacity="0.95"/>`;
+      }
+    }
+    g.innerHTML = html;
+  }
+  let lastT = 0;
+  function animate(now){
+    const dt = lastT === 0 ? 0 : Math.min(0.1, (now - lastT) / 1000);
+    lastT = now;
+    // cycles-per-second proportional to current; clamped so it stays visible
+    const cps = (I) => Math.min(2.5, Math.max(0, I * 4));
+    const sCps = cps(animState.Iseries);
+    for (let i=0;i<seriesDotPos.length;i++) seriesDotPos[i] = (seriesDotPos[i] + sCps*dt + 1) % 1;
+    for (const k of [1,2,3]){
+      const c = cps(animState['Ip'+k]);
+      const arr = parallelDotPos[k];
+      for (let i=0;i<arr.length;i++) arr[i] = (arr[i] + c*dt + 1) % 1;
+    }
+    renderSeriesDots();
+    renderParallelDots();
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+
+  // Deep-link state: URL hash mirrors slider + mode values so configs are shareable.
+  const HASH_KEYS = ids.concat(['srcMode']);
   function readHash(){
     const h = location.hash.replace(/^#/, '');
     if (!h) return;
     const p = new URLSearchParams(h);
-    HASH_KEYS.forEach(k => {
+    ids.forEach(k => {
       const v = p.get(k);
       if (v !== null && els[k]) els[k].value = v;
     });
+    const m = p.get('srcMode');
+    if (m === 'real' || m === 'ideal') sourceMode = m;
   }
   function writeHash(){
     const p = new URLSearchParams();
-    HASH_KEYS.forEach(k => { if (els[k]) p.set(k, els[k].value); });
+    ids.forEach(k => { if (els[k]) p.set(k, els[k].value); });
+    p.set('srcMode', sourceMode);
     history.replaceState(null, '', '#' + p.toString());
   }
   readHash();
+  setSourceMode(sourceMode);  // sync UI to loaded state (also calls updateAndSave)
 
   function updateAndSave(){ update(); writeHash(); }
   ids.forEach(k=>els[k].addEventListener('input',updateAndSave));
-  update();
 </script>
 </body>
 </html>

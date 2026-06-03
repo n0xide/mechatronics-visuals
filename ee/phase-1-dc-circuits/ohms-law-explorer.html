@@ -136,6 +136,48 @@
   .regime-banner .rt.large-signal{color:var(--warn)}
   .regime-banner .rt.dynamic{color:var(--warn)}
   .regime-banner .rt.nonlinear{color:var(--warn)}
+
+  /* Ohm's-law extras: presets, rating, LED/2R/inverse modes, bar chart */
+  .presets{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+  .presets button{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 11px;cursor:pointer;
+    font:12px ui-monospace,Menlo,monospace}
+  .presets button:hover{border-color:var(--accent);color:var(--accent)}
+  .presets .danger:hover{border-color:var(--warn);color:var(--warn)}
+  .feature-toggle{display:inline-flex;align-items:center;gap:6px;margin-right:14px;
+    font:11px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .feature-toggle input{margin:0}
+  .extra-control{display:none;flex-direction:column;gap:4px}
+  .extra-control.visible{display:flex}
+  .failure-banner{display:none;background:rgba(255,123,114,0.12);
+    border:1px solid var(--warn);color:var(--warn);
+    border-radius:4px;padding:8px 12px;margin:10px 0;
+    font:12px ui-monospace,Menlo,monospace}
+  .failure-banner.visible{display:block}
+  .pdetail{margin-top:12px;padding:10px;background:var(--bg-elev2);border:1px solid var(--line);
+    border-radius:6px}
+  .pdetail summary{cursor:pointer;color:var(--accent2);
+    font:12px ui-monospace,monospace;outline:none;user-select:none}
+  .pdetail summary:hover{color:var(--accent)}
+  .barchart{margin-top:14px;padding:10px;background:var(--bg-elev2);
+    border:1px solid var(--line);border-radius:6px}
+  .barchart .bar-row{display:grid;grid-template-columns:30px 1fr 90px;
+    align-items:center;gap:8px;margin:4px 0;
+    font:11px ui-monospace,Menlo,monospace}
+  .barchart .bar-row .lbl{color:var(--fg-bright)}
+  .barchart .bar-row .track{height:14px;background:var(--bg-elev);border-radius:2px;position:relative;overflow:hidden}
+  .barchart .bar-row .fill{position:absolute;top:0;left:0;height:100%;border-radius:2px}
+  .barchart .bar-row .v{color:var(--accent);text-align:right}
+  .barchart .bar-row.v-row .fill{background:var(--accent)}
+  .barchart .bar-row.i-row .fill{background:var(--accent2)}
+  .barchart .bar-row.r-row .fill{background:#9a4ad6}
+  .barchart .bar-row.p-row .fill{background:var(--accent3)}
+  .barchart .bar-note{font-size:10px;color:var(--fg-dim);margin-top:6px}
+  .inverse-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+  .inverse-row .input-pair{display:flex;flex-direction:column;gap:4px;font:11px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .inverse-row input[type=number]{width:100%}
+  .inverse-result{margin-top:8px;font:13px ui-monospace,Menlo,monospace;color:var(--accent3)}
+  .led-pipe-warn{stroke:var(--warn);stroke-width:2;fill:var(--warn);opacity:0.65}
 </style>
 </head>
 <body>
@@ -170,10 +212,77 @@
     </div>
     <div class="control">
       <label>R — resistance: <span class="readout" id="rRead">1.0 kΩ</span></label>
-      <input id="rSlide" type="range" min="1" max="6" step="0.001" value="3">
-      <small style="color:var(--fg-dim);font-size:11px">log scale, 10 Ω – 1 MΩ, snaps to E12</small>
+      <input id="rSlide" type="range" min="-2" max="6" step="0.001" value="3">
+      <small style="color:var(--fg-dim);font-size:11px">log scale, 0.01 Ω – 1 MΩ, snaps to E12. Sub-ohm range covers wire shorts and shunt resistors.</small>
+    </div>
+    <div class="control">
+      <label>Wattage rating: <span class="readout" id="ratRead">1/4 W</span></label>
+      <select id="ratSel" style="background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 8px;font:13px ui-monospace,Menlo,monospace">
+        <option value="0.0625">1/16 W (0805 chip)</option>
+        <option value="0.125">1/8 W (typical 0805)</option>
+        <option value="0.25" selected>1/4 W (axial small)</option>
+        <option value="0.5">1/2 W (axial medium)</option>
+        <option value="1">1 W</option>
+        <option value="2">2 W (wirewound)</option>
+        <option value="5">5 W (sandcast)</option>
+      </select>
     </div>
   </section>
+
+  <section class="controls" style="margin-top:6px">
+    <div class="control" style="grid-column:1/-1">
+      <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center">
+        <label class="feature-toggle"><input type="checkbox" id="ledEnable"> LED limiter mode (V_f &gt; 0)</label>
+        <label class="feature-toggle"><input type="checkbox" id="twoREnable"> Second resistor in series (R2)</label>
+        <label class="feature-toggle"><input type="checkbox" id="tcrEnable"> Temperature derating (TCR)</label>
+      </div>
+    </div>
+    <div class="control extra-control" id="ledControl">
+      <label>V_f — LED forward voltage: <span class="readout" id="vfRead">2.00 V</span></label>
+      <input id="vfSlide" type="range" min="1.0" max="3.4" step="0.05" value="2.0">
+      <small style="color:var(--fg-dim);font-size:11px">red 1.9 · yellow 2.1 · green 2.2 · blue 3.0 · white 3.2 V</small>
+    </div>
+    <div class="control extra-control" id="twoRControl">
+      <label>R2 — second series resistor: <span class="readout" id="r2Read">220 Ω</span></label>
+      <input id="r2Slide" type="range" min="1" max="6" step="0.001" value="2.342">
+      <small style="color:var(--fg-dim);font-size:11px">log scale, E12 snap. Adds in series: R_total = R + R2.</small>
+    </div>
+    <div class="control extra-control" id="tcrControl">
+      <label>α — TCR: <span class="readout" id="alphaRead">100 ppm/K</span></label>
+      <input id="alphaSlide" type="range" min="-2000" max="2000" step="10" value="100">
+      <small style="color:var(--fg-dim);font-size:11px">metal film ~50 ppm/K · carbon comp ~1200 ppm/K · NTC thermistor ~−4 %/K</small>
+    </div>
+    <div class="control extra-control" id="tcrDTControl">
+      <label>ΔT — temperature shift: <span class="readout" id="dTRead">0 K</span></label>
+      <input id="dTSlide" type="range" min="-40" max="125" step="1" value="0">
+      <small style="color:var(--fg-dim);font-size:11px">R_actual = R_nominal · (1 + α · ΔT)</small>
+    </div>
+  </section>
+
+  <div class="presets">
+    <button type="button" data-preset="led-red-330">LED red 1.9 V · 330 Ω · 5 V</button>
+    <button type="button" data-preset="led-blue-150">LED blue 3.0 V · 150 Ω · 5 V</button>
+    <button type="button" class="danger" data-preset="gpio-short">GPIO short (3.3 V → 0.05 Ω → 220 W)</button>
+    <button type="button" data-preset="pulldown-10k">Pull-down 10 kΩ · 3.3 V</button>
+    <button type="button" data-preset="divider">Voltage divider (R1=R2=10k, 5V)</button>
+    <button type="button" data-preset="reset">Reset to defaults</button>
+  </div>
+
+  <div class="failure-banner" id="failBanner">⚠ <span id="failText">Power exceeds rating</span></div>
+
+  <details class="pdetail">
+    <summary>Inverse design — &quot;I want X mA at Y V, what R?&quot;</summary>
+    <p style="font-size:12px;color:var(--fg-dim);margin:6px 0">Type a target voltage and target current; we'll solve R = V/I and snap to the nearest E12.</p>
+    <div class="inverse-row">
+      <div class="input-pair"><span>Target V (V)</span>
+        <input type="number" id="invV" value="3.3" step="0.1" min="0" max="50" style="background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:13px ui-monospace,monospace"></div>
+      <div class="input-pair"><span>Target I (mA)</span>
+        <input type="number" id="invI" value="10" step="0.1" min="0.001" max="10000" style="background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font:13px ui-monospace,monospace"></div>
+      <div class="input-pair"><span>&nbsp;</span>
+        <button type="button" id="invApply" class="btn primary" style="background:var(--accent);color:var(--bg);border:1px solid var(--accent);border-radius:4px;padding:5px 10px;cursor:pointer;font:12px ui-monospace,monospace">Apply to sliders</button></div>
+    </div>
+    <div class="inverse-result" id="invResult">→ R_exact = 330 Ω · nearest E12 = 330 Ω · actual I at exact V = 10.0 mA</div>
+  </details>
 
   <div class="figure">
     <h3>Live readouts</h3>
@@ -232,6 +341,14 @@
       <text x="450" y="115" class="label" text-anchor="middle">I (flow)</text>
       <text x="450" y="170" class="label-dim" text-anchor="middle" id="flowLbl">5.0 mA</text>
     </svg>
+
+    <div class="barchart">
+      <div class="bar-row v-row"><span class="lbl">V</span><div class="track"><div class="fill" id="vBar" style="width:42%"></div></div><span class="v" id="vBarVal">5.00 V</span></div>
+      <div class="bar-row i-row"><span class="lbl">I</span><div class="track"><div class="fill" id="iBar" style="width:50%"></div></div><span class="v" id="iBarVal">5.00 mA</span></div>
+      <div class="bar-row r-row"><span class="lbl">R</span><div class="track"><div class="fill" id="rBar" style="width:40%"></div></div><span class="v" id="rBarVal">1.0 kΩ</span></div>
+      <div class="bar-row p-row"><span class="lbl">P</span><div class="track"><div class="fill" id="pBar" style="width:25%"></div></div><span class="v" id="pBarVal">25.0 mW</span></div>
+      <div class="bar-note">V is linear (0–12 V). I, R, P are log-scaled (I: µA to A · R: 10 Ω to 1 MΩ · P: nW to 10 W). Double V at fixed R and the P bar moves 4× as far on a linear chart — log compresses that into a constant 2× step.</div>
+    </div>
 
     <h3 style="margin-top:18px">Unit fluency</h3>
     <table>
@@ -382,109 +499,260 @@
 
   const E12 = [1.0,1.2,1.5,1.8,2.2,2.7,3.3,3.9,4.7,5.6,6.8,8.2];
   function snapE12(r){
-    // r in ohms, snap to nearest E12 ×10ⁿ
-    if(r<=0) return 1;
+    if(r<=0) return 0.01;
     let decade = Math.pow(10, Math.floor(Math.log10(r)));
     const norm = r/decade;
     let best=E12[0], bd=Math.abs(norm-E12[0]);
-    for(const v of E12){
-      const d=Math.abs(norm-v);
-      if(d<bd){bd=d;best=v}
-    }
-    // also check next decade's 1.0 (e.g., 9.5 closer to 10 than to 8.2)
+    for(const v of E12){ const d=Math.abs(norm-v); if(d<bd){bd=d;best=v} }
     if(Math.abs(norm-10)<bd){best=1.0; decade=decade*10;}
-    return Math.round(best*decade);
+    return parseFloat((best*decade).toPrecision(3));
   }
   function fmtR(r){
     if(r>=1e6) return (r/1e6).toFixed(2)+" MΩ";
     if(r>=1e3) return (r/1e3).toFixed(2)+" kΩ";
-    return r.toFixed(0)+" Ω";
+    if(r>=1) return r.toFixed(1)+" Ω";
+    if(r>=1e-3) return (r*1e3).toFixed(0)+" mΩ";
+    return (r*1e6).toFixed(0)+" µΩ";
   }
   function fmtI(i){
+    if(!isFinite(i)) return "—";
     if(Math.abs(i)<1e-6) return (i*1e9).toFixed(2)+" nA";
     if(Math.abs(i)<1e-3) return (i*1e6).toFixed(2)+" µA";
     if(Math.abs(i)<1) return (i*1e3).toFixed(2)+" mA";
     return i.toFixed(3)+" A";
   }
   function fmtP(p){
+    if(!isFinite(p)) return "—";
     if(Math.abs(p)<1e-6) return (p*1e9).toFixed(2)+" nW";
     if(Math.abs(p)<1e-3) return (p*1e6).toFixed(2)+" µW";
     if(Math.abs(p)<1) return (p*1e3).toFixed(2)+" mW";
     return p.toFixed(3)+" W";
   }
+  function fmtV(v){ return v.toFixed(2)+" V"; }
 
+  // Controls
   const vSlide=document.getElementById('vSlide');
   const rSlide=document.getElementById('rSlide');
+  const r2Slide=document.getElementById('r2Slide');
+  const vfSlide=document.getElementById('vfSlide');
+  const alphaSlide=document.getElementById('alphaSlide');
+  const dTSlide=document.getElementById('dTSlide');
+  const ratSel=document.getElementById('ratSel');
+  const ledEnable=document.getElementById('ledEnable');
+  const twoREnable=document.getElementById('twoREnable');
+  const tcrEnable=document.getElementById('tcrEnable');
+  const ledControl=document.getElementById('ledControl');
+  const twoRControl=document.getElementById('twoRControl');
+  const tcrControl=document.getElementById('tcrControl');
+  const tcrDTControl=document.getElementById('tcrDTControl');
   const flowArrows=document.getElementById('flowArrows');
+  const narrow=document.getElementById('narrow');
+  const failBanner=document.getElementById('failBanner');
+  const failText=document.getElementById('failText');
+
+  // Mode toggle visibility
+  function syncToggleVisibility(){
+    ledControl.classList.toggle('visible', ledEnable.checked);
+    twoRControl.classList.toggle('visible', twoREnable.checked);
+    tcrControl.classList.toggle('visible', tcrEnable.checked);
+    tcrDTControl.classList.toggle('visible', tcrEnable.checked);
+  }
 
   function update(){
+    syncToggleVisibility();
     const V=parseFloat(vSlide.value);
-    const rExp=parseFloat(rSlide.value); // 1..5 means 10^1 .. 10^5  -> wait we want 10..1e6
-    // remap 1..5 → 1..6 so 10 Ω (10^1) to 1 MΩ (10^6)
-    const rRaw=fromLog(rExp);
-    const R=snapE12(rRaw);
-    const I=V/R;
-    const P=V*I;
+    const rExp=parseFloat(rSlide.value);
+    const r2Exp=parseFloat(r2Slide.value);
+    const Vf = ledEnable.checked ? parseFloat(vfSlide.value) : 0;
+    const alpha = tcrEnable.checked ? parseFloat(alphaSlide.value) : 0;  // ppm/K
+    const dT = tcrEnable.checked ? parseFloat(dTSlide.value) : 0;
+    const rating = parseFloat(ratSel.value);
 
+    const R_nom = snapE12(fromLog(rExp));
+    const R2_nom = snapE12(fromLog(r2Exp));
+    // TCR adjustment (only applied to R, not R2 — keep one tunable)
+    const R = Math.max(1e-6, R_nom * (1 + alpha * 1e-6 * dT));
+    const R2 = twoREnable.checked ? R2_nom : 0;
+    const Rtotal = R + R2;
+    const Vdrive = Math.max(0, V - Vf);
+    const I = Rtotal > 0 ? Vdrive / Rtotal : 0;
+    const V_R = I * R;
+    const V_R2 = I * R2;
+    const V_LED = ledEnable.checked && I > 0 ? Vf : 0;
+    const P_R = I*I*R;
+    const P_R2 = I*I*R2;
+    const P_LED = I * Vf;
+    const P_total = V * I;  // total source power
+
+    // Slider readouts
     document.getElementById('vRead').textContent=V.toFixed(2)+" V";
-    document.getElementById('rRead').textContent=fmtR(R);
+    document.getElementById('rRead').textContent=
+      (tcrEnable.checked && dT !== 0)
+        ? fmtR(R) + ` (nominal ${fmtR(R_nom)})`
+        : fmtR(R_nom);
+    document.getElementById('r2Read').textContent=fmtR(R2_nom);
+    document.getElementById('vfRead').textContent=Vf.toFixed(2)+" V";
+    document.getElementById('alphaRead').textContent=alpha.toFixed(0)+" ppm/K";
+    document.getElementById('dTRead').textContent=dT.toFixed(0)+" K";
+    const ratLabel = ({"0.0625":"1/16 W","0.125":"1/8 W","0.25":"1/4 W","0.5":"1/2 W","1":"1 W","2":"2 W","5":"5 W"})[String(rating)] || (rating+" W");
+    document.getElementById('ratRead').textContent=ratLabel;
 
-    // Rearrangement cards
+    // Rearrangement cards — show I = V_drive / R_total (the "Ohm's law in this scenario")
     const setText=(id,t)=>{const e=document.getElementById(id);if(e)e.textContent=t};
-    setText('vNum',V.toFixed(2));
-    setText('rNum',R);
-    setText('iNum',fmtI(I));
-    setText('iNum2',I.toExponential(3));
-    setText('rNum2',R);
-    setText('vNum2',V.toFixed(2)+" V");
-    setText('vNum3',V.toFixed(2));
-    setText('iNum3',I.toExponential(3));
-    setText('rNum3',R+" Ω");
-    setText('vNum4',V.toFixed(2));
-    setText('iNum4',I.toExponential(3));
-    setText('pNum1',fmtP(P));
-    setText('iNum5',I.toExponential(3));
-    setText('rNum5',R);
-    setText('pNum2',fmtP(I*I*R));
-    setText('vNum6',V.toFixed(2));
-    setText('rNum6',R);
-    setText('pNum3',fmtP(V*V/R));
+    setText('vNum', Vdrive.toFixed(2));
+    setText('rNum', fmtR(Rtotal));
+    setText('iNum', fmtI(I));
+    setText('iNum2', I.toExponential(3));
+    setText('rNum2', fmtR(Rtotal));
+    setText('vNum2', Vdrive.toFixed(2)+" V");
+    setText('vNum3', Vdrive.toFixed(2));
+    setText('iNum3', I.toExponential(3));
+    setText('rNum3', fmtR(Rtotal));
+    setText('vNum4', Vdrive.toFixed(2));
+    setText('iNum4', I.toExponential(3));
+    setText('pNum1', fmtP(Vdrive*I));
+    setText('iNum5', I.toExponential(3));
+    setText('rNum5', fmtR(Rtotal));
+    setText('pNum2', fmtP(I*I*Rtotal));
+    setText('vNum6', Vdrive.toFixed(2));
+    setText('rNum6', fmtR(Rtotal));
+    setText('pNum3', fmtP(Rtotal>0 ? Vdrive*Vdrive/Rtotal : 0));
 
-    setText('iUnits',fmtI(I)+" = "+I.toExponential(3)+" A");
-    setText('rUnits',fmtR(R)+" = "+R+" Ω");
-    setText('pUnits',fmtP(P)+" = "+P.toExponential(3)+" W");
+    setText('iUnits', fmtI(I)+" = "+I.toExponential(3)+" A");
+    setText('rUnits', fmtR(R)+" = "+R.toExponential(3)+" Ω");
+    setText('pUnits', fmtP(P_R)+" = "+P_R.toExponential(3)+" W");
 
-    // Tank fill height proportional to V/12
+    // Tank fill height (V_open scale)
     const tank=document.getElementById('tankFill');
     const tankH=Math.max(2,(V/12)*120);
     tank.setAttribute('y', 150-tankH);
     tank.setAttribute('height', tankH);
     document.getElementById('tankLbl').textContent=V.toFixed(2)+" V";
 
-    // Narrowing: more R = tighter pipe (smaller opening)
-    // map R log to opening 28→2 pixels
-    const opening=Math.max(2, 28 - 26*((Math.log10(R)-1)/5));
+    // Narrowing — based on R_total
+    // R range 0.01 Ω to 1 MΩ; map log to opening 30→1
+    const logR = Math.log10(Math.max(0.01, Rtotal));
+    const opening = Math.max(1, 30 - (30-1) * Math.max(0, Math.min(1, (logR + 2) / 8)));
     const cy=125;
-    document.getElementById('narrow').setAttribute('points',
-      `280,${cy-15} 360,${cy-opening/2} 360,${cy+opening/2} 280,${cy+15}`);
-    document.getElementById('narrowLbl').textContent=fmtR(R);
+    narrow.setAttribute('points', `280,${cy-15} 360,${cy-opening/2} 360,${cy+opening/2} 280,${cy+15}`);
+    document.getElementById('narrowLbl').textContent=fmtR(Rtotal);
 
-    // Flow arrows: speed proportional to I (log)
+    // Flow arrows — speed proportional to log10(I)
     flowArrows.innerHTML='';
-    const speed=Math.min(1, Math.log10(I*1e6+1)/4); // 0..1
+    const speed=Math.min(1, Math.log10(I*1e6+1)/6);
     const nArrows=Math.max(1, Math.round(speed*6));
     for(let k=0;k<nArrows;k++){
       const x=370+k*30+(k%2)*5;
       flowArrows.innerHTML+=`<polygon points="${x},120 ${x+12},125 ${x},130" fill="#5ec8ff"/>`;
     }
     document.getElementById('flowLbl').textContent=fmtI(I);
+
+    // Failure / wattage rating check (against P_R — power in the resistor itself)
+    const overRating = P_R > rating;
+    failBanner.classList.toggle('visible', overRating);
+    narrow.classList.toggle('led-pipe-warn', overRating);
+    if (overRating){
+      const factor = (P_R / rating).toFixed(1);
+      failText.textContent =
+        `P_R = ${fmtP(P_R)} exceeds ${ratLabel} rating by ${factor}× — resistor overheats, drifts, or opens. ` +
+        (Rtotal < 0.1 ? `(R = ${fmtR(Rtotal)} is the GPIO-short region — that's chip damage in seconds, not minutes.)` : `Drop V, raise R, or pick a higher-rated part.`);
+    }
+
+    // Bar chart — V linear, others log
+    const V_max = 12;
+    const I_min = 1e-9, I_max = 1;
+    const R_min = 0.01, R_max = 1e6;
+    const P_min = 1e-9, P_max = V_max * V_max / R_min;   // 1.44e4 W ceiling (theoretical worst case)
+    function logPct(x, lo, hi){
+      if (x <= lo) return 1;
+      if (x >= hi) return 100;
+      return (Math.log10(x/lo) / Math.log10(hi/lo)) * 100;
+    }
+    const vPct = Math.min(100, Math.max(1, (V/V_max)*100));
+    const iPct = I>0 ? logPct(I, I_min, I_max) : 0;
+    const rPct = logPct(Rtotal, R_min, R_max);
+    const pPct = P_R>0 ? logPct(P_R, P_min, P_max) : 0;
+    document.getElementById('vBar').style.width = vPct.toFixed(1)+"%";
+    document.getElementById('iBar').style.width = iPct.toFixed(1)+"%";
+    document.getElementById('rBar').style.width = rPct.toFixed(1)+"%";
+    document.getElementById('pBar').style.width = pPct.toFixed(1)+"%";
+    document.getElementById('vBarVal').textContent = fmtV(V);
+    document.getElementById('iBarVal').textContent = fmtI(I);
+    document.getElementById('rBarVal').textContent = fmtR(Rtotal);
+    document.getElementById('pBarVal').textContent = fmtP(P_R);
   }
-  // Deep-link: encode slider state in URL hash
-  const HASH_IDS = ['vSlide','rSlide'];
-  function loadHash(){ const p = new URLSearchParams(location.hash.slice(1)); for(const id of HASH_IDS){ const v=p.get(id); if(v!==null){ const el=document.getElementById(id); if(el) el.value=v; }}}
-  function saveHash(){ const p = new URLSearchParams(); for(const id of HASH_IDS){ const el=document.getElementById(id); if(el) p.set(id, el.value); } history.replaceState(null,'','#'+p.toString()); }
-  vSlide.addEventListener('input', () => { saveHash(); update(); });
-  rSlide.addEventListener('input', () => { saveHash(); update(); });
+
+  // Presets
+  function setSliderToR(slider, R){
+    // Find rExp such that snapE12(10^rExp) = R
+    slider.value = Math.log10(R).toFixed(3);
+  }
+  const PRESETS = {
+    'led-red-330':   () => { vSlide.value=5;     setSliderToR(rSlide, 330);  ledEnable.checked=true; vfSlide.value=1.9; twoREnable.checked=false; tcrEnable.checked=false; ratSel.value="0.25"; },
+    'led-blue-150':  () => { vSlide.value=5;     setSliderToR(rSlide, 150);  ledEnable.checked=true; vfSlide.value=3.0; twoREnable.checked=false; tcrEnable.checked=false; ratSel.value="0.25"; },
+    'gpio-short':    () => { vSlide.value=3.3;   setSliderToR(rSlide, 0.047); ledEnable.checked=false; twoREnable.checked=false; tcrEnable.checked=false; ratSel.value="0.0625"; },
+    'pulldown-10k':  () => { vSlide.value=3.3;   setSliderToR(rSlide, 10000); ledEnable.checked=false; twoREnable.checked=false; tcrEnable.checked=false; ratSel.value="0.0625"; },
+    'divider':       () => { vSlide.value=5;     setSliderToR(rSlide, 10000); setSliderToR(r2Slide, 10000); ledEnable.checked=false; twoREnable.checked=true; tcrEnable.checked=false; ratSel.value="0.125"; },
+    'reset':         () => { vSlide.value=5;     setSliderToR(rSlide, 1000); ledEnable.checked=false; twoREnable.checked=false; tcrEnable.checked=false; vfSlide.value=2.0; alphaSlide.value=100; dTSlide.value=0; ratSel.value="0.25"; },
+  };
+  document.querySelectorAll('.presets button[data-preset]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = PRESETS[btn.dataset.preset];
+      if (p){ p(); updateAndSave(); }
+    });
+  });
+
+  // Inverse design: target I (mA), target V (V) → R = V/I → snap to E12
+  function updateInverse(){
+    const Vt = parseFloat(document.getElementById('invV').value) || 0;
+    const Imt = parseFloat(document.getElementById('invI').value) || 0;
+    const It = Imt / 1000;  // mA → A
+    if (Vt <= 0 || It <= 0){
+      document.getElementById('invResult').textContent = "→ Enter positive V and I targets";
+      return;
+    }
+    const Rexact = Vt / It;
+    const Rsnap = snapE12(Rexact);
+    const Iactual = Vt / Rsnap;
+    const errPct = ((Iactual - It) / It * 100).toFixed(1);
+    document.getElementById('invResult').textContent =
+      `→ R_exact = ${fmtR(Rexact)} · nearest E12 = ${fmtR(Rsnap)} · I at exact V with snapped R = ${fmtI(Iactual)} (${errPct >= 0 ? '+' : ''}${errPct} % vs target)`;
+  }
+  document.getElementById('invV').addEventListener('input', updateInverse);
+  document.getElementById('invI').addEventListener('input', updateInverse);
+  document.getElementById('invApply').addEventListener('click', () => {
+    const Vt = parseFloat(document.getElementById('invV').value) || 0;
+    const Imt = parseFloat(document.getElementById('invI').value) || 0;
+    const It = Imt / 1000;
+    if (Vt <= 0 || It <= 0) return;
+    const Rsnap = snapE12(Vt / It);
+    vSlide.value = Math.max(0, Math.min(12, Vt));
+    setSliderToR(rSlide, Rsnap);
+    ledEnable.checked = false;
+    twoREnable.checked = false;
+    updateAndSave();
+  });
+  updateInverse();
+
+  // Deep-link state
+  const HASH_IDS = ['vSlide','rSlide','r2Slide','vfSlide','alphaSlide','dTSlide','ratSel'];
+  const HASH_BOOL = ['ledEnable','twoREnable','tcrEnable'];
+  function loadHash(){
+    const p = new URLSearchParams(location.hash.slice(1));
+    HASH_IDS.forEach(id => { const v = p.get(id); if (v !== null){ const el = document.getElementById(id); if (el) el.value = v; }});
+    HASH_BOOL.forEach(id => { const v = p.get(id); if (v !== null){ const el = document.getElementById(id); if (el) el.checked = v === '1'; }});
+  }
+  function saveHash(){
+    const p = new URLSearchParams();
+    HASH_IDS.forEach(id => { const el = document.getElementById(id); if (el) p.set(id, el.value); });
+    HASH_BOOL.forEach(id => { const el = document.getElementById(id); if (el) p.set(id, el.checked ? '1' : '0'); });
+    history.replaceState(null, '', '#' + p.toString());
+  }
+  function updateAndSave(){ update(); saveHash(); }
+  [vSlide, rSlide, r2Slide, vfSlide, alphaSlide, dTSlide].forEach(el =>
+    el.addEventListener('input', updateAndSave));
+  [ratSel, ledEnable, twoREnable, tcrEnable].forEach(el =>
+    el.addEventListener('change', updateAndSave));
   loadHash();
   update();
 </script>
