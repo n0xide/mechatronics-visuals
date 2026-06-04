@@ -126,6 +126,27 @@
   .regime-banner .rt.large-signal{color:var(--warn)}
   .regime-banner .rt.dynamic{color:var(--warn)}
   .regime-banner .rt.nonlinear{color:var(--warn)}
+
+  /* Voltage divider extras: R_load slider, buffer toggle, color bands, tolerance */
+  .feature-toggle{display:inline-flex;align-items:center;gap:6px;margin-right:14px;
+    font:11px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .feature-toggle input{margin:0}
+  .extra-control{display:none}
+  .extra-control.visible{display:flex;flex-direction:column;gap:4px}
+  .colorband{display:inline-block;vertical-align:middle;margin-left:6px;
+    border:1px solid var(--line);border-radius:2px;background:var(--bg-elev2)}
+  .tolbox{background:var(--bg-elev2);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;
+    padding:10px 14px;margin:12px 0;font:12px ui-monospace,Menlo,monospace}
+  .tolbox b{color:var(--accent3)}
+  .tolbox .envelope{display:grid;grid-template-columns:repeat(3, 1fr);
+    gap:8px;margin-top:6px;text-align:center}
+  .tolbox .envelope .cell{padding:6px;background:var(--bg-elev);
+    border:1px solid var(--line);border-radius:4px}
+  .tolbox .envelope .cell .lbl{color:var(--fg-dim);font-size:11px}
+  .tolbox .envelope .cell .val{color:var(--accent);font-size:13px;margin-top:2px}
+  .tolbox .envelope .cell.lo .val{color:var(--warn)}
+  .tolbox .envelope .cell.hi .val{color:var(--accent2)}
 </style>
 </head>
 <body>
@@ -153,8 +174,8 @@
 
   <section class="controls">
     <div class="control"><label>V_in: <span class="readout" id="vRead">4.20 V</span></label><input id="v" type="range" min="0.5" max="24" step="0.1" value="4.2"></div>
-    <div class="control"><label>R1: <span class="readout" id="r1Read">33 kΩ</span></label><input id="r1" type="range" min="0" max="24" step="1" value="18"></div>
-    <div class="control"><label>R2: <span class="readout" id="r2Read">56 kΩ</span></label><input id="r2" type="range" min="0" max="24" step="1" value="21"></div>
+    <div class="control"><label>R1: <span class="readout" id="r1Read">33 kΩ</span> <span id="r1Band" class="colorband"></span></label><input id="r1" type="range" min="0" max="24" step="1" value="18"></div>
+    <div class="control"><label>R2: <span class="readout" id="r2Read">56 kΩ</span> <span id="r2Band" class="colorband"></span></label><input id="r2" type="range" min="0" max="24" step="1" value="21"></div>
     <div class="control"><label>Target V_out: <span class="readout" id="vtRead">2.64 V</span></label><input id="vt" type="range" min="0.1" max="24" step="0.05" value="2.64"></div>
     <div class="control"><label>ADC: <span class="readout" id="adcRead">12-bit / 3.3 V</span></label>
       <select id="adc">
@@ -162,6 +183,28 @@
         <option value="10,5.0">10-bit, 5.0 V ref (ATmega328P)</option>
         <option value="12,3.3i">12-bit, 3.3 V (ESP32-S3, nonlinear)</option>
       </select>
+    </div>
+    <div class="control"><label>Tolerance: <span class="readout" id="tolRead">±1 %</span></label>
+      <select id="tolSel">
+        <option value="0.001">±0.1 % (precision thin-film)</option>
+        <option value="0.01" selected>±1 % (general thin-film)</option>
+        <option value="0.05">±5 % (carbon-film)</option>
+        <option value="0.10">±10 % (legacy)</option>
+      </select>
+    </div>
+  </section>
+
+  <section class="controls" style="margin-top:6px">
+    <div class="control" style="grid-column:1/-1">
+      <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center">
+        <label class="feature-toggle"><input type="checkbox" id="loadEnable"> Load attached to tap (R_load)</label>
+        <label class="feature-toggle"><input type="checkbox" id="bufEnable"> Op-amp buffer between tap and load</label>
+      </div>
+    </div>
+    <div class="control extra-control" id="loadControl">
+      <label>R_load — input impedance of next stage: <span class="readout" id="rlRead">100 kΩ</span></label>
+      <input id="rl" type="range" min="2" max="7" step="0.05" value="5">
+      <small style="color:var(--fg-dim);font-size:11px">log scale, 100 Ω – 10 MΩ. ADC sample window ≈ 100 kΩ · op-amp input ≈ 10 MΩ+ · GPIO with pull-up ≈ 10 kΩ. Drop R_load below R_th and watch V_tap collapse — that's the loading effect made interactive.</small>
     </div>
   </section>
 
@@ -183,8 +226,22 @@
     </div>
 
     <div class="vd" id="loadbox" style="border-left-color:var(--warn)">
-      <b style="color:var(--warn)">Loading effect (forward to Thévenin):</b>
+      <b style="color:var(--warn)">Loading effect:</b>
       <span id="loadCalc">Rth = 20.8 kΩ vs ADC ~100 kΩ → predicted error ~17.2 % low</span>
+    </div>
+
+    <div class="tolbox" id="tolbox">
+      <b>Tolerance worst-case envelope:</b> with ±<span id="tolPctLbl">1</span> % resistors,
+      V_tap can drift between the bounds below (R1 high/R2 low gives V_tap low; vice versa).
+      <div class="envelope">
+        <div class="cell lo"><div class="lbl">V_tap (worst low)</div><div class="val" id="vtapLo">—</div></div>
+        <div class="cell"><div class="lbl">V_tap (nominal)</div><div class="val" id="vtapNom">—</div></div>
+        <div class="cell hi"><div class="lbl">V_tap (worst high)</div><div class="val" id="vtapHi">—</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--fg-dim);margin-top:8px" id="tolNote">
+        Drift band = ±<span id="tolDriftPct">…</span>. For battery monitors or ADC scaling
+        where you need 1 LSB of resolution at 12-bit (~0.024 %), prefer 0.1 % thin-film.
+      </div>
     </div>
   </div>
 
@@ -420,8 +477,50 @@
     return p.toFixed(3)+" W";
   }
 
-  const ids=['v','r1','r2','vt','adc'];
+  const ids=['v','r1','r2','vt','adc','rl','tolSel'];
   const els={}; ids.forEach(k=>els[k]=document.getElementById(k));
+  const loadEnable = document.getElementById('loadEnable');
+  const bufEnable  = document.getElementById('bufEnable');
+  const loadControl = document.getElementById('loadControl');
+
+  function fmtV(v){
+    if(Math.abs(v) < 0.001) return (v*1000).toFixed(2) + " mV";
+    return v.toFixed(3) + " V";
+  }
+
+  // 4-band resistor color code rendering (shared pattern across phase-1 explorers)
+  const BAND_COLORS = ['#1a1a1a','#7c4a0e','#d63a2f','#e87a25','#e8d325','#3a9d3a','#3a6cd6','#9a4ad6','#7c7c7c','#dde3ec'];
+  const BAND_GOLD = '#caa040';
+  const BAND_BODY = '#d4b78a';
+  function colorBandsFor(R){
+    if (R <= 0) return null;
+    let val = R, mult = 0;
+    while (val >= 100){ val /= 10; mult++; }
+    while (val < 10 && val > 0){ val *= 10; mult--; }
+    const d1 = Math.floor(val/10);
+    const d2 = Math.floor(val - d1*10 + 0.5);
+    if (mult < -2 || mult > 9) return null;
+    let m;
+    if (mult >= 0) m = BAND_COLORS[mult];
+    else if (mult === -1) m = BAND_GOLD;
+    else m = '#bdbdbd';
+    return [BAND_COLORS[Math.max(0,Math.min(9,d1))], BAND_COLORS[Math.max(0,Math.min(9,d2))], m, BAND_GOLD];
+  }
+  function renderBand(el, R){
+    const bands = colorBandsFor(R);
+    if (!bands || !el) { if(el) el.innerHTML = ''; return; }
+    const [c1, c2, c3, c4] = bands;
+    el.innerHTML =
+      '<svg viewBox="0 0 50 14" width="48" height="14" aria-hidden="true">'+
+      '<rect x="0" y="4" width="50" height="6" fill="'+BAND_BODY+'"/>'+
+      '<line x1="0" y1="7" x2="4" y2="7" stroke="#888" stroke-width="1.2"/>'+
+      '<line x1="46" y1="7" x2="50" y2="7" stroke="#888" stroke-width="1.2"/>'+
+      '<rect x="9" y="2" width="3" height="10" fill="'+c1+'"/>'+
+      '<rect x="16" y="2" width="3" height="10" fill="'+c2+'"/>'+
+      '<rect x="23" y="2" width="3" height="10" fill="'+c3+'"/>'+
+      '<rect x="38" y="2" width="3" height="10" fill="'+c4+'"/>'+
+      '</svg>';
+  }
 
   // ADC presets:  bits, ref, label
   function adcCfg(val){
@@ -509,45 +608,85 @@
     const R2 = rOf(els.r2.value);
     const Vt = parseFloat(els.vt.value);
     const acfg = adcCfg(els.adc.value);
+    const tol = parseFloat(els.tolSel.value);
+    const loadOn = loadEnable.checked;
+    const buffered = bufEnable.checked;
+    const Rload = loadOn ? Math.pow(10, parseFloat(els.rl.value)) : Infinity;
+    loadControl.classList.toggle('visible', loadOn);
 
     document.getElementById('vRead').textContent  = V.toFixed(2) + " V";
     document.getElementById('r1Read').textContent = fmtR(R1);
     document.getElementById('r2Read').textContent = fmtR(R2);
     document.getElementById('vtRead').textContent = Vt.toFixed(2) + " V";
     document.getElementById('adcRead').textContent= acfg.label;
+    document.getElementById('tolRead').textContent= "±" + (tol*100).toFixed(tol<0.01?1:0) + " %";
+    document.getElementById('rlRead').textContent = fmtR(Rload);
 
-    const ratio = R2 / (R1 + R2);
-    const Vtap  = V * ratio;
-    const Vr1   = V - Vtap;
-    const I     = V / (R1 + R2);
+    // Render color bands
+    renderBand(document.getElementById('r1Band'), R1);
+    renderBand(document.getElementById('r2Band'), R2);
+
+    // Effective R2 considering load (parallel R when load is attached and not buffered)
+    const R2_eff = (loadOn && !buffered) ? parallelR(R2, Rload) : R2;
+    const ratio_nom = R2 / (R1 + R2);
+    const Vtap_nom  = V * ratio_nom;
+    const ratio_eff = R2_eff / (R1 + R2_eff);
+    const Vtap_eff  = V * ratio_eff;
+    const Vr1   = V - Vtap_eff;
+    const I     = V / (R1 + R2_eff);
     const P     = V * I;
     const fullScale = Math.pow(2, acfg.bits) - 1;
-    const adcCount  = Math.min(fullScale, Math.max(0, Math.round(Vtap / acfg.ref * fullScale)));
+    const adcCount  = Math.min(fullScale, Math.max(0, Math.round(Vtap_eff / acfg.ref * fullScale)));
     const Rth   = parallelR(R1, R2);
-    const adcZ  = 100000; // RP2350 sample-time input impedance, approximate
-    const loadFactor = adcZ / (Rth + adcZ);
-    const loadErrPct = (1 - loadFactor) * 100;
+    // Loading error (based on the active R_load if attached, else the static 100k assumption)
+    const Rload_for_calc = loadOn ? Rload : 100000;
+    const loadFactor = Rload_for_calc / (Rth + Rload_for_calc);
+    const loadErrPct = buffered ? 0 : (1 - loadFactor) * 100;
 
-    document.getElementById('tRatio').textContent = ratio.toFixed(4);
-    document.getElementById('tVtap').textContent  = Vtap.toFixed(3) + " V";
+    document.getElementById('tRatio').textContent = ratio_eff.toFixed(4) +
+        (loadOn && !buffered ? " (loaded; nom " + ratio_nom.toFixed(4) + ")" : "");
+    document.getElementById('tVtap').textContent  = Vtap_eff.toFixed(3) + " V" +
+        (loadOn && !buffered ? "  (Δ " + ((Vtap_eff - Vtap_nom)*1000).toFixed(1) + " mV from nominal)" : "");
     document.getElementById('tVR1').textContent   = Vr1.toFixed(3) + " V";
     document.getElementById('tI').textContent     = fmtI(I);
     document.getElementById('tP').textContent     = fmtP(P);
     document.getElementById('tAdc').textContent   = adcCount + " / " + fullScale +
-        (Vtap > acfg.ref ? "  ⚠ V_tap > V_ref!" : "");
+        (Vtap_eff > acfg.ref ? "  ⚠ V_tap > V_ref!" : "");
     document.getElementById('tRth').textContent   = fmtR(Rth);
 
     document.getElementById('vdCalc').textContent =
-      `${V.toFixed(2)} × ${R2.toLocaleString()} / ${(R1+R2).toLocaleString()} = ${Vtap.toFixed(3)} V`;
+      (loadOn && !buffered)
+        ? `${V.toFixed(2)} × ${R2_eff.toFixed(0)} / ${(R1+R2_eff).toFixed(0)} = ${Vtap_eff.toFixed(3)} V  (R2_eff = R2 ∥ R_load = ${fmtR(R2_eff)})`
+        : `${V.toFixed(2)} × ${R2.toLocaleString()} / ${(R1+R2).toLocaleString()} = ${Vtap_nom.toFixed(3)} V`;
 
     const loadBox = document.getElementById('loadCalc');
-    if(loadErrPct > 5){
-      loadBox.innerHTML = `Rth = ${fmtR(Rth)} vs ADC ~100 kΩ → predicted error <b style="color:var(--warn)">~${loadErrPct.toFixed(1)} % low</b>. Calibrate, lower R1+R2, or buffer with an op-amp.`;
+    if(buffered && loadOn){
+      loadBox.innerHTML = `Op-amp buffer engaged: V_tap delivered to load = nominal V_tap regardless of R_load. <b style="color:var(--accent3)">Loading error eliminated.</b> Trade-off: extra IC, supply rails, offset/noise of the op-amp.`;
+    } else if(loadOn){
+      const tag = loadErrPct > 5 ? 'var(--warn)' : (loadErrPct > 1 ? 'var(--accent2)' : 'var(--accent3)');
+      const ver = loadErrPct > 5 ? '⚠ heavily loaded' : (loadErrPct > 1 ? 'borderline' : 'safe');
+      loadBox.innerHTML = `Rth = ${fmtR(Rth)} vs R_load = ${fmtR(Rload)} → loading droop <b style="color:${tag}">${loadErrPct.toFixed(2)} %</b> (${ver}). Buffer-toggle on to compare.`;
+    } else if(loadErrPct > 5){
+      loadBox.innerHTML = `Rth = ${fmtR(Rth)} vs ADC ~100 kΩ (assumed) → predicted error <b style="color:var(--warn)">~${loadErrPct.toFixed(1)} % low</b>. Calibrate, lower R1+R2, or buffer with an op-amp. Toggle "Load attached" to slide R_load directly.`;
     } else if(loadErrPct > 1){
-      loadBox.innerHTML = `Rth = ${fmtR(Rth)} vs ADC ~100 kΩ → predicted error ~${loadErrPct.toFixed(1)} % low. Borderline — calibration recommended.`;
+      loadBox.innerHTML = `Rth = ${fmtR(Rth)} vs ADC ~100 kΩ (assumed) → predicted error ~${loadErrPct.toFixed(1)} % low. Borderline — calibration recommended.`;
     } else {
-      loadBox.innerHTML = `Rth = ${fmtR(Rth)} vs ADC ~100 kΩ → predicted error ~${loadErrPct.toFixed(2)} % — safe to ignore.`;
+      loadBox.innerHTML = `Rth = ${fmtR(Rth)} vs ADC ~100 kΩ (assumed) → predicted error ~${loadErrPct.toFixed(2)} % — safe to ignore.`;
     }
+
+    // Tolerance envelope: worst-case low and high V_tap given ±tol on both resistors
+    // V_tap_low: R1 at +tol, R2 at −tol  (numerator small, denominator big)
+    // V_tap_high: R1 at −tol, R2 at +tol  (numerator big, denominator small)
+    const R1hi = R1 * (1 + tol), R1lo = R1 * (1 - tol);
+    const R2hi = R2 * (1 + tol), R2lo = R2 * (1 - tol);
+    const VtapLo = V * R2lo / (R1hi + R2lo);
+    const VtapHi = V * R2hi / (R1lo + R2hi);
+    const driftPct = ((VtapHi - VtapLo) / 2 / Vtap_nom) * 100;
+    document.getElementById('tolPctLbl').textContent = (tol*100).toFixed(tol<0.01?1:0);
+    document.getElementById('vtapLo').textContent  = fmtV(VtapLo);
+    document.getElementById('vtapNom').textContent = fmtV(Vtap_nom);
+    document.getElementById('vtapHi').textContent  = fmtV(VtapHi);
+    document.getElementById('tolDriftPct').textContent = driftPct.toFixed(2) + " % of nominal";
 
     drawCircuit(V, R1, R2);
 
@@ -572,8 +711,9 @@
     }
   }
 
-  // Deep-link state: URL hash mirrors slider/select values so configs are shareable.
-  const HASH_KEYS = ['v','r1','r2','vt','adc'];
+  // Deep-link state: URL hash mirrors slider/select values + feature toggles so configs are shareable.
+  const HASH_KEYS = ['v','r1','r2','vt','adc','rl','tolSel'];
+  const HASH_BOOL = ['loadEnable','bufEnable'];
   function readHash(){
     const h = location.hash.replace(/^#/, '');
     if (!h) return;
@@ -582,10 +722,15 @@
       const v = p.get(k);
       if (v !== null && els[k]) els[k].value = v;
     });
+    HASH_BOOL.forEach(id => {
+      const v = p.get(id);
+      if (v !== null) document.getElementById(id).checked = v === '1';
+    });
   }
   function writeHash(){
     const p = new URLSearchParams();
     HASH_KEYS.forEach(k => { if (els[k]) p.set(k, els[k].value); });
+    HASH_BOOL.forEach(id => { p.set(id, document.getElementById(id).checked ? '1' : '0'); });
     history.replaceState(null, '', '#' + p.toString());
   }
   readHash();
@@ -593,6 +738,9 @@
   function updateAndSave(){ update(); writeHash(); }
   ids.forEach(k => els[k].addEventListener('input', updateAndSave));
   els.adc.addEventListener('change', updateAndSave);
+  els.tolSel.addEventListener('change', updateAndSave);
+  loadEnable.addEventListener('change', updateAndSave);
+  bufEnable.addEventListener('change', updateAndSave);
   update();
 </script>
 </body>

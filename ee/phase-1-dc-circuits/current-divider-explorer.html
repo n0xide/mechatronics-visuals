@@ -148,6 +148,28 @@
   .regime-banner .rt.large-signal{color:var(--warn)}
   .regime-banner .rt.dynamic{color:var(--warn)}
   .regime-banner .rt.nonlinear{color:var(--warn)}
+
+  /* Current-divider extras: source-Z toggle, color bands, winner highlight */
+  .feature-toggle{display:inline-flex;align-items:center;gap:6px;margin-right:14px;
+    font:11px ui-monospace,Menlo,monospace;color:var(--fg-dim)}
+  .feature-toggle input{margin:0}
+  .extra-control{display:none}
+  .extra-control.visible{display:flex;flex-direction:column;gap:4px}
+  .colorband{display:inline-block;vertical-align:middle;margin-left:6px;
+    border:1px solid var(--line);border-radius:2px;background:var(--bg-elev2)}
+  tr.winner{box-shadow:inset 4px 0 0 var(--accent3)}
+  tr.winner td:first-child{color:var(--accent3);font-weight:600}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -176,12 +198,12 @@
   <section class="controls">
     <div class="control"><label>I_total (source): <span class="readout" id="itRead">100 mA</span></label><input id="it" type="range" min="0.001" max="10.0" step="0.001" value="0.100"></div>
     <div class="control"><label>Number of branches (N): <span class="readout" id="nRead">3</span></label><input id="n" type="range" min="2" max="6" step="1" value="3"></div>
-    <div class="control"><label>R1: <span class="readout" id="r1Read">100 Ω</span></label><input id="r1" type="range" min="0" max="60" step="1" value="24"></div>
-    <div class="control"><label>R2: <span class="readout" id="r2Read">220 Ω</span></label><input id="r2" type="range" min="0" max="60" step="1" value="28"></div>
-    <div class="control"><label>R3: <span class="readout" id="r3Read">470 Ω</span></label><input id="r3" type="range" min="0" max="60" step="1" value="32"></div>
-    <div class="control"><label>R4: <span class="readout" id="r4Read">1 kΩ</span></label><input id="r4" type="range" min="0" max="60" step="1" value="36"></div>
-    <div class="control"><label>R5: <span class="readout" id="r5Read">2.2 kΩ</span></label><input id="r5" type="range" min="0" max="60" step="1" value="40"></div>
-    <div class="control"><label>R6: <span class="readout" id="r6Read">4.7 kΩ</span></label><input id="r6" type="range" min="0" max="60" step="1" value="44"></div>
+    <div class="control"><label>R1: <span class="readout" id="r1Read">100 Ω</span> <span id="r1Band" class="colorband"></span></label><input id="r1" type="range" min="0" max="60" step="1" value="24"></div>
+    <div class="control"><label>R2: <span class="readout" id="r2Read">220 Ω</span> <span id="r2Band" class="colorband"></span></label><input id="r2" type="range" min="0" max="60" step="1" value="28"></div>
+    <div class="control"><label>R3: <span class="readout" id="r3Read">470 Ω</span> <span id="r3Band" class="colorband"></span></label><input id="r3" type="range" min="0" max="60" step="1" value="32"></div>
+    <div class="control"><label>R4: <span class="readout" id="r4Read">1 kΩ</span> <span id="r4Band" class="colorband"></span></label><input id="r4" type="range" min="0" max="60" step="1" value="36"></div>
+    <div class="control"><label>R5: <span class="readout" id="r5Read">2.2 kΩ</span> <span id="r5Band" class="colorband"></span></label><input id="r5" type="range" min="0" max="60" step="1" value="40"></div>
+    <div class="control"><label>R6: <span class="readout" id="r6Read">4.7 kΩ</span> <span id="r6Band" class="colorband"></span></label><input id="r6" type="range" min="0" max="60" step="1" value="44"></div>
     <div class="control"><label>Tolerance band: <span class="readout" id="tolRead">±1 %</span></label>
       <select id="tol">
         <option value="0.001">±0.1 % (precision thin-film)</option>
@@ -189,6 +211,17 @@
         <option value="0.05">±5 % (carbon-film / generic)</option>
         <option value="0.10">±10 % (legacy)</option>
       </select>
+    </div>
+  </section>
+
+  <section class="controls" style="margin-top:6px">
+    <div class="control" style="grid-column:1/-1">
+      <label class="feature-toggle"><input type="checkbox" id="srcReal"> Non-ideal current source (finite output impedance R_s — Norton form)</label>
+    </div>
+    <div class="control extra-control" id="rsControl">
+      <label>R_s — source output impedance: <span class="readout" id="rsRead">1 kΩ</span></label>
+      <input id="rs" type="range" min="1" max="6" step="0.05" value="3">
+      <small style="color:var(--fg-dim);font-size:11px">log scale, 10 Ω – 1 MΩ. Ideal current source = ∞; real BJT/op-amp current source ≈ 1–10 MΩ; lousy resistor-divider current source ≈ 1 kΩ. When R_s isn't ≫ R_par, only a fraction of I_total reaches the load network — the rest circulates inside the source.</small>
     </div>
   </section>
 
@@ -414,6 +447,11 @@
     </div>
   </section>
 
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
+  </section>
+
   <footer>
     Curriculum: <a target="_top" href="../../index.html">EE Phase 1 — DC Circuit Foundations</a> ·
     Topic: Parallel Circuits &amp; Kirchhoff's Current Law ·
@@ -455,14 +493,51 @@
     return g.toFixed(3)+" S";
   }
 
-  const ids=['it','n','r1','r2','r3','r4','r5','r6','tol'];
+  const ids=['it','n','r1','r2','r3','r4','r5','r6','tol','rs'];
   const els={}; ids.forEach(k=>els[k]=document.getElementById(k));
+  const srcReal = document.getElementById('srcReal');
+  const rsControl = document.getElementById('rsControl');
 
   // Color per branch (matches table row + circuit)
   const branchColors = ['#5ec8ff','#ffb86c','#a3e635','#c084fc','#ff7b72','#f0e68c'];
 
-  function drawCircuit(I_total, branches, V){
+  // 4-band resistor color code rendering (shared pattern across phase-1 explorers)
+  const BAND_COLORS = ['#1a1a1a','#7c4a0e','#d63a2f','#e87a25','#e8d325','#3a9d3a','#3a6cd6','#9a4ad6','#7c7c7c','#dde3ec'];
+  const BAND_GOLD = '#caa040';
+  const BAND_BODY = '#d4b78a';
+  function colorBandsFor(R){
+    if (R <= 0) return null;
+    let val = R, mult = 0;
+    while (val >= 100){ val /= 10; mult++; }
+    while (val < 10 && val > 0){ val *= 10; mult--; }
+    const d1 = Math.floor(val/10);
+    const d2 = Math.floor(val - d1*10 + 0.5);
+    if (mult < -2 || mult > 9) return null;
+    let m;
+    if (mult >= 0) m = BAND_COLORS[mult];
+    else if (mult === -1) m = BAND_GOLD;
+    else m = '#bdbdbd';
+    return [BAND_COLORS[Math.max(0,Math.min(9,d1))], BAND_COLORS[Math.max(0,Math.min(9,d2))], m, BAND_GOLD];
+  }
+  function renderBand(el, R){
+    const bands = colorBandsFor(R);
+    if (!bands || !el) { if(el) el.innerHTML = ''; return; }
+    const [c1, c2, c3, c4] = bands;
+    el.innerHTML =
+      '<svg viewBox="0 0 50 14" width="48" height="14" aria-hidden="true">'+
+      '<rect x="0" y="4" width="50" height="6" fill="'+BAND_BODY+'"/>'+
+      '<line x1="0" y1="7" x2="4" y2="7" stroke="#888" stroke-width="1.2"/>'+
+      '<line x1="46" y1="7" x2="50" y2="7" stroke="#888" stroke-width="1.2"/>'+
+      '<rect x="9" y="2" width="3" height="10" fill="'+c1+'"/>'+
+      '<rect x="16" y="2" width="3" height="10" fill="'+c2+'"/>'+
+      '<rect x="23" y="2" width="3" height="10" fill="'+c3+'"/>'+
+      '<rect x="38" y="2" width="3" height="10" fill="'+c4+'"/>'+
+      '</svg>';
+  }
+
+  function drawCircuit(I_total, branches, V, sourceLabel){
     const svg = document.getElementById('circuit');
+    const srcLabelText = sourceLabel || "I_total";
     const N = branches.length;
     const ymax = 360;
     const branchSpacing = 80;
@@ -485,7 +560,7 @@
     </defs>`;
 
     // source on the left
-    svgContent += `<text x="${sourceX}" y="55" class="label" text-anchor="middle">I_total</text>`;
+    svgContent += `<text x="${sourceX}" y="55" class="label" text-anchor="middle">${srcLabelText}</text>`;
     svgContent += `<text x="${sourceX}" y="70" class="label-ok" text-anchor="middle">${fmtI(I_total)}</text>`;
     // current source symbol — circle with arrow
     svgContent += `<circle cx="${sourceX}" cy="${(topY+botY)/2}" r="22" fill="var(--bg-elev2)" stroke="var(--accent3)" stroke-width="1.5"/>`;
@@ -545,13 +620,18 @@
     const allR    = [rOf(els.r1.value), rOf(els.r2.value), rOf(els.r3.value),
                      rOf(els.r4.value), rOf(els.r5.value), rOf(els.r6.value)];
     const R       = allR.slice(0, N);
+    const realSrc = srcReal.checked;
+    const Rs      = realSrc ? Math.pow(10, parseFloat(els.rs.value)) : Infinity;
+    rsControl.classList.toggle('visible', realSrc);
 
     document.getElementById('itRead').textContent  = fmtI(I_total);
     document.getElementById('nRead').textContent   = N;
     for(let i=0; i<6; i++){
       document.getElementById('r'+(i+1)+'Read').textContent = fmtR(allR[i]);
+      renderBand(document.getElementById('r'+(i+1)+'Band'), allR[i]);
     }
     document.getElementById('tolRead').textContent = "±" + (tol*100).toFixed(tol<0.01?1:0) + " %";
+    document.getElementById('rsRead').textContent  = fmtR(Rs);
 
     // Disable unused branch sliders visually
     for(let i=2; i<6; i++){
@@ -563,17 +643,27 @@
     const G = R.map(r => 1/r);
     const Gtot = G.reduce((a,b)=>a+b, 0);
     const Rpar = 1 / Gtot;
-    const V = I_total * Rpar;
+    // Norton source: I_total splits between R_s (internal) and R_par (load network).
+    // I_load = I_total · R_s / (R_s + R_par) — only this fraction reaches the branches.
+    const I_load = realSrc ? (I_total * Rs / (Rs + Rpar)) : I_total;
+    const I_internal = I_total - I_load;
+    const V = I_load * Rpar;
 
     const branches = R.map((r, i) => ({
       R: r,
       G: G[i],
-      I: I_total * G[i] / Gtot,
+      I: I_load * G[i] / Gtot,
       share: G[i] / Gtot,
-      P: (I_total * G[i] / Gtot)**2 * r,
+      P: (I_load * G[i] / Gtot)**2 * r,
     }));
 
-    // table body
+    // Identify the winning (max-current) branch for visual emphasis
+    let winnerIdx = 0;
+    for (let i = 1; i < branches.length; i++){
+      if (branches[i].I > branches[winnerIdx].I) winnerIdx = i;
+    }
+
+    // table body — highlight the winning branch with the "winner" class
     const tbody = document.getElementById('branchBody');
     tbody.innerHTML = branches.map((b, i) => {
       // ±tol drift: worst-case branch share at the tolerance band
@@ -590,8 +680,10 @@
       const driftPct = (shareHigh - b.share) / b.share * 100;
       const color = branchColors[i % branchColors.length];
       const driftWarn = Math.abs(driftPct) > 5;
-      return `<tr style="background:rgba(${parseInt(color.substr(1,2),16)},${parseInt(color.substr(3,2),16)},${parseInt(color.substr(5,2),16)},0.04)">
-        <td><span class="key" style="background:${color}"></span>R${i+1}</td>
+      const winnerCls = (i === winnerIdx && branches.length > 1) ? ' class="winner"' : '';
+      const winnerMark = (i === winnerIdx && branches.length > 1) ? ' ←' : '';
+      return `<tr${winnerCls} style="background:rgba(${parseInt(color.substr(1,2),16)},${parseInt(color.substr(3,2),16)},${parseInt(color.substr(5,2),16)},0.04)">
+        <td><span class="key" style="background:${color}"></span>R${i+1}${winnerMark}</td>
         <td>${fmtR(b.R)}</td>
         <td class="num">${fmtG(b.G)}</td>
         <td class="num" style="color:${color}">${fmtI(b.I)}</td>
@@ -602,17 +694,20 @@
     }).join('');
 
     // totals
-    const Ptot = I_total * V;
+    const Ptot = I_load * V;
     document.getElementById('tRpar').textContent  = fmtR(Rpar);
     document.getElementById('tGtot').textContent  = fmtG(Gtot);
-    document.getElementById('tItot').textContent  = fmtI(I_total);
+    document.getElementById('tItot').textContent  = realSrc
+      ? `${fmtI(I_load)} of ${fmtI(I_total)}  (${fmtI(I_internal)} circulates inside R_s)`
+      : fmtI(I_total);
     document.getElementById('tPtot').textContent  = fmtP(Ptot);
 
     // two-resistor shortcut box (only meaningful for N=2)
     const cdBox = document.getElementById('cdCalc');
     if(N === 2){
       const R1 = R[0], R2 = R[1];
-      cdBox.innerHTML = `I_R1 = ${fmtI(I_total)} × ${fmtR(R2)} / (${fmtR(R1)} + ${fmtR(R2)}) = <b style="color:var(--accent3)">${fmtI(I_total * R2/(R1+R2))}</b>`;
+      cdBox.innerHTML = `I_R1 = ${fmtI(I_load)} × ${fmtR(R2)} / (${fmtR(R1)} + ${fmtR(R2)}) = <b style="color:var(--accent3)">${fmtI(I_load * R2/(R1+R2))}</b>`
+        + (realSrc ? `  <span style="color:var(--fg-dim)">(uses I_load, not I_total — Norton split)</span>` : '');
     } else {
       cdBox.innerHTML = `<span style="color:var(--fg-dim)">N = ${N}, so the 2-branch shortcut doesn't apply. Use the conductance form below.</span>`;
     }
@@ -621,7 +716,8 @@
     const k = 0;
     const Gsum = G.map(g => fmtG(g)).join(' + ');
     document.getElementById('condCalc').innerHTML =
-      `I_${k+1} = ${fmtI(I_total)} × ${fmtG(G[k])} / (${Gsum}) = <b style="color:var(--accent3)">${fmtI(branches[0].I)}</b>`;
+      `I_${k+1} = ${fmtI(I_load)} × ${fmtG(G[k])} / (${Gsum}) = <b style="color:var(--accent3)">${fmtI(branches[0].I)}</b>`
+      + (realSrc ? `  <span style="color:var(--fg-dim)">(uses I_load — Norton: ${(I_load/I_total*100).toFixed(1)} % of I_total reaches the network)</span>` : '');
 
     // tolerance worst-case (find the branch with the biggest drift)
     let worstIdx = 0, worstDrift = 0;
@@ -647,7 +743,7 @@
       tolBox.innerHTML = `±${(tol*100).toFixed(1)} % resistors → worst-case branch (R${worstIdx+1}) drifts <b style="color:var(--warn)">${worstDrift.toFixed(1)} %</b> from its nominal share (2-resistor ratio ${ratio.toFixed(3)} : 1). For parallel power devices or LED current sharing, this is the failure mode — use tighter parts or per-element current limiting.`;
     }
 
-    drawCircuit(I_total, branches, V);
+    drawCircuit(I_load, branches, V, realSrc ? "I_load (from Norton source)" : "I_total");
   }
 
   // Presets — change N + slider values to demonstrate canonical configurations
@@ -676,10 +772,89 @@
 
   ids.forEach(k => els[k].addEventListener('input', update));
   els.tol.addEventListener('change', update);
+  srcReal.addEventListener('change', update);
   document.querySelectorAll('#presets button').forEach(btn => {
     btn.addEventListener('click', () => applyPreset(btn.dataset.p));
   });
   update();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "Two resistors in parallel: R1 = 100 Ω, R2 = 300 Ω, total current 200 mA. What is I_R1?",
+      a: ["50 mA", "100 mA", "150 mA", "200 mA"],
+      correct: 2,
+      why: "Two-branch shortcut: I_R1 = I_total · R2 / (R1 + R2) = 200 · 300/400 = 150 mA. The smaller resistor hogs the larger share — and the formula's numerator is the OTHER resistor (R2), not the one you're solving for. That sign flip vs the voltage divider is the most-missed homework mistake."
+    },
+    {
+      q: "Three resistors in parallel: R1 = R2 = R3 = 100 Ω, fed from a 1 A source. The current through each is:",
+      a: ["1 A each (currents don't divide for equal R)",
+          "333 mA each",
+          "100 mA each",
+          "Depends on which one you measure first"],
+      correct: 1,
+      why: "Equal-conductance branches share equally. With three identical 100 Ω resistors, each takes 1/3 of the total: 1 A / 3 = 333 mA. The conductance form makes this obvious: I_k = I_total · G_k / ΣG = I · (1/100) / (3/100) = I/3."
+    },
+    {
+      q: "You parallel two 'identical' 10 mA LEDs through a single series resistor sized for 20 mA total. At ±5 % R tolerance plus 100 mV V_f spread, one LED ends up carrying about:",
+      a: ["10 mA (perfectly balanced)",
+          "11 mA (slightly imbalanced, fine)",
+          "15+ mA (heavily imbalanced — thermal runaway risk)",
+          "0 mA (the other LED blocks it)"],
+      correct: 2,
+      why: "Two parallel LEDs from ONE resistor is a classic broken design. The LED with the lower V_f sees a tiny bit more current → heats up → V_f drops further (negative tempco) → takes even more current → thermal runaway. Resistor tolerance alone gives ~10 % imbalance; add V_f spread and one LED easily takes 15+ mA while the other limps along. Every LED needs its own current-limiting resistor (or a constant-current driver) in production."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>
