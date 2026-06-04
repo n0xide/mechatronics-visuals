@@ -129,6 +129,33 @@
   .regime-banner .rt.large-signal{color:var(--warn)}
   .regime-banner .rt.dynamic{color:var(--warn)}
   .regime-banner .rt.nonlinear{color:var(--warn)}
+
+  /* Thévenin/Norton extras: snap buttons, load panel, color bands, eta trace */
+  .snap-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}
+  .snap-row button{background:var(--bg-elev2);color:var(--fg);
+    border:1px solid var(--line);border-radius:4px;padding:5px 12px;
+    font:12px ui-monospace,Menlo,monospace;cursor:pointer}
+  .snap-row button:hover{border-color:var(--accent);color:var(--accent)}
+  .snap-row button.danger:hover{border-color:var(--warn);color:var(--warn)}
+  .colorband{display:inline-block;vertical-align:middle;margin-left:6px;
+    border:1px solid var(--line);border-radius:2px;background:var(--bg-elev2)}
+  .load-panel{background:var(--bg-elev2);border:1px solid var(--line);
+    border-left:3px solid var(--accent3);border-radius:6px;
+    padding:10px 14px;margin:12px 0;font:12px ui-monospace,Menlo,monospace}
+  .load-panel b{color:var(--accent3)}
+  .load-panel .grid4{display:grid;grid-template-columns:repeat(4,1fr);
+    gap:8px;margin-top:8px;text-align:center}
+  .load-panel .grid4 .cell{padding:8px 6px;background:var(--bg-elev);
+    border:1px solid var(--line);border-radius:4px}
+  .load-panel .grid4 .cell .lbl{color:var(--fg-dim);font-size:11px}
+  .load-panel .grid4 .cell .val{font-size:14px;margin-top:2px}
+  .load-panel .grid4 .v-cell .val{color:var(--accent)}
+  .load-panel .grid4 .i-cell .val{color:var(--accent2)}
+  .load-panel .grid4 .p-cell .val{color:var(--accent3)}
+  .load-panel .grid4 .e-cell .val{color:var(--warn)}
+  .legend-mini{display:flex;gap:14px;font-size:11px;color:var(--fg-dim);margin-top:6px}
+  .legend-mini .swatch{display:inline-block;width:14px;height:3px;
+    vertical-align:middle;margin-right:4px}
 </style>
 </head>
 <body>
@@ -156,10 +183,18 @@
 
   <section class="controls">
     <div class="control"><label>V_s — internal source: <span class="readout" id="vsRead">12.0 V</span></label><input id="vs" type="range" min="1" max="24" step="0.5" value="12"></div>
-    <div class="control"><label>R_a (series): <span class="readout" id="raRead">220 Ω</span></label><input id="ra" type="range" min="0" max="24" step="1" value="16"></div>
-    <div class="control"><label>R_b (across terminals): <span class="readout" id="rbRead">470 Ω</span></label><input id="rb" type="range" min="0" max="24" step="1" value="20"></div>
+    <div class="control"><label>R_a (series): <span class="readout" id="raRead">220 Ω</span> <span id="raBand" class="colorband"></span></label><input id="ra" type="range" min="0" max="24" step="1" value="16"></div>
+    <div class="control"><label>R_b (across terminals): <span class="readout" id="rbRead">470 Ω</span> <span id="rbBand" class="colorband"></span></label><input id="rb" type="range" min="0" max="24" step="1" value="20"></div>
     <div class="control"><label>R_load: <span class="readout" id="rlRead">150 Ω</span></label><input id="rl" type="range" min="1" max="10000" step="1" value="150"></div>
   </section>
+
+  <div class="snap-row">
+    <button type="button" id="snapMatch">Snap R_load → R_th (max power)</button>
+    <button type="button" id="snapEff">Snap R_load → 10·R_th (high efficiency)</button>
+    <button type="button" id="snapShort">Snap R_load → 1 Ω (near short)</button>
+    <button type="button" id="snapOpen">Snap R_load → 10 kΩ (near open)</button>
+    <button type="button" class="danger" id="snapReset">Reset</button>
+  </div>
 
   <div class="figure">
     <h3>Original network (black box)</h3>
@@ -254,13 +289,31 @@
       </div>
     </div>
 
-    <h3 style="margin-top:24px">Max power transfer — P(R_load)</h3>
+    <h3 style="margin-top:24px">Max power transfer — P(R_load) and efficiency η(R_load)</h3>
     <svg id="ppl" viewBox="0 0 600 260" width="100%"></svg>
+    <div class="legend-mini">
+      <span><span class="swatch" style="background:var(--accent)"></span>P delivered to load (left axis)</span>
+      <span><span class="swatch" style="background:var(--accent2)"></span>η = P_load / P_source (right axis, 0–100 %)</span>
+      <span><span style="color:var(--accent3)">●</span> peak power point</span>
+    </div>
     <p style="font-size:12px;color:var(--fg-dim);margin-top:8px">
       Current load: R_load = <span class="readout" id="rlNow">150 Ω</span>,
       delivers P = <span class="readout" id="pNow">111.46 mW</span>.
       Peak P_max = V_th² / (4·R_th) = <span class="readout" id="pMaxRow">111.46 mW</span> at R_load = R_th.
     </p>
+
+    <div class="load-panel">
+      <b>What the load sees right now</b> — at R_load = <span id="lpRl">150 Ω</span>:
+      <div class="grid4">
+        <div class="cell v-cell"><div class="lbl">V_load</div><div class="val" id="lpV">—</div></div>
+        <div class="cell i-cell"><div class="lbl">I_load</div><div class="val" id="lpI">—</div></div>
+        <div class="cell p-cell"><div class="lbl">P_load</div><div class="val" id="lpP">—</div></div>
+        <div class="cell e-cell"><div class="lbl">η = P_load / P_source</div><div class="val" id="lpEta">—</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--fg-dim);margin-top:8px" id="lpHint">
+        At the matched point (R_load = R_th) you get max power but only 50 % efficiency — the rest burns in R_th itself. Slide R_load up to R_th·10 and η climbs above 90 %, but P_load drops. Power supplies and amplifiers operate <em>far</em> from the matched point.
+      </div>
+    </div>
   </div>
 
   <h2>What to notice</h2>
@@ -429,23 +482,59 @@
   const els={};
   ids.forEach(k=>els[k]=document.getElementById(k));
 
+  // 4-band resistor color code (shared pattern across phase-1 explorers)
+  const BAND_COLORS = ['#1a1a1a','#7c4a0e','#d63a2f','#e87a25','#e8d325','#3a9d3a','#3a6cd6','#9a4ad6','#7c7c7c','#dde3ec'];
+  const BAND_GOLD = '#caa040';
+  const BAND_BODY = '#d4b78a';
+  function colorBandsFor(R){
+    if (R <= 0) return null;
+    let val = R, mult = 0;
+    while (val >= 100){ val /= 10; mult++; }
+    while (val < 10 && val > 0){ val *= 10; mult--; }
+    const d1 = Math.floor(val/10);
+    const d2 = Math.floor(val - d1*10 + 0.5);
+    if (mult < -2 || mult > 9) return null;
+    let m;
+    if (mult >= 0) m = BAND_COLORS[mult];
+    else if (mult === -1) m = BAND_GOLD;
+    else m = '#bdbdbd';
+    return [BAND_COLORS[Math.max(0,Math.min(9,d1))], BAND_COLORS[Math.max(0,Math.min(9,d2))], m, BAND_GOLD];
+  }
+  function renderBand(el, R){
+    const bands = colorBandsFor(R);
+    if (!bands || !el) { if(el) el.innerHTML = ''; return; }
+    const [c1, c2, c3, c4] = bands;
+    el.innerHTML =
+      '<svg viewBox="0 0 50 14" width="48" height="14" aria-hidden="true">'+
+      '<rect x="0" y="4" width="50" height="6" fill="'+BAND_BODY+'"/>'+
+      '<line x1="0" y1="7" x2="4" y2="7" stroke="#888" stroke-width="1.2"/>'+
+      '<line x1="46" y1="7" x2="50" y2="7" stroke="#888" stroke-width="1.2"/>'+
+      '<rect x="9" y="2" width="3" height="10" fill="'+c1+'"/>'+
+      '<rect x="16" y="2" width="3" height="10" fill="'+c2+'"/>'+
+      '<rect x="23" y="2" width="3" height="10" fill="'+c3+'"/>'+
+      '<rect x="38" y="2" width="3" height="10" fill="'+c4+'"/>'+
+      '</svg>';
+  }
+
   function compute(){
     const Vs=parseFloat(els.vs.value);
     const Ra=rOf(els.ra.value), Rb=rOf(els.rb.value);
     const Rl=parseFloat(els.rl.value);
-    // V_oc: open circuit at terminals — voltage across Rb
-    // Series: Vs through Ra to Rb to ground. V_oc = Vs * Rb / (Ra+Rb).
     const Voc=vDivider(Vs, Ra, Rb);
-    // I_sc: short the terminals — Rb gets shorted, current = Vs/Ra
     const Isc=Vs/Ra;
-    const Rth=Voc/Isc; // = Ra*Rb/(Ra+Rb)
+    const Rth=Voc/Isc;
     const In=Isc;
-    // Load
     const Iload=Voc/(Rth+Rl);
     const Vload=Iload*Rl;
     const Pload=Vload*Iload;
     const Pmax=Voc*Voc/(4*Rth);
-    return {Vs,Ra,Rb,Rl,Voc,Isc,Rth,In,Iload,Vload,Pload,Pmax};
+    // Total power drawn from the equivalent source (V_th × I_load).
+    // Note: this is the *Thévenin-equivalent* source power; the original
+    // network's internal dissipation includes whatever flows through Rb too.
+    const Psource=Voc*Iload;
+    const Pinternal=Iload*Iload*Rth;
+    const eta = Psource > 0 ? Pload / Psource : 0;
+    return {Vs,Ra,Rb,Rl,Voc,Isc,Rth,In,Iload,Vload,Pload,Pmax,Psource,Pinternal,eta};
   }
 
   function update(){
@@ -472,29 +561,52 @@
     document.getElementById('pNow').textContent=fmtP(c.Pload);
     document.getElementById('pMaxRow').textContent=fmtP(c.Pmax);
 
+    // Color bands
+    renderBand(document.getElementById('raBand'), c.Ra);
+    renderBand(document.getElementById('rbBand'), c.Rb);
+
+    // Load panel
+    document.getElementById('lpRl').textContent  = fmtR(c.Rl);
+    document.getElementById('lpV').textContent   = fmtV(c.Vload);
+    document.getElementById('lpI').textContent   = fmtI(c.Iload);
+    document.getElementById('lpP').textContent   = fmtP(c.Pload);
+    document.getElementById('lpEta').textContent = (c.eta*100).toFixed(1) + " %";
+    const rat = c.Rl / c.Rth;
+    const hint = document.getElementById('lpHint');
+    if (rat < 0.1){
+      hint.textContent = `R_load ≪ R_th (ratio ${rat.toFixed(3)}): near-short. Most power dissipates inside R_th, η ≈ ${(c.eta*100).toFixed(1)} %. Useful only for short-circuit testing.`;
+    } else if (Math.abs(rat - 1) < 0.05){
+      hint.textContent = `R_load ≈ R_th: matched. Max power transfer (${fmtP(c.Pload)} ≈ P_max = ${fmtP(c.Pmax)}) at η = 50 %. Right for audio/RF amplifiers driving fixed-Z loads; wrong for power supplies.`;
+    } else if (rat > 10){
+      hint.textContent = `R_load ≫ R_th (ratio ${rat.toFixed(1)}): high-impedance load. η = ${(c.eta*100).toFixed(1)} % is excellent but P_load is only ${(c.Pload/c.Pmax*100).toFixed(1)} % of P_max. This is the "power supply" regime — efficiency matters more than max-power.`;
+    } else {
+      hint.textContent = `R_load = ${rat.toFixed(2)} × R_th. P_load = ${fmtP(c.Pload)} (${(c.Pload/c.Pmax*100).toFixed(1)} % of P_max), η = ${(c.eta*100).toFixed(1)} %. Trade-off: more R_load → more η but less power.`;
+    }
+
     drawCurve(c);
   }
 
   function drawCurve(c){
     const svg=document.getElementById('ppl');
     const W=600, H=260;
-    const pad={l:60,r:30,t:20,b:40};
+    const pad={l:60,r:55,t:20,b:40};
     const plotW=W-pad.l-pad.r, plotH=H-pad.t-pad.b;
-    // X log scale: 1 Ω → 10·Rth max
     const xMin=1, xMax=Math.max(c.Rth*100, 10000);
     const logXMin=Math.log10(xMin), logXMax=Math.log10(xMax);
-    // Y: power, 0 → Pmax*1.05
     const yMax=c.Pmax*1.1;
     const x2px=lr=>pad.l + (Math.log10(lr)-logXMin)/(logXMax-logXMin)*plotW;
-    const y2px=p=>pad.t + (1 - p/yMax)*plotH;
-    // Sample curve
-    let path="";
+    const y2pxP=p=>pad.t + (1 - p/yMax)*plotH;
+    const y2pxE=e=>pad.t + (1 - e)*plotH;  // η in [0,1] mapped to plot height
+    // Sample both curves
+    let pathP="", pathE="";
     for(let i=0;i<=200;i++){
       const lr=xMin*Math.pow(xMax/xMin, i/200);
       const I=c.Voc/(c.Rth+lr);
       const P=I*I*lr;
-      const x=x2px(lr), y=y2px(P);
-      path+=(i===0?'M':'L')+x.toFixed(1)+','+y.toFixed(1)+' ';
+      const eta = lr/(c.Rth+lr);
+      const x=x2px(lr);
+      pathP+=(i===0?'M':'L')+x.toFixed(1)+','+y2pxP(P).toFixed(1)+' ';
+      pathE+=(i===0?'M':'L')+x.toFixed(1)+','+y2pxE(eta).toFixed(1)+' ';
     }
     // Grid
     let grid="";
@@ -506,7 +618,6 @@
         grid+=`<line x1="${x}" y1="${pad.t}" x2="${x}" y2="${H-pad.b}" class="grid-line"/>`;
       }
     }
-    // X labels at 1, 10, 100, 1k, 10k...
     let xlabels="";
     for(let e=0;e<=Math.floor(logXMax);e++){
       const lr=fromLog(e);
@@ -514,38 +625,67 @@
       const x=x2px(lr);
       xlabels+=`<text x="${x}" y="${H-pad.b+15}" class="axis-label" text-anchor="middle">${fmtR(lr)}</text>`;
     }
-    // Y ticks
+    // Left Y-axis: P (color: accent)
     let ylabels="";
     for(let i=0;i<=4;i++){
       const p=yMax*i/4;
-      const y=y2px(p);
+      const y=y2pxP(p);
       ylabels+=`<line x1="${pad.l-4}" y1="${y}" x2="${pad.l}" y2="${y}" class="axis"/>`;
-      ylabels+=`<text x="${pad.l-6}" y="${y+3}" class="axis-label" text-anchor="end">${fmtP(p)}</text>`;
+      ylabels+=`<text x="${pad.l-6}" y="${y+3}" class="axis-label" text-anchor="end" fill="var(--accent)">${fmtP(p)}</text>`;
     }
-    // Peak marker
+    // Right Y-axis: η in % (color: accent2)
+    let yEtaLabels="";
+    for(let i=0;i<=4;i++){
+      const eta = i/4;
+      const y=y2pxE(eta);
+      yEtaLabels+=`<line x1="${W-pad.r}" y1="${y}" x2="${W-pad.r+4}" y2="${y}" class="axis"/>`;
+      yEtaLabels+=`<text x="${W-pad.r+6}" y="${y+3}" class="axis-label" text-anchor="start" fill="var(--accent2)">${(eta*100).toFixed(0)} %</text>`;
+    }
     const xPeak=x2px(c.Rth);
-    const yPeak=y2px(c.Pmax);
-    // Current load marker
+    const yPeakP=y2pxP(c.Pmax);
     const xLoad=x2px(c.Rl);
-    const yLoad=y2px(c.Pload);
+    const yLoadP=y2pxP(c.Pload);
+    const yLoadE=y2pxE(c.eta);
     svg.innerHTML=`
       ${grid}
       <line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${H-pad.b}" class="axis"/>
+      <line x1="${W-pad.r}" y1="${pad.t}" x2="${W-pad.r}" y2="${H-pad.b}" class="axis"/>
       <line x1="${pad.l}" y1="${H-pad.b}" x2="${W-pad.r}" y2="${H-pad.b}" class="axis"/>
       ${xlabels}
       ${ylabels}
+      ${yEtaLabels}
       <text x="${pad.l+plotW/2}" y="${H-5}" class="axis-label" text-anchor="middle">R_load (log)</text>
-      <text x="14" y="${pad.t+plotH/2}" class="axis-label" text-anchor="middle" transform="rotate(-90,14,${pad.t+plotH/2})">P delivered to load</text>
-      <path d="${path}" class="trace trace-1"/>
+      <text x="14" y="${pad.t+plotH/2}" class="axis-label" text-anchor="middle" fill="var(--accent)" transform="rotate(-90,14,${pad.t+plotH/2})">P delivered to load</text>
+      <text x="${W-12}" y="${pad.t+plotH/2}" class="axis-label" text-anchor="middle" fill="var(--accent2)" transform="rotate(90,${W-12},${pad.t+plotH/2})">η = P_load / P_source</text>
+      <path d="${pathP}" class="trace trace-1"/>
+      <path d="${pathE}" class="trace trace-2" stroke-dasharray="2,2"/>
       <line x1="${xPeak}" y1="${pad.t}" x2="${xPeak}" y2="${H-pad.b}" stroke="var(--accent3)" stroke-width="1" stroke-dasharray="4,3"/>
-      <circle cx="${xPeak}" cy="${yPeak}" r="5" fill="var(--accent3)"/>
-      <text x="${xPeak+8}" y="${yPeak-6}" class="label" fill="var(--accent3)">peak: R_load = R_th = ${fmtR(c.Rth)}, P = V_th²/(4·R_th) = ${fmtP(c.Pmax)}</text>
-      <circle cx="${xLoad}" cy="${yLoad}" r="4" fill="var(--accent2)"/>
-      <text x="${xLoad+8}" y="${yLoad+15}" class="label-dim" fill="var(--accent2)">current</text>
+      <circle cx="${xPeak}" cy="${yPeakP}" r="5" fill="var(--accent3)"/>
+      <text x="${xPeak+8}" y="${yPeakP-6}" class="label" fill="var(--accent3)">peak P at R_load = R_th = ${fmtR(c.Rth)}  (η = 50 %)</text>
+      <circle cx="${xLoad}" cy="${yLoadP}" r="4" fill="var(--accent)"/>
+      <circle cx="${xLoad}" cy="${yLoadE}" r="4" fill="var(--accent2)"/>
+      <text x="${xLoad+8}" y="${yLoadP+15}" class="label-dim" fill="var(--accent)">current</text>
     `;
   }
 
   ids.forEach(k=>els[k].addEventListener('input',update));
+
+  // Snap buttons — set R_load to specific design points
+  function snapTo(ratio){
+    const c = compute();
+    const target = Math.max(1, Math.min(10000, Math.round(c.Rth * ratio)));
+    els.rl.value = target;
+    update();
+  }
+  document.getElementById('snapMatch').addEventListener('click', () => snapTo(1));
+  document.getElementById('snapEff').addEventListener('click', () => snapTo(10));
+  document.getElementById('snapShort').addEventListener('click', () => { els.rl.value = 1; update(); });
+  document.getElementById('snapOpen').addEventListener('click', () => { els.rl.value = 10000; update(); });
+  document.getElementById('snapReset').addEventListener('click', () => {
+    els.vs.value = 12; els.ra.value = 16; els.rb.value = 20; els.rl.value = 150;
+    update();
+  });
+
   update();
 </script>
 </body>
