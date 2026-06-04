@@ -682,6 +682,37 @@
 
   update();
   requestAnimationFrame(animate);
+
+  // ---------- Deep-link hash state (shareable configs) ----------
+  function applyModeUI(){
+    $('modeBtn').textContent = state.mode === 'RC' ? 'Switch to RL (τ = L/R)' : 'Switch to RC (τ = R·C)';
+    $('cWrap').style.display = state.mode === 'RC' ? '' : 'none';
+    $('lWrap').style.display = state.mode === 'RL' ? '' : 'none';
+  }
+  function writeHash(){
+    const p = new URLSearchParams();
+    p.set('sR', $('sR').value);
+    p.set('sC', $('sC').value);
+    p.set('sL', $('sL').value);
+    p.set('sVf', $('sVf').value);
+    p.set('mode', state.mode);
+    history.replaceState(null, '', '#' + p.toString());
+  }
+  function readHash(){
+    const h = location.hash.replace(/^#/, '');
+    if (!h) return;
+    const p = new URLSearchParams(h);
+    const m = p.get('mode'); if (m === 'RC' || m === 'RL') state.mode = m;
+    const sr = p.get('sR'); if (sr !== null){ $('sR').value = sr; state.R = fromLog(parseFloat(sr)); }
+    const sc = p.get('sC'); if (sc !== null){ $('sC').value = sc; state.C = fromLog(parseFloat(sc)); }
+    const sl = p.get('sL'); if (sl !== null){ $('sL').value = sl; state.L = fromLog(parseFloat(sl)); }
+    const sv = p.get('sVf'); if (sv !== null){ $('sVf').value = sv; state.Vf = parseFloat(sv); }
+    applyModeUI();
+    update();
+  }
+  ['sR','sC','sL','sVf'].forEach(id => $(id).addEventListener('input', writeHash));
+  $('modeBtn').addEventListener('click', writeHash);
+  readHash();
 </script>
 </body>
 </html>

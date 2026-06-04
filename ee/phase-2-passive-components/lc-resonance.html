@@ -115,6 +115,17 @@
   .cheat-card .eq{display:block;color:var(--accent);
     font:13px ui-monospace,Menlo,monospace;margin:2px 0}
   .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -208,6 +219,11 @@
         <li><b>Loaded vs unloaded Q</b> — adding source/load resistance crashes Q; spec the right one.</li>
       </ul>
     </div>
+  </section>
+
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
   </section>
 
   <footer>
@@ -597,6 +613,99 @@
   drawTank();
   update();
   requestAnimationFrame(tick);
+
+  // ---------- Deep-link hash state (shareable configs) ----------
+  function writeHash(){
+    const p = new URLSearchParams();
+    p.set('sL', $('sL').value); p.set('sC', $('sC').value); p.set('sQ', $('sQ').value);
+    history.replaceState(null, '', '#' + p.toString());
+  }
+  function readHash(){
+    const h = location.hash.replace(/^#/, '');
+    if (!h) return;
+    const p = new URLSearchParams(h);
+    const sl = p.get('sL'); if (sl !== null){ $('sL').value = sl; state.L = fromLog(parseFloat(sl)); }
+    const sc = p.get('sC'); if (sc !== null){ $('sC').value = sc; state.C = fromLog(parseFloat(sc)); }
+    const sq = p.get('sQ'); if (sq !== null){ $('sQ').value = sq; state.Q = parseFloat(sq); }
+    update();
+  }
+  ['sL','sC','sQ'].forEach(id => $(id).addEventListener('input', writeHash));
+  readHash();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "An LC tank has L = 100 µH and C = 100 nF. Its resonant frequency f₀ = 1/(2π√(LC)) is closest to:",
+      a: ["1.6 kHz", "50 kHz", "159 kHz", "1.6 MHz"],
+      correct: 1,
+      why: "f₀ = 1/(2π·√(LC)) = 1/(2π·√(1e-4 · 1e-7)) = 1/(2π·√(1e-11)) = 1/(2π·3.16e-6) ≈ 50.3 kHz, i.e. the 50 kHz option. Dropping L by a decade (to 10 µH) shrinks √(LC) by √10, so f₀ would rise by √10 to about 159 — that 159-figure is the classic distractor here."
+    },
+    {
+      q: "At resonance, a SERIES LC branch (ideal) presents an impedance of:",
+      a: ["zero (a short)", "infinite (an open)", "√(L/C)", "equal to R_load"],
+      correct: 0,
+      why: "In a SERIES LC at resonance, X_L = X_C and they're opposite in sign, so they cancel exactly — the branch impedance is zero (just the parasitic R remains). A PARALLEL LC is the dual: at resonance it presents MAXIMUM (ideally infinite) impedance. Series LC = notch/short at f₀; parallel LC = peak/open at f₀. Mixing these up is the #1 resonance error."
+    },
+    {
+      q: "Q (quality factor) of a resonant tank primarily determines:",
+      a: ["the resonant frequency f₀",
+          "the sharpness of the resonance (bandwidth = f₀/Q) and the peak height",
+          "the characteristic impedance √(L/C)",
+          "whether it's series or parallel"],
+      correct: 1,
+      why: "Q sets the SHARPNESS, not the center frequency. Bandwidth ≈ f₀/Q, so high Q = narrow, tall peak (selective); low Q = broad, shallow peak. f₀ is set by L and C alone; Z₀ = √(L/C) is set by their ratio; Q = Z₀/R_loss = (1/R)√(L/C) for series. A radio's station selectivity is all about high tank Q."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>

@@ -105,6 +105,17 @@
   .duality{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
   .col{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;padding:12px 14px}
   .col h3{margin-top:0;color:var(--accent3)}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -260,6 +271,11 @@
         <li><b>Forgetting volt-second balance</b> — in an SMPS, ∫V·dt during ON must equal ∫V·dt during OFF, or B drifts and the core saturates.</li>
       </ul>
     </div>
+  </section>
+
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
   </section>
 
   <footer>
@@ -463,6 +479,78 @@
   document.getElementById('rl').value = state.rl;
   document.getElementById('freq').value = state.f;
   update();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "An ideal transformer has a 10:1 turns ratio (N1:N2). Drive the primary with 120 V AC. The secondary voltage is:",
+      a: ["1200 V", "120 V", "12 V", "10 V"],
+      correct: 2,
+      why: "Voltage scales with turns: V2 = V1·(N2/N1) = 120·(1/10) = 12 V. A 10:1 step-down ratio divides voltage by 10. (Current does the opposite — it's multiplied by 10 on the secondary, since power is conserved.)"
+    },
+    {
+      q: "A 4 Ω speaker is connected to the secondary of a 5:1 (N1:N2) step-down transformer. The impedance seen at the primary is:",
+      a: ["0.16 Ω", "20 Ω", "100 Ω", "4 Ω"],
+      correct: 2,
+      why: "Impedance reflects as the turns ratio SQUARED: Z_primary = (N1/N2)²·Z_load = 5²·4 = 100 Ω. This is exactly how a tube amp's high plate impedance is matched to a low-impedance speaker. Note (N1/N2)² = 25, not 1/25 — the step-down ratio raises the reflected impedance."
+    },
+    {
+      q: "In an ideal (lossless) transformer, if you step the voltage UP by 4×, the secondary current capability:",
+      a: ["also goes up 4×", "goes down 4×", "stays the same", "goes to zero"],
+      correct: 1,
+      why: "Power is conserved: P_in = P_out, so V1·I1 = V2·I2. If V steps up 4×, I must step down 4× to keep the product constant. A transformer trades voltage for current (or vice versa) — it can't create power. This is why a step-up transformer for high voltage delivers proportionally less current."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>

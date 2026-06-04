@@ -111,6 +111,17 @@
   .cheat-card .eq{display:block;color:var(--accent);
     font:13px ui-monospace,Menlo,monospace;margin:2px 0}
   .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -272,6 +283,11 @@
         <li><b>Schottky leakage at high T</b> — reverse current can climb 10× at 100 °C.</li>
       </ul>
     </div>
+  </section>
+
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
   </section>
 
   <footer>
@@ -976,6 +992,81 @@
   drawZenerSchem();
   drawZenerCurve();
   drawXfmr();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "A Zener diode used as a voltage reference is operated:",
+      a: ["forward-biased, like a normal diode",
+          "in reverse breakdown — cathode held positive, clamping at V_Z",
+          "at zero bias",
+          "in avalanche only above 100 V"],
+      correct: 1,
+      why: "A Zener regulates in REVERSE breakdown: you bias it so the cathode is positive (reverse), and once the reverse voltage reaches V_Z the diode conducts hard and clamps the voltage at V_Z. Forward-biased, a Zener is just an ordinary 0.7 V diode. The whole point of the part is its sharp, well-defined reverse-breakdown voltage."
+    },
+    {
+      q: "A Zener shunt regulator: V_in = 12 V, V_Z = 5.1 V, series R = 220 Ω, load draws 10 mA. The current through the Zener is about:",
+      a: ["31 mA", "21 mA", "10 mA", "5 mA"],
+      correct: 1,
+      why: "Current through the series R: I_R = (V_in − V_Z)/R = (12 − 5.1)/220 = 31.4 mA. That current splits between the load and the Zener: I_Z = I_R − I_load = 31.4 − 10 = 21.4 mA ≈ 21 mA. If the load suddenly drew MORE than 31.4 mA, the Zener current would hit zero and regulation would collapse — that's why you size R for the worst-case (maximum) load current."
+    },
+    {
+      q: "To make a 4 Ω speaker look like 100 Ω at a transformer's primary, the turns ratio N1:N2 must be:",
+      a: ["1:5 (step-up)", "5:1 (step-down)", "25:1", "1:25"],
+      correct: 1,
+      why: "Impedance reflects as (N1/N2)²: Z_pri = (N1/N2)²·Z_load. We need (N1/N2)² = 100/4 = 25, so N1/N2 = 5 → a 5:1 step-down ratio. A common mistake is to write '1:5' — but 1:5 would be step-UP and give Z_pri = (1/5)²·4 = 0.16 Ω, the opposite of what's wanted. The bigger winding count goes on the higher-impedance (primary) side."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>

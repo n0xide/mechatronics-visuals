@@ -108,6 +108,23 @@
   .cheat-card .eq{display:block;color:var(--accent);
     font:13px ui-monospace,Menlo,monospace;margin:2px 0}
   .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+
+  .range-display{font:13px ui-monospace,Menlo,monospace;color:var(--fg-dim);
+    text-align:center;margin:-6px 0 12px}
+  .range-display b{color:var(--accent3)}
+  .range-display .eseries{color:var(--accent2)}
+  .range-display .eseries.miss{color:var(--warn)}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -144,6 +161,7 @@
       <g id="bandGroup"></g>
     </svg>
     <div class="value-display" id="valueDisplay">— Ω</div>
+    <div class="range-display" id="rangeDisplay"></div>
     <div class="legend">Click a band to cycle its color. Last band = tolerance. <span style="color:var(--accent2)">Gold = ×0.1</span>, <span style="color:var(--accent2)">Silver = ×0.01</span>.</div>
   </div>
 
@@ -222,6 +240,11 @@
         <li><b>Thick-film noise</b> — excess noise scales with current; don't use in low-noise analog front-ends.</li>
       </ul>
     </div>
+  </section>
+
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
   </section>
 
   <footer>
@@ -339,6 +362,38 @@
     const value = parseInt(digits, 10) * mult;
     document.getElementById('valueDisplay').textContent =
       formatOhm(value) + (tol !== null ? '  ±' + tol + '%' : '  (invalid tol)');
+
+    // Tolerance range + E-series sanity check
+    const rd = document.getElementById('rangeDisplay');
+    if (tol !== null && isFinite(value) && value > 0){
+      const lo = value*(1 - tol/100), hi = value*(1 + tol/100);
+      const es = eSeriesCheck(value, tol);
+      rd.innerHTML = `Actual part lies in <b>${formatOhm(lo)} – ${formatOhm(hi)}</b> ` +
+        `<span class="eseries${es.member?'':' miss'}">· ${es.label}</span>`;
+    } else {
+      rd.innerHTML = '';
+    }
+  }
+
+  // E-series membership: ±10%→E12, ±5%→E24, ±1%→E96. Returns {member, label}.
+  const E12 = [10,12,15,18,22,27,33,39,47,56,68,82];
+  const E24 = [10,11,12,13,15,16,18,20,22,24,27,30,33,36,39,43,47,51,56,62,68,75,82,91];
+  const E96 = [100,102,105,107,110,113,115,118,121,124,127,130,133,137,140,143,147,150,154,158,162,165,169,174,178,182,187,191,196,200,205,210,215,221,226,232,237,243,249,255,261,267,274,280,287,294,301,309,316,324,332,340,348,357,365,374,383,392,402,412,422,432,442,453,464,475,487,499,511,523,536,549,562,576,590,604,619,634,649,665,681,698,715,732,750,768,787,806,825,845,866,887,909,931,953,976];
+  function eSeriesCheck(value, tol){
+    if (value <= 0) return {member:false, label:''};
+    // normalize to mantissa
+    let m = value;
+    while (m >= 100) m /= 10;
+    while (m < 10) m *= 10;
+    let series, name;
+    if (tol >= 10){ series = E12; name = 'E12'; }
+    else if (tol >= 5){ series = E24; name = 'E24'; }
+    else { series = E96; name = 'E96'; m = value; while(m>=1000)m/=10; while(m<100)m*=10; } // E96 = 3 sig figs
+    const tolN = (tol < 5) ? 0.6 : 0.6; // match rounding slack
+    const member = series.some(v => Math.abs(v - m) < tolN);
+    return member
+      ? {member:true, label:`standard ${name} value ✓`}
+      : {member:false, label:`not a standard ${name} value (mantissa ${m.toFixed(tol<5?0:0)} not in series)`};
   }
 
   function formatOhm(v) {
@@ -366,6 +421,81 @@
   });
 
   render();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "A 4-band resistor reads: brown, black, red, gold. Its value and tolerance are:",
+      a: ["10 Ω ±5%", "1 kΩ ±5%", "12 Ω ±5%", "100 Ω ±5%"],
+      correct: 1,
+      why: "Brown=1, black=0 → digits '10'. Red multiplier = ×100. So 10 × 100 = 1000 Ω = 1 kΩ. Gold in the last (tolerance) position = ±5%. Watch the position: gold as a MULTIPLIER would mean ×0.1, but here it's the 4th band so it's tolerance."
+    },
+    {
+      q: "You need exactly 5.0 kΩ at ±5% tolerance from the E24 series. The closest standard value is:",
+      a: ["5.0 kΩ — it's a standard E24 value",
+          "4.7 kΩ or 5.1 kΩ — 5.0 kΩ is NOT in E24",
+          "5.6 kΩ",
+          "Any value works at ±5%"],
+      correct: 1,
+      why: "E24 (±5%) values are spaced ~10% apart so adjacent parts barely overlap their tolerance bands. The series jumps 4.7 → 5.1 → 5.6; there is no 5.0. This is why '5.0 kΩ' rarely appears in a parts bin — the E-series spacing is matched to tolerance, so a 5.0 would be redundant with the 4.7/5.1 neighbors. The decoder above flags non-standard mantissas."
+    },
+    {
+      q: "An 0805 thick-film resistor is rated 1/8 W (125 mW). In a real still-air design you should keep its dissipation below about:",
+      a: ["125 mW (the full rating)", "250 mW (you can exceed the rating)", "60 mW (derate by ~2×)", "1 W"],
+      correct: 2,
+      why: "Power ratings assume an ideal heatsink/airflow and a temperature rise to the rated maximum. In still air at room temperature, derate by roughly 2× — target ≤ 50% of rated, so ~60 mW for a 1/8 W 0805. Running at the full nameplate cooks the part and shifts its value (and for thick-film, raises excess noise). The same derating rule applies across SMD sizes."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>

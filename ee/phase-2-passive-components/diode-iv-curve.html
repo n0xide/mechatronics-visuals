@@ -113,6 +113,17 @@
   .scale-toggle button{background:transparent;color:var(--fg-dim);border:none;
     padding:4px 10px;cursor:pointer;font:12px ui-monospace,monospace}
   .scale-toggle button.active{background:var(--accent);color:var(--bg)}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -281,6 +292,11 @@
         <li><b>Schottky leakage</b> — Schottky's Is is 1000× a Si's. At 85 °C, reverse leakage can be milliamps. Don't use Schottky for high-impedance reverse blocking.</li>
       </ul>
     </div>
+  </section>
+
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
   </section>
 
   <footer>
@@ -568,6 +584,84 @@
   });
 
   update();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "The diode equation is I = I_s·(e^(V/(n·V_T)) − 1). Because of the exponential, the forward voltage of a silicon diode changes with current roughly:",
+      a: ["linearly — double the current, double the voltage",
+          "by ~60 mV per decade of current (a 10× current change ≈ +60 mV)",
+          "not at all — V_f is a fixed 0.7 V",
+          "by 0.7 V per decade"],
+      correct: 1,
+      why: "Inverting the exponential gives V = n·V_T·ln(I/I_s). A factor-of-10 change in I changes V by n·V_T·ln(10) ≈ 1·0.0258·2.303 ≈ 60 mV (for ideality n≈1). So '0.7 V' is only true near one specific current — at 100× less current the drop might be ~0.58 V. The diode is a log element, not a fixed-voltage element."
+    },
+    {
+      q: "A silicon diode's forward voltage at a FIXED current changes with temperature by approximately:",
+      a: ["+2 mV/°C (rises with temperature)",
+          "−2 mV/°C (falls with temperature)",
+          "0 — it's temperature-independent",
+          "−60 mV/°C"],
+      correct: 1,
+      why: "At constant forward current, V_f falls about −2 mV/°C for silicon. (The exponential's I_s rises fast with temperature, which dominates over the V_T term.) This negative tempco is why paralleled diodes/BJTs can thermally run away, and it's exploited in temperature sensors and bandgap references. Note the sign: hotter → lower V_f."
+    },
+    {
+      q: "To drive a 2.0 V LED at 10 mA from a 5 V rail, the series resistor should be:",
+      a: ["500 Ω", "300 Ω", "200 Ω", "50 Ω"],
+      correct: 1,
+      why: "The resistor drops the difference: V_R = 5 − 2.0 = 3.0 V. R = V_R / I = 3.0 / 0.010 = 300 Ω. The LED is NOT ohmic, so you size the resistor from the voltage across IT, not across the LED. Nearest E24 value is 300 Ω (or 330 Ω for a bit less current). This is the single most common diode design calc."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>

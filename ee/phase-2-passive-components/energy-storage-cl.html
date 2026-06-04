@@ -69,6 +69,17 @@
   .bar-cap{background:#5ec8ff;height:20px;border-radius:3px;margin:6px 0;transition:width 0.15s}
   .bar-ind{background:#ffb86c;height:20px;border-radius:3px;margin:6px 0;transition:width 0.15s}
   @media (max-width:720px){.duality{grid-template-columns:1fr}}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -278,6 +289,11 @@
     </div>
   </section>
 
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
+  </section>
+
   <footer>
     Curriculum: <a target="_top" href="../../index.html">EE Phase 2 — Passive Components</a> ·
     Forward: <a href="rlc-step-response.html">RLC Step Response</a>
@@ -460,6 +476,98 @@
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
+
+  // ---------- Deep-link hash state (shareable configs) ----------
+  function writeHash(){
+    const p = new URLSearchParams();
+    ['c','vc','l','il','spd'].forEach(k => p.set(k, els[k].value));
+    history.replaceState(null, '', '#' + p.toString());
+  }
+  function readHash(){
+    const h = location.hash.replace(/^#/, '');
+    if (!h) return;
+    const p = new URLSearchParams(h);
+    ['c','vc','l','il','spd'].forEach(k => { const v = p.get(k); if (v !== null) els[k].value = v; });
+    update();
+  }
+  Object.values(els).forEach(el => el.addEventListener('input', writeHash));
+  document.querySelectorAll('#presets button').forEach(b => b.addEventListener('click', writeHash));
+  readHash();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "You double the voltage on a capacitor (same C). The stored energy:",
+      a: ["doubles", "quadruples", "halves", "stays the same"],
+      correct: 1,
+      why: "E = ½·C·V². Energy scales with the SQUARE of voltage, so doubling V gives 2² = 4× the energy. The same square-law holds for an inductor with current: E = ½·L·I². This is why a small voltage/current margin can mean a large energy (and stress) margin."
+    },
+    {
+      q: "A 470 µF capacitor at 12 V and a 10 mH inductor at 5 A — which stores more energy?",
+      a: ["The capacitor (much more)",
+          "The inductor (much more)",
+          "About the same",
+          "Neither stores energy at DC"],
+      correct: 1,
+      why: "E_C = ½·470e-6·12² = 33.8 mJ. E_L = ½·10e-3·5² = 125 mJ. The inductor stores ~3.7× more here. Note the practical asymmetry: inductor energy must keep flowing when the switch opens (needs a freewheel path), while capacitor energy just sits on the plates — which is why an open inductor arcs and an open capacitor doesn't."
+    },
+    {
+      q: "In an ideal lossless LC tank, once you start it oscillating, the total energy (E_C + E_L) over one cycle:",
+      a: ["decays exponentially", "stays constant — it just sloshes between C and L", "grows", "is zero on average"],
+      correct: 1,
+      why: "With no resistance, energy is conserved: it transfers back and forth between the capacitor's electric field and the inductor's magnetic field, but the SUM stays constant. When V_C is max, all energy is in C and I=0; a quarter-cycle later I is max, V_C=0, and all energy is in L. Real tanks have R (ESR + DCR), so the envelope decays — that's the damping you see in rlc-step-response."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>
