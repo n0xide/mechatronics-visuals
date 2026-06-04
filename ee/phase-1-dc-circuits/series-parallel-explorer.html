@@ -137,6 +137,23 @@
   .regime-banner .rt.large-signal{color:var(--warn)}
   .regime-banner .rt.dynamic{color:var(--warn)}
   .regime-banner .rt.nonlinear{color:var(--warn)}
+
+  /* Series-parallel extras: color bands, reduction steps, power-share bar */
+  .colorband{display:inline-block;vertical-align:middle;margin-left:6px;
+    border:1px solid var(--line);border-radius:2px;background:var(--bg-elev2)}
+  .reduxbox{background:var(--bg-elev2);border:1px solid var(--accent3);
+    border-radius:6px;padding:10px 14px;margin:12px 0;
+    font:12px ui-monospace,Menlo,monospace;display:none}
+  .reduxbox.show{display:block}
+  .reduxbox b{color:var(--accent3)}
+  .reduxbox .step{display:block;margin:3px 0;color:var(--fg)}
+  .pshare{margin:12px 0}
+  .pshare .bar{display:flex;height:26px;border-radius:4px;overflow:hidden;
+    border:1px solid var(--line);background:var(--bg-elev2)}
+  .pshare .seg{display:flex;align-items:center;justify-content:center;
+    font:11px ui-monospace,monospace;color:#0e1116;font-weight:600;
+    min-width:0;overflow:hidden;white-space:nowrap;transition:width 0.15s}
+  .pshare .cap{font-size:11px;color:var(--fg-dim);margin-top:4px}
 </style>
 </head>
 <body>
@@ -164,14 +181,15 @@
 
   <section class="controls">
     <div class="control"><label>V_supply: <span class="readout" id="vRead">12.00 V</span></label><input id="v" type="range" min="1" max="24" step="0.5" value="12"></div>
-    <div class="control"><label>R1: <span class="readout" id="r1Read">100 Ω</span></label><input id="r1" type="range" min="0" max="24" step="1" value="12"></div>
-    <div class="control"><label>R2: <span class="readout" id="r2Read">220 Ω</span></label><input id="r2" type="range" min="0" max="24" step="1" value="16"></div>
-    <div class="control"><label>R3: <span class="readout" id="r3Read">470 Ω</span></label><input id="r3" type="range" min="0" max="24" step="1" value="20"></div>
+    <div class="control"><label>R1: <span class="readout" id="r1Read">100 Ω</span> <span id="r1Band" class="colorband"></span></label><input id="r1" type="range" min="0" max="24" step="1" value="12"></div>
+    <div class="control"><label>R2: <span class="readout" id="r2Read">220 Ω</span> <span id="r2Band" class="colorband"></span></label><input id="r2" type="range" min="0" max="24" step="1" value="16"></div>
+    <div class="control"><label>R3: <span class="readout" id="r3Read">470 Ω</span> <span id="r3Band" class="colorband"></span></label><input id="r3" type="range" min="0" max="24" step="1" value="20"></div>
     <div class="control">
       <label>Topology</label>
       <select id="topo">
-        <option value="series" selected>Series</option>
-        <option value="parallel">Parallel</option>
+        <option value="series" selected>Series: R1 + R2 + R3</option>
+        <option value="parallel">Parallel: R1 ‖ R2 ‖ R3</option>
+        <option value="mixed">Mixed: R1 + (R2 ‖ R3)</option>
       </select>
     </div>
   </section>
@@ -188,6 +206,20 @@
 
     <div class="vd" id="vdiv">
       <b>Voltage divider (series only):</b> V_R2 = V_in × R2 / (R1 + R2 + R3) = <span id="vdCalc">12 × 220 / 790 = 3.34 V</span>
+    </div>
+
+    <div class="reduxbox" id="reduxBox">
+      <b>Step-by-step reduction (Mixed: R1 + (R2 ‖ R3))</b>
+      <span class="step" id="redux1">1. Collapse the parallel pair: R₂₃ = R2·R3/(R2+R3) = …</span>
+      <span class="step" id="redux2">2. Add the series resistor: R_total = R1 + R₂₃ = …</span>
+      <span class="step" id="redux3">3. Total current (through R1): I = V / R_total = …</span>
+      <span class="step" id="redux4">4. Voltage across the parallel block: V_par = I · R₂₃ = …</span>
+      <span class="step" id="redux5">5. Split that voltage back into branch currents: I2 = V_par/R2, I3 = V_par/R3 = …</span>
+    </div>
+
+    <div class="pshare">
+      <div class="bar" id="pshareBar"></div>
+      <div class="cap" id="pshareCap">Power share — where the heat goes. In series the biggest R runs hottest (same I, more V); in parallel the smallest R runs hottest (same V, more I).</div>
     </div>
 
     <div class="crosslink">
@@ -357,6 +389,53 @@
     return p.toFixed(3)+" W";
   }
 
+  // 4-band resistor color code rendering (shared pattern across phase-1 explorers)
+  const BAND_COLORS = ['#1a1a1a','#7c4a0e','#d63a2f','#e87a25','#e8d325','#3a9d3a','#3a6cd6','#9a4ad6','#7c7c7c','#dde3ec'];
+  const BAND_GOLD = '#caa040';
+  const BAND_BODY = '#d4b78a';
+  function colorBandsFor(R){
+    if (R <= 0) return null;
+    let val = R, mult = 0;
+    while (val >= 100){ val /= 10; mult++; }
+    while (val < 10 && val > 0){ val *= 10; mult--; }
+    const d1 = Math.floor(val/10);
+    const d2 = Math.floor(val - d1*10 + 0.5);
+    if (mult < -2 || mult > 9) return null;
+    let m;
+    if (mult >= 0) m = BAND_COLORS[mult];
+    else if (mult === -1) m = BAND_GOLD;
+    else m = '#bdbdbd';
+    return [BAND_COLORS[Math.max(0,Math.min(9,d1))], BAND_COLORS[Math.max(0,Math.min(9,d2))], m, BAND_GOLD];
+  }
+  function renderBand(el, R){
+    const bands = colorBandsFor(R);
+    if (!bands || !el) { if(el) el.innerHTML = ''; return; }
+    const [c1, c2, c3, c4] = bands;
+    el.innerHTML =
+      '<svg viewBox="0 0 50 14" width="48" height="14" aria-hidden="true">'+
+      '<rect x="0" y="4" width="50" height="6" fill="'+BAND_BODY+'"/>'+
+      '<line x1="0" y1="7" x2="4" y2="7" stroke="#888" stroke-width="1.2"/>'+
+      '<line x1="46" y1="7" x2="50" y2="7" stroke="#888" stroke-width="1.2"/>'+
+      '<rect x="9" y="2" width="3" height="10" fill="'+c1+'"/>'+
+      '<rect x="16" y="2" width="3" height="10" fill="'+c2+'"/>'+
+      '<rect x="23" y="2" width="3" height="10" fill="'+c3+'"/>'+
+      '<rect x="38" y="2" width="3" height="10" fill="'+c4+'"/>'+
+      '</svg>';
+  }
+
+  // Power-share horizontal bar: segments sized by each resistor's fraction of total power.
+  const SEG_COLORS = ['#5ec8ff','#ffb86c','#a3e635'];
+  function renderPshare(powers){
+    const total = powers.reduce((a,b)=>a+b, 0);
+    const bar = document.getElementById('pshareBar');
+    if (total <= 0){ bar.innerHTML = ''; return; }
+    bar.innerHTML = powers.map((p,i)=>{
+      const pct = p/total*100;
+      const lbl = pct >= 12 ? `R${i+1} ${pct.toFixed(0)}%` : '';
+      return `<div class="seg" style="width:${pct}%;background:${SEG_COLORS[i]}">${lbl}</div>`;
+    }).join('');
+  }
+
   const ids=['v','r1','r2','r3','topo'];
   const els={};
   ids.forEach(k=>els[k]=document.getElementById(k));
@@ -411,6 +490,8 @@
     document.getElementById('vdiv').style.display='block';
     document.getElementById('vdCalc').textContent=
       `${V.toFixed(1)} × ${R2} / ${Rs} = ${V2.toFixed(3)} V`;
+    document.getElementById('reduxBox').classList.remove('show');
+    renderPshare([P1, P2, P3]);
   }
 
   function drawParallel(V,R1,R2,R3){
@@ -460,6 +541,77 @@
     document.getElementById('tPT').textContent=fmtP(PT)+` (Σ=${fmtP(P1+P2+P3)})`;
 
     document.getElementById('vdiv').style.display='none';
+    document.getElementById('reduxBox').classList.remove('show');
+    renderPshare([P1, P2, P3]);
+  }
+
+  function drawMixed(V,R1,R2,R3){
+    const svg=document.getElementById('circuit');
+    const R23 = (R2*R3)/(R2+R3);
+    const Rt = R1 + R23;
+    const I = V/Rt;                 // current through R1 and into the parallel block
+    const Vpar = I*R23;            // voltage across the parallel pair
+    const V1 = I*R1;
+    const I2 = Vpar/R2, I3 = Vpar/R3;
+    svg.innerHTML=`
+      ${batterySVG(60,140,V)}
+      <line x1="60" y1="130" x2="60" y2="60" class="wire"/>
+      <!-- R1 in series along the top -->
+      <line x1="60" y1="60" x2="150" y2="60" class="wire"/>
+      <rect x="150" y="50" width="60" height="20" fill="var(--bg-elev2)" stroke="var(--accent)" stroke-width="1.5"/>
+      <text x="180" y="44" class="label" text-anchor="middle">R1=${fmtR(R1)}</text>
+      <text x="180" y="86" class="label-dim" text-anchor="middle">V=${V1.toFixed(2)}V</text>
+      <line x1="210" y1="60" x2="320" y2="60" class="wire"/>
+      <!-- parallel pair R2 / R3 -->
+      <line x1="320" y1="60" x2="460" y2="60" class="wire"/>
+      <line x1="360" y1="60" x2="360" y2="100" class="wire"/>
+      <rect x="340" y="100" width="40" height="55" fill="var(--bg-elev2)" stroke="var(--accent2)" stroke-width="1.5"/>
+      <line x1="360" y1="155" x2="360" y2="200" class="wire"/>
+      <text x="360" y="132" class="label" text-anchor="middle">${fmtR(R2)}</text>
+      <text x="318" y="180" class="label-dim" text-anchor="middle">${fmtI(I2)}</text>
+      <line x1="440" y1="60" x2="440" y2="100" class="wire"/>
+      <rect x="420" y="100" width="40" height="55" fill="var(--bg-elev2)" stroke="var(--accent2)" stroke-width="1.5"/>
+      <line x1="440" y1="155" x2="440" y2="200" class="wire"/>
+      <text x="440" y="132" class="label" text-anchor="middle">${fmtR(R3)}</text>
+      <text x="482" y="180" class="label-dim" text-anchor="middle">${fmtI(I3)}</text>
+      <!-- bottom return rail -->
+      <line x1="60" y1="150" x2="60" y2="200" class="wire"/>
+      <line x1="60" y1="200" x2="440" y2="200" class="wire"/>
+      <text x="300" y="232" class="label" text-anchor="middle">I = ${fmtI(I)} through R1 → splits into R2 ‖ R3</text>
+      <text x="300" y="248" class="label-dim" text-anchor="middle">R_total = R1 + (R2‖R3) = ${fmtR(R1)} + ${fmtR(R23)} = ${fmtR(Rt)}</text>`;
+
+    document.getElementById('tR1').textContent=fmtR(R1);
+    document.getElementById('tR2').textContent=fmtR(R2);
+    document.getElementById('tR3').textContent=fmtR(R3);
+    document.getElementById('tV1').textContent=V1.toFixed(3)+" V";
+    document.getElementById('tV2').textContent=Vpar.toFixed(3)+" V";
+    document.getElementById('tV3').textContent=Vpar.toFixed(3)+" V";
+    document.getElementById('tI1').textContent=fmtI(I);
+    document.getElementById('tI2').textContent=fmtI(I2);
+    document.getElementById('tI3').textContent=fmtI(I3);
+    const P1=V1*I, P2=Vpar*I2, P3=Vpar*I3, PT=V*I;
+    document.getElementById('tP1').textContent=fmtP(P1);
+    document.getElementById('tP2').textContent=fmtP(P2);
+    document.getElementById('tP3').textContent=fmtP(P3);
+    document.getElementById('tRT').textContent=fmtR(Rt);
+    document.getElementById('tVT').textContent=V.toFixed(2)+" V";
+    document.getElementById('tIT').textContent=fmtI(I);
+    document.getElementById('tPT').textContent=fmtP(PT)+` (Σ=${fmtP(P1+P2+P3)})`;
+
+    document.getElementById('vdiv').style.display='none';
+    const rb = document.getElementById('reduxBox');
+    rb.classList.add('show');
+    document.getElementById('redux1').textContent =
+      `1. Collapse the parallel pair: R₂₃ = (${fmtR(R2)}·${fmtR(R3)})/(${fmtR(R2)}+${fmtR(R3)}) = ${fmtR(R23)}`;
+    document.getElementById('redux2').textContent =
+      `2. Add the series resistor: R_total = R1 + R₂₃ = ${fmtR(R1)} + ${fmtR(R23)} = ${fmtR(Rt)}`;
+    document.getElementById('redux3').textContent =
+      `3. Total current (through R1): I = V / R_total = ${V.toFixed(2)} V / ${fmtR(Rt)} = ${fmtI(I)}`;
+    document.getElementById('redux4').textContent =
+      `4. Voltage across the parallel block: V_par = I · R₂₃ = ${fmtI(I)} · ${fmtR(R23)} = ${Vpar.toFixed(3)} V`;
+    document.getElementById('redux5').textContent =
+      `5. Split into branch currents: I2 = V_par/R2 = ${fmtI(I2)} · I3 = V_par/R3 = ${fmtI(I3)} (check: I2+I3 = ${fmtI(I2+I3)} = I ✓)`;
+    renderPshare([P1, P2, P3]);
   }
 
   function update(){
@@ -469,8 +621,12 @@
     document.getElementById('r1Read').textContent=fmtR(R1);
     document.getElementById('r2Read').textContent=fmtR(R2);
     document.getElementById('r3Read').textContent=fmtR(R3);
+    renderBand(document.getElementById('r1Band'), R1);
+    renderBand(document.getElementById('r2Band'), R2);
+    renderBand(document.getElementById('r3Band'), R3);
     if(els.topo.value==='series') drawSeries(V,R1,R2,R3);
-    else drawParallel(V,R1,R2,R3);
+    else if(els.topo.value==='parallel') drawParallel(V,R1,R2,R3);
+    else drawMixed(V,R1,R2,R3);
   }
   ids.forEach(k=>els[k].addEventListener('input',update));
   els.topo.addEventListener('change',update);

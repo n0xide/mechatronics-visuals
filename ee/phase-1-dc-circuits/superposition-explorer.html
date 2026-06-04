@@ -123,6 +123,18 @@
   .regime-banner .rt.large-signal{color:var(--warn)}
   .regime-banner .rt.dynamic{color:var(--warn)}
   .regime-banner .rt.nonlinear{color:var(--warn)}
+
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -285,6 +297,11 @@
     </div>
   </section>
 
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
+  </section>
+
   <footer>
     Curriculum: <a target="_top" href="../../index.html">EE Phase 1 — DC Circuit Foundations</a> ·
     Topic: Superposition (and the power trap)
@@ -366,6 +383,84 @@
   els.on1.addEventListener('change',update);
   els.on2.addEventListener('change',update);
   update();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "To find one branch's voltage by superposition, you turn off the OTHER sources. An ideal voltage source is turned off by:",
+      a: ["Opening it (removing it, leaving a gap)",
+          "Replacing it with a short circuit (a wire)",
+          "Setting it to its average value",
+          "Replacing it with a resistor equal to its internal resistance"],
+      correct: 1,
+      why: "A voltage source held at 0 V is, by definition, a short circuit (a wire forces 0 V across itself). A CURRENT source set to 0 A is an open circuit (no current = a gap). Deactivation rule: V source → short, I source → open. Note: only INDEPENDENT sources get deactivated; dependent sources stay live because their value tracks the circuit."
+    },
+    {
+      q: "With V1 alone, V_R = 4 V; with V2 alone, V_R = 2.4 V (same polarity). With both on, the actual V_R is:",
+      a: ["6.4 V", "4 V", "√(4² + 2.4²) = 4.66 V", "1.6 V"],
+      correct: 0,
+      why: "Voltage superposes linearly: V_R(both) = V_R(V1) + V_R(V2) = 4 + 2.4 = 6.4 V. No cross-terms, no square roots — that's the whole point of superposition for linear quantities. (Power would be the trap: P is NOT 160 + 57.6 mW; you must compute 6.4²/R once.)"
+    },
+    {
+      q: "Same circuit: V1-alone gives P = 160 mW in R, V2-alone gives 57.6 mW. The ACTUAL power with both on (same polarity) is:",
+      a: ["217.6 mW (just add them)",
+          "More than 217.6 mW — the cross term 2·V_a·V_b/R adds in",
+          "Less than 217.6 mW",
+          "Exactly 160 mW (the larger one wins)"],
+      correct: 1,
+      why: "Power never superposes. P_total = (V_a + V_b)²/R = P_a + P_b + 2·V_a·V_b/R. With same-polarity sources the cross term 2·4·2.4/100 = 192 mW is POSITIVE, so actual = 160 + 57.6 + 192 = 409.6 mW — well above the naïve sum. If V2 were reversed, the cross term would subtract instead. Always find total V (or I) first, then compute P once."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>
