@@ -40,6 +40,18 @@ ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.not
 code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,monospace;color:var(--accent2)}
 footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
 footer a{color:var(--accent)}
+
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style></head><body><main>
 
 <h1>Eye Diagrams — overlaying bit periods to see what your signal looks like</h1>
@@ -208,6 +220,11 @@ footer a{color:var(--accent)}
 <tr><td>Eye varies over temperature</td><td>Reference plane drift</td><td>Re-train CTLE / DFE periodically; sample eye monitor</td></tr>
 <tr><td>Adjacent lane crosstalk</td><td>3W spacing? Common return path?</td><td>Re-route; add guard traces; switch to differential</td></tr>
 </table>
+
+  <section class="quiz" id="quiz">
+    <h2 style="font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px">Check yourself</h2>
+    <div id="quizMount"></div>
+  </section>
 
 <footer>Cross-links: <a href="transmission-line.html">Transmission Line</a> · <a href="impedance-matching.html">Impedance Matching</a> · <a href="crosstalk-ground.html">Crosstalk &amp; Ground</a> · <a href="skin-effect.html">Skin Effect</a> · <a href="decoupling-caps.html">Decoupling Caps</a></footer>
 
@@ -444,5 +461,73 @@ render();
 // Expose to inline event handlers (oninput/onchange in HTML).
 // Required because <script type="module"> creates module scope.
 window.render = render;
+</script>
+<script>
+(() => {
+  const IDS = ["br","len","loss","jit","noise","vpp","mask","eq"];
+  function get(el){ return (el.type==='checkbox'||el.type==='radio') ? (el.checked?'1':'0') : el.value; }
+  function set(el,v){ if(el.type==='checkbox'||el.type==='radio') el.checked=(v==='1'); else el.value=v;
+    el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+  function write(){ const p=new URLSearchParams(); IDS.forEach(id=>{const el=document.getElementById(id); if(el) p.set(id,get(el));}); history.replaceState(null,'','#'+p.toString()); }
+  const h=location.hash.replace(/^#/,''); if(h){ const p=new URLSearchParams(h); IDS.forEach(id=>{const v=p.get(id); if(v!==null){const el=document.getElementById(id); if(el) set(el,v);}}); }
+  IDS.forEach(id=>{const el=document.getElementById(id); if(el){ el.addEventListener('input',write); el.addEventListener('change',write); }});
+})();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    { q: "A 'closing' eye diagram indicates:", a: ["Less timing and voltage margin — jitter, ISI, and noise are eating the sampling window", "A faster, cleaner link", "A higher supply voltage", "A lower data rate, always"], correct: 0, why: "Less timing and voltage margin — jitter, ISI, and noise are eating the sampling window: the eye's height is voltage margin and its width is timing margin, so a shrinking eye means a higher bit-error rate." },
+    { q: "Inter-symbol interference (ISI) that closes the eye comes mainly from:", a: ["Receiver thermal noise only", "Channel bandwidth limits smearing each bit into its neighbours", "Clock-frequency drift only", "Power-supply ripple only"], correct: 1, why: "Channel bandwidth limits smearing each bit into its neighbours: a band-limited (lossy) channel stretches each pulse so its tail overlaps adjacent bits, and that memory between symbols is exactly ISI." },
+    { q: "Equalization (CTLE / FFE / DFE) re-opens a closed eye by:", a: ["Lowering the data rate", "Boosting the high-frequency content the channel attenuated, undoing the ISI", "Adding more jitter", "Increasing the transmit voltage only"], correct: 1, why: "Boosting the high-frequency content the channel attenuated, undoing the ISI: equalizers apply the inverse of the channel's roll-off (or cancel post-cursor tails directly), flattening the response and recovering eye opening." }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '\u2713 ' : '\u2717 '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> \u00b7 <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body></html>
