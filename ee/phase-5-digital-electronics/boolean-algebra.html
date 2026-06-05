@@ -121,6 +121,17 @@
   .cheat-card .eq{display:block;color:var(--accent);
     font:13px ui-monospace,Menlo,monospace;margin:2px 0}
   .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -342,6 +353,11 @@
     </div>
   </section>
 
+  <section class="quiz" id="quiz">
+    <h2 style="font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px">Check yourself</h2>
+    <div id="quizMount"></div>
+  </section>
+
   <footer>
     Curriculum: <a target="_top" href="../../index.html">EE Phase 5 — Digital Electronics</a> ·
     Topic: Boolean Algebra
@@ -401,6 +417,63 @@
 
   function loadPreset(arr){ F = arr.slice(); render(); }
   render();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    { q: "De Morgan's theorem states that NOT(A AND B) equals:", a: ["NOT(A) AND NOT(B)", "NOT(A) OR NOT(B)", "A OR B", "NOT(A AND B) can't be simplified"], correct: 1, why: "NOT(A\\u00b7B) = NOT(A) + NOT(B): a NAND becomes an OR of inverted inputs. The dual is NOT(A+B) = NOT(A)\\u00b7NOT(B). The rule: push the bubble through the gate and flip AND\\u2194OR. De Morgan is why NAND and NOR are universal gates and why you can convert any AND-OR logic into all-NAND or all-NOR form." },
+    { q: "The Boolean expression A + A\\u00b7B simplifies to:", a: ["A", "B", "A\\u00b7B", "A + B"], correct: 0, why: "Absorption law: A + A\\u00b7B = A\\u00b7(1 + B) = A\\u00b71 = A. The A\\u00b7B term is 'absorbed' because whenever A\\u00b7B is true, A is already true. Spotting absorption (and its sibling A\\u00b7(A+B) = A) is one of the fastest hand-simplification moves \\u2014 it removes whole terms before you even reach for a K-map." },
+    { q: "The expression A + NOT(A)\\u00b7B simplifies to:", a: ["A", "B", "A\\u00b7B", "A + B"], correct: 3, why: "A + \\u0100\\u00b7B = A + B (the 'redundancy' or simplification theorem). Proof: A + \\u0100B = (A + \\u0100)(A + B) = 1\\u00b7(A + B) = A + B. Intuitively, the \\u0100 in front of B is redundant \\u2014 if A is true the whole thing is true anyway, and if A is false then \\u0100 = 1 so it reduces to B. This identity trips up a lot of students because the \\u0100 looks like it should matter." }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '\u2713 ' : '\u2717 '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> \u00b7 <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>

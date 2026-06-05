@@ -122,6 +122,17 @@
   .cheat-card .eq{display:block;color:var(--accent);
     font:13px ui-monospace,Menlo,monospace;margin:2px 0}
   .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -283,6 +294,11 @@ float a_ms2 = g * 9.80665f;                        // SI units</pre>
     </div>
   </section>
 
+  <section class="quiz" id="quiz">
+    <h2 style="font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px">Check yourself</h2>
+    <div id="quizMount"></div>
+  </section>
+
   <footer>
     Cross-links: <a href="boolean-algebra.html">Boolean Algebra</a> · <a href="logic-families-level-shift.html">Logic Families &amp; Level Shift</a> · <a href="setup-hold-metastability.html">Setup/Hold</a> · <a href="../phase-8-embedded-protocols/spi-timing.html">SPI Timing</a> · <a href="../phase-8-embedded-protocols/i2c-protocol.html">I²C Protocol</a> · <a href="../phase-8-embedded-protocols/adc-explorer.html">ADC</a>
   </footer>
@@ -342,6 +358,63 @@ float a_ms2 = g * 9.80665f;                        // SI units</pre>
   function setBits(v){ bits = v & 0xFF; render(); }
 
   render();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    { q: "The range of an 8-bit two's-complement signed integer is:", a: ["0 to 255", "\\u2212127 to +127", "\\u2212128 to +127", "\\u2212128 to +128"], correct: 2, why: "8-bit two's complement spans \\u2212128 to +127. The range is asymmetric: there's one more negative value than positive because 0 takes up a 'positive' slot. In general, N-bit two's complement is \\u22122^(N\\u22121) to +2^(N\\u22121)\\u22121. (The same 8 bits as UNSIGNED would be 0 to 255.) That extra negative value (\\u2212128 has no positive counterpart) is a classic source of overflow bugs." },
+    { q: "To negate a number in two's-complement representation, you:", a: ["just flip the sign bit", "invert all the bits and add 1", "subtract 1 and invert", "invert all bits only"], correct: 1, why: "Two's-complement negation = invert all bits (one's complement) THEN add 1. Example (8-bit): +5 = 00000101 \\u2192 invert = 11111010 \\u2192 +1 = 11111011 = \\u22125. This is exactly why two's complement is used: addition and subtraction work with the same hardware adder (subtract = add the negation), and there's no separate \\u22120. Just flipping the sign bit (sign-magnitude) would need different arithmetic logic." },
+    { q: "The 8-bit pattern 0xFF interpreted as an UNSIGNED byte is 255. Interpreted as SIGNED two's complement, it is:", a: ["+255", "+127", "\\u22121", "\\u2212128"], correct: 2, why: "0xFF = 11111111. As unsigned that's 255. As two's complement it's \\u22121 (all-ones is always \\u22121 in two's complement, for any width). The bits are identical \\u2014 only the INTERPRETATION differs. This is why mixing signed and unsigned types in C is dangerous: the same byte means 255 or \\u22121 depending on how you declared the variable, and comparisons/promotions can flip behavior unexpectedly." }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '\u2713 ' : '\u2717 '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> \u00b7 <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>

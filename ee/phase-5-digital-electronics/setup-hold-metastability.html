@@ -102,6 +102,17 @@
   .deriv b{color:var(--fg)}
   .deriv .step{display:block;margin:4px 0;color:var(--fg)}
   .deriv .arrow{color:var(--accent2);font-weight:600}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -262,6 +273,11 @@
         <li><b>Sampling slow signals with too-fast clock</b> — Whittle MTBF; analyze before deploying.</li>
       </ul>
     </div>
+  </section>
+
+  <section class="quiz" id="quiz">
+    <h2 style="font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px">Check yourself</h2>
+    <div id="quizMount"></div>
   </section>
 
   <footer>
@@ -490,6 +506,74 @@
   });
 
   update();
+</script>
+<script>
+(() => {
+  const IDS = ["tclk","ts","th","td","rate","chain"];
+  function get(el){ return (el.type==='checkbox'||el.type==='radio') ? (el.checked?'1':'0') : el.value; }
+  function set(el,v){ if(el.type==='checkbox'||el.type==='radio') el.checked=(v==='1'); else el.value=v;
+    el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+  function write(){ const p=new URLSearchParams(); IDS.forEach(id=>{const el=document.getElementById(id); if(el) p.set(id,get(el));}); history.replaceState(null,'','#'+p.toString()); }
+  const h=location.hash.replace(/^#/,''); if(h){ const p=new URLSearchParams(h); IDS.forEach(id=>{const v=p.get(id); if(v!==null){const el=document.getElementById(id); if(el) set(el,v);}}); }
+  IDS.forEach(id=>{const el=document.getElementById(id); if(el){ el.addEventListener('input',write); el.addEventListener('change',write); }});
+})();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    { q: "Setup time and hold time for a flip-flop require the data input to be stable:", a: ["only after the clock edge", "setup = stable BEFORE the edge, hold = stable AFTER the edge", "only during the edge", "at any time"], correct: 1, why: "Setup time (t_su) is the window BEFORE the clock edge during which D must already be stable; hold time (t_h) is the window AFTER the edge during which D must remain stable. Together they define a keep-out window around the edge. The data must not change inside it \\u2014 violate either and the flip-flop may not capture a clean value." },
+    { q: "If the data changes inside the setup/hold window, the flip-flop may go METASTABLE, meaning:", a: ["it outputs a clean 0", "its output hovers at an undefined level between 0 and 1 for an unpredictable time before resolving", "it permanently latches up", "the clock stops"], correct: 1, why: "Metastability is when the internal node is balanced near the switching threshold and the output lingers in the forbidden region between valid 0 and 1 for an unpredictable settling time before randomly resolving to one or the other. It's a probabilistic failure, not a hard fault \\u2014 you can't eliminate it for truly asynchronous inputs, only make it astronomically unlikely to cause a problem." },
+    { q: "A two-flip-flop SYNCHRONIZER chain is used on an asynchronous input because it:", a: ["speeds up the clock", "gives a metastable first stage almost a full clock period to resolve before the second stage samples, cutting failure probability exponentially", "removes the need for a clock", "converts the signal to analog"], correct: 1, why: "The first FF may go metastable when it samples an asynchronous signal, but it then has nearly a full clock period to settle before the second FF samples it. The probability that it's STILL metastable after that resolution time falls off exponentially, so MTBF improves enormously with each added stage. Two FFs is the standard; very fast/critical domains use three. It's the canonical fix for crossing clock domains." }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '\u2713 ' : '\u2717 '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> \u00b7 <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>
