@@ -34,6 +34,18 @@ footer a{color:var(--accent);text-decoration:none}
 .worked{background:var(--bg-elev);border:1px solid var(--line);border-left:3px solid var(--accent3);border-radius:6px;padding:14px 16px;margin:18px 0}
 .worked h3{margin:0 0 8px;color:var(--accent3)}
 .worked .eq{display:block;color:var(--accent);font:13px ui-monospace,monospace;background:var(--bg-elev2);padding:6px 10px;margin:6px 0;border-radius:3px;border-left:2px solid var(--accent2)}
+
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style></head>
 <body><main>
 
@@ -200,6 +212,11 @@ footer a{color:var(--accent);text-decoration:none}
 </ul></div>
 </section>
 
+  <section class="quiz" id="quiz">
+    <h2 style="font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px">Check yourself</h2>
+    <div id="quizMount"></div>
+  </section>
+
 <footer>Curriculum: <a target="_top" href="../../index.html">EE Phase 9 — RF &amp; Wireless</a> · Cross-links: <a href="wireless-spectrum.html">Wireless Spectrum</a>, <a href="link-budget.html">Link Budget</a>, <a href="ble-gatt.html">BLE GATT</a>.</footer>
 
 </main>
@@ -338,4 +355,72 @@ draw24Channels();
 draw5Channels();
 ['band','bw','std'].forEach(k => els[k].addEventListener('change', update));
 update();
-</script></body></html>
+</script><script>
+(() => {
+  const IDS = ["band","bw","std"];
+  function get(el){ return (el.type==='checkbox'||el.type==='radio') ? (el.checked?'1':'0') : el.value; }
+  function set(el,v){ if(el.type==='checkbox'||el.type==='radio') el.checked=(v==='1'); else el.value=v;
+    el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+  function write(){ const p=new URLSearchParams(); IDS.forEach(id=>{const el=document.getElementById(id); if(el) p.set(id,get(el));}); history.replaceState(null,'','#'+p.toString()); }
+  const h=location.hash.replace(/^#/,''); if(h){ const p=new URLSearchParams(h); IDS.forEach(id=>{const v=p.get(id); if(v!==null){const el=document.getElementById(id); if(el) set(el,v);}}); }
+  IDS.forEach(id=>{const el=document.getElementById(id); if(el){ el.addEventListener('input',write); el.addEventListener('change',write); }});
+})();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    { q: "In the 2.4 GHz band, the commonly cited non-overlapping Wi-Fi channels are:", a: ["1, 6, and 11 — spaced so their 20 MHz widths don't overlap", "1, 2, and 3", "All 14 channels equally", "Only channel 6"], correct: 0, why: "1, 6, and 11 — spaced so their 20 MHz widths don't overlap: channels are numbered every 5 MHz but each occupies ~20 MHz, so only 1/6/11 stay clear of each other in the crowded 2.4 GHz band." },
+    { q: "OFDM improves robustness by:", a: ["Using one single wide carrier", "Splitting data across many narrow orthogonal subcarriers, resisting multipath and frequency-selective fading", "Raising the transmit power", "Using only one antenna"], correct: 1, why: "Splitting data across many narrow orthogonal subcarriers, resisting multipath and frequency-selective fading: each subcarrier sees a flat, slow channel and a guard interval absorbs echoes, so a deep fade only kills a few subcarriers, not the whole link." },
+    { q: "Going from a 20 MHz to an 80 MHz Wi-Fi channel:", a: ["Always increases range", "Has no effect on speed", "Raises throughput (≈4× the spectrum) but uses more band and is more prone to interference", "Reduces interference"], correct: 2, why: "Raises throughput (≈4× the spectrum) but uses more band and is more prone to interference: wider channels carry more bits but overlap more neighbours and lower the energy per hertz, so they shine in clean 5 GHz spectrum, less so in crowded bands." }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '\u2713 ' : '\u2717 '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> \u00b7 <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
+</script>
+</body></html>
