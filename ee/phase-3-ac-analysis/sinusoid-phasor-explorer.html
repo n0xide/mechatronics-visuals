@@ -103,6 +103,17 @@
   .cheat-card .eq{display:block;color:var(--accent);
     font:13px ui-monospace,Menlo,monospace;margin:2px 0}
   .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -198,6 +209,11 @@
         <li><b>RMS for power</b> — peak for breakdown ratings (insulation, cap V_max).</li>
       </ul>
     </div>
+  </section>
+
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
   </section>
 
   <footer>
@@ -405,6 +421,93 @@
   for (const el of [sVm,sF,sPhi,sPhi2]) el.addEventListener('input', draw);
 
   requestAnimationFrame(loop);
+})();
+</script>
+<script>
+// Deep-link hash state (generic: persists range/select/checkbox controls)
+(() => {
+  const IDS = ['sVm','sF','sPhi','sPhi2'];
+  function get(el){ return (el.type==='checkbox'||el.type==='radio') ? (el.checked?'1':'0') : el.value; }
+  function set(el,v){ if(el.type==='checkbox'||el.type==='radio') el.checked=(v==='1'); else el.value=v;
+    el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+  function write(){ const p=new URLSearchParams(); IDS.forEach(id=>{const el=document.getElementById(id); if(el) p.set(id,get(el));}); history.replaceState(null,'','#'+p.toString()); }
+  const h=location.hash.replace(/^#/,''); if(h){ const p=new URLSearchParams(h); IDS.forEach(id=>{const v=p.get(id); if(v!==null){const el=document.getElementById(id); if(el) set(el,v);}}); }
+  IDS.forEach(id=>{const el=document.getElementById(id); if(el){ el.addEventListener('input',write); el.addEventListener('change',write); }});
+})();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "US wall power is quoted as 120 V, but an oscilloscope shows the peak at about ±170 V. The 120 V figure is the:",
+      a: ["peak voltage", "RMS voltage (V_peak/√2)", "average voltage", "peak-to-peak voltage"],
+      correct: 1,
+      why: "For a sinusoid, V_RMS = V_peak/√2 ≈ V_peak·0.707. So 170 V peak → 170/√2 ≈ 120 V RMS. RMS is the 'equivalent DC' value that delivers the same heating power (P = V_RMS²/R), which is why it's the number quoted for mains and used in all power calculations. Peak matters for insulation/breakdown ratings, not power."
+    },
+    {
+      q: "A phasor (a fixed arrow in the complex plane) captures a sinusoid's magnitude and phase. What does it deliberately NOT show?",
+      a: ["the amplitude", "the phase angle", "the frequency (assumed fixed and shared by all phasors in the diagram)", "whether it's voltage or current"],
+      correct: 2,
+      why: "A phasor freezes the rotating vector at t=0, encoding only magnitude and phase. Frequency is implicit — every phasor in one diagram is assumed to rotate at the SAME ω. That's exactly why phasors only work for single-frequency (sinusoidal steady-state) analysis: mix two frequencies and a single static diagram can't represent them. To recover the time signal you multiply by e^(jωt) and take the real part."
+    },
+    {
+      q: "Signal v2 LEADS signal v1 by 90°. At the instant v1 reaches its positive peak, v2 is:",
+      a: ["also at its positive peak",
+          "at zero, having peaked a quarter-cycle earlier",
+          "at its negative peak",
+          "at zero, about to peak a quarter-cycle later"],
+      correct: 1,
+      why: "Leading by 90° means v2 reaches each feature a quarter-cycle (90°) EARLIER than v1. So when v1 finally hits its peak, v2 already peaked 90° ago and is now passing through zero on its way down. (If v2 LAGGED by 90°, it would be at zero about to peak — answer d.) Lead = ahead in time = its waveform is shifted left on the scope."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
 })();
 </script>
 </body>

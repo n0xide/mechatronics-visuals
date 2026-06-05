@@ -108,6 +108,17 @@
   .cheat-card .eq{display:block;color:var(--accent);
     font:13px ui-monospace,Menlo,monospace;margin:2px 0}
   .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -233,6 +244,11 @@
         <li><b>Low PF wastes capacity</b> — wires/transformer must carry S amps to deliver only P watts. Utilities bill kVA-h.</li>
       </ul>
     </div>
+  </section>
+
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
   </section>
 
   <footer>
@@ -463,6 +479,93 @@ import { omega } from '../../_shared/physics.js';
 
   for (const el of [sThL,sVs,sF,sSL,sC]) el.addEventListener('input', drawCorr);
   drawCorr();
+})();
+</script>
+<script>
+// Deep-link hash state (generic)
+(() => {
+  const IDS = ['sTheta','sVrms','sIrms','sThL','sVs','sF','sSL','sC'];
+  function get(el){ return (el.type==='checkbox'||el.type==='radio') ? (el.checked?'1':'0') : el.value; }
+  function set(el,v){ if(el.type==='checkbox'||el.type==='radio') el.checked=(v==='1'); else el.value=v;
+    el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+  function write(){ const p=new URLSearchParams(); IDS.forEach(id=>{const el=document.getElementById(id); if(el) p.set(id,get(el));}); history.replaceState(null,'','#'+p.toString()); }
+  const h=location.hash.replace(/^#/,''); if(h){ const p=new URLSearchParams(h); IDS.forEach(id=>{const v=p.get(id); if(v!==null){const el=document.getElementById(id); if(el) set(el,v);}}); }
+  IDS.forEach(id=>{const el=document.getElementById(id); if(el){ el.addEventListener('input',write); el.addEventListener('change',write); }});
+})();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "Power factor is defined as cos φ = P/S, where P is real power (W) and S is apparent power (VA). A load with pf = 0.8 lagging has a phase angle φ of about:",
+      a: ["0° (in phase)", "36.9°", "53.1°", "90°"],
+      correct: 1,
+      why: "cos φ = 0.8 → φ = arccos(0.8) ≈ 36.9°. 'Lagging' means the current lags the voltage (an inductive load — motors, transformers). The 3-4-5 triangle is the classic memory hook: cos 36.9° = 0.8, sin 36.9° = 0.6, so a pf=0.8 load with 100 W real power draws 125 VA apparent and 75 VAR reactive."
+    },
+    {
+      q: "Real power P, reactive power Q, and apparent power S form the power triangle. They relate as:",
+      a: ["S = P + Q", "S² = P² + Q²", "S = P · Q", "S = P − Q"],
+      correct: 1,
+      why: "The three powers are the sides of a right triangle: S² = P² + Q² (apparent² = real² + reactive²). P (watts) is the horizontal leg — actual energy converted to work/heat. Q (VAR) is the vertical leg — energy sloshing in and out of reactive elements, doing no net work. S (VA) is the hypotenuse — what the wires and transformer must actually carry. You can't just add P and Q linearly; they're 90° apart."
+    },
+    {
+      q: "A factory's motors present a lagging (inductive) power factor of 0.7. To correct it toward unity, you add:",
+      a: ["a resistor in series",
+          "a capacitor in parallel with the load",
+          "an inductor in parallel",
+          "nothing — pf can't be changed"],
+      correct: 1,
+      why: "An inductive load draws LAGGING reactive power. A capacitor draws LEADING reactive power, so a parallel capacitor bank supplies the reactive current locally, cancelling the inductive Q and pulling the overall pf toward 1. This shrinks the apparent power S the utility must deliver (lower line current, less I²R loss, smaller transformer) — which is why industrial sites get billed for poor pf and install correction caps. Series resistors just waste power; parallel inductors make it worse."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
 })();
 </script>
 </body>

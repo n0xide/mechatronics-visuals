@@ -112,6 +112,17 @@
     font-family:ui-monospace,Menlo,monospace}
   .legend span{display:inline-flex;align-items:center;gap:6px}
   .legend i{display:inline-block;width:12px;height:3px}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -275,6 +286,11 @@
         <li><b>Wrong direction of rotation</b> — engineering convention is CCW (positive ω); physics sometimes uses CW. Lab equipment uses CCW; honor that.</li>
       </ul>
     </div>
+  </section>
+
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
   </section>
 
   <footer>
@@ -540,6 +556,97 @@
   });
 
   update();
+</script>
+<script>
+// Deep-link hash state (generic)
+(() => {
+  const IDS = ['freq','r','l','c','vm','speed'];
+  function get(el){ return (el.type==='checkbox'||el.type==='radio') ? (el.checked?'1':'0') : el.value; }
+  function set(el,v){ if(el.type==='checkbox'||el.type==='radio') el.checked=(v==='1'); else el.value=v;
+    el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+  function write(){ const p=new URLSearchParams(); IDS.forEach(id=>{const el=document.getElementById(id); if(el) p.set(id,get(el));}); history.replaceState(null,'','#'+p.toString()); }
+  const h=location.hash.replace(/^#/,''); if(h){ const p=new URLSearchParams(h); IDS.forEach(id=>{const v=p.get(id); if(v!==null){const el=document.getElementById(id); if(el) set(el,v);}}); }
+  IDS.forEach(id=>{const el=document.getElementById(id); if(el){ el.addEventListener('input',write); el.addEventListener('change',write); }});
+})();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "In an INDUCTOR, the relationship between current and voltage phasors is:",
+      a: ["current and voltage are in phase",
+          "current LAGS voltage by 90° (ELI)",
+          "current LEADS voltage by 90° (ICE)",
+          "current lags voltage by 45°"],
+      correct: 1,
+      why: "ELI the ICE man: in an inductor (L), voltage E leads current I — equivalently, current LAGS voltage by 90°. In a capacitor (C), current I leads voltage E by 90°. The mnemonic packs both: 'E-L-I' (E before I in an L) and 'I-C-E' (I before E in a C). Physically: an inductor opposes current change, so current can't jump to follow voltage — it lags."
+    },
+    {
+      q: "An inductor's reactance X_L = ωL and a capacitor's X_C = 1/(ωC). As frequency RISES:",
+      a: ["both reactances rise",
+          "X_L rises, X_C falls",
+          "X_L falls, X_C rises",
+          "both reactances fall"],
+      correct: 1,
+      why: "X_L = ωL increases linearly with frequency (an inductor blocks high frequencies — it's an open at infinite f). X_C = 1/(ωC) decreases with frequency (a capacitor passes high frequencies — it's a short at infinite f). At DC (ω→0) they swap roles: inductor = short, capacitor = open. This opposite frequency dependence is what makes them complementary in filters and what creates resonance when combined."
+    },
+    {
+      q: "At the resonant frequency of a series RLC, X_L and X_C are equal in magnitude. The total impedance is then:",
+      a: ["purely resistive — current is in phase with voltage",
+          "purely inductive", "purely capacitive", "zero in all cases"],
+      correct: 0,
+      why: "At resonance X_L = X_C, and since the inductor's +jX_L and the capacitor's −jX_C are opposite in sign, the reactances CANCEL. What's left is just R — the impedance is purely real, so current and voltage are exactly in phase (power factor = 1). For a SERIES RLC this gives MINIMUM impedance (= R) and maximum current; a parallel RLC is the dual (maximum impedance). This in-phase condition is the heart of tuning and filtering."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>

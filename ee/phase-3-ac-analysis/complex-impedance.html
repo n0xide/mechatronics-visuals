@@ -104,6 +104,17 @@
   .cheat-card .eq{display:block;color:var(--accent);
     font:13px ui-monospace,Menlo,monospace;margin:2px 0}
   .cheat-card .eq-note{color:var(--fg-dim);font-size:11px;margin-left:6px}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -197,6 +208,11 @@
         <li><b>Don't sum magnitudes</b> — sum complex numbers, then take |·|.</li>
       </ul>
     </div>
+  </section>
+
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
   </section>
 
   <footer>
@@ -384,6 +400,99 @@ import { fromLog, fRes } from '../../_shared/physics.js';
 
   for (const el of [sR,sL,sC,sFcur,tR,tL,tC,tSeries,tParallel]) el.addEventListener('input', draw);
   draw();
+})();
+</script>
+<script>
+// Deep-link hash state (generic; handles sliders + checkboxes)
+(() => {
+  const IDS = ['sR','sL','sC','sFcur','tR','tL','tC','tSeries','tParallel'];
+  function get(el){ return (el.type==='checkbox'||el.type==='radio') ? (el.checked?'1':'0') : el.value; }
+  function set(el,v){ if(el.type==='checkbox'||el.type==='radio') el.checked=(v==='1'); else el.value=v;
+    el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+  function write(){ const p=new URLSearchParams(); IDS.forEach(id=>{const el=document.getElementById(id); if(el) p.set(id,get(el));}); history.replaceState(null,'','#'+p.toString()); }
+  const h=location.hash.replace(/^#/,''); if(h){ const p=new URLSearchParams(h); IDS.forEach(id=>{const v=p.get(id); if(v!==null){const el=document.getElementById(id); if(el) set(el,v);}}); }
+  IDS.forEach(id=>{const el=document.getElementById(id); if(el){ el.addEventListener('input',write); el.addEventListener('change',write); }});
+})();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "In phasor (impedance) form, an ideal inductor and an ideal capacitor have impedances:",
+      a: ["Z_L = jωL, Z_C = +j/(ωC)",
+          "Z_L = jωL, Z_C = 1/(jωC) = −j/(ωC)",
+          "Z_L = −jωL, Z_C = jωC",
+          "both are purely real"],
+      correct: 1,
+      why: "Z_L = jωL is positive-imaginary (reactance grows with frequency). Z_C = 1/(jωC) = −j/(ωC) is negative-imaginary (reactance falls with frequency). The opposite SIGN of the imaginary part is everything: it's why inductor and capacitor reactances subtract, why they can cancel at resonance, and why an inductor's current lags (+90° impedance angle) while a capacitor's leads (−90°). A resistor is purely real: Z_R = R."
+    },
+    {
+      q: "As frequency → 0 (DC), a series R-L-C branch's impedance is dominated by:",
+      a: ["the inductor (Z → ∞)",
+          "the capacitor (Z → ∞, since 1/(ωC) → ∞)",
+          "the resistor only",
+          "zero impedance"],
+      correct: 1,
+      why: "At DC the capacitor's reactance 1/(ωC) → ∞ (it's an open circuit — blocks DC), so a SERIES branch is dominated by the cap and Z → ∞. Meanwhile the inductor's ωL → 0 (it's a short at DC). At very HIGH frequency the roles flip: the inductor dominates (Z → ∞) and the cap shorts out. This is the ω→0 limit where Phase-1 DC analysis lives: caps open, inductors short, and only resistors carry steady current."
+    },
+    {
+      q: "A complex impedance Z = R + jX has magnitude |Z| and phase angle θ given by:",
+      a: ["|Z| = R + X, θ = R/X",
+          "|Z| = √(R² + X²), θ = arctan(X/R)",
+          "|Z| = R·X, θ = 90°",
+          "|Z| = R − X, θ = X − R"],
+      correct: 1,
+      why: "Z is a vector in the complex plane: real part R (resistance), imaginary part X (net reactance = X_L − X_C). Its magnitude is the Pythagorean |Z| = √(R² + X²), and its phase angle θ = arctan(X/R) tells you how much the current lags (X>0, inductive) or leads (X<0, capacitive) the voltage. |Z| sets the current magnitude (I = V/|Z|); θ sets the power factor (cos θ). This is the bridge from rectangular to polar impedance form."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
 })();
 </script>
 </body>

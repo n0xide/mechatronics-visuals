@@ -41,6 +41,17 @@ ul.notice{padding-left:18px;color:var(--fg-dim)}ul.notice li{margin:4px 0}ul.not
 code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;font:12px ui-monospace,monospace;color:var(--accent2)}
 footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--fg-dim);font-family:ui-monospace,monospace}
 footer a{color:var(--accent)}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style></head><body><main>
 
 <h1>Three-Phase Systems — Y, Δ, line vs phase, and why √3 keeps showing up</h1>
@@ -215,6 +226,11 @@ footer a{color:var(--accent)}
 <tr><td>2400 / 4160 V</td><td>2400 V</td><td>4160 V</td><td>Plant distribution, large motors (50-1000 hp)</td></tr>
 <tr><td>69 / 138 kV</td><td>69 kV</td><td>138 kV</td><td>Subtransmission lines</td></tr>
 </table>
+
+<section class="quiz" id="quiz">
+  <h2 style="font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px">Check yourself</h2>
+  <div id="quizMount"></div>
+</section>
 
 <footer>Cross-links: <a href="sinusoid-phasor-explorer.html">Sinusoid + Phasor</a> · <a href="phasor-rotation.html">Phasor Rotation</a> · <a href="power-factor-triangle.html">Power Factor</a> · <a href="rlc-resonance.html">RLC Resonance</a> · <a href="../phase-6-power-electronics/buck-converter.html">Buck Converter</a> · <a href="../../em/phase-3-motor-control/foc-overview.html">FOC Overview</a></footer>
 
@@ -471,5 +487,92 @@ function drawRectified(Vll, f){
 }
 
 render();
+</script>
+<script>
+// Deep-link hash state (generic)
+(() => {
+  const IDS = ['Vln','f','Z','pf','conn','bal'];
+  function get(el){ return (el.type==='checkbox'||el.type==='radio') ? (el.checked?'1':'0') : el.value; }
+  function set(el,v){ if(el.type==='checkbox'||el.type==='radio') el.checked=(v==='1'); else el.value=v;
+    el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+  function write(){ const p=new URLSearchParams(); IDS.forEach(id=>{const el=document.getElementById(id); if(el) p.set(id,get(el));}); history.replaceState(null,'','#'+p.toString()); }
+  const h=location.hash.replace(/^#/,''); if(h){ const p=new URLSearchParams(h); IDS.forEach(id=>{const v=p.get(id); if(v!==null){const el=document.getElementById(id); if(el) set(el,v);}}); }
+  IDS.forEach(id=>{const el=document.getElementById(id); if(el){ el.addEventListener('input',write); el.addEventListener('change',write); }});
+})();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    {
+      q: "In a balanced WYE (star) system, each phase-to-neutral voltage is 230 V. The line-to-line voltage is:",
+      a: ["230 V", "400 V (= √3 · 230)", "115 V", "690 V"],
+      correct: 1,
+      why: "In a wye connection, V_line = √3 · V_phase, so the line voltage is 400 V (= √3 · 230). That's exactly the European '230/400 V' system: 230 from any phase to neutral, 400 between any two phases. The √3 comes from the 120° geometry — subtracting two phase voltages 120° apart gives a magnitude √3 times larger than either one."
+    },
+    {
+      q: "A perfectly BALANCED three-phase load is fed through a four-wire (3 phases + neutral) system. The current in the neutral wire is:",
+      a: ["equal to one phase current", "√3 times a phase current", "zero", "three times a phase current"],
+      correct: 2,
+      why: "The three phase currents are equal in magnitude and 120° apart, so they sum to exactly zero at the neutral node (KCL). A balanced load needs no return current — which is why high-voltage transmission uses three wires and no neutral. The neutral only carries the IMBALANCE current; in a perfectly balanced load it's idle. (Harmonics, especially the 3rd, are the real-world exception that can load the neutral.)"
+    },
+    {
+      q: "Total real power delivered to a balanced three-phase load is:",
+      a: ["V_L · I_L · cos φ",
+          "√3 · V_L · I_L · cos φ",
+          "3 · V_L · I_L · cos φ",
+          "V_L · I_L"],
+      correct: 1,
+      why: "Total 3φ power P = √3 · V_L · I_L · cos φ, where V_L and I_L are the LINE values and cos φ is the power factor. (Equivalently P = 3·V_phase·I_phase·cos φ — the √3 form just uses line quantities.) The √3 trips people up: it's there because line voltage is √3× phase voltage in wye, but power adds across three phases — the algebra collapses to a single √3. Three-phase delivers constant instantaneous power, unlike single-phase which pulses at 2f."
+    }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '✓ ' : '✗ '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> · <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body></html>
