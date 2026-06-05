@@ -41,6 +41,18 @@ footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);font-si
 footer a{color:var(--accent)}
 .share{font-size:11px;color:var(--fg-dim);margin-top:6px}
 .share a{color:var(--accent);cursor:pointer}
+
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style></head><body><main>
 
 <h1>Snubber Deep-Dive — clamping leakage-inductance spikes</h1>
@@ -200,6 +212,11 @@ footer a{color:var(--accent)}
 <tr><td>Motor brake (regen)</td><td>Brake chopper (R only across bus + transistor switch)</td></tr>
 <tr><td>Relay coil / MOV across motor</td><td>Freewheeling diode + bleeder (poor man's snubber)</td></tr>
 </table>
+
+  <section class="quiz" id="quiz">
+    <h2 style="font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px">Check yourself</h2>
+    <div id="quizMount"></div>
+  </section>
 
 <footer>Cross-links: <a href="flyback-converter.html">Flyback Converter</a> · <a href="llc-resonant.html">LLC Resonant</a> · <a href="gate-drivers.html">Gate Drivers</a> · <a href="synchronous-rectification.html">Sync Rectification</a> · <a href="../phase-7-signal-integrity-pcb/decoupling-caps.html">Decoupling Caps</a></footer>
 
@@ -382,5 +399,62 @@ function drawWave(Vin, Vor, dVclamp, Vds_rating){
 
 loadHashState();
 render();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    { q: "An RC snubber across a switching node primarily:", a: ["Increases the switching frequency", "Damps the ringing caused by parasitic inductance and capacitance at turn-off", "Boosts the output voltage", "Provides galvanic isolation"], correct: 1, why: "Damps the ringing caused by parasitic inductance and capacitance at turn-off: loop inductance and device capacitance form an LC tank that rings when current switches abruptly. The snubber adds loss to tame the overshoot and the resulting EMI." },
+    { q: "For critical damping, the snubber resistor is chosen near:", a: ["Zero ohms", "The characteristic impedance √(L/C) of the parasitic resonance", "The load resistance", "Infinity"], correct: 1, why: "The characteristic impedance √(L/C) of the parasitic resonance: matching R to √(L/C) critically damps the ring. The snubber capacitor is then picked a few times larger than the parasitic C so the RC time constant spans the ringing period." },
+    { q: "Power dissipated in an RC(D) snubber scales roughly as:", a: ["Independent of switching frequency", "≈ ½ · C · V² · fsw (energy per cycle × switching frequency)", "≈ C · V (linear in voltage)", "It falls as frequency rises"], correct: 1, why: "≈ ½ · C · V² · fsw (energy per cycle × switching frequency): every cycle the snubber cap charges and dumps ½CV² into its resistor, so dissipation rises linearly with frequency and with the square of the clamped voltage — a real efficiency cost to budget." }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '\u2713 ' : '\u2717 '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> \u00b7 <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body></html>

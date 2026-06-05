@@ -102,6 +102,18 @@
   .deriv b{color:var(--fg)}
   .deriv .step{display:block;margin:4px 0;color:var(--fg)}
   .deriv .arrow{color:var(--accent2);font-weight:600}
+
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -271,7 +283,12 @@
     </div>
   </section>
 
-  <footer>
+    <section class="quiz" id="quiz">
+    <h2 style="font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px">Check yourself</h2>
+    <div id="quizMount"></div>
+  </section>
+
+<footer>
     Curriculum: <a target="_top" href="../../index.html">EE Phase 6 — Power Electronics</a> ·
     Companion: <a href="../phase-2-passive-components/lc-resonance.html">LC Resonance</a> ·
     Forward: <a href="../phase-7-signal-integrity-pcb/ground-bounce.html">Ground Bounce</a> for the next noise mechanism.
@@ -517,6 +534,74 @@
   });
 
   update();
+</script>
+<script>
+(() => {
+  const IDS = ["fsw","io","di","co","lo","ci","esr"];
+  function get(el){ return (el.type==='checkbox'||el.type==='radio') ? (el.checked?'1':'0') : el.value; }
+  function set(el,v){ if(el.type==='checkbox'||el.type==='radio') el.checked=(v==='1'); else el.value=v;
+    el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+  function write(){ const p=new URLSearchParams(); IDS.forEach(id=>{const el=document.getElementById(id); if(el) p.set(id,get(el));}); history.replaceState(null,'','#'+p.toString()); }
+  const h=location.hash.replace(/^#/,''); if(h){ const p=new URLSearchParams(h); IDS.forEach(id=>{const v=p.get(id); if(v!==null){const el=document.getElementById(id); if(el) set(el,v);}}); }
+  IDS.forEach(id=>{const el=document.getElementById(id); if(el){ el.addEventListener('input',write); el.addEventListener('change',write); }});
+})();
+</script>
+<script>
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    { q: "In a buck output LC filter, doubling the switching frequency (L and C fixed) changes the output voltage ripple by about:", a: ["≈2× smaller", "≈4× smaller (ripple ∝ 1/fsw² for a 2nd-order LC filter)", "no change", "≈8× smaller"], correct: 1, why: "≈4× smaller (ripple ∝ 1/fsw² for a 2nd-order LC filter): an LC output filter rolls off at −40 dB/decade, so ripple scales as 1/fsw². Doubling fsw quarters the ripple — the lever that lets designers shrink L and C." },
+    { q: "The main job of the input capacitor in a buck converter is to:", a: ["Set the output voltage", "Filter the output ripple", "Supply the pulsed switch current locally so the source sees smoother current (lower EMI)", "Provide isolation"], correct: 2, why: "Supply the pulsed switch current locally so the source sees smoother current (lower EMI): a buck draws choppy pulses at its input; the input cap sources those pulses cycle-by-cycle so the upstream wiring carries near-DC, cutting conducted EMI and input ripple." },
+    { q: "Capacitor ESR worsens output ripple because:", a: ["ESR increases the capacitance", "Ripple current through the ESR adds a resistive step ΔV = ESR · ΔI on top of the capacitive ripple", "ESR shifts the switching frequency", "ESR has no effect on ripple"], correct: 1, why: "Ripple current through the ESR adds a resistive step ΔV = ESR · ΔI on top of the capacitive ripple: in many designs that ESR term dominates the output ripple, which is why low-ESR ceramic or polymer caps are specified for switchers." }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '\u2713 ' : '\u2717 '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> \u00b7 <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>
