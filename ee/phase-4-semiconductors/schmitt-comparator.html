@@ -60,6 +60,17 @@
   .preset-row button{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px 10px;font:12px ui-monospace,Menlo,monospace;cursor:pointer}
   .preset-row button:hover{border-color:var(--accent);color:var(--accent)}
   .preset-row button.active{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -209,6 +220,11 @@
         <li><b>Open-loop oscillation in a non-Schmitt comparator.</b> Without hysteresis, slow inputs cause chatter. Hysteresis is mandatory if input edges are slower than the comparator's prop delay.</li>
       </ul>
     </div>
+  </section>
+
+  <section class="quiz" id="quiz">
+    <h2 style="font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px">Check yourself</h2>
+    <div id="quizMount"></div>
   </section>
 
   <footer>
@@ -392,6 +408,76 @@
   Object.values(els).forEach(el => el.addEventListener('input', update));
   document.querySelectorAll('#presets button').forEach(b => b.addEventListener('click', () => applyPreset(b.dataset.p)));
   update();
+</script>
+<script>
+// Deep-link hash state (generic; handles sliders/selects/checkboxes)
+(() => {
+  const IDS = ["vin","vcc","r1","r2","noise"];
+  function get(el){ return (el.type==='checkbox'||el.type==='radio') ? (el.checked?'1':'0') : el.value; }
+  function set(el,v){ if(el.type==='checkbox'||el.type==='radio') el.checked=(v==='1'); else el.value=v;
+    el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+  function write(){ const p=new URLSearchParams(); IDS.forEach(id=>{const el=document.getElementById(id); if(el) p.set(id,get(el));}); history.replaceState(null,'','#'+p.toString()); }
+  const h=location.hash.replace(/^#/,''); if(h){ const p=new URLSearchParams(h); IDS.forEach(id=>{const v=p.get(id); if(v!==null){const el=document.getElementById(id); if(el) set(el,v);}}); }
+  IDS.forEach(id=>{const el=document.getElementById(id); if(el){ el.addEventListener('input',write); el.addEventListener('change',write); }});
+})();
+</script>
+<script>
+// Quiz (self-contained)
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    { q: "A Schmitt trigger differs from a plain comparator by having:", a: ["higher gain", "two switching thresholds (hysteresis) instead of one", "a built-in voltage reference", "no output stage"], correct: 1, why: "A Schmitt trigger has an UPPER threshold (to switch high\\u2192low or low\\u2192high one way) and a separate LOWER threshold for the reverse transition. The gap between them is the hysteresis. A plain comparator has a single trip point. The two thresholds are what give the Schmitt its noise immunity and clean output on slow, noisy inputs." },
+    { q: "The hysteresis (two thresholds) in a Schmitt trigger is created by:", a: ["negative feedback", "positive feedback \\u2014 the output state shifts the trip point", "a large input capacitor", "a precision reference diode"], correct: 1, why: "POSITIVE feedback (a fraction of the output fed back to the non-inverting input via R1/R2) moves the threshold depending on the current output state. When the output is high, the trip point is raised; when low, it's lowered. That's the opposite of an op-amp amplifier's negative feedback \\u2014 it's deliberate and creates the snap-action plus the two distinct thresholds. In short: positive feedback \\u2014 the output state shifts the trip point." },
+    { q: "Feeding a slow, noisy signal into a PLAIN comparator (no hysteresis) near its threshold produces:", a: ["a clean single transition", "multiple rapid output transitions (chatter) as noise crosses the threshold repeatedly", "no output at all", "a perfect square wave"], correct: 1, why: "Near the single threshold, every little noise wiggle crosses back and forth, so the output chatters \\u2014 multiple false edges per real transition. This wrecks edge-counting, clocks, and wake-on-signal logic. Hysteresis fixes it: once the input crosses the upper threshold, noise smaller than the hysteresis band can't trip it back until the input genuinely falls past the lower threshold. Size the hysteresis bigger than the expected noise." }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '\u2713 ' : '\u2717 '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> \u00b7 <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>

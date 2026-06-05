@@ -98,6 +98,17 @@
     border-radius:4px;padding:1px 6px;font:11px ui-monospace,monospace;color:var(--fg-dim)}
   .pill.warn{color:var(--warn);border-color:var(--warn)}
   .pill.ok{color:var(--accent3);border-color:var(--accent3)}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -271,6 +282,11 @@
         <li><b>"Hand-set parts on a wooden bench."</b> No mat, no strap — every part you touch is a CDM event in waiting.</li>
       </ul>
     </div>
+  </section>
+
+  <section class="quiz" id="quiz">
+    <h2 style="font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px">Check yourself</h2>
+    <div id="quizMount"></div>
   </section>
 
   <footer>
@@ -497,6 +513,76 @@
   ids.forEach(k => els[k].addEventListener('input', update));
   els.esd.addEventListener('change', update);
   update();
+</script>
+<script>
+// Deep-link hash state (generic; handles sliders/selects/checkboxes)
+(() => {
+  const IDS = ["ov","un","vf","rs","esd","vdd"];
+  function get(el){ return (el.type==='checkbox'||el.type==='radio') ? (el.checked?'1':'0') : el.value; }
+  function set(el,v){ if(el.type==='checkbox'||el.type==='radio') el.checked=(v==='1'); else el.value=v;
+    el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+  function write(){ const p=new URLSearchParams(); IDS.forEach(id=>{const el=document.getElementById(id); if(el) p.set(id,get(el));}); history.replaceState(null,'','#'+p.toString()); }
+  const h=location.hash.replace(/^#/,''); if(h){ const p=new URLSearchParams(h); IDS.forEach(id=>{const v=p.get(id); if(v!==null){const el=document.getElementById(id); if(el) set(el,v);}}); }
+  IDS.forEach(id=>{const el=document.getElementById(id); if(el){ el.addEventListener('input',write); el.addEventListener('change',write); }});
+})();
+</script>
+<script>
+// Quiz (self-contained)
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    { q: "CMOS latch-up is a low-resistance VDD-to-GND short triggered by:", a: ["normal switching activity", "a parasitic PNPN (SCR/thyristor) turning on when a pin is driven beyond the rails", "too low a supply voltage", "static charge on the package"], correct: 1, why: "Every CMOS IC contains a parasitic 4-layer PNPN structure (cross-coupled PNP+NPN) between VDD and GND. If an I/O is forced above VDD or below GND, injected current can turn this parasitic thyristor on; it then latches into a low-impedance state, dumping huge current VDD\\u2192GND until power is removed (often destroying the chip). Prevention: limit pin current, add series resistors, guard rings, and never exceed the abs-max input range." },
+    { q: "On-chip ESD protection diodes from each pin to VDD and GND mainly:", a: ["regulate the supply voltage", "clamp pin transients to within a diode drop of the rails, shunting the surge", "amplify weak input signals", "filter high-frequency noise continuously"], correct: 1, why: "ESD clamp diodes conduct only when the pin swings above VDD+Vf or below GND\\u2212Vf, steering the transient current into the rails and holding the pin near the supply. They're sized for brief, high-current ESD events \\u2014 not continuous current. That's why driving a pin beyond the rails through a low source impedance can both forward-bias these diodes AND trigger latch-up; a series resistor limits the injected current and protects both." },
+    { q: "A series resistor on a sensitive input pin helps with ESD/latch-up because it:", a: ["increases the signal bandwidth", "limits the current injected through the clamp diodes during a transient", "raises the input impedance to infinity", "lowers the supply current"], correct: 1, why: "During an ESD strike or overvoltage, the clamp diodes try to shunt the surge, but if the source can deliver large current the diodes (and the parasitic SCR) see destructive levels. A modest series R (e.g. 100 \\u03a9\\u20131 k\\u03a9) limits the peak current to I = (V_transient \\u2212 V_clamp)/R, keeping the clamp diodes within their safe handling and starving the latch-up SCR of trigger current. It trades a little bandwidth for robustness." }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '\u2713 ' : '\u2717 '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> \u00b7 <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>

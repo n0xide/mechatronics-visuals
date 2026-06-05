@@ -102,6 +102,17 @@
   .deriv b{color:var(--fg)}
   .deriv .step{display:block;margin:4px 0;color:var(--fg)}
   .deriv .arrow{color:var(--accent2);font-weight:600}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -257,6 +268,11 @@
         <li><b>Ground-fault loop</b> at the receiver — INA expects V_cm finite; rip ground reference, CM blows past limits.</li>
       </ul>
     </div>
+  </section>
+
+  <section class="quiz" id="quiz">
+    <h2 style="font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px">Check yourself</h2>
+    <div id="quizMount"></div>
   </section>
 
   <footer>
@@ -494,6 +510,76 @@
   });
 
   update();
+</script>
+<script>
+// Deep-link hash state (generic; handles sliders/selects/checkboxes)
+(() => {
+  const IDS = ["r1","r2","d","vcm","vd","rg"];
+  function get(el){ return (el.type==='checkbox'||el.type==='radio') ? (el.checked?'1':'0') : el.value; }
+  function set(el,v){ if(el.type==='checkbox'||el.type==='radio') el.checked=(v==='1'); else el.value=v;
+    el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+  function write(){ const p=new URLSearchParams(); IDS.forEach(id=>{const el=document.getElementById(id); if(el) p.set(id,get(el));}); history.replaceState(null,'','#'+p.toString()); }
+  const h=location.hash.replace(/^#/,''); if(h){ const p=new URLSearchParams(h); IDS.forEach(id=>{const v=p.get(id); if(v!==null){const el=document.getElementById(id); if(el) set(el,v);}}); }
+  IDS.forEach(id=>{const el=document.getElementById(id); if(el){ el.addEventListener('input',write); el.addEventListener('change',write); }});
+})();
+</script>
+<script>
+// Quiz (self-contained)
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    { q: "Common-mode rejection ratio is defined as:", a: ["A_d \\u00d7 A_cm", "CMRR(dB) = 20\\u00b7log\\u2081\\u2080(A_d / A_cm)", "A_d + A_cm", "A_cm / A_d"], correct: 1, why: "CMRR = differential gain / common-mode gain, expressed in dB as 20\\u00b7log\\u2081\\u2080(A_d/A_cm). A high CMRR means the amplifier strongly amplifies the difference (A_d large) while barely responding to the shared common-mode (A_cm tiny). 100 dB CMRR = the differential signal is amplified 100,000\\u00d7 more than the common-mode \\u2014 essential for pulling a small sensor difference out of large common-mode interference." },
+    { q: "For a one-op-amp difference amplifier, CMRR is fundamentally limited by:", a: ["the supply voltage", "how precisely the four resistors match (a 1% mismatch caps CMRR near ~50 dB)", "the op-amp's slew rate", "the input signal frequency"], correct: 1, why: "A single-op-amp diff amp only rejects common-mode if its two resistor ratios match perfectly. A real 1% resistor mismatch leaks common-mode into the output, capping CMRR around 50 dB regardless of how good the op-amp is. That's why precision diff amps use laser-trimmed on-chip resistors (0.01% matching \\u2192 ~90 dB) or an instrumentation-amp topology where the front-end CMRR doesn't depend on resistor matching." },
+    { q: "The 'common-mode' signal a differential amplifier should reject is:", a: ["the difference between the two inputs", "the voltage present on BOTH inputs simultaneously (e.g. 60 Hz pickup on both sensor leads)", "the amplifier's output offset", "the supply ripple only"], correct: 1, why: "Common-mode is the part identical on both inputs \\u2014 mains hum induced equally on a sensor's two wires, a bridge sitting at mid-supply, or ground-shift between boards. It carries no signal information, so a good diff amp cancels it. The DIFFERENTIAL part (the actual difference) is what you want. High CMRR is the figure of merit for how well the amp separates the wanted difference from the unwanted shared interference." }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '\u2713 ' : '\u2717 '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> \u00b7 <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>

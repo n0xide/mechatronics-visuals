@@ -60,6 +60,17 @@
   footer a{color:var(--accent);text-decoration:none}
   .vd{background:var(--bg-elev2);border-left:3px solid var(--accent2);padding:10px 14px;margin:12px 0;font:13px ui-monospace,monospace}
   .vd b{color:var(--accent2)}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -187,6 +198,11 @@
         <li><b>Source impedance mismatch</b> — even with 10⁹ Ω input, bias currents create different offsets if + and − inputs see different source impedances.</li>
       </ul>
     </div>
+  </section>
+
+  <section class="quiz" id="quiz">
+    <h2 style="font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px">Check yourself</h2>
+    <div id="quizMount"></div>
   </section>
 
   <footer>
@@ -332,6 +348,76 @@ function update(){
 
 ['vdiff','vcm','rg','rf','mm'].forEach(k => els[k].addEventListener('input', update));
 update();
+</script>
+<script>
+// Deep-link hash state (generic; handles sliders/selects/checkboxes)
+(() => {
+  const IDS = ["vdiff","vcm","rg","rf","mm"];
+  function get(el){ return (el.type==='checkbox'||el.type==='radio') ? (el.checked?'1':'0') : el.value; }
+  function set(el,v){ if(el.type==='checkbox'||el.type==='radio') el.checked=(v==='1'); else el.value=v;
+    el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+  function write(){ const p=new URLSearchParams(); IDS.forEach(id=>{const el=document.getElementById(id); if(el) p.set(id,get(el));}); history.replaceState(null,'','#'+p.toString()); }
+  const h=location.hash.replace(/^#/,''); if(h){ const p=new URLSearchParams(h); IDS.forEach(id=>{const v=p.get(id); if(v!==null){const el=document.getElementById(id); if(el) set(el,v);}}); }
+  IDS.forEach(id=>{const el=document.getElementById(id); if(el){ el.addEventListener('input',write); el.addEventListener('change',write); }});
+})();
+</script>
+<script>
+// Quiz (self-contained)
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    { q: "The gain of the classic 3-op-amp instrumentation amplifier is set by:", a: ["each input resistor independently", "a single gain resistor R_G: gain = 1 + 2\\u00b7R_F/R_G", "the supply voltage", "the common-mode input level"], correct: 1, why: "The two input buffers share one gain resistor R_G between their inverting nodes; the gain is 1 + 2\\u00b7R_F/R_G. Setting the whole amplifier's gain with ONE resistor is the INA's signature convenience \\u2014 you can change gain without rebalancing four matched resistors, and the gain accuracy depends only on that single resistor's tolerance." },
+    { q: "An instrumentation amp's whole purpose is to:", a: ["add two signals", "amplify the DIFFERENCE between its inputs while rejecting the common-mode (shared) part", "convert current to voltage", "generate a precise reference voltage"], correct: 1, why: "An INA amplifies V_diff = (V+ \\u2212 V\\u2212) by its gain while strongly rejecting V_cm (the voltage common to both inputs \\u2014 e.g. 60 Hz pickup or a sensor sitting at mid-supply). High CMRR + high input impedance is exactly what you need to read a small differential sensor signal (strain bridge, thermocouple, biopotential) riding on a large common-mode." },
+    { q: "Why use three op-amps instead of a single one-op-amp difference amplifier?", a: ["it's cheaper", "high input impedance (buffered inputs) and CMRR that doesn't depend on matching external input resistors", "it needs no power supply", "to invert the signal twice"], correct: 1, why: "A one-op-amp diff amp loads the source through its resistor network (low input Z) and its CMRR is set by how well four external resistors match \\u2014 1% resistors cap CMRR around ~50 dB. The 3-op-amp INA puts unity-gain buffers on each input (giving ~G\\u03a9 input impedance) and the front-end's CMRR comes from op-amp symmetry, not resistor matching. The back-end diff amp's matched resistors are laser-trimmed on-chip, so total CMRR can exceed 100 dB." }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '\u2713 ' : '\u2717 '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> \u00b7 <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>

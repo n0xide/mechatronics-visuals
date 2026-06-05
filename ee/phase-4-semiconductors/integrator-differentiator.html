@@ -107,6 +107,17 @@
   .col h3{margin-top:0;color:var(--accent3)}
   .col.warn{border-color:var(--warn)}
   .col.warn h3{color:var(--warn)}
+  .quiz-card { background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 10px 0; }
+  .quiz-q { margin: 0 0 8px; }
+  .quiz-opt { display: block; width: 100%; text-align: left; background: var(--bg-elev2); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; margin: 4px 0; cursor: pointer; font: 13px/1.4 inherit; }
+  .quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+  .quiz-opt:disabled { cursor: default; opacity: 0.85; }
+  .quiz-correct { background: rgba(163,230,53,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .quiz-wrong { background: rgba(255,123,114,0.12); border-color: var(--warn); color: var(--warn); }
+  .quiz-why { font-size: 12px; color: var(--fg-dim); margin: 8px 0 0; }
+  .quiz-score { background: var(--bg-elev2); border-radius: 6px; padding: 10px 14px; margin: 12px 0 0; }
+  .quiz-score button { margin-left: 12px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  .quiz-score button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -287,6 +298,11 @@
         <li><b>Treating an OPA at HF as ideal</b> — finite GBW puts a hard ceiling on the bandwidth of the differentiator.</li>
       </ul>
     </div>
+  </section>
+
+  <section class="quiz" id="quiz">
+    <h2 style="font:600 16px/1.3 ui-monospace,Menlo,monospace;color:var(--accent);margin:32px 0 8px">Check yourself</h2>
+    <div id="quizMount"></div>
   </section>
 
   <footer>
@@ -603,6 +619,76 @@
   });
 
   update();
+</script>
+<script>
+// Deep-link hash state (generic; handles sliders/selects/checkboxes)
+(() => {
+  const IDS = ["r","c","wave","freq","amp","fix"];
+  function get(el){ return (el.type==='checkbox'||el.type==='radio') ? (el.checked?'1':'0') : el.value; }
+  function set(el,v){ if(el.type==='checkbox'||el.type==='radio') el.checked=(v==='1'); else el.value=v;
+    el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); }
+  function write(){ const p=new URLSearchParams(); IDS.forEach(id=>{const el=document.getElementById(id); if(el) p.set(id,get(el));}); history.replaceState(null,'','#'+p.toString()); }
+  const h=location.hash.replace(/^#/,''); if(h){ const p=new URLSearchParams(h); IDS.forEach(id=>{const v=p.get(id); if(v!==null){const el=document.getElementById(id); if(el) set(el,v);}}); }
+  IDS.forEach(id=>{const el=document.getElementById(id); if(el){ el.addEventListener('input',write); el.addEventListener('change',write); }});
+})();
+</script>
+<script>
+// Quiz (self-contained)
+(() => {
+  const QUIZ_KEY = 'quiz:' + location.pathname.replace(/.*\//,'');
+  const QUESTIONS = [
+    { q: "An op-amp integrator (C in the feedback path) responds to a SQUARE-wave input with a:", a: ["square wave out", "triangle wave out", "spike train out", "sine wave out"], correct: 1, why: "An integrator outputs V_out = \\u2212(1/RC)\\u222bV_in dt. Integrating a constant (each half of a square wave) gives a linear ramp, so a square wave in produces a TRIANGLE wave out. (A differentiator does the reverse: triangle in \\u2192 square out.) The slope of the triangle is \\u2212V_in/RC, which is exactly how a ramp/sawtooth generator works." },
+    { q: "An op-amp differentiator (R in the feedback path) produces an output equal to:", a: ["\\u2212(1/RC)\\u222bV_in dt", "\\u2212RC\\u00b7dV_in/dt (proportional to the input's rate of change)", "\\u2212R/C \\u00b7 V_in", "V_in unchanged"], correct: 1, why: "A differentiator gives V_out = \\u2212RC\\u00b7dV_in/dt \\u2014 it responds to the SLOPE of the input. A fast edge (large dV/dt) produces a big output spike; a flat input gives zero. A triangle wave (constant slopes that flip sign) becomes a square wave. This is the dual of the integrator, and it's used for edge detection." },
+    { q: "A practical (real-world) op-amp integrator needs an extra resistor R_f in parallel with C because:", a: ["it sets the gain", "without it, the op-amp's tiny DC offset and bias current get integrated and ramp the output into the rail", "it improves bandwidth", "it inverts the signal"], correct: 1, why: "An ideal integrator has infinite DC gain, so ANY DC error \\u2014 the op-amp's input offset voltage or bias current \\u2014 gets integrated forever and eventually drives the output to a supply rail (windup). A parallel R_f bleeds off that DC, capping the DC gain at \\u2212R_f/R and adding a low-frequency rolloff. Below that corner it acts as an inverting amplifier; above it, as an integrator. The dual fix on a differentiator is a small series R to tame its runaway high-frequency noise gain." }
+  ];
+  const mount = document.getElementById('quizMount');
+  if (!mount) return;
+  const state = JSON.parse(localStorage.getItem(QUIZ_KEY) || '{}');
+  function render(){
+    mount.innerHTML = '';
+    let answered = 0;
+    QUESTIONS.forEach((q, i) => {
+      const picked = state[i];
+      if (picked !== undefined) answered++;
+      const correct = picked === q.correct;
+      const card = document.createElement('div');
+      card.className = 'quiz-card';
+      card.innerHTML = `<p class="quiz-q"><b>Q${i+1}.</b> ${q.q}</p>` +
+        q.a.map((c, j) => {
+          let cls = 'quiz-opt';
+          if (picked !== undefined) {
+            if (j === q.correct) cls += ' quiz-correct';
+            else if (j === picked) cls += ' quiz-wrong';
+          }
+          return `<button class="${cls}" data-q="${i}" data-j="${j}" ${picked!==undefined?'disabled':''}>${c}</button>`;
+        }).join('') +
+        (picked !== undefined ? `<p class="quiz-why">${correct ? '\u2713 ' : '\u2717 '}${q.why}</p>` : '');
+      mount.appendChild(card);
+    });
+    if (answered === QUESTIONS.length) {
+      const score = QUESTIONS.reduce((s, q, i) => s + (state[i] === q.correct ? 1 : 0), 0);
+      const sum = document.createElement('p');
+      sum.className = 'quiz-score';
+      sum.innerHTML = `<b>Score: ${score} / ${QUESTIONS.length}</b> \u00b7 <button id="quizReset">Try again</button>`;
+      mount.appendChild(sum);
+      document.getElementById('quizReset').onclick = () => {
+        localStorage.removeItem(QUIZ_KEY);
+        for (const k in state) delete state[k];
+        render();
+      };
+    }
+    mount.querySelectorAll('.quiz-opt').forEach(b => {
+      b.onclick = () => {
+        if (b.disabled) return;
+        const qi = +b.dataset.q, ji = +b.dataset.j;
+        state[qi] = ji;
+        localStorage.setItem(QUIZ_KEY, JSON.stringify(state));
+        render();
+      };
+    });
+  }
+  render();
+})();
 </script>
 </body>
 </html>
