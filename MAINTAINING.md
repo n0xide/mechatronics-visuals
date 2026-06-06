@@ -117,13 +117,17 @@ Visuals with the quiz pattern as of 2026-05-28: voltage-divider-explorer, ohms-l
 
 ## Special files — intentional source/bundle drift
 
-These three were promoted from `docs/_extras/` to `docs/extras/` but their **bundle copies are NOT verbatim mirrors of source**. The bundle versions were hand-rewritten to render correctly inside the SPA iframe (back-links use `target="_top"` and `../index.html`; phase-deep links use `../index.html#<disc>-<n>` anchors instead of `../<track>/phase-N-...md` paths). A naive `cp` from source over bundle for these files will clobber those rewrites and break the bundle.
+These five `extras/` files have **bundle copies that are NOT verbatim mirrors of source**. The bundle versions are hand-rewritten to render correctly inside the SPA iframe (back-links use `target="_top"` and `../index.html`; phase-deep links use `../index.html#<disc>-<n>` anchors instead of `../<track>/phase-N-...md` paths). A naive `cp` from source over bundle for these files will clobber those rewrites and break the bundle.
 
 - `extras/study-path.html`
 - `extras/circuits-cookbook.html`
 - `extras/constants-units.html`
+- `extras/antenna-calculator.html`
+- `extras/filter-designer.html`
 
-If you edit the source of any of these, manually re-apply the link rewrites in the bundle copy (or skip the mirror and accept the drift). Long-term fix would be a build script that does the rewrites systematically, but for now both files are edited independently.
+**Why these and not other extras:** `_publish.js`'s `.md`→`index.html` rewrite hardcodes `../../index.html`, which is correct only for phase visuals (2 dirs deep, `<disc>/phase-N/`). Files in `extras/` are 1 dir deep and need `../index.html`; they also carry hand-authored SPA anchors (`#ee-9`, `#ee-3`) the rewrite can't derive from a bare `.md` filename. **Any extras file that contains a `.md` link must be in `_publish.js`'s `DRIFT_FILES` set** — otherwise the next publish silently breaks its curriculum back-link. (As of 2026-06, that's exactly these five; `grep -l 'href="[^"]*\.md"' extras/*.html` in source lists them.)
+
+If you edit the source of any of these, manually re-apply the link rewrites in the bundle copy (or skip the mirror and accept the drift). Long-term fix would be a depth-aware rewrite in `_publish.js` that also maps `.md` filenames to their SPA anchors; for now these files are edited independently.
 
 ## Style is local
 
