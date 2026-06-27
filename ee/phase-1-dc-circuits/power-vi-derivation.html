@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Power = V·I — visual</title>
+<style>
+  :root {
+    --bg:#0e1116; --bg-elev:#161a21; --bg-elev2:#1d232c;
+    --fg:#dde3ec; --fg-dim:#8f99a8; --fg-bright:#fff;
+    --accent:#5ec8ff; --accent2:#ffb86c; --accent3:#a3e635;
+    --warn:#ff7b72; --line:#2a313c; --grid:#222831;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  main{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  h1{font:600 22px/1.2 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:0 0 4px;letter-spacing:-0.01em}
+  h2{font:600 16px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--accent);margin:32px 0 8px}
+  h3{font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;
+     color:var(--fg-bright);margin:18px 0 4px;text-transform:uppercase;
+     letter-spacing:0.04em}
+  p{margin:8px 0}
+  .lede{color:var(--fg-dim);font-size:13px;margin-bottom:18px}
+  .controls{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;margin:18px 0;
+    display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .control{display:flex;flex-direction:column;gap:4px}
+  .control label{font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .control input[type=range]{width:100%;accent-color:var(--accent)}
+  .readout{color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:13px}
+  .figure{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:16px;margin:18px 0;position:relative}
+  .figure svg,.figure canvas{display:block;max-width:100%;height:auto}
+  ul.notice{padding-left:18px;color:var(--fg-dim)}
+  ul.notice li{margin:6px 0}
+  ul.notice b{color:var(--fg)}
+  code{background:var(--bg-elev2);padding:1px 5px;border-radius:3px;
+    font:12px ui-monospace,Menlo,monospace;color:var(--accent2)}
+  footer{margin-top:48px;padding-top:14px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--fg-dim);font-family:ui-monospace,Menlo,monospace}
+  footer a{color:var(--accent);text-decoration:none}
+  button.btn{background:var(--bg-elev2);color:var(--fg);border:1px solid var(--line);
+    border-radius:4px;padding:6px 12px;font:13px ui-monospace,monospace;cursor:pointer}
+  button.btn:hover{background:var(--line)}
+  button.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  a.xlink{color:var(--accent);text-decoration:none}
+  a.xlink:hover{text-decoration:underline}
+
+  /* ===== HERO CASCADE — the place of honor ===== */
+  .cascade{background:linear-gradient(160deg,#11202b,#11161d);
+    border:1px solid var(--accent);border-radius:10px;padding:26px 20px 18px;
+    margin:18px 0;text-align:center;box-shadow:0 0 0 1px rgba(94,200,255,0.08) inset}
+  .cl{font:600 clamp(17px,3.4vw,26px)/1.7 ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    color:var(--fg-bright);opacity:0;transform:translateY(6px);
+    transition:opacity .5s ease,transform .5s ease;white-space:nowrap;
+    overflow-x:auto;overflow-y:hidden}
+  .cl.show{opacity:1;transform:none}
+  .cl .lbl{display:block;font:400 11px/1.4 ui-monospace,monospace;
+    color:var(--fg-dim);text-transform:none;letter-spacing:0;margin-top:-2px}
+  .cl .E{color:var(--accent)}      /* energy / joules — blue */
+  .cl .q{color:var(--accent2)}     /* charge / coulombs — orange */
+  .cl .t{color:var(--fg)}          /* time */
+  .cl .V{color:var(--accent)}      /* voltage — blue */
+  .cl .I{color:var(--accent2)}     /* current — orange */
+  .cl .P,.cl .W{color:var(--accent3)} /* power / watts — green */
+  .cl .op{color:var(--fg-dim);margin:0 .15em}
+  .cC{position:relative;transition:color .4s ease}
+  .cC.struck{color:var(--fg-dim)}
+  .cC.struck::after{content:"";position:absolute;left:-2px;right:-2px;top:48%;
+    height:2px;background:var(--warn);border-radius:2px;
+    transform:scaleX(0);transform-origin:left;animation:strike .4s ease forwards}
+  @keyframes strike{to{transform:scaleX(1)}}
+  .cl.pulse .W{animation:pop .5s ease}
+  @keyframes pop{0%{text-shadow:none}40%{text-shadow:0 0 16px var(--accent3)}100%{text-shadow:none}}
+  .cascade .cap{margin-top:12px;font:12px/1.5 ui-monospace,monospace;color:var(--fg-dim)}
+  .cascade .cap b{color:var(--accent3)}
+
+  /* ===== conveyor readouts ===== */
+  .flowstats{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    margin-top:12px}
+  .stat{background:var(--bg-elev2);border:1px solid var(--line);border-radius:6px;
+    padding:8px 10px;font-family:ui-monospace,Menlo,monospace}
+  .stat .k{font-size:10px;color:var(--fg-dim);text-transform:uppercase;letter-spacing:.05em}
+  .stat .v{font-size:17px;font-weight:600;margin-top:2px}
+  .stat.v-acc .v{color:var(--accent)} .stat.v-acc2 .v{color:var(--accent2)}
+  .stat.v-acc3 .v{color:var(--accent3)}
+  .share{margin-top:10px;font:11px ui-monospace,monospace;color:var(--fg-dim)}
+  .share a{color:var(--accent);cursor:pointer;text-decoration:none}
+  .share a:hover{text-decoration:underline}
+
+  /* ===== gravity parallel ===== */
+  .twin{display:grid;gap:14px;grid-template-columns:1fr 1fr}
+  @media(max-width:620px){.twin{grid-template-columns:1fr}}
+  .twin .col{background:var(--bg-elev2);border:1px solid var(--line);border-radius:8px;padding:12px}
+  .twin .col h3{margin:0 0 6px}
+  .twin .eq{font:600 15px ui-monospace,monospace;margin:6px 0 2px}
+  .twin .col.grav .eq{color:var(--accent2)} .twin .col.elec .eq{color:var(--accent)}
+  .twin .col p{font-size:12px;color:var(--fg-dim);margin:6px 0 0}
+  .verdict{background:var(--bg-elev);border:1px dashed var(--line);border-radius:8px;
+    padding:12px 14px;margin-top:14px;font:13px/1.6 ui-monospace,monospace;color:var(--fg)}
+  .verdict b{color:var(--accent3)}
+
+  /* ===== cheat sheet ===== */
+  .cheatsheet{display:grid;gap:12px;margin:18px 0;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .cheat-card{background:var(--bg-elev);border:1px solid var(--line);
+    border-radius:8px;padding:12px 14px}
+  .cheat-card h3{margin:0 0 8px;color:var(--accent2);font-size:11px;
+    border-bottom:1px solid var(--line);padding-bottom:6px}
+  .cheat-card.formulas h3{color:var(--accent)}
+  .cheat-card.pitfalls h3{color:var(--warn)}
+  .cheat-card.memorize h3{color:var(--accent3)}
+  .cheat-card dl{margin:0;display:grid;grid-template-columns:auto 1fr;
+    gap:4px 10px;font:12px ui-monospace,Menlo,monospace}
+  .cheat-card dt{color:var(--fg-bright);white-space:nowrap}
+  .cheat-card dd{margin:0;color:var(--fg-dim)}
+  .cheat-card ul{margin:0;padding-left:16px;font-size:12px;color:var(--fg-dim);
+    font-family:ui-monospace,Menlo,monospace}
+  .cheat-card ul li{margin:3px 0}
+  .cheat-card ul li b{color:var(--fg)}
+  .cheat-card .eq{display:block;color:var(--accent);
+    font:13px ui-monospace,Menlo,monospace;margin:2px 0}
+
+  /* ===== quiz ===== */
+  .quiz{background:var(--bg-elev);border:1px solid var(--line);border-radius:8px;
+    padding:14px 16px;margin:18px 0}
+  .quiz h2{margin-top:4px}
+  .qcard{border-top:1px solid var(--line);padding:12px 0}
+  .qcard:first-of-type{border-top:none}
+  .qcard .q{font-weight:600;color:var(--fg-bright);margin-bottom:8px}
+  .qopt{display:block;width:100%;text-align:left;background:var(--bg-elev2);
+    color:var(--fg);border:1px solid var(--line);border-radius:6px;
+    padding:8px 10px;margin:5px 0;font:13px ui-monospace,monospace;cursor:pointer}
+  .qopt:hover{border-color:var(--accent)}
+  .qopt.right{border-color:var(--accent3);background:rgba(163,230,53,0.12);color:var(--fg-bright)}
+  .qopt.wrong{border-color:var(--warn);background:rgba(255,123,114,0.12)}
+  .qopt:disabled{cursor:default}
+  .why{font-size:12px;color:var(--fg-dim);margin:6px 0 0;padding:8px 10px;
+    background:var(--bg-elev2);border-radius:6px;display:none}
+  .why.show{display:block}
+  .qscore{font:13px ui-monospace,monospace;color:var(--accent3);margin-top:10px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Power = V × I — Where the Watts Come From</h1>
+  <p class="lede">One identity ties together every electrical unit you've met: joules, coulombs, volts, amps, and watts.
+  Build it by watching the units cancel — then watch charge actually carry energy through a circuit, and see why a coulomb
+  is never "fuller" than another.</p>
+
+  <!-- ===================== HERO CASCADE ===================== -->
+  <h2>The derivation — watch the coulombs cancel</h2>
+  <div class="figure cascade" id="cascade">
+    <div class="cl" id="l1">
+      <span class="P">Power</span> <span class="op">=</span> <span class="E">energy</span> <span class="op">/</span> <span class="t">time</span>
+      <span class="lbl">how fast energy is delivered</span>
+    </div>
+    <div class="cl" id="l2">
+      <span class="P">Power</span> <span class="op">=</span> ( <span class="E">energy</span><span class="op">/</span><span class="q">charge</span> ) <span class="op">×</span> ( <span class="q">charge</span><span class="op">/</span><span class="t">time</span> )
+      <span class="lbl">multiply &amp; divide by charge — nothing changes</span>
+    </div>
+    <div class="cl" id="l3">
+      <span class="P">Power</span> <span class="op">=</span> <span class="V">Voltage</span> <span class="op">×</span> <span class="I">Current</span>
+      <span class="lbl">energy/charge IS voltage · charge/time IS current</span>
+    </div>
+    <div class="cl" id="l4">
+      <span class="op">=</span> ( <span class="E">J</span><span class="op">/</span><span class="cC q" id="cTop">C</span> ) <span class="op">×</span> ( <span class="cC q" id="cBot">C</span><span class="op">/</span><span class="t">s</span> ) <span class="op">=</span> <span class="E">J</span><span class="op">/</span><span class="t">s</span> <span class="op">=</span> <span class="W">W</span>
+      <span class="lbl">the coulombs cancel — joules per second left over</span>
+    </div>
+    <div class="cap">A <b>volt</b> is joules per coulomb. An <b>amp</b> is coulombs per second. Multiply them and the
+    coulombs cancel, leaving joules per second — a <b>watt</b>.</div>
+    <div style="margin-top:14px"><button class="btn primary" id="replay">▸ Replay</button></div>
+  </div>
+
+  <!-- ===================== CHARGE CONVEYOR ===================== -->
+  <h2>See it flow</h2>
+  <p class="lede">Voltage sets how much energy each coulomb carries down the drop. Current sets how many coulombs
+  arrive per second. Power is the two multiplied — the energy reaching the load every second.</p>
+  <section class="controls">
+    <div class="control">
+      <label>Voltage <span class="readout" id="vR">12 V</span> <span style="color:var(--fg-dim)">— energy per coulomb (the "height")</span></label>
+      <input type="range" id="vSlider" min="1" max="24" step="1" value="12">
+    </div>
+    <div class="control">
+      <label>Current <span class="readout" id="iR">2.0 A</span> <span style="color:var(--fg-dim)">— coulombs per second (the "flow")</span></label>
+      <input type="range" id="iSlider" min="1" max="50" step="1" value="20">
+    </div>
+  </section>
+  <div class="figure">
+    <canvas id="flow" width="900" height="280" aria-label="Charge carriers flowing through a voltage drop into a load"></canvas>
+    <div class="flowstats">
+      <div class="stat v-acc"><div class="k">Each coulomb carries</div><div class="v" id="sE">12 J</div></div>
+      <div class="stat v-acc2"><div class="k">Charge flow</div><div class="v" id="sI">2.0 C/s</div></div>
+      <div class="stat v-acc3"><div class="k">Power = V × I</div><div class="v" id="sP">24 W</div></div>
+      <div class="stat"><div class="k">Energy delivered</div><div class="v" id="sTot">0 J</div></div>
+    </div>
+    <div class="share">Share this configuration: <a id="shareLink">copy link</a></div>
+  </div>
+
+  <!-- ===================== GRAVITY PARALLEL ===================== -->
+  <h2>Why a coulomb is never "fuller" — energy lives in the drop</h2>
+  <p class="lede">The unit J/C trips people up: how can one coulomb hold more energy than another? It can't. Energy
+  isn't stored <i>inside</i> the charge — it depends on <i>where the charge sits</i>, exactly like gravity.</p>
+  <div class="figure">
+    <svg viewBox="0 0 720 250" role="img" aria-label="Rock at a height versus charge at a voltage">
+      <!-- LEFT: gravity -->
+      <line x1="40" y1="210" x2="320" y2="210" class="ground" stroke="#8f99a8" stroke-width="1.5"/>
+      <rect x="60" y="60" width="34" height="150" fill="#1d232c" stroke="#3a424f"/>
+      <circle cx="77" cy="52" r="14" fill="#ffb86c"/>
+      <text x="77" y="57" text-anchor="middle" font="11px monospace" fill="#0e1116" font-family="ui-monospace,monospace" font-size="11" font-weight="700">m</text>
+      <line x1="120" y1="52" x2="120" y2="210" stroke="#ffb86c" stroke-dasharray="4 4" stroke-width="1"/>
+      <text x="128" y="135" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="13">h</text>
+      <path d="M160 70 L160 200 M160 200 L154 190 M160 200 L166 190" stroke="#8f99a8" stroke-width="1.5" fill="none"/>
+      <text x="180" y="40" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">Lift the SAME rock higher</text>
+      <text x="180" y="58" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="12">→ more energy on the way down.</text>
+      <text x="180" y="120" fill="#ffb86c" font-family="ui-monospace,monospace" font-size="17" font-weight="700">PE = m · g · h</text>
+      <text x="180" y="142" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">mass × (height) = joules</text>
+      <text x="180" y="200" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">energy is in the height, not the rock</text>
+
+      <!-- divider -->
+      <line x1="360" y1="20" x2="360" y2="230" stroke="#2a313c" stroke-width="1"/>
+
+      <!-- RIGHT: electricity -->
+      <line x1="400" y1="210" x2="680" y2="210" stroke="#8f99a8" stroke-width="1.5"/>
+      <rect x="420" y="60" width="34" height="150" fill="#1d232c" stroke="#3a424f"/>
+      <circle cx="437" cy="52" r="14" fill="#5ec8ff"/>
+      <text x="437" y="57" text-anchor="middle" fill="#0e1116" font-family="ui-monospace,monospace" font-size="12" font-weight="700">+</text>
+      <line x1="480" y1="52" x2="480" y2="210" stroke="#5ec8ff" stroke-dasharray="4 4" stroke-width="1"/>
+      <text x="488" y="135" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="13">V</text>
+      <path d="M520 70 L520 200 M520 200 L514 190 M520 200 L526 190" stroke="#8f99a8" stroke-width="1.5" fill="none"/>
+      <text x="540" y="40" fill="#dde3ec" font-family="ui-monospace,monospace" font-size="13" font-weight="600">Push the SAME coulomb</text>
+      <text x="540" y="58" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="12">through more volts → more energy.</text>
+      <text x="540" y="120" fill="#5ec8ff" font-family="ui-monospace,monospace" font-size="17" font-weight="700">E = q · V</text>
+      <text x="540" y="142" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">charge × (voltage) = joules</text>
+      <text x="540" y="200" fill="#8f99a8" font-family="ui-monospace,monospace" font-size="11">energy is in the voltage, not the coulomb</text>
+    </svg>
+    <div class="verdict">
+      Same shape, same algebra: <b>voltage is the "height," charge is the "mass."</b>
+      Volts × coulombs = joules, exactly as (g·h) × kg = joules. And because height is always measured from
+      <i>somewhere</i>, voltage is always a <b>difference</b> — a bird on one wire feels no drop, so no energy moves through it.
+    </div>
+  </div>
+
+  <h2>What to notice</h2>
+  <ul class="notice">
+    <li><b>The coulombs cancel — only the product V × I matters.</b> A 240 V × 0.5 A heater and a 12 V × 10 A winch
+      both deliver 120 W. Tall-and-trickle equals short-and-torrent. Slide V down and I up in the conveyor to keep the same wattage.</li>
+    <li><b>Voltage = energy per coulomb (J/C).</b> Like height is energy per kilogram. A coulomb isn't "charged up" with energy;
+      it gains or loses energy by the voltage it moves through. Same coulomb, 9 V drop → 9 J; 1.5 V drop → 1.5 J.</li>
+    <li><b>Current = charge per second (C/s).</b> The flow rate. 1 amp = 1 coulomb every second ≈ 6.24×10¹⁸ electrons/second streaming past a point.</li>
+    <li><b>Power = energy per second (J/s = W).</b> A <i>rate</i>, like speed — not an amount. Energy = power × time, which is exactly why
+      your electric bill is in kilowatt-<i>hours</i> (power × time = energy).</li>
+    <li><b>P = V·I is the universal definition.</b> <code>P = I²R</code> and <code>P = V²/R</code> only come from substituting Ohm's law,
+      so they hold for resistors only. An LED at 2.1 V and 10 mA dissipates 21 mW — only V·I gets that.
+      See <a class="xlink" href="ohms-law-explorer.html">Ohm's Law Explorer</a>.</li>
+  </ul>
+
+  <h2>Cheat sheet</h2>
+  <section class="cheatsheet">
+    <div class="cheat-card formulas">
+      <h3>FORMULAS</h3>
+      <dl>
+        <dt>Power</dt><dd><span class="eq">P = V · I</span></dd>
+        <dt>Units</dt><dd><span class="eq">(J/C)·(C/s) = J/s = W</span></dd>
+        <dt>Ohmic only</dt><dd><span class="eq">P = I²R = V²/R</span></dd>
+        <dt>Energy</dt><dd><span class="eq">E = P · t   (J = W·s)</span></dd>
+        <dt>Charge</dt><dd><span class="eq">Q = I · t   (C = A·s)</span></dd>
+      </dl>
+    </div>
+    <div class="cheat-card memorize">
+      <h3>MEMORIZE</h3>
+      <ul>
+        <li><b>1 W = 1 J/s</b> — power is a rate.</li>
+        <li><b>1 V = 1 J/C</b> — voltage is energy per charge.</li>
+        <li><b>1 A = 1 C/s</b> — current is charge per time.</li>
+        <li><b>1 C ≈ 6.24×10¹⁸</b> electrons.</li>
+        <li>In V·I the <b>coulombs cancel</b>.</li>
+      </ul>
+    </div>
+    <div class="cheat-card pitfalls">
+      <h3>COMMON PITFALLS</h3>
+      <ul>
+        <li><b>"Energy is stored in the charge."</b> No — it's positional, like height. The charge is just the messenger.</li>
+        <li><b>"A watt is an amount of energy."</b> No — a watt is a <i>rate</i>. Joules are the amount.</li>
+        <li><b>Using I²R on an LED/diode.</b> Non-Ohmic — there's no fixed R. Only V·I is valid.</li>
+        <li><b>Forgetting voltage is a difference.</b> 0 V across you = 0 J, no matter the absolute level.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===================== QUIZ ===================== -->
+  <section class="quiz" id="quiz">
+    <h2>Check yourself</h2>
+    <div id="quizMount"></div>
+    <div class="qscore" id="qscore"></div>
+  </section>
+
+  <footer>
+    Curriculum: <a target="_top" href="../../index.html">EE Phase 1 — DC Circuit Foundations</a> ·
+    Topic: Electrical Power (P = V·I)
+  </footer>
+</main>
+
+<script>
+/* ---------- HERO CASCADE animation ---------- */
+const lines = ['l1','l2','l3','l4'].map(id=>document.getElementById(id));
+const cTop = document.getElementById('cTop'), cBot = document.getElementById('cBot');
+let castTimers = [];
+function runCascade(){
+  castTimers.forEach(clearTimeout); castTimers = [];
+  lines.forEach(l=>l.classList.remove('show','pulse'));
+  cTop.classList.remove('struck'); cBot.classList.remove('struck');
+  lines.forEach((l,i)=>castTimers.push(setTimeout(()=>l.classList.add('show'), 350 + i*900)));
+  castTimers.push(setTimeout(()=>{cTop.classList.add('struck'); cBot.classList.add('struck');}, 350 + 4*900));
+  castTimers.push(setTimeout(()=>lines[3].classList.add('pulse'), 350 + 4*900 + 450));
+}
+document.getElementById('replay').addEventListener('click', runCascade);
+
+/* ---------- CHARGE CONVEYOR ---------- */
+const cv = document.getElementById('flow'), ctx = cv.getContext('2d');
+const vS = document.getElementById('vSlider'), iS = document.getElementById('iSlider');
+const css = getComputedStyle(document.documentElement);
+const C = {
+  acc: css.getPropertyValue('--accent').trim() || '#5ec8ff',
+  acc2: css.getPropertyValue('--accent2').trim() || '#ffb86c',
+  acc3: css.getPropertyValue('--accent3').trim() || '#a3e635',
+  fg: css.getPropertyValue('--fg').trim() || '#dde3ec',
+  dim: css.getPropertyValue('--fg-dim').trim() || '#8f99a8',
+  line: css.getPropertyValue('--line').trim() || '#2a313c',
+  bg2: css.getPropertyValue('--bg-elev2').trim() || '#1d232c'
+};
+const Q_PER_PACKET = 0.25;            // coulombs each dot represents
+let V = 12, I = 2.0, totalJ = 0, glow = 0, lastSpawn = 0, packets = [];
+
+function geom(){
+  const W = cv.width, H = cv.height;
+  const topY = 46, botY = H - 34, leftX = 70, dropX = W - 96;
+  return {W,H,topY,botY,leftX,dropX};
+}
+function readControls(){
+  V = +vS.value;
+  I = (+iS.value)/10;                 // 1..50 -> 0.1..5.0 A
+  document.getElementById('vR').textContent = V + ' V';
+  document.getElementById('iR').textContent = I.toFixed(1) + ' A';
+  document.getElementById('sE').textContent = V + ' J';
+  document.getElementById('sI').textContent = I.toFixed(1) + ' C/s';
+  document.getElementById('sP').textContent = (V*I).toFixed(0) + ' W';
+}
+
+function spawn(){ packets.push({seg:'top', u:0}); }
+function step(dt){
+  const g = geom();
+  // spawn rate proportional to current: I coulombs/sec / Q_PER_PACKET
+  const interval = Q_PER_PACKET / Math.max(I,0.0001);
+  lastSpawn += dt;
+  let guard = 0;
+  while(lastSpawn >= interval && packets.length < 160 && guard < 40){ lastSpawn -= interval; spawn(); guard++; }
+  const speed = 150; // px/sec along wires
+  const topLen = g.dropX - g.leftX, dropLen = g.botY - g.topY, botLen = g.dropX - g.leftX;
+  for(const p of packets){
+    if(p.seg==='top'){ p.u += speed*dt/topLen; if(p.u>=1){p.u=0;p.seg='drop';} }
+    else if(p.seg==='drop'){ p.u += speed*dt/dropLen; if(p.u>=1){p.u=0;p.seg='bot'; totalJ += V*Q_PER_PACKET; glow=1;} }
+    else if(p.seg==='bot'){ p.u += speed*dt/botLen; if(p.u>=1){p.seg='done';} }
+  }
+  packets = packets.filter(p=>p.seg!=='done');
+  glow = Math.max(0, glow - dt*2.2);
+  document.getElementById('sTot').textContent = Math.round(totalJ).toLocaleString() + ' J';
+}
+function pos(p,g){
+  if(p.seg==='top') return [g.leftX + (g.dropX-g.leftX)*p.u, g.topY];
+  if(p.seg==='drop') return [g.dropX, g.topY + (g.botY-g.topY)*p.u];
+  return [g.dropX - (g.dropX-g.leftX)*p.u, g.botY];
+}
+function draw(){
+  const g = geom();
+  ctx.clearRect(0,0,g.W,g.H);
+  // wires
+  ctx.lineWidth = 3; ctx.strokeStyle = C.line;
+  ctx.beginPath();
+  ctx.moveTo(g.leftX,g.topY); ctx.lineTo(g.dropX,g.topY);
+  ctx.lineTo(g.dropX,g.botY); ctx.lineTo(g.leftX,g.botY);
+  ctx.stroke();
+  // battery (left, vertical) — the "pump" / source of the drop
+  ctx.strokeStyle = C.acc; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(g.leftX,g.topY); ctx.lineTo(g.leftX,g.botY); ctx.stroke();
+  ctx.fillStyle = C.dim; ctx.font = '11px ui-monospace,monospace'; ctx.textAlign='center';
+  ctx.fillText('source', g.leftX, g.topY-10);
+  ctx.fillText('+'+V+' V', g.leftX, (g.topY+g.botY)/2);
+  // load (right) — the bulb that lights from the energy drop
+  const P = V*I, Pmax = 24*5, lvl = Math.min(1, P/Pmax);
+  const lx = g.dropX, ly = (g.topY+g.botY)/2;
+  const r = 16 + 10*lvl;
+  const a = 0.25 + 0.6*lvl*Math.max(glow,0.55);
+  ctx.beginPath(); ctx.arc(lx,ly,r,0,Math.PI*2);
+  ctx.fillStyle = `rgba(163,230,53,${a})`; ctx.fill();
+  ctx.lineWidth=2; ctx.strokeStyle=C.acc3; ctx.stroke();
+  ctx.fillStyle = C.fg; ctx.font='bold 12px ui-monospace,monospace';
+  ctx.fillText(P.toFixed(0)+' W', lx, ly+4);
+  ctx.fillStyle = C.dim; ctx.font='11px ui-monospace,monospace';
+  ctx.fillText('load', lx, g.topY-10);
+  // drop-height bracket label
+  ctx.strokeStyle = C.acc; ctx.setLineDash([3,3]); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(g.dropX+34,g.topY); ctx.lineTo(g.dropX+34,g.botY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = C.acc; ctx.save(); ctx.translate(g.dropX+46,(g.topY+g.botY)/2); ctx.rotate(Math.PI/2);
+  ctx.fillText('drop = '+V+' V', 0, 0); ctx.restore();
+  // packets
+  for(const p of packets){
+    const [x,y]=pos(p,g);
+    ctx.beginPath(); ctx.arc(x,y,6,0,Math.PI*2);
+    ctx.fillStyle = p.seg==='bot' ? C.dim : C.acc2; ctx.fill();
+    ctx.fillStyle = '#0e1116'; ctx.font='bold 9px ui-monospace,monospace';
+    ctx.fillText(p.seg==='bot'?'·':'+', x, y+3);
+  }
+  // flow direction hint
+  ctx.fillStyle = C.dim; ctx.font='11px ui-monospace,monospace'; ctx.textAlign='left';
+  ctx.fillText('each + = '+Q_PER_PACKET+' C  ·  carries '+(V*Q_PER_PACKET).toFixed(1)+' J down the drop', g.leftX, g.botY+22);
+}
+let raf, prev;
+function loop(ts){
+  if(!prev) prev = ts;
+  let dt = (ts - prev)/1000; prev = ts;
+  if(dt>0.05) dt = 0.05;
+  step(dt); draw();
+  raf = requestAnimationFrame(loop);
+}
+function resize(){
+  const w = cv.parentElement.clientWidth - 32;
+  cv.width = Math.max(320, Math.min(900, w));
+  cv.height = 280;
+}
+
+/* ---------- deep-link hash state ---------- */
+const SLIDERS = ['vSlider','iSlider'];
+function loadHash(){
+  const params = new URLSearchParams(location.hash.slice(1));
+  for(const id of SLIDERS){ const v = params.get(id); if(v!==null) document.getElementById(id).value = v; }
+}
+function saveHash(){
+  const params = new URLSearchParams();
+  for(const id of SLIDERS){ params.set(id, document.getElementById(id).value); }
+  history.replaceState(null,'','#'+params.toString());
+}
+[vS,iS].forEach(el=>el.addEventListener('input', ()=>{ readControls(); saveHash(); }));
+document.getElementById('shareLink').addEventListener('click', ()=>{
+  saveHash(); if(navigator.clipboard) navigator.clipboard.writeText(location.href);
+  const a=document.getElementById('shareLink'); a.textContent='copied!'; setTimeout(()=>a.textContent='copy link',1200);
+});
+
+/* ---------- QUIZ ---------- */
+const QUESTIONS = [
+  {q:"A phone charger outputs 5 V at 2 A. How much power is it delivering?",
+   a:["2.5 W","7 W","10 W","0.4 W"], correct:2,
+   why:"P = V·I = 5 × 2 = 10 W — that's 10 joules every second."},
+  {q:"Two coulombs sit in a circuit: one at a point 9 V above ground, one at 3 V above ground. Which delivers more energy reaching ground?",
+   a:["The one at 9 V","The one at 3 V","Same — a coulomb is a coulomb","Can't tell"], correct:0,
+   why:"E = q·V. Same charge, bigger voltage drop → more energy. The 9 V coulomb isn't 'fuller' — it just sits at a greater height."},
+  {q:"Which statement about a watt is correct?",
+   a:["A watt is a quantity of energy","A watt is one joule per second","A watt is one joule per coulomb","A watt is one coulomb per second"],
+   correct:1,
+   why:"Power is a rate: 1 W = 1 J/s. (1 J/C is a volt; 1 C/s is an amp — the distractors are real units, just not power.)"}
+];
+(function(){
+  const mount = document.getElementById('quizMount');
+  const key = 'quiz:' + location.pathname.replace(/.*\//,'');
+  let answered = {};
+  try { answered = JSON.parse(localStorage.getItem(key)||'{}'); } catch(e){ answered = {}; }
+  function render(){
+    mount.innerHTML = '';
+    QUESTIONS.forEach((item,qi)=>{
+      const card = document.createElement('div'); card.className='qcard';
+      const q = document.createElement('div'); q.className='q'; q.textContent=(qi+1)+'. '+item.q; card.appendChild(q);
+      item.a.forEach((opt,oi)=>{
+        const b = document.createElement('button'); b.className='qopt'; b.textContent=opt;
+        const done = answered[qi]!==undefined;
+        if(done){
+          b.disabled = true;
+          if(oi===item.correct) b.classList.add('right');
+          else if(oi===answered[qi]) b.classList.add('wrong');
+        } else {
+          b.addEventListener('click', ()=>{ answered[qi]=oi; localStorage.setItem(key,JSON.stringify(answered)); render(); });
+        }
+        card.appendChild(b);
+      });
+      const why = document.createElement('div'); why.className='why'+(answered[qi]!==undefined?' show':'');
+      why.textContent = item.why; card.appendChild(why);
+      mount.appendChild(card);
+    });
+    const n = Object.keys(answered).length;
+    const score = document.getElementById('qscore');
+    if(n===QUESTIONS.length){
+      const right = QUESTIONS.filter((it,i)=>answered[i]===it.correct).length;
+      score.innerHTML = `Score: ${right} / ${QUESTIONS.length} &nbsp; <button class="btn" id="qreset">Try again</button>`;
+      document.getElementById('qreset').addEventListener('click', ()=>{ answered={}; localStorage.removeItem(key); render(); });
+    } else { score.textContent=''; }
+  }
+  render();
+})();
+
+/* ---------- boot ---------- */
+loadHash();
+readControls();
+resize();
+window.addEventListener('resize', ()=>{ resize(); });
+runCascade();
+raf = requestAnimationFrame(loop);
+</script>
+</body>
+</html>
