@@ -321,9 +321,9 @@
   <ul class="notice">
     <li><b>The matrix is symmetric for resistor-only circuits.</b> R[j][k] = R[k][j]. If your computed matrix isn't symmetric, you made a sign error on a shared resistor or forgot the clockwise convention.</li>
     <li><b>Diagonal dominates.</b> R[k][k] ≥ Σ|R[j][k]| for j ≠ k (with equality only at the boundary). This means the system is well-conditioned and easy to solve numerically. Almost any iterative solver converges quickly.</li>
-    <li><b>Off-diagonals are zero between non-adjacent meshes.</b> In the 3-mesh example, R[1][3] = 0 because meshes 1 and 3 don't share a branch. This is what makes large mesh matrices <em>sparse</em>, which is why mesh analysis scales to thousands of nodes in SPICE.</li>
+    <li><b>Off-diagonals are zero between non-adjacent meshes.</b> In the 3-mesh example, R[1][3] = 0 because meshes 1 and 3 don't share a branch. This is what makes large mesh matrices <em>sparse</em> — the same sparsity that lets SPICE's (modified nodal) formulation scale to thousands of nodes.</li>
     <li><b>Reversing a source's polarity flips its RHS sign.</b> Try setting V1 = −10 V; the mesh currents flow the opposite direction. The matrix on the left is unchanged.</li>
-    <li><b>Setting R2 = 0 (a short)</b> shrinks the diagonal entries by R2 and zeros the off-diagonal, so the matrix decouples: I1 = V1/R1 and I2 = V2/R3 independently. The shared branch is now a wire, dropping no voltage. <b>Setting R2 → ∞ (open)</b> blows the off-diagonal to −∞ (the system becomes singular) and physically forces both mesh currents to zero — neither loop has a complete path.</li>
+    <li><b>Setting R2 = 0 (a short)</b> shrinks the diagonal entries by R2 and zeros the off-diagonal, so the matrix decouples: I1 = V1/R1 and I2 = V2/R3 independently. The shared branch is now a wire, dropping no voltage. <b>Setting R2 → ∞ (open)</b> removes the middle branch: both mesh currents converge to the same value — the single outer-loop current (V1+V2)/(R1+R3) — and the system stays solvable (det grows ∝ R2; the two mesh equations approach the same outer-loop KVL). Watch I1 and I2 close in on each other as you raise R2.</li>
     <li><b>Mesh analysis only works for planar circuits</b> (circuits you can draw on paper without crossings). For non-planar (3D / graph-theoretic) circuits, nodal analysis is the only general technique. Most board-level circuits are planar, so this isn't a practical limitation.</li>
   </ul>
 
@@ -783,10 +783,10 @@
       q: "You solve a 2-mesh system and get I1 = +30 mA, I2 = +50 mA, both CW. The actual current through the shared branch R2 is:",
       a: ["+80 mA (sum of mesh currents)",
           "+20 mA flowing in mesh 1's direction",
-          "−20 mA flowing in mesh 2's direction (same thing)",
+          "−20 mA in mesh 1's reference direction — i.e. 20 mA physically flowing in mesh 2's direction",
           "0 mA (they cancel)"],
       correct: 2,
-      why: "Shared branch current = I1 − I2 = 30 − 50 = −20 mA. Negative means the net flow is in the opposite of mesh 1's CW direction through that branch — equivalently, +20 mA in mesh 2's direction. Both readings (b) and (c) describe the same physical current; (c) is more idiomatic, but (b) reads the same way. The framework lets sign carry meaning."
+      why: "Shared branch current = I1 − I2 = 30 − 50 = −20 mA, referenced to mesh 1's direction. The negative sign means the net flow is opposite mesh 1's CW direction through that branch — physically, 20 mA in mesh 2's direction. Option (b) is the opposite physical direction and is wrong. The framework lets sign carry meaning."
     },
     {
       q: "A 2-mesh circuit has an independent CURRENT source on the branch shared between mesh 1 and mesh 2. The right move is:",
