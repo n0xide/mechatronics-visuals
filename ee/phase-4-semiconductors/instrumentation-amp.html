@@ -98,12 +98,12 @@
     <table>
       <tr><th>Quantity</th><th>Value</th><th>Formula</th></tr>
       <tr><td>Gain G</td><td id="tG" class="num">40.2</td><td><code>1 + 2·R_F/R_G</code></td></tr>
-      <tr><td>V_out (diff)</td><td id="tVout" class="num">0.402 V</td><td><code>G · V_diff</code></td></tr>
-      <tr><td>V_out (CM leak)</td><td id="tVcm" class="num">0.31 mV</td><td><code>V_cm · A_cm</code></td></tr>
+      <tr><td>V_out (diff)</td><td id="tVout" class="num">402.16 mV</td><td><code>G · V_diff</code></td></tr>
+      <tr><td>V_out (CM leak)</td><td id="tVcm" class="num">50.00 mV</td><td><code>V_cm · A_cm</code></td></tr>
       <tr><td>CMRR (R-mismatch limited)</td><td id="tCmrr" class="num">66 dB</td><td><code>20·log10[(1 + 2·R_F/R_G) / (4·δ)]</code></td></tr>
-      <tr><td>Total V_out</td><td id="tTotal" class="num">0.402 V</td><td><code>V_out_diff + V_out_cm</code></td></tr>
+      <tr><td>Total V_out</td><td id="tTotal" class="num">452.16 mV</td><td><code>V_out_diff + V_out_cm</code></td></tr>
     </table>
-    <div class="vd"><b>Output:</b> <span id="outputEq">V_out = (1 + 2·R_F/R_G) · V_diff = 40.2 × 10 mV = 0.402 V</span></div>
+    <div class="vd"><b>Output:</b> <span id="outputEq">V_out = (1 + 2·100 kΩ / 5.1 kΩ) · 10.0 mV = 40.2 × 10.0 mV = 402.16 mV</span></div>
   </div>
 
   <h2>Why 3 op-amps instead of 1?</h2>
@@ -151,9 +151,10 @@
     <p>Each strain-bridge node sits at ~Vexc/2 = 2.5 V common-mode. A single-supply diff amp would not handle this CM input well (rail-to-rail input op-amp required). An INA126's CM input range (single-supply 5 V) is roughly 0.875 V to 4.125 V, so 2.5 V CM sits comfortably in the middle.</p>
 
     <h3>Why CMRR matters</h3>
-    <span class="eq">If CMRR = 80 dB (R-mismatch 1 %): CM rejected by 10000:1. A 2.5 V CM → 0.25 mV CM error at output ÷ 4.5 V signal = 56 ppm error.</span>
-    <span class="eq">If CMRR = 60 dB (R-mismatch 5 %): CM rejected only 1000:1. A 2.5 V CM → 2.5 mV CM error → 0.06 % error in measurement.</span>
-    <span class="eq">For 12-bit ADC (0.024 % LSB), even 1 % mismatch is borderline. Laser-trimmed INA126 → CMRR 94 dB → 1 ppm error. Production-grade.</span>
+    <span class="eq">Fractional error from common-mode = (V_cm / V_diff) / CMRR. Here V_cm/V_diff = 2.5 V / 10.5 mV ≈ 238 — the CM is 238× the signal, so CMRR must beat 238 (≈ 47 dB) just to break even.</span>
+    <span class="eq">If CMRR = 80 dB (10000:1, ~1 % resistors): error = 238 / 10000 = <b>2.4 %</b> of full scale — far too coarse for a real bridge.</span>
+    <span class="eq">If CMRR = 60 dB (1000:1, ~5 % resistors): error = 238 / 1000 = <b>24 %</b> — the CM swamps the signal.</span>
+    <span class="eq">For 12-bit resolution (0.024 % LSB) you need CMRR ≥ 238 / 0.00024 ≈ <b>120 dB</b>. INA126 (94 dB) gives ~0.5 % error (≈ 8-bit); an INA128 / AD8221 at ~120 dB is what makes this measurement production-grade.</span>
   </div>
 
   <h2>Common pitfalls + design rules</h2>
@@ -326,12 +327,15 @@ function update(){
 
   const G = 1 + 2 * rf / rg;
   const Vout_diff = G * vdiff;
-  // CMRR limited by R-mismatch: simplified diff-amp formula
-  // CMRR ≈ G / (4 · mismatch_fraction)
+  // CMRR limited by R-mismatch: the back-end diff amp sets A_cm ≈ 4·δ, so
+  // CMRR = A_d / A_cm = G / (4·δ). A_cm must be derived FROM CMRR (= A_d/CMRR),
+  // not V_cm/CMRR — the CM leakage at the OUTPUT is A_cm·V_cm.
+  // At δ=0 the residual CMRR is op-amp-limited (~110 dB floor).
   const mm_frac = mm / 100;
-  const A_cm = mm_frac / G; // approximate, in the limit of resistor mismatch dominating
+  const CMRR_lin = mm_frac > 0 ? G / (mm_frac * 4) : Math.pow(10, 110 / 20);
+  const A_cm = G / CMRR_lin; // common-mode gain = A_d / CMRR  (≈ 4·δ for δ > 0)
   const Vout_cm = vcm * A_cm;
-  const CMRR_dB = mm_frac > 0 ? 20 * Math.log10(G / (mm_frac * 4)) : 110;
+  const CMRR_dB = 20 * Math.log10(CMRR_lin);
   const Vout_total = Vout_diff + Vout_cm;
 
   document.getElementById('tG').textContent     = G.toFixed(1);
