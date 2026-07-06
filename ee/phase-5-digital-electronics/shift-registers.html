@@ -167,7 +167,7 @@
     </div>
     <table>
       <tr><th>Quantity</th><th>Value</th><th>Notes</th></tr>
-      <tr><td>Bits sent</td><td id="tBits" class="num">0 / 8</td><td>cumulative since last reset</td></tr>
+      <tr><td>Bits sent</td><td id="tBits" class="num">0 bits clocked</td><td>cumulative since last reset</td></tr>
       <tr><td>Current shift register (binary)</td><td id="tShiftBin" class="num">00000000</td><td>after each CLK</td></tr>
       <tr><td>Current storage register (binary)</td><td id="tStoreBin" class="num">00000000</td><td>parallel output Q0..Q7</td></tr>
       <tr><td>Time per byte (typical 74HC at 5V, 25 MHz)</td><td id="tBytetime" class="num">320 ns</td><td>8 clocks × 40 ns/clock</td></tr>
@@ -214,7 +214,7 @@
     <span class="eq">Latch: pull RCLK high then low → ~100 ns</span>
     <span class="eq">Total update: 1.7 µs → can refresh at &gt; 580 kHz</span>
     <h3>Why send byte 2 first?</h3>
-    <p>The first byte you send ends up in '595 #1 (closest to MCU); the second byte is pushed through to '595 #2 (farthest). So to map "LED 9" to Q0 of '595 #2, you send the byte for '595 #2 first.</p>
+    <p>The first byte you send gets pushed through '595 #1 into '595 #2 (farthest from the MCU) as the second byte shifts in; the last byte sent stays in '595 #1 (closest). So the farthest chip's byte goes first — to map "LED 9" to Q0 of '595 #2, you send the byte for '595 #2 first.</p>
   </div>
 
   <h2>Worked example — reading 8 buttons via 74HC165</h2>
@@ -231,8 +231,8 @@
     <pre style="background:var(--bg-elev2);padding:8px;border-radius:4px;font-size:12px">while True:
   PL.write(0)                 # load parallel inputs
   PL.write(1)                 # ready to shift
-  byte1 = spi.read(1)         # bits from '165 #1 (the higher chip)
-  byte2 = spi.read(1)         # bits from '165 #2
+  byte1 = spi.read(1)         # bits from '165 #2 (closest to MISO — read first)
+  byte2 = spi.read(1)         # bits from '165 #1 (farthest — shifts through #2)
   process_buttons(byte1, byte2)
   delay_ms(5)                 # 200 Hz polling rate</pre>
     <span class="eq">Each poll: 0 → 1 latch (0.1 µs) + 16 SPI clocks at 1 MHz = 16 µs total. Easily fits in 5 ms.</span>
