@@ -170,7 +170,7 @@
   <h2 id="current">Current limit — R_sense sets the trip point</h2>
   <div class="deriv">
     <span class="step"><b>Concept:</b> driver continuously monitors voltage across R_sense → I × R_sense.</span>
-    <span class="step"><b>When V_IPROPI/SENSE ≥ V_ITRIP</b> (internal reference, typically 0.2 V on DRV8833's external low-side shunt; ~0.6 V at I_TRIP pin on DRV8251A. <b>DRV8871 is different</b> — it uses internal current-mirror sensing on the IPROPI pin (K_IPROPI ≈ 1075 µA/A) with internal V_ITRIP ≈ 4.1 V (typ), so its formula is `I_TRIP = V_ITRIP / (K_IPROPI · R_IPROPI)`, not `V_ref / R_sense`):</span>
+    <span class="step"><b>When V_IPROPI/SENSE ≥ V_ITRIP</b> (internal reference, typically 0.2 V on DRV8833's external low-side shunt; DRV8251A regulates on its IPROPI current-mirror pin. <b>DRV8871 is different again</b> — it sets the trip with a single resistor R_ILIM from the ILIM pin to GND: `I_TRIP(A) ≈ 64 / R_ILIM(kΩ)`, not `V_ref / R_sense`):</span>
     <span class="step">→ comparator trips → driver enters fixed off-time chopping (defaults to ~30 µs on DRV8833 / 25 µs on DRV8871).</span>
     <span class="step"><b>Result:</b> motor current chops at I_trip regardless of motor / supply combination.</span>
     <span class="step"><b>Formula:</b> I_trip = V_ref / R_sense</span>
@@ -178,7 +178,7 @@
 
   <p><b>R_sense sizing for DRV8833:</b> V_ITRIP = 0.2 V. For 1.0 A trip: R_sense = 0.2 / 1.0 = <b>0.2 Ω (200 mΩ)</b>. For 1.5 A trip (the chip's max): R_sense = 0.13 Ω. For lower currents (delicate motors): increase R_sense. <b>Power dissipation</b> in R_sense: P = I² × R = 1² × 0.2 = 0.2 W at 1 A continuous (peak/RMS depends on duty — size for worst case, not for average). Sense resistors must be rated for this; use 1/4 W or higher and add headroom for chopping spikes.</p>
 
-  <p><b>DRV8871 IPROPI:</b> uses an internal V_ITRIP reference of ~4.1 V (typ) and a current-mirror with K_IPROPI ≈ 1075 µA/A; the external R_IPROPI scales the trip. Worked example: target I_TRIP = 2 A → R_IPROPI = V_ITRIP / (K_IPROPI · I_TRIP) = 4.1 / (1075e-6 · 2) ≈ 1.9 kΩ. <b>DRV8251A</b> uses the IPROPI pin to set the current limit by external resistor to AGND; current limit is dialed in by a single resistor and the chip handles the sensing internally.</p>
+  <p><b>DRV8871 ILIM:</b> the current-limit trip is set by a single resistor R_ILIM from the ILIM pin to GND: I_TRIP(A) ≈ 64 / R_ILIM(kΩ). Worked example: target I_TRIP = 2 A → R_ILIM ≈ 64 / 2 = <b>32 kΩ</b> (datasheet minimum R_ILIM ≈ 15 kΩ, which caps the trip near the part's 3.6 A rating). <b>DRV8251A</b> is the one that uses an IPROPI current-mirror pin (K_IPROPI ≈ 1100 µA/A) — its trip is set by R_IPROPI to AGND and the chip handles the sensing internally.</p>
 
   <h2 id="decay">Slow vs fast decay — what happens when PWM is OFF</h2>
   <p>During a PWM cycle, the FETs are alternately conducting (current rises) and off (current decays). What "off" means depends on which FETs you turn on during the off period — that's the decay mode.</p>
@@ -234,10 +234,10 @@
     <tr><td>&gt; 10 A</td><td>Discrete MOSFETs + dedicated gate driver IC (TI DRV8323 / DRV8353, ST L6390 / STDRIVE, IR2110 family). Note: DRV8316 and L6234 are <em>integrated</em> 3-phase BLDC drivers (internal FETs), not gate drivers for external FETs — use them for BLDC, not as a discrete-FET driver.</td><td>variable</td><td>$10+</td><td>You're outside the integrated H-bridge world.</td></tr>
   </table>
 
-  <h2>Worked example — DRV8833 driving a 12 V, 1 A geared motor</h2>
+  <h2>Worked example — DRV8833 driving a 9 V, 1 A geared motor</h2>
   <div class="worked">
     <h3>The setup</h3>
-    <p>arm-6dof-so100-mega prototype: 12 V geared DC motor for the gripper actuator. Continuous current 0.6 A, stall ~1.5 A. Need direction control and PWM speed control. Driver: DRV8833 (one of the dual H-bridges).</p>
+    <p>arm-6dof-so100-mega prototype: 9 V geared DC motor for the gripper actuator (within the DRV8833's 2.7–10.8 V range — a 12 V motor would need the DRV8871 instead). Continuous current 0.6 A, stall ~1.5 A. Need direction control and PWM speed control. Driver: DRV8833 (one of the dual H-bridges).</p>
 
     <h3>Compute R_sense</h3>
     <span class="eq">V_ref = 0.2 V (DRV8833 internal)</span>
