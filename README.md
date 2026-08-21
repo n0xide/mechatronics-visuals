@@ -112,8 +112,10 @@ A few of the more ambitious visuals worth opening first:
 
 ## License
 
-Released under the [MIT License](LICENSE). The visuals are educational
-artefacts; the curriculum itself is the author's personal study material.
+
+Code is MIT (see [LICENSE](LICENSE)) — take it, adapt it, build on it.
+
+The written content and images are Copyright (c) 2026 n0xide, all rights reserved (see [LICENSE-CONTENT](LICENSE-CONTENT)). Read it, link to it, quote it with credit; don't republish it wholesale or sell it. Facts — prices, part numbers, specs — are facts, and aren't claimed.
 
 ## Source
 
