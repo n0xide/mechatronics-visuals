@@ -34,6 +34,61 @@ awk '/<script>/{p=1;next}/<\/script>/{p=0}p' index.html | \
 
 All three should pass before `git push`.
 
+## Script pattern — no ES modules, ever (2026-08-23)
+
+Every visual is a classic script. Two shared files sit in `_shared/`:
+
+| File | Loaded by | What it does |
+|---|---|---|
+| `compat.js` | all 289 pages, first thing in `<head>` | wraps `history.replaceState`/`pushState` in try/catch |
+| `physics.js` | the 61 visuals that need maths helpers | attaches 63 named helpers to the global object |
+
+```html
+<head>
+<script src="../../_shared/compat.js"></script>
+...
+</head>
+...
+<script src="../../_shared/physics.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // the visual's own code
+});
+</script>
+```
+
+**Never use `<script type="module">` here, and never `import`.** Module
+scripts are fetched under CORS rules, and a page opened from `file://` has no
+origin that satisfies them. Until 2026-08-23 `physics.js` was an ES module and
+61 visuals imported from it; every one of those pages rendered perfectly and
+sat completely inert when opened by double-click — sliders dead, plots frozen
+at the placeholder values baked into the HTML. It looked fine, which is why it
+went unnoticed. Classic scripts have no such restriction.
+
+**Keep the `DOMContentLoaded` wrapper.** It reproduces what a module gave you
+for free: deferred execution (the script sits mid-document but can still find
+markup below it) and a private scope (the visual's names don't leak or collide
+with `physics.js`). A bare `<script>` in the same position runs during parsing
+and won't find its own DOM.
+
+If the visual uses inline `oninput="render()"` handlers, the wrapper hides
+`render` exactly as module scope did — add `window.render = render;` at the end
+of the wrapped block.
+
+## Portable edition — the shareable zip
+
+`../_portable.js` builds a copy of this bundle with `physics.js` and
+`compat.js` inlined into every page, so each file is hermetic — no subresource
+loads at all — and zips it for sending to someone directly:
+
+```bash
+node mechatronics/study/_portable.js
+```
+
+The bundle here already works from `file://`; the portable copy is the belt to
+that braces, and the form to hand someone over chat. See the header of
+`_portable.js` for what it rewrites.
+
 ## Adding a new visual
 
 1. Add the source `.html` in the source workspace under `mechatronics/study/docs/<disc>/visuals/phase-N-xxx/`.
@@ -98,6 +153,10 @@ function saveHash(){
 // On script load: loadHash() then render()
 ```
 
+`saveHash()` is safe to call from a `file://` page: `_shared/compat.js` wraps
+`history.replaceState` so a browser refusing it becomes a no-op rather than an
+exception that kills the rest of `render()`.
+
 Add a "Share this configuration: [copy link]" affordance to the page (CSS class `.share` already styled). Helpful for teaching and bug reports — `<a onclick="navigator.clipboard?.writeText(location.href)">`.
 
 Visuals with this pattern as of 2026-05-27: snubber-deep, gain-scheduling, imu-fusion, composites-laminate, secure-boot-ota, llc-resonant, refrigeration-cycle, fmea-fault-tree, lyapunov-stability, euler-buckling. To add to an existing visual, copy the helper functions + add the SLIDERS list at the top of `<script>`.
@@ -141,11 +200,13 @@ The full template is at `mechatronics/study/docs/_visuals-template.html` in the 
 
 | File | Purpose |
 |---|---|
-| `index.html` | The SPA + card-grid (812 lines, includes 162-entry `VISUALS` array) |
+| `index.html` | The SPA + card-grid (includes the 288-entry `VISUALS` array) |
 | `README.md` | Public-facing description of the bundle |
-| `LICENSE` | MIT |
+| `LICENSE` | PolyForm Noncommercial 1.0.0 — code, noncommercial use only |
+| `LICENSE-CONTENT` | The writing and figures — all rights reserved, noncommercial |
 | `MAINTAINING.md` | This file |
-| `ee/` `me/` `em/` `extras/` | The 162 visuals + 3 reference pages |
+| `_shared/` | `compat.js` (all pages) + `physics.js` (61 pages) |
+| `ee/` `me/` `em/` `extras/` | The 288 visuals + reference pages |
 
 ## Source workspace
 

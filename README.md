@@ -1,9 +1,9 @@
 # Curriculum Visuals
 
-162 self-contained interactive HTML visuals spanning a complete EE / ME / EM
-deep-dive curriculum for mechatronics and robotics learners — plus 3
-supplementary reference pages. Every file is offline-capable: open `index.html`
-in any modern browser, no server or build step required.
+288 self-contained interactive HTML visuals spanning a complete EE / ME / EM
+deep-dive curriculum for mechatronics and robotics learners — plus reference
+and calculator pages. Every file is offline-capable: open `index.html` in any
+modern browser, no server or build step required.
 
 **Live site:** <https://n0xide.github.io/mechatronics-visuals/>
 
@@ -11,11 +11,11 @@ in any modern browser, no server or build step required.
 
 | Discipline | Phases | Visuals |
 |---|---|---|
-| **EE** — Electrical | 9 | 55 |
-| **ME** — Mechanical | 9 | 48 |
-| **EM** — Electro-Mechanical (robotics bridge) | 8 | 56 |
-| **Extras** — Study path · Cookbook · Constants | — | 3 |
-| **Total** | **26 phases** | **162** |
+| **EE** — Electrical | 9 | 91 |
+| **ME** — Mechanical | 9 | 80 |
+| **EM** — Electro-Mechanical (robotics bridge) | 8 | 96 |
+| **Extras** — reference + calculators | — | 21 |
+| **Total** | **26 phases** | **288** |
 
 Every visual ships with an interactive figure (sliders, plots, animations) plus
 a built-in cheat sheet (formulas / memorize-cold / common pitfalls).
@@ -86,36 +86,61 @@ A few of the more ambitious visuals worth opening first:
 .
 ├── index.html                          ← the unified SPA + card grid
 ├── README.md                           ← this file
-├── LICENSE                             ← MIT
-├── ee/                                 ← Electrical (55 visuals across 9 phases)
+├── LICENSE                             ← PolyForm Noncommercial 1.0.0 (code)
+├── LICENSE-CONTENT                     ← the writing (all rights reserved)
+├── _shared/                            ← compat.js + physics.js, loaded by the pages
+├── ee/                                 ← Electrical (91 visuals across 9 phases)
 │   ├── phase-1-dc-circuits/
 │   ├── phase-2-passive-components/
 │   └── …
-├── me/                                 ← Mechanical (48 / 9)
-├── em/                                 ← Electro-Mechanical (56 / 8)
-└── extras/                            ← Reference pages (3)
+├── me/                                 ← Mechanical (80 / 9)
+├── em/                                 ← Electro-Mechanical (96 / 8)
+└── extras/                            ← Reference + calculator pages (21)
     ├── study-path.html
     ├── circuits-cookbook.html
-    └── constants-units.html
+    └── …
 ```
 
 ## Technical notes
 
 - **Self-contained:** every visual has its CSS and JS inline. No CDN, no
-  webfonts, no images, no build step.
+  webfonts, no images, no build step. The only shared files are
+  `_shared/physics.js` (maths helpers, loaded by 61 visuals) and
+  `_shared/compat.js` (a four-line `file://` guard, loaded by all of them).
 - **Offline-first:** all paths are relative. Works from `file://` URLs, from
   a USB stick, from any static host, or from a `python -m http.server`.
+
+  This was not true until 2026-08-23. `physics.js` used to be an ES module
+  that 61 visuals imported from, and module scripts are fetched under CORS
+  rules that a `file://` page cannot satisfy — so those 61 rendered perfectly
+  and sat completely inert on a double-click. They are ordinary classic
+  scripts now. If you cloned this repo before that date, pull.
 - **Dark theme:** all visuals share a single dark colour palette (defined in
   `_visuals-template.html` in the source workspace — the visuals here are the
   rendered output).
-- **Total size:** ~4 MB across 163 HTML files.
+- **Total size:** ~9 MB across 289 HTML files.
 
 ## License
 
+**Noncommercial use only, on both halves of this repository.**
 
-Code is MIT (see [LICENSE](LICENSE)) — take it, adapt it, build on it.
+Code — the HTML structure, CSS and JavaScript — is under the
+[PolyForm Noncommercial License 1.0.0](LICENSE). Study it, adapt it, build on
+it, teach with it. Personal study, hobby projects, schools, universities,
+charities and public research all count as permitted purposes. Using it to
+make money does not.
 
-The written content and images are Copyright (c) 2026 n0xide, all rights reserved (see [LICENSE-CONTENT](LICENSE-CONTENT)). Read it, link to it, quote it with credit; don't republish it wholesale or sell it. Facts — prices, part numbers, specs — are facts, and aren't claimed.
+The written content and figures are Copyright (c) 2026 n0xide, all rights
+reserved (see [LICENSE-CONTENT](LICENSE-CONTENT)). Read it, link to it, quote
+it with credit; don't republish it wholesale, sell it, or put it behind a
+paywall. Facts — formulas, constants, part numbers, specs — are facts, and
+aren't claimed.
+
+Want to use any of it commercially? Ask.
+
+Before 2026-08-23 the code was MIT. That grant stands for the versions it was
+published under; it cannot be withdrawn retroactively. These terms govern this
+version onward.
 
 ## Source
 
